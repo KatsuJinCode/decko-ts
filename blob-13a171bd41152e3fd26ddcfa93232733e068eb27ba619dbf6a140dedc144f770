@@ -1,0 +1,180 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
+import { validateSigninTrace, retainVmSigninTrace } from '../lib/vm-engines.mjs';
+
+const bootstrap = fileURLToPath(new URL('../engines/signin-trace.rb', import.meta.url));
+const ruby = process.env.HARNESS_TEST_RUBY ?? 'ruby';
+const setup = `
+class Card
+  module Auth
+    def self.session_user_key = :user_fixture
+  end
+end
+module ActionDispatch
+  module Session
+    class CookieStore
+      Result = Struct.new(:cookie_value)
+      attr_accessor :returned, :failure
+      def self.name(value) = value
+      private
+      def write_session(request, sid, session_data, options)
+        raise failure if failure
+        returned
+      end
+    end
+  end
+end
+`;
+
+function runRuby(program) {
+  const root = mkdtempSync(path.join(tmpdir(), 'decko-session-correlation-'));
+  const work = path.join(root, 'work');
+  mkdirSync(work);
+  try {
+    const result = spawnSync(ruby, ['-r', bootstrap, '-e', setup + program], {
+      windowsHide: true, encoding: 'utf8',
+      env: { ...process.env, RUBYOPT: '', HARNESS_WORK: work, HARNESS_DECK: path.join(root, 'deck.sqlite3'), HARNESS_PORT: '2990' },
+    });
+    assert.equal(result.error, undefined);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stderr, '');
+    const raw = readFileSync(path.join(work, 'signin-trace.jsonl'), 'utf8');
+    assert.equal(raw.includes('private-sentinel'), false);
+    return { raw, events: raw ? validateSigninTrace(raw) : [] };
+  } finally {
+    assert.equal(path.dirname(root), path.resolve(tmpdir()));
+    assert.ok(path.basename(root).startsWith('decko-session-correlation-'));
+    rmSync(root, { recursive: true });
+  }
+}
+
+test('session-write metadata observes the returned cookie payload and preserves method identity/visibility', () => {
+  const { events } = runRuby(`
+store = ActionDispatch::Session::CookieStore.new
+expected = ActionDispatch::Session::CookieStore::Result.new({'user_fixture'=>611, 'csrf'=>'private-sentinel'})
+store.returned = expected
+app = ->(env) do
+  result = store.send(:write_session, nil, nil, {'user_fixture'=>201}, {})
+  raise 'returned identity changed' unless result.equal?(expected)
+  raise 'method became public' if store.respond_to?(:write_session)
+  [200, {'set-cookie'=>'session=private-sentinel; HttpOnly'}, []]
+end
+HarnessSigninTrace::RequestTrace.new(app).call({'PATH_INFO'=>'/update/*signin', 'HTTP_COOKIE'=>'session=private-sentinel'})
+raise 'context leaked' unless HarnessSigninTrace.context.nil?
+`);
+  const write = events.find(event => event.phase === 'session_write');
+  assert.equal(write.actor_id, 611);
+  assert.equal(write.session_user_present, true);
+  assert.equal(write.request_digest, events[0].request_digest);
+  assert.match(write.session_user_key_digest, /^[0-9a-f]{64}$/);
+  assert.match(write.session_user_value_digest, /^[0-9a-f]{64}$/);
+  assert.equal(events.at(-1).phase, 'trace_finished');
+});
+
+test('string/symbol session keys correlate while absence remains explicit', () => {
+  const { events } = runRuby(`
+store = ActionDispatch::Session::CookieStore.new
+app = ->(env) do
+  [{user_fixture: 201}, {'user_fixture'=>611}, {}].each do |payload|
+    store.returned = ActionDispatch::Session::CookieStore::Result.new(payload)
+    store.send(:write_session, nil, nil, {}, {})
+  end
+  [200, {}, []]
+end
+HarnessSigninTrace::RequestTrace.new(app).call({'PATH_INFO'=>'/'})
+`);
+  const writes = events.filter(event => event.phase === 'session_write');
+  assert.deepEqual(writes.map(event => event.actor_id), [201, 611, null]);
+  assert.deepEqual(writes.map(event => event.session_user_present), [true, true, false]);
+  assert.equal(new Set(writes.map(event => event.session_user_key_digest)).size, 1);
+  assert.notEqual(writes[0].session_user_value_digest, writes[1].session_user_value_digest);
+  assert.equal(writes[2].session_user_value_digest, null);
+});
+
+test('untraced paths and unrelated stores do not generate session-write events', () => {
+  const { events } = runRuby(`
+store = ActionDispatch::Session::CookieStore.new
+store.returned = ActionDispatch::Session::CookieStore::Result.new({'user_fixture'=>611})
+app = ->(env) { store.send(:write_session, nil, nil, {}, {}); [200, {}, []] }
+HarnessSigninTrace::RequestTrace.new(app).call({'PATH_INFO'=>'/unrelated'})
+class UnrelatedStore
+  def write_session(*) = :unchanged
+end
+other = ->(env) { raise 'return changed' unless UnrelatedStore.new.write_session == :unchanged; [200, {}, []] }
+HarnessSigninTrace::RequestTrace.new(other).call({'PATH_INFO'=>'/'})
+`);
+  assert.equal(events.some(event => event.phase === 'session_write'), false);
+  assert.deepEqual(events.map(event => event.phase), ['request_begin', 'response', 'trace_finished']);
+});
+
+test('original storage exception survives with request context restored', () => {
+  const { events } = runRuby(`
+store = ActionDispatch::Session::CookieStore.new
+original = RuntimeError.new('private-sentinel')
+store.failure = original
+app = ->(env) { store.send(:write_session, nil, nil, {}, {}); [200, {}, []] }
+begin
+  HarnessSigninTrace::RequestTrace.new(app).call({'PATH_INFO'=>'/'})
+  raise 'storage failure swallowed'
+rescue => error
+  raise unless error.equal?(original)
+end
+raise 'context leaked' unless HarnessSigninTrace.context.nil?
+`);
+  assert.equal(events.some(event => event.phase === 'session_write'), false);
+  assert.ok(events.some(event => event.phase === 'request_exception'));
+  assert.equal(events.at(-1).phase, 'trace_finished');
+});
+
+test('absent storage results remain absent rather than inventing a written session', () => {
+  const { events } = runRuby(`
+store = ActionDispatch::Session::CookieStore.new
+app = ->(env) do
+  [nil, false].each do |result|
+    store.returned = result
+    raise 'storage result changed' unless store.send(:write_session, nil, nil, {}, {}).equal?(result)
+  end
+  [200, {}, []]
+end
+HarnessSigninTrace::RequestTrace.new(app).call({'PATH_INFO'=>'/'})
+`);
+  assert.equal(events.some(event => event.phase === 'session_write'), false);
+  assert.equal(events.at(-1).phase, 'trace_finished');
+});
+
+test('snapshot ambiguity or observation write failure preserves successful storage and invalidates diagnostics', async () => {
+  for (const scenario of ['ambiguous', 'unsupported_payload', 'write_failure']) {
+    const { raw, events } = runRuby(`
+store = ActionDispatch::Session::CookieStore.new
+payload = ${scenario === 'ambiguous' ? "{'user_fixture'=>611, user_fixture: 201}" : scenario === 'unsupported_payload' ? "'private-sentinel'" : "{'user_fixture'=>611}"}
+expected = ActionDispatch::Session::CookieStore::Result.new(payload)
+store.returned = expected
+${scenario === 'write_failure' ? `module HarnessSigninTrace
+  class << self
+    alias_method :original_emit, :emit
+    def emit(fields)
+      raise IOError, 'private-sentinel' if fields[:phase] == 'session_write'
+      original_emit(fields)
+    end
+  end
+end` : ''}
+app = ->(env) do
+  raise 'successful storage changed' unless store.send(:write_session, nil, nil, {}, {}).equal?(expected)
+  [200, {}, []]
+end
+HarnessSigninTrace::RequestTrace.new(app).call({'PATH_INFO'=>'/'})
+raise 'context leaked' unless HarnessSigninTrace.context.nil?
+`);
+    assert.equal(events.at(-1).phase, 'observer_failure');
+    assert.equal(events.some(event => event.phase === 'trace_finished'), false);
+    const receipt = await retainVmSigninTrace({ config: {}, sessionDir: '/private', destination: path.resolve('unused-synthetic.jsonl') }, {
+      readRemote: async () => raw, write() {},
+    });
+    assert.equal(receipt.diagnosticValid, false);
+  }
+});

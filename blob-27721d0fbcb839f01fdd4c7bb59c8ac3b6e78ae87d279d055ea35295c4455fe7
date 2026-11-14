@@ -1,0 +1,1337 @@
+# Ruby versus Bunny shared-data comparison — owner record
+
+The local half of the shared-data comparison has now run on both engines over the same
+controlled data and it passed: 1,439 ordered requests per engine, zero request errors,
+and every response matched once two known render artifacts were set aside. It is not
+finished. The hosted Bunny half has not been run, no triage ruling exists for any
+difference yet, and the final run still has to happen on the final code with a serving
+artifact bound to that code. One difference is already measured and still open: in
+seven write cases the port's notification mail carries an extra redirect parameter that
+Ruby does not send, and the read-only request list cannot see it.
+
+Owner: this lane, branch `fleet/engine-cmp-owner-20261101`, started from integration
+head `ff3ab5fd6fad6688a73cdfcfd48a2a17d9ec62c0`. This file is the one list of known
+Ruby-versus-Bunny differences. Every row that has a triage verdict and no fixer says
+**needs owner**. **That no longer describes any row of this table.** The triage lead's
+Verdict 10 rules all thirteen rows, and Verdict 12 records that row 13's independent
+ACCEPT exists. Every row below carries the lead's verdict, the owner and what closes
+it; the three rows still marked *reviewer needs owner* are marked for the independent
+review each one waits on, not for a ruling.
+
+## Who decides what
+
+| Role | Session | What it owns |
+|---|---|---|
+| Comparison owner (this lane) | `fleet/engine-cmp-owner-20261101` | This table, the difference list, the run steps the test lead follows, and folding in new findings. It fixes nothing until a verdict is in this table. |
+| Triage lead | MiniMax Relay 1554, branch `fleet/triage-2026-11-01` | The verdict on every difference. Its report is [triage-2026-11-01.md](triage-2026-11-01.md). Nothing is fixed before the verdict appears there and here. |
+| Test lead | Codex Relay 1044 | The only session that runs anything against Bunny's hosted services. It runs the final comparison on the final head. |
+| Local preparation | Codex Relay 1541, branch `fleet/hosted-cmp-prep-ff3ab5fd-20261101` | The local comparison preparation and the hosted binding checklist. Its run is not repeated here. |
+
+### Where this sits in the delivery conditions
+
+The triage lead's report lists four delivery conditions. The first one, engine-area
+checks, is marked **Not done**, and its plan says to complete the shared-data
+Ruby-versus-Bunny comparison through the test lead. That is the work this lane owns and
+this record feeds. The triage lead's readiness row for this area still reads "complete
+the shared-data Ruby/Bunny comparison". No row in this table has a triage verdict yet, so
+that condition cannot move until the triage lead rules.
+
+## What the comparison is
+
+Both engines are driven with the same request plan over the same controlled data and
+the same declared settings, then their responses are compared.
+
+| Property | Value |
+|---|---|
+| Source under comparison | `ff3ab5fd6fad6688a73cdfcfd48a2a17d9ec62c0` |
+| Data | `reference-harness/fixtures/synthetic-v1`, database SHA-256 `a9f580814c2a5adc30e21f704985573ebb3f1090a14993bacacbdb1fb9a32f3d`, deck specification SHA-256 `3a5fae5f3afaa51220111e7805c093fef7c0d736793c31acc2752da53ac7465e` |
+| Attachments | six files, manifest SHA-256 `61ecdc72a105d1d0d89a8b1dc897685e10e8f43d9f83f57ec6d6d5b3afab0370` |
+| Plan | 1,439 ordered anonymous GETs per engine; saved plan SHA-256 `eced1a26e6d3d5db3a47b7869e31cb337dcc6fb779a89258d6a88f08ed675822`, comparator plan SHA-256 `1fa0b82a1d74b8619931581a9332b09008088b5a653319122053962599bf39f4` |
+| Settings on both sides | origin `http://deck.example`, default HTML view `content`, asset refresh `never`, stock Font Awesome, rendering errors not raised, view cache off, clock frozen at `2026-09-19T12:00:00Z` |
+| Ruby side | Ruby 3.2.3, Decko 0.20.0, card 1.110.0, Rails 7.2.3.2, sqlite3 2.9.6, Rack 2.2.24, bundle lock `c5813a46c36183a4ab79876859da0f9c1100da1e7e49a8abcb0d24470297038e` |
+| Bunny side (local run only) | the checked-in TypeScript executed through in-memory test transforms against a local Hrana server; not a compiled or hosted artifact |
+| Also listed in the plan, not executed by this capture | 1,752 render operations, 2,388 semantics operations, 16 persistence and effect scenarios, 51 browser journeys |
+
+## Local run result
+
+Measured by Codex Relay 1541 on `ff3ab5fd6fad6688a73cdfcfd48a2a17d9ec62c0`, recorded in
+`docs/runs/hosted-cmp-prep-ff3ab5fd-2026-11-01/REPORT.md` on branch
+`fleet/hosted-cmp-prep-ff3ab5fd-20261101`.
+
+| Measurement | Result |
+|---|---:|
+| Ordered requests completed per engine | 1,439 |
+| Responses byte-for-byte identical | 3 |
+| Responses equal after the existing HTML normalization, raw differences kept | 1,436 |
+| Responses still different after that normalization | 0 |
+| Request errors or incomplete responses on either engine | 0 |
+| Status agreement | 1,320 at 200, 118 at 403, 1 at 404, same on both sides |
+| Comparator and custody controls passed | 38 |
+| Hosted Bunny requests issued by any worker so far | 0 |
+
+The three byte-identical responses are `/ComparisonMissingCard.rss`, `/Home.rss` and
+`/Home/view/open.rss` — the three XML responses, which carry no HTML chrome.
+
+## Every known difference
+
+Raw evidence for rows 1 and 2 is under
+`C:\localProjects\decko-ts-k1-verdict-20261101\docs\runs\hosted-cmp-prep-ff3ab5fd-2026-11-01\`
+in the local preparation lane: `comparison.json` (all 1,439 graded rows),
+`findings.json` and `FINDINGS.md` (findings 1 to 1,436, one per raw difference),
+`ruby/bodies/<request-id>.bin` and `local-bunny/bodies/<request-id>.bin` (the two raw
+bodies for every request), `summary.json`, `bindings.json`, `source-execution.json` and
+`source-custody-check.json`.
+
+| # | Case | What Ruby does | What Bunny does | Raw evidence | Triage verdict | Fixer | Status |
+|---|---|---|---|---|---|---|---|
+| 1 | `data-slot-id` attribute value — every one of the 1,436 differing responses | draws the slot id at random for every render, so two Ruby runs of one fixture differ in it and nowhere else — 9,056 slot ids across 1,350 renders, recorded as rule N1 in `reference-harness/runner/normalize.mjs` | emits its own generated 20-character hex slot id for the same slot | `comparison.json` rows; `FINDINGS.md` 1 to 1,436; both `bodies/` trees; the N1 rule and its evidence in `reference-harness/runner/normalize.mjs` | **ruled: not an engine difference.** The original draws the slot id at random on every render — 9,056 slot ids across 1,350 renders — and that measurement is the published rule N1, so the port's own 20-character hex id differs by a value the original itself varies. Verdict 8 confirmed the rule is right; **this lane ran its check at the integration head `245089373`: 63 tests, 63 passed, 0 failed, including this rule's own self-check.** The 1,436 differences were measured against the engine at `ff3ab5fd6`, so they must be measured again at the final head. **They have been: this lane re-measured the comparison at the final head `245089373` and the counts are unchanged** — 3 exact, 1,436 differing only by the generated slot id or the class token order, 0 differing after normalization, no status or length mismatch. The related saved record F98 is ruled **Waiting for full clone**, harness gate | the harness lane owns the rule; this lane keeps the measurement | no engine difference, no fixer; the measurement at the final head is done. The triage lead's own failure list also carries two rows on this: "N3 changes nothing on the committed expected bytes, which are already in sorted class-token order" and "synthetic-v1: the masks are the measured nondeterminism"
+| 2 | `class` attribute token order — 729 of the 1,436 differing responses | writes `nodblclick d-flex _card-link bar ALL TYPE-topic SELF-topic_001 with-bar-menu` | writes the same tokens in another order, `bar ALL TYPE-topic SELF-topic_001 with-bar-menu nodblclick d-flex _card-link` | `comparison.json` rows; example in `local-bunny/bodies/http-0002.bin` against `ruby/bodies/http-0002.bin`; rule N3 in `reference-harness/runner/normalize.mjs` | **ruled: not an engine difference**, on the same basis as row 1, through rule N3. **Its check passes at the integration head `245089373`, 63 tests and 63 passed, verified by this lane at that head.** The 729 differences were measured against the engine at `ff3ab5fd6`, so they must be measured again at the final head. **They have been: this lane re-measured the comparison at the final head `245089373` and the counts are unchanged** — 3 exact, 1,436 differing only by the generated slot id or the class token order, 0 differing after normalization, no status or length mismatch. The related saved record F98 is ruled **Waiting for full clone**, harness gate | the harness lane owns the rule | no engine difference, no fixer; the measurement at the final head is done
+| 3 | Recursive pages return an error page on Ruby (issue 249) | at the time of the report, Rails 7.2.3.2 returned HTTP 422 with the full page error for maximum nesting depth on `GET /Loop A`, `/Loop A/content`, `/Loop B`, `/Loop B/content`; the guard is `Card.config.max_depth = 20` and a raise above it is a UserError | the local handler at source `4a5ccc8f0` returned HTTP 200 on those four paths | issue 249 body; the earlier comparison lane `.runtime/fleet-ruby-vm-03-qualified` and `.runtime/fleet-ruby-bunny-local-04-focused`, both now retired | **ruled: not ruled as an engine bug, and not closed.** The lane's current run did not reproduce it: Ruby answered HTTP 200 on all four paths with `depthRaises: []`, and the source already pins `RUBY_MAX_DEPTH = 20` in `src/card/render/format.ts:918` with Ruby's exact message. The related saved record F18 — the depth-32 chain that hits the Ruby max_depth guard — is ruled **Waiting for full clone**, benchmarks gate. The adjacent 422 error-chrome group, saved records F71 to F74, is ruled **Test bug** with fix `81bc4388a` released | row F18, the depth chain in the benchmarks gate, which the clean install did not execute: `node tools/test-gates.mjs run benchmarks` | open; **not reproduced** in the current run — Ruby returned HTTP 200 on all four paths, with `depthRaises: []` in the Ruby capture. The current source already pins the same guard value as Ruby: `RUBY_MAX_DEPTH = 20` in `src/card/render/format.ts:918`, with `TooDeepError` carrying Ruby's exact message and rendering in the quiet error span as a UserError. F71 to F74 are refusal pages — a refused type change, a missing-card delete, a blank-field sign-in — and they are not the depth guard, so that verdict does not close issue 249. The triage lead decides whether issue 249 is closed, and whether the error surface — a 422 full page against a 200 with an inline message — still differs on a path the current run does not reach
+| 4 | Nested `name_context` slot missing on six content pages (issue 253) | with its view cache on and a titled page rendered first, the content response carries `topic` or `chain_card` in the nested slot; with a cold cache it carries none | renders directly with no view cache, so the nested slot is never present | issue 253 body; `docs/runs/name-context253-2026-11-01/` (`ruby-cold-first.json`, `ruby-titled-first.json`, `typescript-direct-render.json`, `raw-bodies/`, `capture-receipts.json`) | **ruled: not ruled; outside the executed profile.** The comparison ran with the view cache off on both sides, so neither engine produced the slot, 0 occurrences on either side. The issue's own recommendation changes the comparison profile, so no engine ruling is possible on this evidence | comparison owner, as a profile decision | open; **outside the executed profile** — the comparison ran with the view cache off on both sides, so neither side produced `name_context` (0 occurrences on either side for `/Topic/content` and `/Note/content`). The issue's own recommendation — keep the fresh TypeScript behaviour and change how Ruby keys its view cache as a separate reviewed change, or declare a cache-compatible profile — changes the comparison profile and must be ruled before the final run. What closes it: a comparison run with the view cache on that produces the slot
+| 5 | Renamed setting card drops the dependent rule card's name (issue 272) | `Card::Rule::Cache` keys a rule by anchor id, pattern codename and setting codename, so a rename that changes neither leaves the answer unchanged; the original methods still answer `"specific"` | after the rename the dependent rule card row has `name = NULL, key = NULL`; `findRule` answers `undefined` where the original answers a rule; `ruleContentForCard` still answers `"specific"` | issue 272 body; the pinned card-1.110.0 probe `tests/card/rules/original-rule-storage-probe.rb` over `reference-harness/fixtures/synthetic-v1/deck/deck.sqlite3`, ruby 3.4.11 | **ruled: real engine bug, as a candidate, and it needs an independent check before a fix starts.** The pinned original probe over the fixture deck with card-1.110.0 answers a rule where the port answers undefined, and `ruleContentForCard` still answers "specific". Setup is excluded because the probe is deterministic against the pinned original, and a test fault is excluded because the probe is the original's own code, so by elimination this is an engine difference. The triage lead has not independently reproduced it | the lane working the fix now: Codex in `C:\localProjects\decko-ts`, branch `fix/272-setting-rename-rule-lookup`, branched from the integration head `245089373`; the lane that reported the issue is `fleet/i272-rename-rule-name-20261101` in `C:/localProjects/decko-ts-i272-20261101`. **Reviewer needs owner** | open; what closes it: an independent check in a fresh full clone, through the effect and semantics instruments rather than the HTTP request list, plus a regression test that stays in the correctness gate. Not visible in the HTTP plan — it is a write-path difference, so it belongs to the effect and semantics instruments, not the request list
+| 6 | `set_default_content` persistence-parity test fails at the integration tip (issue 273) | answers "no rule" for a setting card with no type, because the original's cache SQL requires `settings.type_id = SettingID` | answers "no rule" too — the two engines agree | issue 273 body; `tests/card/actions/persistence-parity.test.ts` | **ruled: test bug.** Both engines answer no rule for a setting card with no type, because the original cache SQL requires `settings.type_id = SettingID`, and the port agrees with Ruby. The test's own fixture seeds that card with no type and expects a rule. The fix is one line in that fixture, with no production change, and it is the same defect shape as issue #280. The related saved record F30 — a create without content takes the applicable structure's content — is ruled **Waiting for full clone**, parity gate, settled by `node tools/test-gates.mjs run parity` | the owner of `tests/card/actions/persistence-parity.test.ts`; the fix is merged at `246aee132` through PR #309; reviewer needs owner | open; **not an engine difference** — both engines agree and the test's own fixture seeds `*structure` with no type. The fix is one line in that test's fixture, and no production change. **That fix has landed**, `246aee132` through PR #309. What closes it: the parity gate in a fresh full clone, `node tools/test-gates.mjs run parity`
+| 7 | Comparator accepted two different binary bodies as equal (issue 250) | n/a — instrument, not engine | at `d17c8d7b` the comparator decoded every body lossily, so the one-byte bodies `ff` and `fe` both became the replacement character and the comparison answered `normalized-only` and `accepted = true` | issue 250 body; `docs/runs/comparator-normalization-integration-20261031/REPORT.md` | **ruled: fixed, and not closed.** `qualifiedHtml` in `tools/same-database/ruby-bunny-comparison.mjs` accepts only a declared `text/html; charset=utf-8` body that decodes with `fatal: true` and re-encodes identically, and the three controls named in the issue pass in the local run's 38 passing comparator controls | comparator owner; reviewer needs owner | open; what closes it: an independent ACCEPT at the exact head. The fix is present in the source at `ff3ab5fd6`, and the three controls named in the issue pass in the local run's 38 passing comparator controls. The issue is still open and needs an independent ACCEPT before it can close
+| 8 | Bare AJAX title fragment gained a trailing LF on Bunny (issue 242) | returns the generic 49-byte span, SHA-256 `6e6386cf74efda689565d8e036894aab04a23d76681921367103c7692d401365` | returned 50 bytes — the same bytes plus one LF — from the older release 1197225 | issue 242; `docs/runs/fragment242-integration-2026-11-01/REPORT.md`; the paired request is in the `docs/TEST-POLICY.md` run log | **ruled: fixed locally, and not closed.** The page delta helper now takes an explicit full-document context, bare reads are forwarded exactly, and the local title body matches the saved Ruby hash byte for byte | the fix's owner | open; what closes it: code review, then a hosted check of the approved source. A local source repair is in place — the page delta helper now takes an explicit full-document context and bare reads are forwarded exactly, and the local title body matches the saved Ruby hash byte for byte. Separate code review and a hosted check of the approved source are still pending
+| 9 | The hosted Bunny half of the comparison has never been run | n/a | n/a | `docs/TEST-POLICY.md` run log; `C:\localProjects\decko-fleet-20261101\HOSTED-TEST-QUEUE.md` | **ruled: setup and execution problem, and not closed.** The package attempt stopped at the runtime-import check with exit 1; that one-off checker is a test bug with its correction permitted and not resolved. **The correction is now merged**, `codex/hosted-import-checker-20261101` through PR #284 | test lead executes; the checker correction is **corrected and merged** | open; what closes it: the hosted half running against the approved source. This is the whole remaining half of the comparison. The package attempt stopped at its import check with exit 1 before a package was written. The existing staging release `1197225` is old-source evidence and is not a substitute for the requested source
+| 10 | Notification mail links carry an extra redirect parameter (7 write cases) | the recorded Ruby notification mail uses the bare reference link | the port's default appends `success[redirect]=soft` to the link | `docs/runs/fragment242-integration-2026-11-01/comparison-default/diagnostic-grade.json.raw` (graded 2026-11-01 09:58 at `c71d8621`, verdict `diagnostic-fail`); `docs/runs/diagnostics231238-integration-2026-11-01/comparison-default/diagnostic-grade.json.raw` (graded 08:16 at `ba7832c7`, same 7 failures); `docs/STRICT-PARITY-FLAGS.md` | **ruled: not an engine bug; a deployment-posture decision.** `DECKO_STRICT_PARITY_MAIL_UNFOLLOW_REFUSAL=on` selects Ruby's recorded path, and with it on the saved combined-legacy diagnostic matches 19 of 19 | comparison owner, with the release decision | open; what closes it: the report stating the posture of the hosted release, not a silent default. A measured difference in the port's default posture, invisible to the 1,439 read-only requests. The affected cases are `create-topic-with-fields-as-admin`, `update-content-adds-link`, `rename-referenced-tag`, `delete-note`, `delete-topic-with-fields`, `create-compound-on-new-left` and `update-then-render`. The port has a switch that selects Ruby's recorded path: `DECKO_STRICT_PARITY_MAIL_UNFOLLOW_REFUSAL=on`. With it on, the saved combined-legacy diagnostic matches 19 of 19. Whether the hosted release runs with it on is a deployment decision the comparison must state
+| 11 | Four more host settings where the port's default differs from Ruby | Ruby 0.20.0 and card 1.110.0 answer 500 on the File card's revision restore and on a bad-parent skin create, and store nothing | with the strict-parity settings off, the port restores the File card's version and refuses the bad-parent skin create with 422 | `docs/STRICT-PARITY-FLAGS.md`; `tests/server/write-routes-strict-parity.test.ts`; the settings are `DECKO_STRICT_PARITY_SIGNIN_DETAILED_ERRORS`, `DECKO_STRICT_PARITY_REVISION_RESTORE_500`, `DECKO_STRICT_PARITY_SKIN_CREATE_500`, `DECKO_STRICT_PARITY_SCRIPT_BUNDLE_CLOCK_NAMES` and `DECKO_STRICT_PARITY_MAIL_UNFOLLOW_REFUSAL` | **ruled: not an engine bug**, the same class as row 10. None of the four is reached by the comparison's scenarios, so the saved grades cannot show them. Rows F75 and F76 stay waiting for the parity gate, and their page-chrome assertions have the same shape as the issue #280 rows, so the parity gate should check them against that fixture cause first. The related saved records F75 and F76 are ruled **Waiting for full clone**, parity gate, settled by `node tools/test-gates.mjs run parity` | comparison owner | open; what closes it: the hosted run recording the state of all five switches, and the parity gate for F75 and F76. The comparison's scenarios do not reach the sign-in error wording, the two crash paths or the script bundle name, so the saved grades do not show these four. The hosted run must record the state of all five settings
+| 12 | The saved adapter grades do not describe a default host | n/a — instrument, not engine | the reference adapter `reference-harness/adapters/ts/adapter.ts` selects `legacy-sha1` and turns uniform sign-in failures, throttling and session revocation off, so the saved grades describe that posture and not the port's default security posture | `docs/STRICT-PARITY-FLAGS.md`, "Relationship to the sign-in policy switches" | **ruled: not an engine difference; an instrument and posture mismatch.** The reference adapter selects `legacy-sha1` and turns uniform sign-in failures, throttling and session revocation off, so the saved grades describe that posture and not the port's default | comparison owner | open; what closes it: the hosted run recording the real host's password and sign-in policy and comparing them against Ruby. The hosted release runs the real host, so its password policy and sign-in policy must be recorded and compared against Ruby rather than inherited from the adapter
+| 13 | The committed expected corpus cannot be regraded as a pass at the current head | the corpus holds Ruby's own captured outputs, taken on 2026-10-08 at commit `28f0278139c373237fafb1cd04a35bd7a41d12e3`, each run record carrying a checkout identity of that commit with `dirty: false` and **no executed-source binding at all** | the grader at `ff3ab5fd6` requires an executed-source binding — added 2026-10-31 at `54ae271cc`, an ancestor of the integration tip — so grading the committed corpus raises three problems, "results: render Missing executed-source binding", "results: semantics Missing executed-source binding" and "results: scenarios Missing executed-source binding", and the verdict comes back `invalid`, not `pass` | `node --test reference-harness/runner/test/normalize.test.mjs` at `ff3ab5fd6` — three failures, each a grade that is invalid rather than a byte mismatch; `reference-harness/fixtures/synthetic-v1/expected/run-meta.json`, whose render, semantics and scenarios records carry no `source_binding` key and never have; `reference-harness/runner/grade-lib.mjs:535`; `reference-harness/runner/adapter-source-identity.mjs:257` | **ruled: real engine bug, in the comparison harness; the corpus and the three tests are right.** The triage lead's Verdict 8, which names rows F102 to F104 and this row 13 as the same three failures, and Verdict 12, which rules the comparison owner's acceptance with nothing to re-rule and records that the independent review already exists | the source-custody lane, branch `fleet/mm-255-native-source-custody-20261101` — the ACCEPTed source-custody work already merged as `3701d069f`, and the branch has since moved to the fix at `e8d276e27`, which PR #297 merged; the rule itself was authored on `codex/security-rule163-recovery-20261031`, whose tip has moved past `54ae271cc` to `75cced38e`. **The independent ACCEPT exists**: PR #297 carries an ACCEPT at the exact head `e8d276e272068bcaeec48602ad4e72fb77722679`, posted 2026-11-02T03:47:01Z by a reviewer distinct from the author, with 138 native tests passing, 0 failed, 0 skipped, five independent rejection controls, and all 247 reference-fixture files compared byte for byte with the expected results and the existing assertions unedited | **the fix is merged at `e8d276e27` through PR #297, independently ACCEPTed at that exact head, and this lane re-ran it at the integration head `245089373`.** The witness moves out of the grade's problems and back into qualification, the command line refuses an unqualified run with exit 2 and "NOT A GRADE" and reports no pass rate, and a new guard `tests/tools/source-qualification-grade.test.mjs` sits in the correctness gate. At that head this lane ran it: **63 tests, 63 passed, 0 failed, 0 skipped**, the three normalization self-checks among them, and the guard 6 of 6; red-first at the same head, the guard gives 2 of 6, so the guard really catches the overreach. **What remains is only the fresh full-clone pass at the current integration head**
+
+### What the measurement of rows 1 and 2 actually shows
+
+Rows 1 and 2 were measured by this lane directly against the raw bodies of the local
+run, not taken from the report's summary. For all 1,439 requests:
+
+- 707 responses differ only in `data-slot-id` values.
+- 729 responses differ in `data-slot-id` values and in `class` token order.
+- 0 responses differ in anything else. After masking those two attributes, the Ruby body
+  and the Bunny body are byte-for-byte identical for every one of the 1,439 requests.
+- No response differs in length. All 1,439 status codes agree.
+
+That is a statement of what the bytes show. It is not a ruling that these two artifacts
+are not engine differences — that is the triage lead's call, and until it is in this
+table both rows stay open with no fixer.
+
+The measurement is reproducible.
+`docs/runs/engine-cmp-owner-2026-11-01/classify-raw-differences.mjs <prep-dir>` reads the
+two body trees and the comparison report and prints the same four counts, the status
+agreements and the length agreements. It changes no file and contacts no service. On
+the local preparation lane it prints 3 exact, 707 slot-id only, 729 slot-id plus class
+order, 0 other, no status disagreement and no length disagreement.
+
+### The adapter-level results that already exist
+
+The HTTP capture does not run the render, semantics, persistence and effect
+instruments. Saved grades for those exist in the repository. They were read for this
+record; nothing was re-run.
+
+| Saved grade | Commit and time | Rendering | Semantics | Persistence | Side effects | Verdict |
+|---|---|---|---|---|---|---|
+| `docs/runs/fragment242-integration-2026-11-01/comparison-legacy/diagnostic-grade.json.raw` | `c71d8621`, 2026-11-01 09:58 | 1754 of 1754 | 2389 of 2389 | 16 of 16 | 19 of 19 | `diagnostic-pass` |
+| `docs/runs/fragment242-integration-2026-11-01/comparison-default/diagnostic-grade.json.raw` | `c71d8621`, 2026-11-01 09:58 | 1754 of 1754 | 2389 of 2389 | 16 of 16 | **12 of 19, seven fail** | `diagnostic-fail` |
+| `docs/runs/diagnostics231238-integration-2026-11-01/comparison-legacy/diagnostic-grade.json.raw` | `ba7832c7`, 2026-11-01 08:16 | 1754 of 1754 | 2389 of 2389 | 16 of 16 | 19 of 19 | `diagnostic-pass` |
+| `docs/runs/diagnostics231238-integration-2026-11-01/comparison-default/diagnostic-grade.json.raw` | `ba7832c7`, 2026-11-01 08:16 | 1754 of 1754 | 2389 of 2389 | 16 of 16 | **12 of 19, seven fail** | `diagnostic-fail` |
+
+Read-writes are 8 of 8 and other tables 12 of 12 in every one of them, and no difference
+is declared. The seven side-effect failures are row 10 above.
+
+Three limits apply to these saved grades and they are why they do not stand in for the
+final run:
+
+1. They grade the port against stored expectations, not against a live Ruby run. The
+   oracle field records `engine: null`, so Ruby was not executed during the grade.
+2. They are diagnostic grades. Each one records `source_qualification: false` and a
+   grader exit of two, and each says in its own warnings that it is a diagnostic
+   comparison only.
+3. They were produced at `ba7832c7` and `c71d8621`, not at `ff3ab5fd6`.
+
+The decision record is explicit about this: a local fixture grade is not a substitute
+for the requested paired execution on the final code.
+
+### The triage lead's verdicts on the related saved records
+
+The triage lead's Verdict 4 sorts all 108 saved failure records: 55 setup problems, 15
+test bugs, and 38 rows waiting for the fresh full clone. Its plain English says no
+real engine failure is proved by any saved record. Verdict 5 sorts every skip group as
+a setup problem, with nothing skipped quietly. These rows are the ones that touch this
+lane's differences.
+
+**Verdict 8 settles row 13, and it names this lane's table.** The triage lead's Verdict
+8 — "real engine bug, in the comparison harness; the corpus and the three tests are
+right" — covers rows F102 to F104 of the triage table and row 13 of this table as the
+same three failures. It also records that the reply to this lane was refused by the
+usage guard, because the sending MiniMax agent was running ahead of its five-hour
+window; nothing was sent and the guard raised `relay-send:send-refused-usage` to Alfred,
+operation `c3f7aabd-09fd-4a1b-8b57-33674c3e9de8`, with the send to be retried after the
+window resets at 2026-11-02T05:00:00Z. This lane read the verdict from the branch, so
+nothing was lost.
+
+| Saved record | What it covers | Verdict | Gate and command that settles it |
+|---|---|---|---|
+| F18 | the depth-32 chain that hits the Ruby max_depth guard — row 3's mechanism | Waiting for full clone | benchmarks, `node tools/test-gates.mjs run benchmarks` |
+| F30 | a create without content takes the applicable structure's content — row 6 | Waiting for full clone | parity, `node tools/test-gates.mjs run parity` |
+| F75, F76 | the strict-parity revision restore and skin-create behaviours — row 11 | Waiting for full clone | parity, `node tools/test-gates.mjs run parity` |
+| F91, F92, F93 | the comparator must not reuse a prior passing report or summary when the report crashes, is missing, or is malformed | Setup problem — the harness node tests could not resolve a staged module | harness and deploy, `node tools/test-gates.mjs run harness` and `node tools/test-gates.mjs run deploy` |
+| F98 | the borrowed N rules fire through the same path for slot ids and relative times — rows 1 and 2 | Waiting for full clone | harness, `node tools/test-gates.mjs run harness` |
+| F102 to F104 | the three harness self-checks — the grader's own self-consistency and the N1 and N3 rules over the committed expected bytes — row 13 | **Real engine bug, in the comparison harness; the corpus and the three tests are right** — Verdict 8. Verdict 12 adds that the fix is merged and independently ACCEPTed at the exact head | fixed and merged at `e8d276e27` through PR #297, **ACCEPT at that exact head** 2026-11-02T03:47:01Z from a reviewer distinct from the author. Only the fresh full-clone pass at the current integration head remains |
+| F71 to F74 | the 422 error-chrome group — a refused type change, an anonymous create denial, a missing-card delete and a blank-field sign-in all answer a full site page with the errors alert | Test bug — the fixture deck is not a legal deck and Ruby requires the same rule-cache test the engine now applies. Fix `81bc4388a` is released to Codex in `decko-ts-k-422-parity-20261101` (Relay 1506); reviewer needs owner | parity, `node tools/test-gates.mjs run parity` after the fix. Not resolved until the fresh full clone passes |
+
+Two of these matter beyond the table. F71 to F74 were the one group in the triage
+lead's priority queue that was still marked "Pending comparison", and they now carry a
+verdict — a test bug with a released fix, on the same illegal fixture deck that issue
+280 and issue 273 share. Their 422s are refusal pages, not the depth guard, so they do
+not close issue 249. F91 to F93 are the evidence-integrity rules for the comparison
+report itself: a crashed, missing or malformed report must never be mistaken for a
+passing one. The triage lead has ruled those as a setup problem in the lane, not as a
+product fault, so the rule has not been exercised at the current head. And F98 is the
+test that drives slot ids through the normalizer, which is the closest thing to a
+verdict on rows 1 and 2 — it is waiting for the fresh full clone, so it has not run at
+the current head either.
+
+### The hosted half, as of this check
+
+The hosted run log in `docs/TEST-POLICY.md` still carries only the historical first
+controlled title pair against release `1197225`. The 1,439-request comparison has not
+run: no hosted application request has been made for it, and no result exists to
+compare. The package that would produce the serving artifact was never written, and
+the triage lead's package decision stands — the runtime-import checker is a test bug,
+the correction is permitted and not resolved, and a fresh full-clone package pass plus
+an independent ACCEPT at the exact corrected head are still required. The fix owner is
+the submitting test lead, and an independent reviewer is still needed.
+
+The preparation handoff says the same thing in its own words: the test lead's accepted
+import-checker and serving-artifact work must precede any hosted pass claim.
+
+**Where the package path stands.** The import-checker correction is PR284 at
+`1378a21eb7c1181c67d5fa7749b174756ec6dea9`. One independent review has completed:
+Codex in `decko-ts-zc-review-engine-20261101` (Relay 1446) accepted a read-only source
+review at that exact head, receipt SHA-256
+`c6f722c09d5296a9ca01768c105a0ad0218a708b20fdca31997ecc7e91f397a2`. What that review
+does not do is run a test or a package — its checkout lacks the submitted helper and
+regression — so by its own terms it does not permit merging. Independent execution and
+a fresh-full-clone package proof are still missing, and no further hosted traffic or
+account mutation has run.
+
+### The clean install's result, and what it settles for this lane
+
+The fresh full clone has now been admitted. The triage lead's Verdict 6 records a
+clean, freshly installed copy at `C:/localProjects/decko-ts-triage-fullrun-20261101`
+(DiskSteward lease `7f965e07831a`) at HEAD `37cf80405`, whose engine and test source
+matches the integration tip `ff3ab5fd6`. It ran
+`node tools/test-gates.mjs run correctness`: Vitest 954 files with 8,864 passed, 11
+failed and 227 skipped; Node 43 files with 652 passed and 1 failed; and the separate
+user-error-422 run 17 passed and 4 failed.
+
+That run confirms the verdicts: 32 rows the triage lead called setup problems now
+pass, and the 15 test-bug rows fail there in exactly the predicted way. One new fault
+appeared, F109, a test that writes into a `.runtime` folder it never creates; it is a
+test bug in a Node test file, not a Ruby-versus-Bunny difference, so it is not a row
+here.
+
+**None of this lane's gates has run yet.** The 61 rows the run did not execute are 10
+benchmarks, 11 deploy, 12 parity and 28 harness rows, and every gate this lane's
+differences wait on is in that list: F18 in benchmarks, F30, F75 and F76 in parity,
+F98 in harness. The admitted copy now has a fresh install, so those gates can run
+there. Until they do, the differences below keep the verdicts they have.
+
+The clean install also settles the 422 error-chrome group: the user-error-422 file
+reports 17 passed and 4 failed in the clean install exactly as in the checkpoint, so a
+clean install does not change it and the fixture fix `81bc4388a` stands behind the
+F71 to F74 verdict.
+
+### The preparation handoff, independently checked
+
+The preparation lane has added `docs/runs/hosted-cmp-prep-ff3ab5fd-2026-11-01/HANDOFF.md`
+at commit `5f30a2abd`, on top of the evidence commit `ee71dade0`. It checks the whole
+artifact set against the pushed commit: 1,439 ordered GETs per engine, 2,878 raw
+response bodies with their lengths and digests, 3 exact matches, 1,436 matches under
+the existing normalization, 0 differences after it, 0 request exceptions, 38 saved
+comparator and custody controls, 331 executed project-source files whose recorded
+hashes were rechecked against the source Git blobs with 0 mismatches, and 1,436
+numbered findings that are contiguous and tied to request IDs and both raw files. Its
+file list covers 2,923 files and 137,992,774 bytes, and all 2,920 retained manifest
+entries matched.
+
+Its numbers are the numbers in this record, independently recounted. It states plainly
+that no engine-failure verdict, fix, strict byte pass or release acceptance is
+assigned by it, and that hosted source and release continuity, equal hosted data, the
+actual raw hosted responses and attributable billing remain not done.
+
+### The harness's own check on the normalization rules is red at this head
+
+This lane ran the harness's normalization tests directly against the committed tree:
+
+```
+node --test reference-harness/runner/test/normalize.test.mjs
+```
+
+Three tests fail. The failures are not byte mismatches — each one is a grade that comes
+back `invalid` because the grader refuses the results under it:
+
+- "the oracle's own outputs, regraded as an engine's results, pass" fails with
+  `actual: [ 'results: render Missing executed-source binding', 'results: semantics
+  Missing executed-source binding', 'results: scenarios Missing executed-source binding' ]`
+  against `expected: []`.
+- "N3 changes nothing on the committed expected bytes, which are already in sorted
+  class-token order" fails with `'invalid' !== 'pass'`.
+- "synthetic-v1: the masks are the measured nondeterminism" fails on the same grade.
+
+The cause is in the metadata, and it is dated. The committed corpus
+`reference-harness/fixtures/synthetic-v1/expected/run-meta.json` records each of the
+three kinds with a checkout identity of commit `28f0278139c373237fafb1cd04a35bd7a41d12e3`
+and `dirty: false`, and carries **no `source_binding` key** — it never has, across the
+corpus's whole history. The grader's `checkRunRecord` calls `sourceBindingProblems`
+on that field, and `adapter-source-identity.mjs:257` throws "Missing executed-source
+binding" when it is absent. The requirement was added on 2026-10-31 by `54ae271cc`
+"Bind captured candidate grades to observed committed execution", which is an ancestor
+of the integration tip; the corpus was captured on 2026-10-08 and was not recaptured.
+
+The corpus's bytes are right. The counts the failing test expects — 1754 rendering,
+2389 semantics, 16 persistence, 19 side effects, 8 read-writes — are exactly the
+saved grades' numbers. What is missing is the binding, not the content.
+
+**The triage lead has ruled this one.** Verdict 8: a real engine bug in the comparison
+harness, and the corpus and the three tests are right. The witness belongs in
+qualification, where the spec puts it — "Candidate source qualification also requires
+`source_binding` on each run kind" and "A missing, changed, untracked, unreadable or
+redirected source file leaves the capture available for diagnosis but prevents
+qualification" — and the grader pushed it into the grade's problems, where the verdict
+rule turns any problem into "invalid". The command line decides "NOT A GRADE" from the
+verdict alone and never reads `source_qualification.qualified`, so the witness had to
+be moved into problems to have any force. The fix moves it back and teaches the
+command line to refuse an unqualified run.
+
+Two things the verdict settles that this lane had recorded as open questions:
+
+- **Recapturing the corpus is the wrong fix.** It would change every committed expected
+  byte and void every comparison record already made against them, including the 1,436
+  raw differences in rows 1 and 2, and it would repeat at the next rule change.
+- **Changing the three tests is the wrong fix.** It would delete the only check that the
+  N1 mask and the N3 class-token-order rule leave the committed expected bytes
+  unchanged, which is the rule rows 1 and 2 rest on.
+
+The fix owner is the source-custody lane, branch
+`fleet/mm-255-native-source-custody-20261101`, head `87f1f1a23ecced588407519b931b63c10346eb7a`,
+whose ACCEPTed source-custody work is already merged as `3701d069f`. A reviewer is
+still needed.
+
+The guard that must fail if this ever returns: a test that a capture with a valid
+checkout identity, matching bytes and no witness is refused by the command line with
+exit status 2 and "NOT A GRADE", and reports no pass rate. No test covers that case
+today, which is why the overreach went unnoticed.
+
+This lane has not fixed anything, and it did not call this.
+
+### The integration head moved, and it does not invalidate the local half
+
+The integration branch `codex/port-identity-integration-20261029` has moved twice since
+this lane started. It was `ff3ab5fd6fad6688a73cdfcfd48a2a17d9ec62c0` when the
+comparison was ordered. It went to `3701d069f8a1e2c53d5da7359739677de9ca1c72` — the
+merge of PR #267 at `d3583f43` and PR #277 "source custody for #255" at `87f1f1a2` —
+and then to `c0de63c2a`, the merge of PR #285 from `fleet/strike-k3-20261101`. This
+branch's base is still `ff3ab5fd6`; the lead integrates it.
+
+What the moves change matters more than the moves themselves. Across both of them,
+**nothing changes in `tools/same-database/`, in `reference-harness/fixtures/` or in
+`src/`** — the comparison tool, the plan's data and the port's engine source are
+byte-identical to the source the local comparison measured. The first move touched
+receipts, test fixtures and the migration tooling under `tools/migrate/`; the second
+touched `AGENTS.md`, two strike documents, `scripts/correctness-checkpoint.mjs` and
+its test.
+
+Three things follow, and all three are checked rather than assumed:
+
+1. **The plan and its two digests still describe the final head.** The plan is generated
+   by the comparison tool from the fixture, and neither changed. The saved-file digest
+   `eced1a26e6d3d5db3a47b7869e31cb337dcc6fb779a89258d6a88f08ed675822` and the
+   comparator's own digest
+   `1fa0b82a1d74b8619931581a9332b09008088b5a653319122053962599bf39f4` still hold.
+2. **The local half of the comparison still describes the engine at the final head.**
+   The local Bunny side executed `src/`, and `src/` did not change, so the 1,439
+   requests, the 3 exact matches, the 1,436 differences and the 0 errors carry
+   forward. The local run does not need repeating for either move.
+3. **Row 13 is unchanged.** The committed expected corpus still records each kind with
+   a checkout identity of `28f0278139c373237fafb1cd04a35bd7a41d12e3` and
+   `dirty: false`, and still carries no `source_binding` key. PR #277's source custody
+   work is in the migration tooling; it does not touch the harness's executed-source
+   binding, and the harness fix the verdict asks for has not been written.
+   **Superseded:** the fix was written at `e8d276e27` and merged by PR #297. This
+   section records the state at `3701d069f`; see "The row 13 fix is merged, and this
+   lane agrees with Verdict 8".
+
+The preflight is the standing check for all of this. Run against
+`origin/codex/port-identity-integration-20261029` after each move it re-derives the
+head, compares the three trees and the two plan digests and the fixture hashes, and
+exits 1 if any of them moved. It passed against `c0de63c2a` on 2026-11-01 at 19:14 PT.
+
+The hosted half still needs a serving artifact built from the final head, which is the
+same requirement as before.
+
+**The test lead reached the same conclusion independently.** The shared hosted test queue
+records that the read pins integration to `3701d069f8a1e2c53d5da7359739677de9ca1c72`
+and the PR284 author branch to `1378a21eb7c1181c67d5fa7749b174756ec6dea9`, and that a
+direct Git comparison against `ff3ab5fd6` finds identical `src/`,
+`tools/same-database/` and `reference-harness/fixtures/` trees, with `package.json` and
+`package-lock.json` unchanged. That is source continuity evidence for the same three
+trees this lane checked, arrived at from the other side.
+
+### The gates behind this lane's rows have still not run
+
+The admitted copy `C:/localProjects/decko-ts-triage-fullrun-20261101` holds no evidence
+that the parity, harness or benchmarks gates have run in it: its `.runtime` holds only
+three scratch directories dated 2026-11-01 16:06 to 16:08, and no gate report. Those
+gates are what F18, F30, F75, F76 and F98 wait on, so rows 1, 2, 3, 6 and 11 keep their
+present verdicts.
+
+The harness fix that row 13 needs has not been written. The fix owner's branch
+`fleet/mm-255-native-source-custody-20261101` is still at
+`87f1f1a23ecced588407519b931b63c10346eb7a`, the same ACCEPTed source-custody work that
+is already merged as `3701d069f`, and the integration head is still `3701d069f`.
+**Superseded:** the fix was written at `e8d276e27` and merged by PR #297; see "The row
+13 fix is merged, and this lane agrees with Verdict 8".
+
+### The row 13 fix has been written, and this lane verified it
+
+The fix owner's branch `fleet/mm-255-native-source-custody-20261101` has moved from
+`87f1f1a23` to `e8d276e27`, "Preserve historical comparisons while refusing
+unqualified candidate grades". It is the fix Verdict 8 asked for, and this lane
+checked it against the comparison's own fixture rather than taking the report's word.
+
+**What it changes.** In `reference-harness/runner/grade-lib.mjs`, a run record that has
+no `source_binding` key at all now leaves a warning and
+`source_qualification.qualified: false` instead of making otherwise matching
+historical observations invalid; a **supplied** witness that contradicts the capture
+still fails the original integrity checks. In `reference-harness/runner/grade.mjs`,
+the command line now treats an unqualified source as NOT A GRADE alongside an invalid
+one: it keeps `comparison_verdict` for diagnosis, saves `verdict: "invalid"` in
+candidate mode, sets every summary rate to null, prints "NOT A GRADE: source
+qualification was not established. No pass rate is reported for this run." and exits
+2. The new guard `tests/tools/source-qualification-grade.test.mjs` is excluded from
+vitest and executed by the Node runner inside the correctness gate, so it is in the
+gate and is not skipped.
+
+**This lane's own verification.** The fixture is byte-identical between
+`ff3ab5fd6` and `e8d276e27`, and the only runner difference is the two fixed files, so
+the fixed runner was extracted into a scratch tree over the comparison's own corpus
+and run there:
+
+- `node --test reference-harness/runner/test/normalize.test.mjs` — the three tests
+  that fail at `ff3ab5fd6` **pass**: "the oracle's own outputs, regraded as an
+  engine's results, pass", "N3 changes nothing on the committed expected bytes, which
+  are already in sorted class-token order", and "synthetic-v1: the masks are the
+  measured nondeterminism".
+- `node --test tests/tools/source-qualification-grade.test.mjs` — **6 tests, 6 passed,
+  0 failed, 0 skipped**. It covers each missing run kind, a malformed witness, a real
+  content difference, diagnostic mode and a bound positive control, and it includes the
+  test that asserts the regression is registered in the correctness gate.
+- **Red-first, checked here too.** With the two fixed files put back to their
+  `ff3ab5fd6` versions, the same guard test gives **2 passed, 4 failed** — the same
+  numbers as the fix owner's own `guard-final-before-receipt.json`. The guard really
+  catches the overreach.
+
+The fix owner's own receipts agree: 138 focused Node checks pass with no failure or
+skip, the baseline at `87f1f1a23` exits 1 with 63 tests, 61 passed and 2 failed plus
+the containing suite failure, and a counter-check with the exact original command
+line injected in memory exits 1 with `0 !== 2`, showing the old command line returned
+success for matching unwitnessed observations.
+
+**What is still open on row 13.** The fix is on the fix owner's branch and is **not
+yet merged** — the integration head is still `c0de63c2a`. Independent review and
+fresh-full-clone verification remain required, by the fix owner's own account.
+
+The scratch tree used for the verification was removed through diskSteward as
+regenerable; the recipe is in the deletion receipt.
+
+## The row 13 fix is merged, and this lane agrees with Verdict 8
+
+**This lane agrees with the triage lead's Verdict 8.** The classification is right:
+a real engine bug in the comparison harness, with the committed corpus and the three
+tests correct and the grader overreaching past the harness's own spec. Nothing in
+this lane's own reading contradicts it, and nothing in this lane's own measurement
+depends on it. The lead's offer to re-rule on a dispute is not needed, and none is
+offered.
+
+**The fix is merged.** PR #297, "Keep historical comparisons while refusing unwitnessed
+release grades", merged `e8d276e27` into the integration head. The integration head
+is now `245089373`, the merge of PR #309, which carries the F30 fixture fix and touches only a test fixture and a report. The heads the verdict cites have all moved since it was written,
+so the record is corrected here:
+
+| The verdict cites | Now |
+|---|---|
+| custody branch head `87f1f1a23` | `e8d276e27`, the fix itself, an ancestor of `87f1f1a23` in the other direction: `87f1f1a23` is an ancestor of `e8d276e27` |
+| rule branch tip `54ae271cc` | `75cced38e`; `54ae271cc` is still an ancestor of it |
+| integration head `c0de63c2a` | `245089373`, the merge of PR #309 |
+
+**This lane's own verification, at the integration head.** The head's own tree was
+materialized into a scratch tree from the commit — no install, no package, no hosted
+request, nothing inside a shared `node_modules` changed — and both files that carry
+the fix were checked byte for byte against `5c91a174b` before anything was run:
+
+- `node --test reference-harness/runner/test/normalize.test.mjs` — **63 tests, 63
+  passed, 0 failed, 0 skipped, 0 cancelled.** The three self-checks rows 1 and 2 rest
+  on are in there and pass: "the oracle's own outputs, regraded as an engine's
+  results, pass", "N3 changes nothing on the committed expected bytes, which are
+  already in sorted class-token order", and "synthetic-v1: the masks are the measured
+  nondeterminism".
+- `node --test tests/tools/source-qualification-grade.test.mjs` — **6 tests, 6 passed,
+  0 failed.** The guard Verdict 8 asked for is in the head and it covers the case the
+  verdict named: a capture with a valid checkout identity, matching bytes and no
+  witness is refused at the command line with exit status 2 and "NOT A GRADE", and no
+  pass rate is published.
+- **Red-first, at the same head.** With the two fixed files put back to their
+  `ff3ab5fd6` versions, the same guard gives **2 passed, 4 failed** — the same numbers
+  as the fix owner's own `guard-final-before-receipt.json` and as this lane's earlier
+  check on the branch. The guard catches the overreach in the merged tree, not only on
+  the branch it was written on.
+
+The scratch tree was removed through diskSteward as regenerable. The recipe is in the
+deletion receipt and is in the strike document: a temporary index
+(`GIT_INDEX_FILE=.runtime/verify-index`, `git read-tree 5c91a174b`) and
+`git --work-tree=<scratch> checkout-index -f --prefix=<scratch>/` over
+`reference-harness/`, `tests/support/`, `tests/tools/source-qualification-grade.test.mjs`,
+`tools/oracle/`, the four `tools/*.mjs` gate helpers, `vitest.config.ts`,
+`package.json` and `src/`, with `node_modules` a junction to the shared install.
+
+## The preflight caught the engine moving after the local comparison
+
+The integration head has moved four times since the local comparison was measured at
+`ff3ab5fd6`. This lane's standing preflight now **fails**, and it fails on the check
+that matters most:
+
+```
+node docs/runs/engine-cmp-owner-2026-11-01/preflight.mjs origin/codex/port-identity-integration-20261029
+```
+
+| Check | State |
+|---|---|
+| engine continuity | **FAIL** — `src/card/actions/card-action-engine.ts` and `src/card/actions/types.ts` differ between `ff3ab5fd6` and `245089373` |
+| plan file digest | PASS — `eced1a26…` |
+| plan comparator digest | PASS — `1fa0b82a…` |
+| plan request count | PASS — 1,439 |
+| fixture files | PASS — 15 files match the manifest, including the database and the deck specification |
+| reference corpus binding | KNOWN — the corpus carries no witness by design; the fix landed, so grading it at the command line is refused, not invalid |
+| harness source qualification | PASS — the grader at the head refuses an unqualified run, and the guard is in that head |
+
+The engine change is `dc1627234`, "Fix F78 by preserving raw Card.find receiver
+ancestry", merged by PR #296. It is a write-path change in the card action engine.
+**What it means for this lane's own result: the 1,436 numbered differences were
+measured against the engine at `ff3ab5fd6`, which is not the engine that will be
+compared.** The final comparison has to be executed at the final head; the local half
+is not a result about that engine any more.
+
+What has **not** moved, and this is the useful part: the request plan and the
+controlled data are unchanged. `tools/same-database/` and
+`reference-harness/fixtures/` are identical at `ff3ab5fd6` and at `245089373`, so both
+plan digests still hold, the 1,439 ordered requests are the same requests, and the 15
+fixture files still match the manifest. **The plan does not need regenerating and the
+fixture does not need recapturing** — the comparison is the same comparison, run
+against a newer engine. PR #306 and PR #307, which landed in the same window, touch
+`tests/fixtures/` and `fixtures/captured/`, which are not the comparison's controlled
+data.
+
+Rows 1 and 2 are not invalidated by this. Their rules — the N1 slot-id mask and the
+N3 class-token order — are the harness's own rules and they hold, and the check they
+rest on now passes at the final head. What changes is that the final measurement of
+those differences has to be taken at the final head, not that the differences
+themselves are in doubt.
+
+## What the other merges in this window mean for this table
+
+| Merge | What it is | What it changes here |
+|---|---|---|
+| PR #297, `e8d276e27` | the row 13 harness fix | row 13's fix is in; only independent review and the fresh-full-clone gate remain, by the fix owner's own account |
+| PR #296, `dc1627234` | F78, the raw `Card.find` receiver ancestry | **the engine moved after the local comparison**; the final comparison must run at the final head |
+| PR #280, `5f7e04daf` | the F71 to F74 fixture fix `81bc4388a` | the adjacent 422 group has its fix merged; the saved records still owe their own gate, and they are still not the depth guard, so **issue 249 is not closed** |
+| PR #284, `1378a21eb` | the hosted import checker correction | row 9's package decision was "correction permitted; not resolved"; the correction is merged, so what remains is the test lead's package pass at the final head |
+| PR #300, `110bad6ca` | owned scratch for the public page-shell fixture | F109's test-bug fix is merged |
+| PR #298, `f4abe7c95` | the default test run no longer purges previous runs | test-run scratch behaviour, not this lane's rows |
+
+None of these is a ruling on a difference, and none of them closes a row. They change
+what is **waiting on whom**: rows 3, 6, 9 and their saved records now wait on a gate
+run at the final head rather than on a fix that does not exist yet.
+
+## The triage lead's Verdict 12 rules every row, and row 13 waits on one thing
+
+Verdict 12 is at `8acfef20c` on `fleet/triage-2026-11-01`. The lead's message cited
+`5aa035edd`, where Verdict 12 does not yet exist — that commit carries Verdict 10 and
+Verdict 11 — so the ruling to read is one commit later. Read it with:
+
+```
+git show origin/fleet/triage-2026-11-01:docs/runs/triage-2026-11-01.md
+```
+
+**The acceptance stands, with nothing to re-rule.** The lead read this lane's
+verification and recorded it as the comparison owner's own: the three suites at the
+merged head, and the red-first result with the two fixed files put back. The lead's
+own note is that the red-first result is the part to point a reviewer at — the guard
+is red at the old code and green at the merged tree, so it catches the overreach where
+the tree actually is.
+
+**The correction, and it removes one of row 13's two conditions.** This lane's record
+said row 13 waited on "an independent review at the exact head and the required gate in
+the admitted full clone". The first of those exists. PR #297 carries an ACCEPT at the
+exact head `e8d276e272068bcaeec48602ad4e72fb77722679`, posted 2026-11-02T03:47:01Z by a
+reviewer distinct from the author. **This lane checked that against the PR comment
+itself, not against the summary**: the comment states the exact head, the independent
+native command and its result — `node --test --test-reporter=tap --test-concurrency=2`
+over the source-qualification regression, the normalizer, the candidate-source-binding
+validation, the adapter-source-identity suite and the grade suite, 138 tests, 138
+passed, 0 failed, 0 skipped, exit 0 — and says in its own words that
+"fresh-full-clone, hosted and release validation are not done" and that the next step
+is to retain the exact-head independent ACCEPT and complete the admitted full-clone and
+release requirements through the owning lead.
+
+So row 13's remaining condition is **one**, not two: the fresh full-clone pass at the
+current integration head, which the triage lead may not run because the triage lead may
+not install. That is the same single condition every other fixed row waits on.
+
+**The head moved again, and nothing in the reasoning moves with it.** The head is now
+`245089373`, the merge of PR #309, which carries the F30 fixture fix — one line in
+`tests/card/actions/persistence-parity.test.ts` and a report. This lane re-ran the
+preflight at the new head:
+
+| Check | State at `245089373` |
+|---|---|
+| engine continuity | **FAIL** — the same two paths, `src/card/actions/card-action-engine.ts` and `src/card/actions/types.ts` |
+| plan file digest | PASS — `eced1a26…` |
+| plan comparator digest | PASS — `1fa0b82a…` |
+| plan request count | PASS — 1,439 |
+| fixture files | PASS — 15 files match the manifest |
+| reference corpus binding | KNOWN |
+| harness source qualification | PASS |
+
+Same single failure, same two paths, same four passes. The runner did not change
+between `5c91a174b` and `245089373`, so the verification this lane ran at the merged
+head still describes the tree that will be compared. `git diff --name-only ff3ab5fd6
+245089373 -- src/ tools/same-database/ reference-harness/fixtures/` returns the same
+two `src/` files and nothing else, so the plan digests, the 1,439 ordered requests and
+the 15 fixture files are unchanged.
+
+**The table is now ruled.** Verdict 10 rules all thirteen rows of this table: 4 are not
+engine differences, 2 are test bugs, 1 is a candidate engine bug that needs an
+independent check, 1 is fixed and 2 are not closed, with row 13 ruled in Verdict 8.
+Every row above now carries the lead's own verdict, the owner and what closes it.
+**No row in this table says "needs owner" for want of a verdict any more** — the
+remaining "needs owner" entries are for the review or the run each row waits on, not
+for a ruling. Verdict 11 adds the state changes that came with it: F78 is a real engine
+bug, fixed and merged at `dc1627234`; F109 is a test bug, fixed and merged at
+`110bad6ca`; F30 and row 6 are a test bug, fixed and merged at `246aee132`; the
+hosted runtime-import checker is corrected and merged; and F110 is a new observation
+that is not yet established as an engine fault.
+
+## The comparison is re-measured at the final head, and the preflight passes
+
+The triage lead's Verdict 12 names the next thing this lane owes: the final comparison
+executed at the final head. That is now done for the half this lane owns.
+
+**What was re-measured, and against what.** The port changed after the comparison was
+measured; the original did not. So the Ruby side was kept — the same pinned-Ruby
+capture, Ruby 0.20.0, card 1.110.0, Rails 7.2.3.2, sqlite3 2.9.6, Rack 2.2.24 — and
+the Bunny side was captured again at the final head `245089373`, the merge of PR #309.
+The Ruby capture's body tree digest is `d97f1d1e0d9a4931134917983f7878f489b63a4e0b31bf2871646b2e0212d103`
+at both runs: it is the same bytes.
+
+**The numbers, at the final head:**
+
+| Measurement | At `ff3ab5fd6` | At `245089373` |
+|---|---|---|
+| Ordered anonymous GETs completed per engine | 1,439 | 1,439 |
+| Byte-for-byte matches | 3 | 3 |
+| Matches under existing HTML normalization, with raw differences retained | 1,436 | 1,436 |
+| Responses differing after that normalization | 0 | 0 |
+| Differing only by the generated slot id | 707 | 707 |
+| Differing by the slot id and the class token order | 729 | 729 |
+| Differing in anything else | 0 | 0 |
+| Status or length mismatches | 0 | 0 |
+| Request exceptions | 0 | 0 |
+| Comparator acceptance | `accepted: true`, `qualifiedNormalizedAccepted: true`, `strictExactAccepted: false`, `fullContractAcceptance: false` | the same |
+| samePlan, sameData, sameEndingData, sameMail, sameConfiguration | all true | all true |
+| Hosted Bunny requests issued | 0 | 0 |
+
+The Bunny body tree digest differs between the two runs, `306ab7f1…` against
+`73229e6f…`, and that is the point: the slot id is drawn at random on every render, so
+the raw bytes differ run to run while the comparison result does not. That is rule N1
+doing what it says.
+
+**Custody.** The capture executed 328 project source files through in-memory TypeScript
+transforms. Every one of them was compared with its Git blob at `245089373`:
+**328 checked, 0 mismatches**, and the source did not change during execution. The
+dependency manifest matched the source lock at SHA-256
+`96a3efb62e81fdb24516d8106316e92e44cdde583d63399ca0b6e1e54731ae69`, the installed
+dependency payloads were reused read only, and no distribution was built and claimed.
+
+**How it was run, with nothing forbidden.** The checkout was admitted by the sanctioned
+creator — `python -I C:/localProjects/diskSteward/agent/create_worktree.py`, lease
+`785c096791f7`, branch `fleet/cmp-final-head-245089373` — because a bare `git worktree
+add` is refused as a project copy outside admission. No install, no prune, no rebuild,
+no hosted request, and nothing inside a shared `node_modules` was changed: the
+checkout's `node_modules` is a junction to the existing shared install, read only, and
+the packages the checkout could not resolve were served read only from the dependency
+root, exactly as the earlier run did it.
+
+**The receipts** are in `docs/runs/engine-cmp-owner-2026-11-01/final-head-rerun/`:
+the comparator's summary and the four counts, the custody check, the executed-source
+hashes, the capture counts, the run receipt, and the two recipe scripts so the run can
+be reproduced from the committed source. The raw capture — both body trees — is at
+`C:/localProjects/decko-ts-cmp-245089373/.runtime/rerun`, and the receipt records the
+tree digests so it is verifiable without copying the bytes.
+
+**The preflight now passes.** With the comparison's source pin moved to
+`245089373`, every check it can make passes: engine continuity, both plan digests, the
+1,439 request count, the 15 fixture files, and the harness source-qualification rule.
+The one `KNOWN` line is the corpus binding, which is by design.
+
+What this does **not** do: the hosted half has still never run, the serving artifact
+bound to the final head is still the test lead's, and the profile decisions on rows 4
+and 10 are still open. This lane's half of the comparison is measured at the head that
+will be compared; the other half has not started.
+
+## What is still missing before the final comparison can run
+
+1. **Nothing on rows 1 and 2.** The triage lead has ruled: the 1,436 numbered findings are
+   **not engine differences**. The measurement that supports the ruling at the head that
+   will be compared now exists: this lane re-measured the comparison at the final head
+   `245089373` and the counts are unchanged. The
+   nearest thing to a ruling before that was saved record F98, the test that drives slot ids through
+   the normalizer, and it is waiting for the fresh full clone in the harness gate. That
+   clone is now admitted with a fresh install, so the harness gate can run there.
+   The rule behind rows 1 and 2 is confirmed right by Verdict 8, its harness check
+   passes at the final head, and the differences themselves still carry no verdict and
+   no fixer. **The triage lead's verdict on the difference itself now exists** — Verdict
+   10 rules rows 1 and 2 *not engine differences*, through rules N1 and N3, and Verdict 12
+   confirms that ruling. What is missing now is the **measurement at the final head**: the
+   1,436 differences were taken against the engine at `ff3ab5fd6`, which is not the
+   engine that will be compared.
+2. **A serving artifact bound to the final head.** The local run executed checked-in
+   TypeScript through in-memory test transforms. It is not a compiled or hosted artifact.
+   The integration checkout's existing build receipt names an older source, so it cannot
+   be used as evidence. The test lead must produce the actual serving script or release,
+   the deployed bundle SHA-256, the release activation state, the deployment
+   configuration and the source and input manifest proving the bundle was built from the
+   final commit.
+   The package that would produce it has not been built. The attempt stopped at the
+   one-off runtime-import check with exit 1 before a package was written, and the triage
+   lead has ruled that checker a test bug — its exact matcher also enters quoted
+   strings, so it rejects valid JavaScript, including the unchanged vendored source at
+   both pinned commits. The correction is permitted and not resolved; it must keep
+   rejecting real unsupported runtime imports and add regression coverage that stays in
+   the correctness gate. **That correction is now merged**, `codex/hosted-import-checker-20261101`
+   through PR #284, so what remains is a fresh full-clone package pass and an independent
+   ACCEPT at the exact corrected head before any hosted request. The existing
+   staging release `1197225` is old-source evidence and is not a substitute.
+3. **The profile decision from issue 253.** The comparison ran with the view cache off
+   on both sides. Ruby's production behaviour keeps that cache on. The test lead and the
+   triage lead must agree whether the final run compares cache-off on both sides (equal
+   settings, but not production behaviour) or cache-on on both sides (production
+   behaviour, and the row 4 difference returns).
+4. **A comparison executed at the final head.** Both plan digests are bound to
+   `ff3ab5fd6`, and they still hold at `245089373`: `tools/same-database/` and
+   `reference-harness/fixtures/` are identical at both commits, so the plan is the
+   same plan and the fixture is the same fixture. **The plan does not need
+   regenerating.** What is needed is the run itself: the engine changed at
+   `dc1627234` after the local comparison was measured, so the 1,436 numbered
+   differences must be measured again against the engine that will be compared. The
+   preflight now fails on exactly this check and says so.
+5. **The instruments the HTTP capture did not execute.** 1,752 render operations, 2,388
+   semantics operations, 16 persistence and effect scenarios and 51 browser journeys are
+   listed in the plan and were not run. `fullContractAcceptance` stays false until they
+   run. Rows 5 and 10 are only visible through these instruments.
+6. **Billing.** `docs/TEST-POLICY.md` requires a billing baseline read before the planned
+   complete comparison, the matching after-read, and the actual request counts and
+   usage.
+7. **Equal settings observed on the hosted side.** The comparator refuses before grading
+   any body when the plan profile and the two observed profiles differ or are not
+   complete. The six settings must be observed on the hosted release and on Ruby and
+   must match.
+8. **The host settings that change the answer, recorded outside the compared profile.**
+   The compared profile has exactly six fields and the comparator rejects any other
+   field in it. The state of the five strict-parity settings, the password policy and
+   the sign-in policy must be recorded beside each capture and checked by the test
+   lead, because rows 10, 11 and 12 all turn on them. Row 10 in particular is a measured
+   difference under the port's default posture, so the hosted release has to state
+   whether it runs with `DECKO_STRICT_PARITY_MAIL_UNFOLLOW_REFUSAL` on or off, and the
+   answer has to appear in the report either way.
+9. **A decision on row 10.** Whether the port's default notification-mail link or Ruby's
+   recorded link is the intended behaviour of the release under test. The switch exists
+   and the saved grades show 19 of 19 with it on and 12 of 19 with it off. The triage
+   lead and the project owner own that decision; this lane will not pick it.
+10. **The harness fix that row 13 needed.** The witness must move out of the grade's
+   problems and back into qualification, and the command line must learn to refuse an
+   unqualified run. It must come with the guard the triage lead named: a test that a
+   capture with a valid checkout identity, matching bytes and no witness is refused
+   with exit status 2 and "NOT A GRADE", and reports no pass rate. **That fix is
+   merged — `e8d276e27` through PR #297 — independently ACCEPTed at that exact head,
+   and verified by this lane at the integration head, red-first.** **What is left on it
+   is one thing, not two: the fresh-full-clone gate at the current integration head.**
+   **Verdict 13 sharpens what that gate has to be compared against**: the correctness
+   gate selects 12 more files at the current head than at the last green, so the
+   8,874 figure is the baseline for the last green's selection and not for the current
+   one, and 11 of those 12 added files are Node tests the baseline never covered. The
+   current head's selection is 1,006 files — 955 Vitest, 51 Node — and it has not been
+   run. So a fresh pass has to be read against the selection it actually ran, and the
+   12 files without a baseline are new ground rather than regressions.
+   The independent review the fix owner's account asked for exists: PR #297 carries an
+   ACCEPT at `e8d276e27`, posted 2026-11-02T03:47:01Z by a reviewer distinct from the
+   author, with 138 native tests passing and all 247 reference-fixture files compared
+   byte for byte. The fix owner's own next step, in their words: save the repair
+   privately, obtain an independent review at
+   the exact head, then run the required gate in the admitted full clone before
+   resolution.
+
+## The exact steps the test lead runs on the final head
+
+**Before step 1, run the preflight.** `docs/runs/engine-cmp-owner-2026-11-01/preflight.mjs`
+is a read-only gate this lane wrote for exactly this moment. It changes no tracked
+file, sends no request and touches no hosted service; it writes the regenerated plan
+into the repository's ignored `.runtime/` scratch directory and removes it again.
+
+```
+node docs/runs/engine-cmp-owner-2026-11-01/preflight.mjs <final-head>
+```
+
+It prints PASS, FAIL or UNKNOWN per line and exits 1 if anything fails. At the
+current integration head `245089373` it **passes every check it can make**:
+
+- **engine continuity — PASS.** `src/`, `tools/same-database/` and
+  `reference-harness/fixtures/` are identical between the local comparison's source and
+  the final head. This check failed twice, at `5c91a174b` and at `245089373`, because the
+  engine changed at `dc1627234` (PR #296) after the comparison was measured at
+  `ff3ab5fd6`. **This lane then re-measured the comparison at the final head**, and the
+  local result describes the engine that will be compared again.
+- **plan file digest** and **plan comparator digest** — the plan is regenerated from
+  the committed tool and fixture and both digests are compared with the ones the
+  preparation run recorded. Both still hold: the tool and the fixture are unchanged at
+  the final head.
+- **plan request count** — 1,439.
+- **fixture files** — every file the fixture manifest lists is hashed and compared,
+  including the database and the deck specification.
+- **reference corpus binding — KNOWN.** The committed corpus carries no executed-source
+  binding, by design: it is a 2026-10-08 historical recording. Since the row 13 fix
+  landed, grading it at the command line is refused with exit 2 and "NOT A GRADE"
+  rather than coming back `invalid`, and the comparison stays available for diagnosis.
+  The corpus is not recaptured.
+- **harness source qualification — PASS.** The grader at the head refuses an
+  unqualified run with "NOT A GRADE" and exit 2, and the guard
+  `tests/tools/source-qualification-grade.test.mjs` is in that head.
+
+The gate has been shown to fail: against `origin/main` it reports the differing paths
+by name, prints "1 check(s) FAILED. Do not send a request until they pass", and exits
+1. **Against the current integration head it now exits 1 as well, on engine
+continuity, and that failure is the honest answer: the engine moved.**
+
+It also prints the settings that have to be written down beside each capture — the six
+compared fields and the host settings that change the answer — and lists the items it
+cannot see and that only the test lead can settle: a serving artifact built from the
+final head, a fresh full-clone package pass, an independent ACCEPT at that head, the
+billing baseline, a comparison executed at the final head, and the row 4 and row 10
+decisions.
+
+The steps that follow are the ones the preflight cannot do for you.
+
+1. Check out the final head commit and record its SHA. Confirm it is the integration
+   head and that no change to the shared fixture or the plan happened after it. The
+   integration head has moved since the comparison was ordered — to `3701d069f`, then
+   `c0de63c2a`, then `5c91a174b`, and now `245089373`. **The move at `dc1627234` changed `src/`,** at
+   `dc1627234` (PR #296), so the plan digests still hold but the local run's result no
+   longer describes the engine that will be compared. The preflight above settles this
+   in one command, and right now it fails on exactly that.
+2. Regenerate the plan from that source:
+   `node tools/same-database/ruby-bunny-comparison.mjs plan <new-plan.json>`.
+   Record the SHA-256 of the saved file and the comparator's own digest over
+   `JSON.stringify(plan)`. Both must equal the digests the captures record.
+   This was checked on the current source: regenerating the plan at
+   `ff3ab5fd6` from the committed tree produced the saved file digest
+   `eced1a26e6d3d5db3a47b7869e31cb337dcc6fb779a89258d6a88f08ed675822` and the
+   comparator's own digest
+   `1fa0b82a1d74b8619931581a9332b09008088b5a653319122053962599bf39f4`, both
+   exactly as recorded in the preparation run, with 1,439 requests. The plan is
+   reproducible from the committed source, and the two digests are two views of
+   one file — the file's bytes and the parsed plan — so the lead can confirm the
+   plan with a plain hash check before sending any request.
+3. Verify the data before any request: database SHA-256
+   `a9f580814c2a5adc30e21f704985573ebb3f1090a14993bacacbdb1fb9a32f3d`, deck specification
+   SHA-256 `3a5fae5f3afaa51220111e7805c093fef7c0d736793c31acc2752da53ac7465e`, the six
+   attachment hashes by relative path and length, and the attachment manifest digest
+   `61ecdc72a105d1d0d89a8b1dc897685e10e8f43d9f83f57ec6d6d5b3afab0370`.
+4. Build and deploy the serving artifact and record the release, the bundle SHA-256, the
+   activation state, the deployment configuration and the source and input manifest.
+   The package must come from a fresh full clone at the final head, pass the corrected
+   runtime-import check with its regression coverage in the correctness gate, and carry
+   an independent ACCEPT at that exact head. The attempt so far stopped at the import
+   check with exit 1 and wrote no package.
+5. Observe the six compared settings on the hosted release and on Ruby. They must be
+   equal: origin `http://deck.example`, default HTML view `content`, asset refresh
+   `never`, stock Font Awesome, rendering errors not raised, and the view cache setting
+   from the row 4 decision above.
+6. Record beside each capture, outside the compared profile, the state of the five
+   strict-parity settings (`DECKO_STRICT_PARITY_SIGNIN_DETAILED_ERRORS`,
+   `DECKO_STRICT_PARITY_REVISION_RESTORE_500`,
+   `DECKO_STRICT_PARITY_SKIN_CREATE_500`,
+   `DECKO_STRICT_PARITY_SCRIPT_BUNDLE_CLOCK_NAMES`,
+   `DECKO_STRICT_PARITY_MAIL_UNFOLLOW_REFUSAL`), the password hash policy, and the
+   uniform sign-in failure, throttling and session revocation settings. Check that
+   Ruby is on the same posture for each one that both engines implement. Say in the
+   report which of these the release runs with.
+7. Run the Ruby side against the same fixture copy and the same plan through the
+   existing native reference route. Keep the runtime description, the loaded source
+   hashes, the bundle lock digest and the database binding, the rows of all six contract
+   card tables before and after the requests, the raw persistence delta and the captured
+   mail.
+8. Run the hosted Bunny side: each of the 1,439 ordered anonymous GETs exactly once.
+   Record the stable request id, status, complete raw headers, content type, location,
+   body completeness, the raw body file, the body length and the body SHA-256. Keep
+   exceptions and partial bodies. No retry, no sampling, no judgement stands in for a
+   pass.
+9. Store each side as a `plan.json`, a `capture.json` and a `bodies/<request-id>.bin`
+   tree, with the serving release binding beside it.
+10. Compare:
+    `node tools/same-database/ruby-bunny-comparison.mjs compare <ruby-dir> <hosted-dir> <report.json>`.
+    Require `samePlan`, `sameData`, `sameEndingData`, `sameMail` and `sameConfiguration`
+    all true. Record `strictExactAccepted` and `qualifiedNormalizedAccepted` separately;
+    `fullContractAcceptance` stays false for this instrument alone.
+11. Number every differing or errored case with the Ruby and Bunny observations and both
+    raw paths. Keep a refused configuration comparison as a refusal, not a pass. A
+    crashed, missing or malformed report must never be mistaken for a passing one, and a
+    prior passing report must never be reused — the triage lead's saved records F91 to
+    F93 are the tests for exactly that, and they are currently ruled a lane setup
+    problem, so they have not run at this head.
+12. Run the instruments the HTTP capture did not cover: the 1,752 render operations, the
+    2,388 semantics operations, the 16 persistence and effect scenarios and the 51
+    browser journeys. Compare the notification mail bytes as well — that is where row
+    10 shows up.
+13. Capture the billing baseline before and after, with the actual request counts and
+    the available per-script usage, sanitized.
+14. Hand the numbered difference list to the triage lead for a verdict, then to a fixer.
+    Update this table with the verdict and the fixer.
+
+## The instrument had to be rebuilt before the comparison could be re-measured
+
+The head moved to `f188218c7` and the comparison had to be re-measured there, but the
+recipe the `245089373` run left behind could not be run. Five separate things were true
+at once. None of them was solved with an install, a rebuild or a hosted request.
+
+**esbuild is gone from every install tree.** The preparation lane's loader transformed
+the TypeScript sources with esbuild, resolved from the dependency root. Between
+2026-11-01 and 2026-11-02 the fleet's install trees stopped carrying esbuild, so the
+capture could not run at all.
+
+**The installed `typescript` cannot replace it.** It is the 7.0.2 native stub: the
+package's main entry is `./lib/version.cjs`, it ships no `lib/typescript.js`, and it has
+no `transpileModule`. The loader written for it was abandoned rather than committed; it
+also carried a `shortCircuit` typo, so it would not have worked even if the package had
+the API.
+
+**Node's own type stripper cannot replace it either, and that took a run to prove.**
+`module.stripTypeScriptTypes` in transform mode needs no package at all, so it was tried
+first. It erases type annotations but keeps every import binding, so a module that
+imports a type as a value no longer links. The capture stopped on the first such module:
+
+    src/cql/parser.ts:1
+    import { ConditionNode, CqlBadQuery, Fasten, JoinNode, Mods, ... } from "./ast.js";
+    SyntaxError: The requested module './ast.js' does not provide an export named 'ConditionNode'
+
+`ConditionNode` and `QueryNode` are types, and the erased `ast.ts` exports neither. That
+failure is the evidence that the two transforms are not interchangeable, and it is why
+the replacement had to be measured rather than assumed. The failed run is kept at
+`.runtime/eq245089373/` as the record of it.
+
+**The transform that works is oxc**, through the `rolldown` package the project already
+depends on — rolldown 1.2.9 is in `package-lock.json`. It carries the TypeScript
+semantics esbuild had: type-only imports are elided, the target is es2022, and the
+output is ES modules. The loader resolves it from the dependency root, exactly as the
+esbuild loader resolved esbuild. All 1,785 tracked TypeScript files at the head
+transform with no failure and no helper needed.
+
+**The equivalence of that transform is measured, not asserted.** The comparison was
+re-run at `245089373` — the head the accepted run measured — with the oxc loader, and
+reproduced the accepted result exactly:
+
+| Measurement | Accepted run, esbuild | Re-run, oxc |
+|---|---|---|
+| Ordered anonymous GETs completed | 1,439 | 1,439 |
+| Request exceptions, denied network, hrana violations | 0, 0, 0 | 0, 0, 0 |
+| Statuses | 200 × 1,320, 403 × 118, 404 × 1 | 200 × 1,320, 403 × 118, 404 × 1 |
+| Byte-for-byte matches | 3 | 3 |
+| Matches under the existing normalization | 1,436 | 1,436 |
+| Differing only by the generated slot id | 707 | 707 |
+| Differing by the slot id and the class token order | 729 | 729 |
+| Differing in anything else | 0 | 0 |
+| Status or length mismatches | 0 | 0 |
+| Comparator acceptance | `accepted: true`, `qualifiedNormalizedAccepted: true`, `strictExactAccepted: false`, `fullContractAcceptance: false` | the same |
+| samePlan, sameData, sameEndingData, sameMail, sameConfiguration | all true | all true |
+| Executed source files checked against their Git blobs | 328, 0 mismatches | 328, 0 mismatches |
+
+Same head, same plan, same pinned-Ruby capture, same result. The oxc loader is therefore
+interchangeable with the esbuild one for this measurement, and the new numbers are
+comparable with the recorded ones.
+
+**The dependency root was re-pointed, and the blocker was real.** The tree the last run
+used, `C:/Users/jpswi/.codex/worktrees/decko-port-integration-recovery/decko-ts`, now
+carries a 14-entry install with no `htmlparser2`, and `src/card/render/html-text.ts`
+imports `htmlparser2` on the render path, so no capture could run against it.
+`package.json` and `package-lock.json` are unchanged between `245089373` and
+`f188218c7`, and the instrument's own guard — the dependency root's `package-lock.json`
+must hash to the source lock's
+`96a3efb62e81fdb24516d8106316e92e44cdde583d63399ca0b6e1e54731ae69` — is satisfiable.
+Seven trees on this machine carry an install with that exact lock hash and with
+`htmlparser2` 10.0.0 present. They are read, never written: no install, no prune, no
+rebuild, and nothing inside any `node_modules` changed.
+
+**The Ruby capture was not lost, only its working copy.** The `245089373` run read the
+Ruby side from the preparation lane's working copy, which has since been swept from
+disk. The capture itself is committed on `fleet/hosted-cmp-prep-ff3ab5fd-20261101`:
+1,439 response bodies with `capture.json` and `plan.json`. The preparation lane's own
+receipt `staged-bytes-check.json` records 2,918 staged files verified, 2,878 raw bodies
+verified and 0 staged byte mismatches, so the committed blobs are the captured bytes.
+`recipe/materialize-ruby-capture.mjs` reads them out of the Git objects into the run
+directory, so the run no longer depends on another lane's working copy.
+
+**One receipt could not be reproduced, and is now stated explicitly.** The body tree
+digests quoted in the `245089373` receipt — `d97f1d1e…` for the Ruby side, `73229e6f…`
+for the Bunny side — were computed by an algorithm that was never written down. Eleven
+formulations were tried against the materialized Ruby bodies and none reproduces
+`d97f1d1e…`. The digest is therefore now stated: `recipe/body-tree-digest.mjs` names its
+algorithm (`sha256` over `name + ' ' + sha256_hex + '\n'` in ascending name order) and
+prints the alternatives, and the Ruby side's identity rests on Git blob identity, which
+is content-addressed and verifiable by anyone with the repository.
+
+**What the local capture does not reach, stated from the capture itself.** The capture's
+`mail` array is empty and its `persistenceDelta` is empty. The local comparison is
+therefore read-only: it sends no notification mail and changes no card data. Two
+consequences follow, and both matter for reading the new numbers.
+
+`sameMail: true` compares two empty mail captures. It is true, and it is also
+uninformative about the mail bytes: the issue 111 change at `f188218c7`, which makes the
+port mail the reference's unsubscribe link bytes in every configuration, is a write-path
+change and this capture cannot see it. Row 10 lives in the notification-mail answers the
+reference harness grades, not in this comparison.
+
+The four `src/` changes at `f188218c7` — `rules/lookup.ts`, `notify/follow-mail-views.ts`,
+`parity/strict-parity-flags.ts` and `attachments/attachment-store.ts` — are all in
+write paths or in rule resolution. `rules/lookup.ts` is the one that can move a rendered
+answer, because a canonical starred setting name now resolves through the receiving
+registry so that a Setting rename keeps the same rule. The new measurement is what
+settles whether it did.
+
+## The comparison is re-measured at the new head, and the head moved again while it ran
+
+The comparison was re-measured at `f188218c7`, the head that had moved since
+`245089373`, against the same pinned-Ruby capture and with the same instrument. The four
+`src/` changes between those heads are all inside the comparison's own areas:
+`src/card/rules/lookup.ts` (PR #311), `src/card/notify/follow-mail-views.ts` (PR #328,
+issue 111), `src/card/parity/strict-parity-flags.ts` (PR #327, issue 111) and
+`src/card/attachments/attachment-store.ts`. All four are in the capture's executed set.
+
+**The numbers are unchanged.**
+
+| Measurement | At `245089373` | At `f188218c7` |
+|---|---|---|
+| Ordered anonymous GETs completed | 1,439 | 1,439 |
+| Request exceptions | 0 | 0 |
+| Denied network, hrana violations | 0, 0 | 0, 0 |
+| Statuses | 200 × 1,320, 403 × 118, 404 × 1 | 200 × 1,320, 403 × 118, 404 × 1 |
+| Byte-for-byte matches | 3 | 3 |
+| Matches under the existing normalization | 1,436 | 1,436 |
+| Differing only by the generated slot id | 707 | 707 |
+| Differing by the slot id and the class token order | 729 | 729 |
+| Differing in anything else | 0 | 0 |
+| Status or length mismatches | 0 | 0 |
+| Comparator acceptance | `accepted: true`, `qualifiedNormalizedAccepted: true`, `strictExactAccepted: false`, `fullContractAcceptance: false` | the same |
+| samePlan, sameData, sameEndingData, sameMail, sameConfiguration | all true | all true |
+| Executed source files checked against their Git blobs | 328, 0 mismatches | 328, 0 mismatches |
+| Dependency lock SHA-256 | `96a3efb6…` | `96a3efb6…` |
+
+The Ruby body tree is the same bytes in both runs — 1,439 files, 26,733,036 bytes,
+digest `5c26b8d8…` under the documented algorithm — and the Bunny body tree has the same
+file count and the same total byte count, with a different digest because the slot id
+is drawn at random on every render. The comparison result does not move; the bytes do.
+
+**What this says about the four changes.** None of them moved the comparison. The rule
+resolution change in `rules/lookup.ts` did not alter any rendered answer in this
+fixture. The three write-path changes — the mailed unsubscribe link, the parity flag
+and the attachment removal — are in areas this read-only capture does not reach, which
+is the same fact the capture's empty `mail` array and empty `persistenceDelta` state.
+
+**The head moved again while the capture ran.** When the capture finished, the
+integration head was `1ee7a815c`, fifteen commits past `f188218c7`. Only two paths in
+the comparison's own scope differ: `src/card/request-context.ts`, which drops the
+computed dynamic import of `node:async_hooks` in favour of an explicit
+`installAsyncLocalStorage` that a host supplies, and
+`tools/same-database/ruby-comparison-spool-custody.test.mjs`, a test file the capture
+does not execute. `request-context.ts` is in the capture's executed set, so the
+comparison was measured again at `1ee7a815c` rather than argued about, and the numbers
+were the same a third time: 1,439 requests, 3 byte-for-byte matches, 1,436
+normalized-only (707 slot id only, 729 slot id and class order, 0 other), no status or
+length mismatches, all five `same*` gates true, and **329** executed source files
+checked against their Git blobs with 0 mismatches. The executed set grew by one file,
+because `request-context.ts` now exports `installAsyncLocalStorage` and the handler
+loads it.
+
+**The head moved a fourth time, to `6d6ce7b68`, and it does not touch the comparison.**
+The five paths that changed are all in `reference-harness/browser/` and
+`reference-harness/runner/test/` — the harness's own capture tooling and its tests.
+`src/`, `tools/same-database/` and `reference-harness/fixtures/` are identical between
+`1ee7a815c` and `6d6ce7b68`, so the measurement still describes the current head's
+engine, tool and data, and **the preflight passes every check it can make** with its
+pin at `1ee7a815c`: engine continuity, both plan digests, the 1,439 request count, the
+15 fixture files, and the harness source-qualification rule. The one `KNOWN` line is
+the corpus binding, which is by design.
+
+That is the shape of the problem now: the integration head moves several times an hour,
+and the comparison's own surface moves far more slowly. The lane's number is re-measured
+whenever that surface moves, and the preflight says plainly whether it has.
+
+The preflight's pin is moved only when a measurement exists at that head, so the
+preflight always says plainly which head the lane's number describes.
+
+**The publication state.** The repository is private and the remote is the project's own
+`github.com/KatsuJinCode/decko-ts`. The lane branch carries 8 commits over
+`origin/fleet/engine-cmp-owner-20261101`, all of them this lane's own work. Nothing has
+been pushed: a push needs the project owner's approval of the exact publication
+package, and the triage lead reads this lane's branch in the shared repository.
+
+**The report to the triage lead was refused by the usage guard, not by the route.**
+`relay-send:send-refused-usage`: MiniMax has used 92% of its five-hour window and the
+measured rate empties it before it resets — 11 observed active agents, 59.71 percentage
+points per hour, projected 355.02% at reset. Nothing was sent, and the refusal says so.
+The window resets at 2026-11-02T15:00:00Z, and the retry waits for it rather than
+waking a MiniMax Code agent inside the window. The measurement is not held by that
+refusal: it is in this lane's branch, in the receipts, and on Plane FD-266.
+
+## Log
+
+- 2026-11-01, first cut. Table built from the five open engine issues (249, 250, 253,
+  272, 273), the local preparation run by Codex Relay 1541, the triage lead's first cut
+  and this lane's own byte-level measurement of the 1,436 raw differences. No difference
+  has a triage verdict yet, so every row says **needs owner**.
+- 2026-11-01, second cut. Added rows 10, 11 and 12 from the saved adapter-level grades
+  and `docs/STRICT-PARITY-FLAGS.md`, added the saved-grade table with its three limits,
+  and added the host settings that have to be recorded beside each capture.
+- 2026-11-01, third cut. Folded in Codex Relay 1541's committed preparation branch
+  `ee71dade0`, which confirms the local numbers: 1,439 requests per engine, 3 exact, 1,436
+  normalized-only, 0 behaviour differences, 0 errors. Added the normalization rules N1
+  and N3 to rows 1 and 2, the depth guard to row 3, and the triage lead's related
+  ruling on issue 280 to row 6. No difference has a triage verdict yet, so every row
+  still says **needs owner**.
+- 2026-11-01, fourth cut. The triage lead has now sorted every saved failure record:
+  55 setup problems, 15 test bugs and 38 rows waiting for the fresh full clone, with no
+  real engine failure proved by any saved record. Folded the related verdicts into rows
+  1, 2, 3, 6, 9 and 11 — F18, F30, F75, F76, F91 to F93, F98 and the hosted package
+  decision — and added the section listing them with the command that settles each. The
+  hosted half still has not run: the package attempt stopped at its import check with
+  exit 1, the triage lead ruled that checker a test bug, and the correction is permitted
+  and not resolved. Every row still says **needs owner**.
+- 2026-11-01, fifth cut. The triage lead's sweep is finished — every saved failure and
+  every skip now carries a verdict, and the 130 files of the broader selection's skip
+  inventory are each named with what is missing. The one group that was still "Pending
+  comparison", the 422 error-chrome group F71 to F74, is now ruled a **test bug** with
+  fix `81bc4388a` released to the K6 agent (Relay 1506) and a reviewer still needed; it
+  is not resolved until the fresh full clone passes. Its 422s are refusal pages, not
+  the depth guard, so it does not close issue 249. The hosted run log still carries only
+  the historical first controlled title pair, so the 1,439-request comparison has not
+  run. Every row still says **needs owner**.
+- 2026-11-01, sixth cut. The fresh full clone is admitted: a clean, freshly installed
+  copy at `C:/localProjects/decko-ts-triage-fullrun-20261101` at HEAD `37cf80405`,
+  matching the integration tip's engine and test source, ran the correctness gate and
+  confirmed the verdicts — 32 setup rows now pass, the 15 test-bug rows fail exactly
+  as predicted, one new test bug appeared, and 61 rows were not executed. Those 61 are
+  10 benchmarks, 11 deploy, 12 parity and 28 harness rows, and every gate this lane's
+  differences wait on is in that list, so none of them has run yet. The preparation
+  handoff at `5f30a2abd` independently recounts the same numbers this record holds and
+  states that the hosted half is not done. Every row still says **needs owner**.
+- 2026-11-01, seventh cut. This lane ran the harness's normalization tests against the
+  committed tree and found three failing, including the two that check the N1 slot-id
+  mask and the N3 class-token-order rule — the rules under which the 1,436 raw
+  differences are accepted as equal. The failures are invalid grades, not byte
+  mismatches: the committed expected corpus carries no executed-source binding, and
+  the grader has required one since 2026-10-31, while the corpus was captured on
+  2026-10-08 and never recaptured. Added as row 13, with the reproduction command and
+  the exact file and line references. The triage lead rules what it is; this lane has
+  fixed nothing and has called it nothing. Every row still says **needs owner**.
+- 2026-11-01, eighth cut. The integration head moved from `ff3ab5fd6` to `3701d069f`
+  by merging PR #267 and PR #277. Checked rather than assumed: across the 69 changed
+  files nothing changes in `tools/same-database/`, `reference-harness/fixtures/` or
+  `src/`. So the plan digests still describe the final head, the local comparison's
+  result still describes the engine at the final head and does not need repeating, and
+  row 13 is unchanged — the corpus there still carries no `source_binding`, and PR
+  #277's source custody work is in the migration tooling. This branch's base stays
+  `ff3ab5fd6`; the lead integrates it. Every row still says **needs owner**.
+- 2026-11-01, ninth cut. **Row 13 is ruled.** The triage lead's Verdict 8, at
+  `384ac05c6`, names rows F102 to F104 and row 13 of this table as the same three
+  failures and rules them a **real engine bug in the comparison harness, with the corpus
+  and the three tests right**. The witness belongs in qualification, where the spec
+  puts it, and the grader pushed it into the grade's problems. The fix owner is the
+  source-custody lane `fleet/mm-255-native-source-custody-20261101`, head `87f1f1a23`,
+  already merged as `3701d069f`; a reviewer is still needed. The triage lead's reply
+  to this lane was refused by the usage guard and nothing was sent, so this lane read
+  the verdict from the branch. Rows 1 and 2 now carry the ruled position: the rule they
+  rest on is confirmed right and the check is red until the harness fix lands. The
+  other twelve rows still say **needs owner**.
+- 2026-11-01, tenth cut. No new verdicts and no new movement on the gates. The triage
+  head is still `87de3abf4`, the integration head is still `3701d069f`, and the
+  fix owner's branch is still `87f1f1a23`, so the harness fix row 13 needs has not been
+  written. The admitted copy holds no evidence that the parity, harness or benchmarks
+  gates have run in it. Recorded that the test lead reached the same source-continuity
+  conclusion independently — identical `src/`, `tools/same-database/` and
+  `reference-harness/fixtures/` trees against `ff3ab5fd6` — and that PR284's
+  import-checker correction now has a read-only source review at its exact head which
+  does not permit merging, because the reviewer ran no test and no package. The hosted
+  run log still carries only the historical first controlled title pair, so the
+  1,439-request comparison has not run. Every row still says **needs owner**.
+- 2026-11-01, eleventh cut. Added `preflight.mjs`, a read-only gate for the moment the
+  test lead is about to compare. It proves the head under test is the head the local
+  comparison measured, that the plan and the controlled data are exactly the recorded
+  ones, and it prints the settings that have to be written down beside each capture. It
+  passes at the current integration head and has been shown to fail against a wrong
+  head, naming the differing paths and exiting 1. Every row still says **needs
+  owner**.
+- 2026-11-01, twelfth cut. The integration head moved again, to `c0de63c2a` by merging
+  PR #285 from `fleet/strike-k3-20261101`. It changed `AGENTS.md`, two strike documents,
+  `scripts/correctness-checkpoint.mjs` and its test, and again nothing in `src/`,
+  `tools/same-database/` or `reference-harness/fixtures/`. The preflight, run against
+  the new head, exits 0 with engine continuity, both plan digests, the 1,439 request
+  count and the fixture hashes all passing — which is the preflight doing exactly the
+  job it was written for on a real head move. The harness fix row 13 needs has still
+  not been written, the triage head is still `87de3abf4` so no new verdict has landed
+  on the other twelve rows, and the hosted package has still not been rerun. Every row
+  still says **needs owner**.
+- 2026-11-01, thirteenth cut. **The row 13 fix is written and this lane verified it.**
+  The fix owner's branch moved to `e8d276e27`, "Preserve historical comparisons while
+  refusing unqualified candidate grades". The witness moves out of the grade's problems
+  and back into qualification, the command line refuses an unqualified run with exit 2
+  and "NOT A GRADE" and reports no pass rate, and a new guard sits in the correctness
+  gate. Verified here against the comparison's own corpus: the three normalization
+  self-checks that fail at `ff3ab5fd6` now pass, the guard gives 6 of 6, and with the fix
+  reverted the guard gives 2 of 6 — the same numbers as the fix owner's own receipt. Not
+  merged; the integration head was still `c0de63c2a`. Independent review and the fresh
+  full-clone gate remained required. The other twelve rows still said **needs owner**.
+- 2026-11-01, fourteenth cut. **This lane agrees with the triage lead's Verdict 8, the
+  row 13 fix is merged, and the preflight caught the engine moving.** Verdict 8 was
+  re-sent by the triage lead at `384ac05c6` and this lane read it in full: real engine
+  bug in the comparison harness, the corpus and the three tests right, no dispute
+  offered. The fix at `e8d276e27` was merged by PR #297; the integration head is now
+  `5c91a174b`, and every head the verdict cites has moved since it was written. This
+  lane ran both suites at the merged head — the three normalization self-checks, 63
+  tests and 63 passed, and the new guard, 6 of 6 — with the two fixed files put back to
+  their `ff3ab5fd6` versions the guard gives 2 of 6, so the guard catches the overreach
+  in the merged tree. The preflight now **fails**: `dc1627234` (PR #296) changed
+  `src/card/actions/card-action-engine.ts` and `src/card/actions/types.ts` after the
+  local comparison was measured, so the 1,436 differences no longer describe the engine
+  that will be compared and the final run must be at the final head. Both plan digests,
+  the 1,439 requests and the 15 fixture files are unchanged, so the plan needs no
+  regenerating and the fixture needs no recapturing. The preflight gained a seventh
+  check, that the head's grader refuses an unqualified run and carries the guard. Every
+  row still says **needs owner**; no difference is ruled here.
+- 2026-11-01, fourteenth cut, second part. **The reply to the triage lead went out
+  through `node C:/localProjects/juc-relay/tools/flightdeck.mjs send`.** The first
+  attempt, with the `fd` alias, was refused with "Relay could not identify the native
+  sender"; nothing was sent, the refusal carries `deliveryProof: false`, and the cause
+  is that Relay's sender identification requires the literal token `relay` in the
+  command text, which the `fd` alias does not carry. Delivered 06:02:48 UTC into the
+  lead's own queue at position 2, exit 3 because the lead was working.
+- 2026-11-01, sixteenth cut. **The comparison was re-measured at the final head
+  and the preflight passes.** The triage lead's Verdict 12 named the next thing this
+  lane owes: the final comparison executed at the final head. The Ruby side is the
+  original and did not change, so it was kept; the Bunny side was captured again at
+  245089373 through an admitted worktree, lease 785c096791f7, with no install, no
+  build, no hosted request and nothing inside a shared node_modules changed. The
+  numbers are unchanged: 1,439 requests, 3 exact, 1,436 differing only by the slot id
+  or the class token order, 0 differing after normalization, 0 status or length
+  mismatches, comparator accepted. Custody: 328 executed source files checked against
+  their Git blobs at the head, 0 mismatches. The preflight's source pin moved to
+  245089373 and it now passes every check it can make. The receipts are in
+  docs/runs/engine-cmp-owner-2026-11-01/final-head-rerun/, and the raw capture is at
+  the admitted worktree with its tree digests recorded. The hosted half has still never
+  run.
+- 2026-11-01, sixteenth cut, second part. **The reply carrying the measurement was
+  refused by the usage guard, not by the route.** `relay-send:send-refused-usage`,
+  because MiniMax has used 55% of its five-hour window and the measured rate empties it
+  before it resets: 12 observed active agents, 57.77 percentage points per hour,
+  projected 328.73% at reset. Nothing was sent, and the refusal says so. The window
+  resets at 2026-11-02T10:00:00Z. The measurement is not held by that refusal: it is in
+  this branch at `bf4ed62c4`, in the receipts under `final-head-rerun/`, and on Plane
+  FD-266. The brief is kept at `.runtime/reply-final-head.txt` for the retry, and the
+  retry waits for the reset rather than going now, because waking a MiniMax Code agent
+  inside this window would cut it off mid-work and spend the operator's money on a
+  message that says what this branch already says.
+- 2026-11-02, seventeenth cut. **The reply went out after the window reset, with the
+  wake recorded.** Two refusals stood in the way and both are Relay policy, not the
+  route: first `relay-send:send-refused-usage`, because MiniMax had used 55% of its
+  five-hour window with 12 active agents and the measured rate empties it before it
+  resets at 2026-11-02T10:00:00Z; then `relay-send:send-refused-wake`, because the
+  triage lead's session had been idle 1h42m, over the one-hour limit, with no operator
+  consent naming it. The refusal named the sanctioned way through, and this is the
+  in-project wake with the reason recorded: **sent 10:03:57 UTC**, the native
+  interface answered the hand-over, arrival unconfirmed inside five seconds and not
+  resent, queued for the recipient's next turn. The wake reason says what it is for:
+  the comparison is re-measured at the final head and the preflight now passes, and
+  that is not yet in the triage file.
+  **Verdict 13 arrived in the meantime** and sharpens the gate row 13 waits on: the
+  correctness gate selects 12 more files at the current head than it did at the last
+  green, so the 8,874 figure is the baseline for the last green's selection and not
+  for the current one, and 11 of the 12 added files are Node tests the baseline never
+  covered. A fresh full-clone pass at the current head therefore has no single
+  comparable baseline, and the record here must not be read as saying 8,874 is the bar.
+  The current head's correctness selection is 1,006 files — 955 Vitest and 51 Node —
+  and it has not been run.
+- 2026-11-01, fifteenth cut. **Verdict 12: the acceptance stands, row 13 waits on
+  one condition, the head moved again, and every row of the table is now ruled.** The
+  triage lead re-sent the acceptance at `8acfef20c` with nothing to re-rule. Row 13's
+  independent review exists: PR #297 carries an ACCEPT at the exact head
+  `e8d276e27`, posted 2026-11-02T03:47:01Z by a reviewer distinct from the author,
+  with 138 native tests passing and 247 reference-fixture files compared byte for byte;
+  this lane checked that against the PR comment itself. What remains on row 13 is the
+  fresh full-clone pass at the current integration head, which the triage lead may not
+  run because the triage lead may not install. The head moved again to `245089373`
+  (PR #309, the F30 fixture fix); the preflight was re-run there and gives the same
+  single failure on engine continuity, the same four passes and the same two differing
+  paths, so the plan and the fixture still do not need rebuilding and the verification
+  at the merged head still describes the tree that will be compared. Verdict 10's
+  rulings on all thirteen rows are now in the table above, with each row's owner and
+  closing condition; no row waits on a verdict any more.
+- 2026-11-02, sixteenth cut. **The instrument was rebuilt, its replacement was proved
+  equivalent, and the comparison was re-measured at the moved head.** esbuild is gone
+  from every install tree, the installed `typescript` is the 7.x native stub with no
+  JavaScript API, and the dependency root the last run used was re-pointed to a
+  14-entry tree without `htmlparser2`, which the render path imports. No install was
+  made. Node's own type stripper was tried first and cannot stand in: it erases type
+  annotations but keeps every import binding, so `src/cql/parser.ts`, which imports the
+  types `ConditionNode` and `QueryNode`, no longer links. The working transform is oxc,
+  through the `rolldown` package the project already depends on. Equivalence was
+  measured, not asserted: the comparison was re-run at `245089373` and reproduced the
+  accepted result exactly — 1,439 requests, 3 exact, 1,436 normalized-only (707, 729,
+  0), no status or length mismatches, all five `same*` gates true, 328 executed sources
+  with 0 mismatches. The comparison was then re-measured at `f188218c7`, whose four
+  `src/` changes are all in the comparison's own areas, and **the numbers did not
+  move**: none of those changes altered a rendered answer, because the other three are
+  write-path changes this read-only capture does not reach — its `mail` array and its
+  `persistenceDelta` are both empty. The Ruby capture was recovered from Git objects
+  after its working copy was swept, and the preparation lane's own receipt shows 2,878
+  raw bodies verified with 0 staged byte mismatches. The body tree digest algorithm is
+  now stated, because the one quoted in the `245089373` receipt was never recorded and
+  no formulation reproduces it. The head moved again to `1ee7a815c` while the capture
+  ran; only `src/card/request-context.ts`, which is executed, and a test file the
+  capture does not run, differ in the comparison's scope, so the comparison is being
+  measured there too. The preflight's pin moves only when a measurement exists at that
+  head.
+- 2026-11-02, seventeenth cut. **The comparison was measured a third time, at
+  `1ee7a815c`, and the numbers held; the head then moved a fourth time without
+  touching the comparison.** The measurement at `1ee7a815c` is the same as the two
+  before it: 1,439 requests, 0 exceptions, 0 denied network, 0 hrana violations, 3
+  byte-for-byte matches, 1,436 normalized-only (707 slot id only, 729 slot id and class
+  order, 0 other), no status or length mismatches, accepted with
+  `qualifiedNormalizedAccepted: true` and `strictExactAccepted: false`, and all five
+  `same*` gates true. Custody: **329** executed source files checked against their Git
+  blobs with 0 mismatches — one more than before, because `request-context.ts` now
+  exports `installAsyncLocalStorage` and the handler loads it. The Ruby capture is the
+  same bytes for the third time, digest `5c26b8d8…` under the documented algorithm. The
+  head then moved to `6d6ce7b68`, and the five paths that changed are all in
+  `reference-harness/browser/` and `reference-harness/runner/test/`; `src/`,
+  `tools/same-database/` and `reference-harness/fixtures/` are identical, so the
+  measurement still describes the current head's engine, tool and data. **The preflight
+  passes every check it can make** with its pin at `1ee7a815c`: engine continuity, both
+  plan digests, the 1,439 request count, the 15 fixture files, and the harness
+  source-qualification rule, with the one `KNOWN` line being the corpus binding by
+  design. The repository is private, the remote is the project's own, the lane branch
+  carries 8 commits of this lane's own work, and nothing has been pushed.

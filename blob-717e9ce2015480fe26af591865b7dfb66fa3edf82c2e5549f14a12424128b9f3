@@ -1,0 +1,92 @@
+// Opt-in integration: no private content, credentials, names or paths in the
+// report. Public/default runs explicitly skip when no private source is set.
+import { expect, it } from "vitest";
+import Database from "better-sqlite3";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { importFromSqlite } from "../../tools/migrate/generalized-import.mjs";
+import { LocalSqliteToolDriver } from "../../tools/migrate/import.mjs";
+import { createRecoverySnapshot, restoreRecoverySnapshot } from "../../tools/migrate/recovery.mjs";
+import { scratchDir, cleanupScratch } from "../support/scratch-dir.mjs";
+import { LocalSqliteDriver } from "../../src/server/drivers/local-sqlite.js";
+import { runAuthMigrations } from "../../src/card/auth/migrations.js";
+import { SessionStore, signinAccount } from "../../src/card/auth/index.js";
+import { configurePasswordHashing, legacyDigest, isPbkdf2Hash } from "../../src/card/auth/password-hash.js";
+import { parseDelayedJobHandler } from "../../src/card/delayed-job/delayed-job.js";
+
+const sourcePath = process.env.DECKO_MIGRATION_SOURCE_SQLITE;
+it.skipIf(!sourcePath)("preserves private account/rule/job records and recovers a migrated account shape", async () => {
+  const root = scratchDir("private-migration-recovery-");
+  const databasePath = join(root, "target.sqlite");
+  const importer = new LocalSqliteToolDriver(databasePath);
+  const source = new Database(sourcePath!, { readonly: true, fileMustExist: true });
+  const report: Record<string, unknown> = {};
+  let importerClosed = false;
+  let driver: LocalSqliteDriver | undefined;
+  try {
+    const start = Date.now();
+    const stats = await importFromSqlite({ sourcePath: sourcePath!, driver: importer, ddlPath: fileURLToPath(new URL("../../db/schema.sqlite.sql", import.meta.url)), tables: ["cards", "card_references", "delayed_jobs"], onProgress: rows => console.log(`private migration rows processed: ${rows}`) });
+    report.import = { counts: stats.counts, elapsedMs: Date.now() - start, tableElapsedMs: stats.tableElapsedMs, errors: stats.errors.length, scope: "cards, references and delayed jobs; full history import is a separate exercise" };
+    expect(stats.errors.length).toBe(0);
+    const contentColumn = (source.prepare("PRAGMA table_info(cards)").all() as { name: string }[]).some(row => row.name === "db_content") ? "db_content" : "content";
+    const fields = `id, left_id, right_id, type_id, trash, read_rule_id, read_rule_class, ${contentColumn} AS db_content`;
+    let differences = 0;
+    for (const row of source.prepare(`SELECT ${fields} FROM cards`).iterate() as Iterable<Record<string, unknown>>) {
+      const target = (await importer.query("SELECT id, left_id, right_id, type_id, trash, read_rule_id, read_rule_class, db_content FROM cards WHERE id=?", [row.id])).rows[0];
+      if (JSON.stringify(row) !== JSON.stringify(target)) differences++;
+    }
+    report.preservedCardFields = { compared: stats.counts.cards, differences, fields: "IDs, junctions, type, trash, read rule, content" };
+    expect(differences).toBe(0);
+    const ids = Object.fromEntries((source.prepare("SELECT codename,id FROM cards WHERE codename IN ('account','email','password','salt','status')").all() as { codename: string; id: number }[]).map(row => [row.codename, row.id]));
+    const counts: Record<string, number> = {};
+    for (const code of ["account", "password", "email"]) counts[code] = Number((await importer.query("SELECT COUNT(*) AS n FROM cards WHERE right_id=?", [ids[code]])).rows[0]!.n);
+    report.accountRecords = { ...counts, includesTrashed: true };
+    expect(counts).toEqual({ account: 278, password: 261, email: 272 });
+    let supportedJobs = 0, unsupportedJobs = 0;
+    for (const row of (await importer.query("SELECT handler FROM delayed_jobs", [])).rows) {
+      try { parseDelayedJobHandler(String(row.handler)); supportedJobs++; } catch { unsupportedJobs++; }
+    }
+    report.jobs = { preserved: stats.counts.delayed_jobs, parseable: supportedJobs, unsupported: unsupportedJobs, executed: 0 };
+    importer.close(); importerClosed = true;
+    driver = new LocalSqliteDriver({ path: databasePath });
+    await runAuthMigrations(driver);
+    const candidate = (await driver.query<{ account_id: number; password_id: number; email: string; salt: string }>(
+      "SELECT a.id AS account_id, p.id AS password_id, e.db_content AS email, COALESCE(s.db_content,'') AS salt FROM cards a JOIN cards p ON p.left_id=a.id AND p.right_id=? AND p.trash=0 JOIN cards e ON e.left_id=a.id AND e.right_id=? AND e.trash=0 JOIN cards st ON st.left_id=a.id AND st.right_id=? AND st.db_content='active' AND st.trash=0 LEFT JOIN cards s ON s.left_id=a.id AND s.right_id=? AND s.trash=0 JOIN cards h ON h.id=a.left_id AND h.trash=0 WHERE a.right_id=? AND a.trash=0 ORDER BY a.id LIMIT 1",
+      [ids.password, ids.email, ids.status, ids.salt, ids.account],
+    )).rows[0];
+    expect(Boolean(candidate)).toBe(true);
+    if (!candidate) throw new Error("No active migrated account shape");
+    // Real passwords are unknown. Change ONLY a copied field to an invented
+    // password, preserving the real account's junction/lookup/status shape.
+    const password = "isolated-migration-shape-only";
+    await driver.query("UPDATE cards SET db_content=? WHERE id=?", [await legacyDigest(password, candidate.salt), candidate.password_id]);
+    configurePasswordHashing({ mode: "pbkdf2", iterations: 100_000 });
+    const filesPath = join(root, "synthetic-uploads");
+    mkdirSync(filesPath);
+    const snapshotDir = join(root, "snapshot");
+    await createRecoverySnapshot({ databasePath, filesPath, snapshotDir });
+    const signed = await signinAccount(driver, new SessionStore({ driver }), candidate.email, password);
+    expect(signed.ok).toBe(true);
+    expect(isPbkdf2Hash(String((await driver.query<{ db_content: string }>("SELECT db_content FROM cards WHERE id=?", [candidate.password_id])).rows[0]!.db_content))).toBe(true);
+    const restored = await restoreRecoverySnapshot({ snapshotDir, targetDir: join(root, "restored") });
+    const recovered = new LocalSqliteDriver({ path: restored.databasePath });
+    try {
+      const again = await signinAccount(recovered, new SessionStore({ driver: recovered }), candidate.email, password);
+      expect(again.ok).toBe(true);
+      await recovered.query("CREATE TABLE recovery_write_probe(value TEXT)", []);
+      await recovered.query("INSERT INTO recovery_write_probe(value) VALUES (?)", ["restored"]);
+      expect((await recovered.query("SELECT COUNT(*) n FROM recovery_write_probe", [])).rows).toEqual([{ n: 1 }]);
+      report.accountRecovery = { copiedCredential: true, originalPasswordsTested: 0, signedIn: signed.ok, signedInAfterRestore: again.ok, restoredWrite: true };
+    } finally { recovered.close(); }
+    report.realUploads = "not supplied; empty synthetic upload tree only";
+    report.customModSources = "not supplied; bundled mod behavior is covered separately";
+    if (process.env.DECKO_MIGRATION_REPORT) writeFileSync(process.env.DECKO_MIGRATION_REPORT, `${JSON.stringify(report, null, 2)}\n`);
+  } finally {
+    configurePasswordHashing(undefined);
+    source.close();
+    if (!importerClosed) importer.close();
+    driver?.close();
+    cleanupScratch();
+  }
+}, 120_000);

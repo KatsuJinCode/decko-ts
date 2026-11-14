@@ -1,0 +1,412 @@
+// View permission contract for the html-format surface: which task
+// each view requires, which renders skip the check entirely, which view a
+// denial renders instead, and the denial markup itself.
+//
+// Ruby mechanism (card-1.110.0 lib/card/view/permission.rb):
+// - view_perms (permission.rb:13-15): `setting(:perms) || :read` — every
+//   view checks :read unless its definition carries a perms directive.
+//   `setting(:perms, view)` -> format.view_setting (permission.rb:29-32 ->
+//   format/render.rb:55-57 `try` of the directive method) -> nil when the
+//   view definition carries no directive (view_opts.rb:17 VIEW_SETTINGS
+//   includes :perms; :52-56 define_view_setting_method stores the literal).
+// - altered_view (permission.rb:19-23): `return if skip_check?;
+//   alter_unknown || denial` — the voo#ok_view chain (view.rb:85-88) runs
+//   BEFORE view dispatch (render.rb:59-63 view_method raises the
+//   unsupported-view UserError only after a passed check), so a failed
+//   check on ANY checked view — ported or not — renders the denial
+//   substitution instead of the view.
+// - skip_check? (permission.rb:25-27):
+//   `normalized_options[:skip_perms] || view_perms == :none`.
+//   :skip_perms is the documented render/nest option (view/options.rb:73
+//   "do not check permissions for this view (Boolean)"), set explicitly
+//   (card-mod-account set/self/signin.rb:201 nests its signin fields with
+//   skip_perms: true) or by the UNDERSCORE render form: RENDER_METHOD_RE
+//   (format/method_delegation.rb:5-9) captures a leading `_` and
+//   render_args (:48-55) sets `args[:skip_perms] = true if underscore`.
+// - denial (permission.rb:46-50):
+//   `format.view_for_denial requested_view, (crud?(task) && task)`.
+// - denied_task (permission.rb:56-64): `Array.wrap(view_perms).find` —
+//   the first failing task; CRUD tasks (`crud?`, :52-54) check
+//   `format.ok? task`, any other symbol calls that method on the format
+//   (`format.send task` — set-scoped predicates like
+//   card-mod-account right/account views' :verify_url_ok?).
+//
+// The check chain behind format.ok? (card-1.110.0 lib/card/format/
+// error.rb:5-8 `task = :create if task == :update && card.new_card?;
+// card.ok? task` -> card-mod-permissions set/all/permissions.rb:35-45
+// ok? memoizes `send "ok_to_#{action}?"`) lives in view-task-rules.ts for
+// the non-read tasks; ok_to_read? is ported in read-rules.ts.
+//
+// Mod declarations resolve separately through the card's set/format
+// setting-method chain. The static tables below remain the fallback for
+// compiled core views and engines without a bound mod loader.
+
+/** Ruby's CRUD task set (permission.rb:11 CRUD = create read update delete). */
+export type CrudTask = "read" | "create" | "update" | "delete";
+export type ViewPermissionDirective = string | readonly string[];
+
+/** What a view's perms directive resolves to (permission.rb:13-15).
+ *  - check: false        -> perms: :none (skip_check? short-circuits)
+ *  - check: true, CRUD   -> denied_task checks format.ok?(task)
+ *  - check: true, method -> denied_task calls format.send(method); ported
+ *    method predicates (can_configure?, cardtype.rb:68-70) resolve through
+ *    the gate input's predicateAllowed hook. Explicit mod declarations
+ *    raise for unsupported predicates; the compiled fallback retains its
+ *    prior unresolved-predicate behavior. */
+export type ViewPermsResolution =
+  | { readonly check: false }
+  | { readonly check: true; readonly predicate: false; readonly task: CrudTask }
+  | { readonly check: true; readonly predicate: true; readonly task: string };
+
+/**
+ * Views whose definition carries `perms: :none` — skip_check? renders them
+ * without any permission check (permission.rb:25-27). All-set (+ base
+ * format) directives the html surface inherits, per gem file:
+ * - card-mod-format set/all/title.rb:2,16,20 (title, title_link,
+ *   title_no_link — the html body redefinitions keep the :none directive)
+ * - card-mod-format set/all/base.rb:14,26,27,28,31,35,39 (name, key,
+ *   linkname, url, url_link, link, nav_link), base.rb:109 (blank)
+ * - card-mod-format set/all/html/header.rb:5,15 (header, header_title)
+ * - card-mod-format set/all/html/head.rb:21,31,35,37,41,54,61 (page_title,
+ *   head, meta_tags, page_title_tag, favicon_tag, rss_links,
+ *   stylesheet_tags)
+ * - card-mod-format set/all/error.rb:2,6,10,14,18,23 (compact_missing,
+ *   unknown, server_error, denial, not_found, bad_address);
+ *   set/all/html/error.rb:33,53 (the html compact_missing/errors bodies)
+ * - card-mod-format set/all/html/frame.rb:2 (flash)
+ * - card-mod-script set/all/head_javascript.rb:9,17,25,29 (script_variables,
+ *   javascript_tags, script_calls, javascript_include_tag)
+ * - card-mod-layout set/all/navbar_links.rb:2 (navbar_links)
+ * - card-mod-follow set/all/notify/base_views.rb:13,33,41,49 (subedits,
+ *   followed, follower, unfollow_url)
+ *
+ * last_action is NOT here (was, citing card-mod-email set/all/email_text.rb:10
+ * `perms: :none`): the live registry does not resolve it to :none —
+ * view_setting(:perms, :last_action) = nil, because card-mod-history
+ * set/all/history/views.rb:46 redefines `view :last_action` with no directive
+ * and is the operative definition on this surface (card-mod-follow's
+ * html_views.rb:2 carries the same plain form, commented out). Nil ->
+ * permission.rb:15's :read fallback. The live registry's answer wins over
+ * the gem citation.
+ */
+const PERMS_NONE = new Set<string>([
+  "title",
+  "title_link",
+  "title_no_link",
+  "name",
+  "key",
+  "linkname",
+  "url",
+  "url_link",
+  "link",
+  "nav_link",
+  "blank",
+  "header",
+  "header_title",
+  "page_title",
+  "head",
+  "meta_tags",
+  "page_title_tag",
+  "favicon_tag",
+  "rss_links",
+  "stylesheet_tags",
+  "compact_missing",
+  "unknown",
+  "server_error",
+  "denial",
+  "not_found",
+  "bad_address",
+  "errors",
+  "subedits",
+  "followed",
+  "follower",
+  "unfollow_url",
+  "flash",
+  "javascript_include_tag",
+  "javascript_tags",
+  "script_calls",
+  "script_variables",
+  "navbar_links",
+  // card-mod-search set/self/search.rb:70 view :search_box_complete,
+  // perms: :none — the navbox typeahead's JSON is an every-page surface for
+  // anonymous and signed-in visitors alike (modViewPerms's config table is
+  // not yet consumed by this gate — the hardcoded table is the registry
+  // this gate reads; select2_option's identical :none config has the same
+  // latent gap, left for its own lane).
+  "search_box_complete",
+]);
+
+/**
+ * Views with a non-default CRUD `perms:` directive (all-set definitions;
+ * everything else
+ * card-mod-edit set/all/edit_content.rb:28 (edit), edit_name.rb:2,6
+ * (edit_name, name_form), edit_type.rb:2,8 (edit_type, edit_type_form),
+ * edit_inline.rb:2 (edit_inline), form.rb:20 (edit_in_form),
+ * editing.rb:3 (board) — all :update; new.rb:4,8,19,23 (new,
+ * new_in_modal, simple_new, new_fields) — all :create;
+ * card-mod-comment set/all/comment.rb:46 (comment_box) — :update;
+ * card-mod-format set/all/html/head.rb:34-39 (universal_edit_button) —
+ * :update; the directive must resolve before the gate can deny anonymous,
+ * because the privileged arms render the wiki link where the anonymous
+ * arms render "" (the :blank denial).
+ *
+ * configure_button is a METHOD-predicate perms view — the ported one:
+ * card-mod-format set/type/cardtype.rb:61
+ * `view :configure_button, cache: :never, denial: :blank,
+ * perms: :can_configure?` (ruby's denied_task does
+ * `format.send :can_configure?`, permission.rb:61 — cardtype.rb:68-70:
+ * `Card.fetch(card, :type, :structure, new: {}).ok? :update`). The
+ * predicate resolves through ViewPermsGateInput.predicateAllowed.
+ */
+const VIEW_PERMS_DIRECTIVES: Record<string, CrudTask | string> = {
+  edit: "update",
+  edit_name: "update",
+  name_form: "update",
+  edit_type: "update",
+  edit_type_form: "update",
+  edit_inline: "update",
+  edit_in_form: "update",
+  board: "update",
+  comment_box: "update",
+  universal_edit_button: "update",
+  new: "create",
+  new_in_modal: "create",
+  simple_new: "create",
+  new_fields: "create",
+  // card-mod-tinymce_editor set/all/reference_editor/nest_editor.rb:22
+  // (`perms: :create`) and nest_image.rb:13 (`perms: :create`) — the
+  // reference-editor nest views; the live surface
+  // resolves both to perms "create".
+  nest_content: "create",
+  new_image: "create",
+  configure_button: "can_configure?",
+  // card-mod-format set/type/cardtype.rb:53 `view :configure_link,
+  // cache: :never, perms: :can_configure?` - the helper view the
+  // configure_button body calls, same predicate (cardtype.rb:57-59).
+  configure_link: "can_configure?",
+};
+
+const CRUD_TASKS: readonly CrudTask[] = ["read", "create", "update", "delete"];
+
+/** A create editor must not borrow a persisted card's private field values
+ *  using create permission alone. This is a security boundary beyond Ruby's
+ *  plain :create directive; rowless create forms retain that directive. */
+export function createFormOnStoredCard(view: string, isNewCard: boolean | undefined): boolean {
+  return isNewCard === false && ["new", "new_in_modal", "simple_new", "new_fields"].includes(view);
+}
+
+/** permission.rb:13-15 `setting(:perms) || :read` for the registry. */
+export function resolveViewPerms(view: string): ViewPermsResolution {
+  if (PERMS_NONE.has(view)) return { check: false };
+  const directive = Object.hasOwn(VIEW_PERMS_DIRECTIVES, view) ? VIEW_PERMS_DIRECTIVES[view] : undefined;
+  if (directive === undefined) {
+    return { check: true, predicate: false, task: "read" };
+  }
+  if ((CRUD_TASKS as readonly string[]).includes(directive)) {
+    return { check: true, predicate: false, task: directive as CrudTask };
+  }
+  return { check: true, predicate: true, task: directive };
+}
+
+/** Array.wrap(view_perms): only a scalar `none` skips unknown alteration.
+ * An empty array performs no task checks, while ["none"] calls a predicate. */
+export function viewPermissionChecks(view: string, declared?: ViewPermissionDirective): readonly Exclude<ViewPermsResolution, {check: false}>[] | null {
+  if (declared === undefined) {
+    const resolution = resolveViewPerms(view);
+    return resolution.check ? [resolution] : null;
+  }
+  if (declared === "none") return null;
+  const tasks = typeof declared === "string" ? [declared] : declared;
+  return tasks.map(task => (CRUD_TASKS as readonly string[]).includes(task)
+    ? {check: true, predicate: false, task: task as CrudTask}
+    : {check: true, predicate: true, task});
+}
+
+/** permission.rb:13-15 collapsed to the simple shape ("none" skips
+ *  the check; every checked view resolves :read on this port's surface —
+ *  the non-read CRUD tasks ride viewRequiresTask/resolveViewPerms).
+ *  Alias kept for the read-permission consumers. */
+export type ViewPerms = "read" | "none";
+
+/** permission.rb:13-15 collapsed to the simple shape ("none" skips
+ *  the check; every checked view resolves :read on this port's surface —
+ *  the non-read CRUD tasks ride viewRequiresTask/resolveViewPerms). */
+export function viewPerms(view: string): ViewPerms {
+  return resolveViewPerms(view).check ? "read" : "none";
+}
+
+/** True when the view resolves to a NON-read check — the engine's trigger
+ *  for precomputing ok_to_<task>? verdicts. Views that skip (perms :none)
+ *  never need
+ *  verdicts. */
+export function viewRequiresTask(view: string, declared?: ViewPermissionDirective): boolean {
+  return viewPermissionChecks(view, declared)?.some(check => !check.predicate && check.task !== "read") === true;
+}
+
+/** permission.rb:25-27 `normalized_options[:skip_perms]` — the documented
+ *  Boolean render/nest option (view/options.rb:73). */
+export function renderOptSkipPerms(renderOpts: Record<string, unknown>): boolean {
+  return renderOpts["skip_perms"] === true;
+}
+
+/** format/error.rb:27-31 view_for_denial — `view_setting(:denial, view) ||
+ *  :denial`. The live surface carries FIVE denial: :blank directives:
+ *  menu (menu.rb:8), edit_link (menu.rb:16), list_of_changes
+ *  (card-mod-follow set/all/notify/base_views.rb:6), comment_box
+ *  (card-mod-comment set/all/comment.rb:46), universal_edit_button
+ *  (html/head.rb:39 — its anonymous blank arm is pinned by the same
+ *  survey). comment_box is still a non-ported
+ *  view, listed for the record. configure_button joins as a SET-scoped one
+ *  (card-mod-format set/type/cardtype.rb:61 `denial: :blank`, invisible to
+ *  the all-set survey) — the anonymous surface serves zero configure
+ *  strings, so the denied render degrades to EMPTY, not the quiet-denial
+ *  span. Absent = Ruby's :denial view. */
+const DENIAL_VIEW = new Map<string, string>([
+  ["menu", "blank"],
+  ["edit_link", "blank"],
+  ["list_of_changes", "blank"],
+  ["universal_edit_button", "blank"],
+  ["comment_box", "blank"],
+  ["configure_button", "blank"],
+]);
+
+/** format/error.rb:27-31 view_for_denial — the replacement view name for a
+ *  denied render (undefined = Ruby's :denial view). */
+export function viewDenialView(view: string): string | undefined {
+  return DENIAL_VIEW.get(view);
+}
+
+/**
+ * The denial view's rendered bytes for the html surface.
+ *
+ * :denial (card-mod-format set/all/html/error.rb:83-85) renders
+ * `focal? ? loud_denial : quiet_denial`. The engine render surface is
+ * non-focal in every context it renders (show_layout? true, main? false ->
+ * html_format.rb:16 focal? false), so the quiet branch is the byte shape
+ * the port must match:
+ *
+ *     def quiet_denial                       # error.rb:185-189
+ *       wrap_with :span, class: "denied" do
+ *         "<!-- Sorry, you don't have permission (#{@denied_task}) -->"
+ *       end
+ *     end
+ *
+ * @denied_task is `crud?(task) && task` (permission.rb:49 -> error.rb:28) —
+ * the task symbol for CRUD tasks, FALSE for method-predicate tasks. Ruby
+ * interpolates false as "false", verified by executing its quiet_denial.
+ *
+ * The loud branch (error.rb:191-210, the framed "Sorry" page) only fires
+ * for focal renders (main? true) — a page-layer concern; the engine never
+ * sets main, so it is unreachable here.
+ */
+export function quietDenial(task = "read"): string {
+  return `<span class="denied"><!-- Sorry, you don't have permission (${task}) --></span>`;
+}
+
+/** What the gate needs from its host: the per-task verdict source (the
+ *  engine's precomputed ok_to_<task>? state — read from the verdict map,
+ *  non-read through the isTaskDenied hook) plus the normalized render
+ *  options and the new-card flag the format already holds. */
+export interface ViewPermsGateInput {
+  /** Set- and format-resolved directive. Undefined keeps the compiled core fallback. */
+  readonly declaredPerms?: ViewPermissionDirective;
+  readonly declaredDenial?: string;
+  /** The voo's normalized options — skip_perms rides here
+   *  (permission.rb:26). */
+  readonly renderOpts: Record<string, unknown>;
+  /** format/error.rb:6 — `task = :create if task == :update &&
+   *  card.new_card?`. Ruby new_card? = not in the database; the port's
+   *  equivalent for prepared render cards is id === undefined. */
+  readonly isNewCard?: boolean;
+  /** format/error.rb:5-8 ok? — undefined means "cannot be verified", so
+   *  the caller treats it as denied (the same contract the read side
+   *  follows: canReadByRuleLookup returns false rather than undefined when a
+   *  walk cannot resolve, because permission_rule_id resolving nil is what
+   *  Ruby denies on, permissions.rb:139-146). */
+  readonly taskAllowed: (task: CrudTask) => boolean | undefined;
+  /** THIS render's format class name ("html" default). The denial VIEW's
+   *  body is format-dependent: the html override is
+   *  `focal? ? loud_denial : quiet_denial` (set/all/html/error.rb:75-77 —
+   *  the quiet span), while the BASE format's :denial is
+   *  `focal? ? t(:format_denial) : ""` (set/all/error.rb:13-15) — EMPTY
+   *  for a nested render. The email_text dispatch (card-mod-email's
+   *  text-message :core) renders through the base lineage
+   *  (EmailTextFormat < TextFormat < Format), so its denials are "":
+   *  exactly why the follower notification's TEXT message renders
+   *  `was just  by` (double space) where the html message renders the
+   *  span. Optional: absent means the html shape (every caller
+   *  outside the email-text format). */
+  readonly formatName?: string;
+  /** permission.rb:61 method predicates — `format.send task` for the
+   *  non-CRUD perms directives. can_configure? (cardtype.rb:68-70) is the
+   *  one ported predicate; the hook returns undefined for predicates it
+   *  cannot verify. Explicit mod directives raise for an unsupported
+   *  predicate; the static compiled fallback retains its prior behavior. */
+  readonly predicateAllowed?: (predicate: string) => boolean | undefined;
+}
+
+/**
+ * The altered_view denial decision for a KNOWN card (permission.rb:19-23
+ * after the caller handled alter_unknown): undefined = render the view;
+ * a string = the denial bytes that REPLACE the whole view (the check runs
+ * before hooks and dispatch, so nothing else of the view renders).
+ *
+ * Order per permission.rb:
+ *   1. skip_check? (:25-27) — perms :none or the skip_perms option
+ *   2. denial (:46-50) — first failing task of view_perms (CRUD tasks
+ *      check the precomputed ok_to_<task>? verdicts; METHOD predicates
+ *      resolve through the optional predicateAllowed hook — can_configure?
+ *      is the one ported predicate (cardtype.rb:68-70); an absent hook or
+ *      an unsupported explicit mod predicate raises visibly)
+ *   3. view_for_denial (format/error.rb:27-31) — `denial:`-configured
+ *      views render that view instead of :denial; :blank renders "".
+ */
+export function viewPermissionDenial(
+  view: string,
+  input: ViewPermsGateInput,
+): string | undefined {
+  return viewPermissionDecision(view, input)?.markup;
+}
+
+/** One evaluation supplies both substitution and the failing task. The
+ * renderer must dispatch the selected denial body without checking it again. */
+export function viewPermissionDecision(view: string, input: ViewPermsGateInput): {task: CrudTask | false; markup: string} | undefined {
+  const denied = viewDeniedTask(view, input);
+  if (denied === undefined) return undefined;
+  const deniedLabel = denied.task === false ? "false" : denied.task;
+  const blank = (input.declaredDenial ?? viewDenialView(view)) === "blank"
+    || (input.formatName !== undefined && input.formatName !== "html");
+  return {task: denied.task, markup: blank ? "" : quietDenial(deniedLabel)};
+}
+
+/** Keep the declared failing task for the denial label. Format#ok? may
+ * check create for a new card's update directive without renaming it. */
+export function viewDeniedTask(view: string, input: ViewPermsGateInput): {task: CrudTask | false} | undefined {
+  const checks = viewPermissionChecks(view, input.declaredPerms);
+  if (checks === null || renderOptSkipPerms(input.renderOpts)) return undefined;
+  for (const resolution of checks) {
+    if (resolution.predicate) {
+      // permission.rb:61 format.send task. A declared unsupported method
+      // raises visibly; it must not grant access to a custom view.
+      const allowed = input.predicateAllowed?.(resolution.task);
+      if (allowed === undefined && input.declaredPerms !== undefined) {
+        const error = new Error(`View permission predicate is not implemented: ${resolution.task}`);
+        error.name = "UnimplementedViewPermissionPredicateError";
+        throw error;
+      }
+      if (allowed !== false) continue;
+      // permission.rb:49 crud?(task) && task — false for method predicates.
+      return {task: false};
+    } else {
+      let task = resolution.task;
+      if (task === "update" && input.isNewCard === true) task = "create"; // format/error.rb:6
+      const allowed = input.taskAllowed(task);
+      if (allowed === true || (allowed === undefined && input.declaredPerms === undefined)) {
+        if (createFormOnStoredCard(view, input.isNewCard) && input.taskAllowed("update") !== true) return {task: "update"};
+        continue;
+      }
+      return {task: resolution.task};
+    }
+  }
+  return undefined;
+}

@@ -1,0 +1,79 @@
+import {readFileSync} from 'node:fs';
+import {pathToFileURL} from 'node:url';
+
+const schema='decko-api-key-view-capture/1';
+const authMethods=['current_id','as_id','always_ok?'];
+const plain=value=>value!==null&&typeof value==='object'&&!Array.isArray(value)
+  &&[Object.prototype,null].includes(Object.getPrototypeOf(value));
+const hash=value=>typeof value==='string'&&/^[0-9a-f]{64}$/.test(value);
+const identity=value=>Number.isSafeInteger(value)&&value>0;
+const own=(object,key)=>plain(object)&&Object.hasOwn(object,key);
+
+export class ApiKeyCaptureEvidenceError extends Error {
+  constructor(problems){super('API-key capture evidence is unverified: '+problems.join('; '));this.name='ApiKeyCaptureEvidenceError';this.problems=problems;}
+}
+
+/** Observed actor evidence is checked against independently supplied pins.
+ * This validates neither a complete database snapshot nor an immutable runtime.
+ * Existing native isolation and source/data admission gates remain required. */
+export function assertApiKeyViewCapture(capture,expected) {
+  const problems=[];
+  const need=(condition,message)=>{if(!condition)problems.push(message);};
+  need(plain(expected),'external expectation object missing');
+  if(!plain(expected))throw new ApiKeyCaptureEvidenceError(problems);
+  for(const key of ['producer_sha256','helper_sha256','database_identity_sha256'])need(hash(expected[key]),'invalid external '+key);
+  need(identity(expected.bot_id),'invalid external bot_id');
+  need(plain(expected.runtime),'external runtime pins missing');
+  for(const key of ['ruby','platform','decko','card'])need(typeof expected.runtime?.[key]==='string'&&expected.runtime[key].length>0,'external runtime '+key+' missing');
+  need(plain(expected.auth_sources),'external auth source pins missing');
+  for(const key of authMethods)need(own(expected.auth_sources,key)&&hash(expected.auth_sources[key]),'external auth source '+key+' missing');
+  need(plain(expected.renders)&&Object.keys(expected.renders).length>0,'external render inventory missing');
+  for(const row of Object.values(expected.renders??{}))need(plain(row)&&hash(row.target_sha256),'external target identity missing');
+  need(plain(capture),'capture object missing');
+  need(own(capture,'capture_evidence')&&plain(capture.capture_evidence),'observed actor evidence missing');
+  if(problems.length)throw new ApiKeyCaptureEvidenceError(problems);
+  const evidence=capture.capture_evidence;
+  need(evidence.schema===schema,'observed actor schema mismatch');
+  for(const key of ['producer_sha256','helper_sha256','database_identity_sha256'])need(hash(evidence[key])&&evidence[key]===expected[key],key+' mismatch');
+  need(plain(evidence.runtime),'observed runtime missing');
+  for(const key of ['ruby','platform','decko','card'])need(own(evidence.runtime,key)&&evidence.runtime[key]===expected.runtime[key],'runtime '+key+' mismatch');
+  for(const key of authMethods){
+    const source=evidence.auth_sources?.[key];
+    need(own(evidence.auth_sources,key)&&plain(source)&&hash(source.sha256)&&source.sha256===expected.auth_sources[key]
+      &&typeof source.path==='string'&&source.path.length>0,'auth source '+key+' mismatch');
+  }
+  for(const key of ['current_id','as_id']){
+    const initial=evidence.initial_auth?.[key];
+    need(own(evidence.initial_auth,key)&&plain(initial)&&typeof initial.defined==='boolean'
+      &&(initial.value===null||identity(initial.value))&& (initial.defined||initial.value===null),'pre-seed '+key+' initialization missing');
+  }
+  const names=Object.keys(expected.renders).sort();
+  for(const [label,record] of [['render bodies',capture.rendered],['render evidence',evidence.renders]])
+    need(plain(record)&&JSON.stringify(Object.keys(record).sort())===JSON.stringify(names),label+' inventory mismatch');
+  for(const key of names){
+    const row=evidence.renders?.[key],body=capture.rendered?.[key];
+    need(typeof body==='string'&&body.length>0&&!body.startsWith('CAPTURE_ERROR:'),'failed or missing rendered body');
+    need(plain(row)&&hash(row.target_sha256)&&row.target_sha256===expected.renders[key].target_sha256,'target identity mismatch');
+    need(plain(row?.permissions)&&row.permissions.read===true&&row.permissions.update===true,'observed bot permissions missing');
+    for(const phase of ['before','after']){
+      const actor=row?.[phase];
+      need(plain(actor)&&identity(actor.current_id)&&identity(actor.effective_id)&&identity(actor.bot_id)
+        &&actor.current_id===expected.bot_id&&actor.effective_id===expected.bot_id&&actor.bot_id===expected.bot_id
+        &&actor.always_ok===true,'current/effective actor mismatch '+phase+' render');
+    }
+  }
+  if(problems.length)throw new ApiKeyCaptureEvidenceError(problems);
+  return {scope:'Actor-bound API-key view capture preflight only; full runtime/data admission and byte comparison remain separate',renders:names.length};
+}
+
+export function validateCaptureFiles(capturePath,expectationPath) {
+  return assertApiKeyViewCapture(JSON.parse(readFileSync(capturePath,'utf8')),JSON.parse(readFileSync(expectationPath,'utf8')));
+}
+
+if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
+  try{
+    const args=process.argv.slice(2);
+    if(args.length!==4||args[0]!=='--capture'||args[2]!=='--expected')throw new Error('Supply --capture FILE --expected INDEPENDENT_PIN_FILE');
+    console.log(JSON.stringify(validateCaptureFiles(args[1],args[3])));
+  }catch(error){console.error(error.message);process.exitCode=2;}
+}

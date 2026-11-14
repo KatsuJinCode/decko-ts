@@ -1,0 +1,25 @@
+{
+  "row": "validate-javascript-syntax",
+  "event_file": "card-mod-script-0.20.0/set/type/java_script.rb",
+  "event": "validate_javascript_syntax",
+  "notes": [
+    "the pinned gemset carries no uglifier, so the COMPILER is a stand-in: it raises the error class the body's own rescue names (Uglifier::Error), and the capture records how the body handles that error. The body itself is the gem's own bytes"
+  ],
+  "stand_ins": {
+    "Uglifier": {
+      "singleton": true,
+      "method": "compile",
+      "raises": "unexpected token )",
+      "error": "Uglifier::Error"
+    }
+  },
+  "constants": {
+    "Utils.ansi2html": "the answer"
+  },
+  "scenarios": [
+    {
+      "name": "a java script the compiler refuses: the body adds the compiler's message inside a pre block",
+      "attributes": { "content": "var x = ;" }
+    }
+  ]
+}

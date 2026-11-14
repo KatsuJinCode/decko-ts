@@ -1,0 +1,74 @@
+# mx-B-065: no request returned a 5xx
+
+The roster row `mx-B-065-9-timings` (surface "9. timings") reads "no
+request returned a 5xx", verdict PASS, bucket DONE. The registry's
+ledger entry for the row
+(C:/localProjects/brandonDojoTech/docs/registry/instrument-coverage-matrix.json,
+action ACT-065, check_ids ["B-065"]) records the live-acceptance-lane
+entry pass (the live run of 2026-10-16T14:01:03Z) and the whole-harness
+entry pass. This receipt is the family's own adjudication of the row
+at this tip.
+
+## What the row is
+
+Across the whole signed-in exercise, every request the run's browser
+and journey code issues must be answered by the engine without a
+server error: a 5xx anywhere in the run is the row's failure, whatever
+the check that issued the request concluded about its own predicate.
+
+## The instrument
+
+"no request returned a 5xx" (tools/edge-signed-in-exercise.mjs:1447,
+wired at the end of the journeys' health group): the run's request
+ledger (`ledger()`, one row per request the run observed, with method,
+path and status) is filtered to rows with `status >= 500`, and the
+check passes when that set is empty. The check's evidence names the
+first offenders when any exist (:1447, `fiveHundreds`, each rendered
+`method path status`), so a failure names the request that broke the
+row rather than a bare count. Because the ledger counts EVERY request
+the run observed, the check is run-wide: no journey's traffic is
+exempt.
+
+## The oracle
+
+The oracle is the row's own contract plus the run's ledger: zero
+server-error responses across the exercise. The registry's ledger
+entries are the row's prior measurements (the live lane's pass on the
+2026-10-16 live build, the whole-harness pass). WHAT IS ORACLE-MATCHED
+AND WHAT IS NOT: the graded fact (no status >= 500 in the run's own
+record of every request) is read from the same ledger the timings leg
+reads; the statuses are the engine's own answers, not the harness's
+inference. NOT oracle-matched: there is no Ruby byte arm for a
+server-error absence; the row grades the port's answers in this run,
+and the registry's live entry is its own record, not this lane's.
+
+## The measurement at this tip
+
+    node tools/edge-signed-in-exercise.mjs \
+      --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 \
+      --out .runtime/signed-in-exercise-round12b-20261026/rows-r4/report.md
+
+    source 3e4791cb61d9260e9f69b0df69e5e30222747630, started
+    2026-10-26T03:43:16.527Z, completed 2026-10-26T04:08:30.378Z,
+    the source files clean
+    verdict: PASS
+
+The named check in this run:
+
+    no request returned a 5xx
+        {"fiveHundreds":[]}
+
+The check is green in each of this lane's four runs at this tip
+(rows-r1 through rows-r4, 3,920 to 3,970 engine requests observed per
+run), including rows-r2, the run under the heaviest load, whose other
+failures were latency-shaped and none of them a 5xx. The run this
+receipt cites graded 251 of 253 checks passed; the two failures are
+the owner-audit search-suggestion latency rows, neither of them this
+row.
+
+## What this receipt does NOT claim
+
+- The graded fact is rows-r4's ledger. No claim is made about the live
+  deployment's answers, and the registry's live entry is not
+  re-measured here.
+- Nothing deploys and nothing touches live.

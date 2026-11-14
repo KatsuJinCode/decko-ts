@@ -1,0 +1,64 @@
+{
+  "contract": "A card whose input is a plain text field can be edited and saved, and the new content shows on the card.",
+  "facts": {
+    "content_setter": "self.db_content = standardize_content value",
+    "default_input_type": "def default_input_type",
+    "default_input_type_body": "def default_input_type\n    :rich_text",
+    "hidden_input": "hidden_field :content, class: classy(\"d0-card-content\")",
+    "input_method": "def input_method input_type",
+    "input_method_body": "\"#{input_type}_input\"",
+    "input_type_from_rule": "card.rule(:input_type)&.gsub(/[\\[\\]]/, \"\")&.tr(\" \", \"_\")",
+    "input_view_dispatch": "try(input_method(input_type))",
+    "list_input_option_text_area": "basket[:list_input_options] << \"text area\"",
+    "list_input_option_text_field": "basket[:list_input_options] << \"text field\"",
+    "placeholder_text": "def placeholder_text\n    \"\"",
+    "set_content_body": "self.content = prepare_db_content",
+    "set_content_event": "event :set_content, :store, on: :save do",
+    "text_area_input": "text_area :content, rows: 5, class: \"d0-card-content\",",
+    "text_field_input": "text_field :content, class: classy(\"d0-card-content\"), placeholder: placeholder_text",
+    "update_route": "card.new_card? ? create : handle { card.update! params[:card]&.to_unsafe_h }"
+  },
+  "gem_home": "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
+  "oracle": {
+    "content_setter": {
+      "file_sha256": "c02e8c2eac6efb222fd9fbfd0c6a9aae535f8782ab2eb61644e631aae1360e19",
+      "first_line": 9,
+      "gem": "card-1.110.0",
+      "last_line": 13,
+      "marker": "def content= value",
+      "marker_line": 10,
+      "path": "lib/card/content/all.rb",
+      "source": "\n      def content= value\n        self.db_content = standardize_content value\n      end\n"
+    },
+    "editor_set_module": {
+      "file_sha256": "7d8086720896347f7742aed8ac872e8d55387f74f8d3ab885c0fb2ab62a15177",
+      "first_line": 1,
+      "gem": "card-mod-edit-0.20.0",
+      "last_line": 63,
+      "marker": "def input_type",
+      "marker_line": 5,
+      "path": "set/all/editor.rb",
+      "source": "basket[:list_input_options] << \"text area\"\nbasket[:list_input_options] << \"text field\"\n\nformat :html do\n  def input_type\n    voo.input_type.present? ? voo.input_type : input_type_from_rule\n  end\n\n  def input_type_from_rule\n    card.rule(:input_type)&.gsub(/[\\[\\]]/, \"\")&.tr(\" \", \"_\")\n  end\n\n  def input_method input_type\n    \"#{input_type}_input\"\n  end\n\n  # core view of card is input\n  def input_defined_by_card\n    with_card input_type do |input_card|\n      nest input_card, view: :core\n    end\n  end\n\n  # move somewhere more accessible?\n  def with_card mark\n    card = Card[mark]\n    yield card if card\n  rescue Card::Error::CodenameNotFound\n    nil\n  end\n\n  view :input, unknown: true, cache: :never do\n    try(input_method(input_type)) ||\n      input_defined_by_card ||\n      send(input_method(default_input_type))\n  end\n\n  def default_input_type\n    :rich_text\n  end\n\n  def rich_text_input\n    send \"#{Cardio.config.rich_text_editor || :text_area}_editor_input\"\n  end\n\n  def text_area_input\n    text_area :content, rows: 5, class: \"d0-card-content\",\n                        \"data-card-type-code\": card.type_code\n  end\n\n  def text_field_input\n    text_field :content, class: classy(\"d0-card-content\"), placeholder: placeholder_text\n  end\n\n  def hidden_input\n    hidden_field :content, class: classy(\"d0-card-content\")\n  end\n\n  # for override (placeholder for placeholders)\n  def placeholder_text\n    \"\"\n  end\nend"
+    },
+    "set_content_event": {
+      "file_sha256": "44b78da993b5e4b8e3bb34c2b652ccf1888a319450d3052d564a37cc40a464dc",
+      "first_line": 1,
+      "gem": "card-1.110.0",
+      "last_line": 6,
+      "marker": "event :set_content",
+      "marker_line": 1,
+      "path": "mod/core/set/all/content.rb",
+      "source": "event :set_content, :store, on: :save do\n  self.content = prepare_db_content\n  @selected_action_id = @selected_content = nil\n  clear_drafts\nend\n"
+    },
+    "update_route": {
+      "file_sha256": "e7bfa0708ae57dc7165f300f32744b68a5765252bb6f5c9ffd193f02686e7a24",
+      "first_line": 13,
+      "gem": "decko-0.20.0",
+      "last_line": 17,
+      "marker": "def update",
+      "marker_line": 14,
+      "path": "lib/card_controller/rest.rb",
+      "source": "\n    def update\n      card.new_card? ? create : handle { card.update! params[:card]&.to_unsafe_h }\n    end\n"
+    }
+  }
+}

@@ -1,0 +1,102 @@
+// Independent reattack of exact 10c9b33503abea7009bac2ed4db6c96791bee5c7.
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { inspect } from "node:util";
+import { configureDeploymentReferenceStorage } from "../../src/card/render/deployment-reference-storage.js";
+import { derivedCloudAttachmentSource, formatFileCore, setDeploymentCloudAssetHost } from "../../src/card/render/views.js";
+import { prepareDeploymentMigration } from "../../src/server/deployment-migration-config.js";
+import { recaptchaConfigFromHostEnv } from "../../src/server/staging-server-recaptcha-env-config.js";
+import { recaptchaOn } from "../../src/card/mod-loader/mods/card-mod-recaptcha.js";
+
+const identifier = "(archive)/12/34.abr.1.doc";
+const referenceStorage = { archive: { origin: "https://files.example", filenamePolicy: "stored-leaf", readOnly: true } };
+const config = (extra: object = {}) => JSON.stringify({ version: 1, referenceStorage, ...extra });
+const selected = () => prepareDeploymentMigration({ DECKO_MIGRATION_CONFIG: config() });
+beforeEach(() => {
+  configureDeploymentReferenceStorage(undefined); setDeploymentCloudAssetHost(undefined);
+  vi.stubGlobal("fetch", vi.fn(() => { throw new Error("Network forbidden in deployment reattack"); }));
+});
+afterEach(() => {
+  expect(fetch).not.toHaveBeenCalled(); vi.unstubAllGlobals();
+  configureDeploymentReferenceStorage(undefined); setDeploymentCloudAssetHost(undefined);
+});
+
+it("retains stored leaf in actual File rendering for canonical HTTPS host spellings", () => {
+  selected();
+  for (const host of ["https://FILES.example:443/", "https://files.EXAMPLE/"]) {
+    setDeploymentCloudAssetHost(host);
+    expect(formatFileCore(identifier, { cardName: "Synthetic" })).toContain("/files/12/34.abr.1.doc");
+  }
+  expect(derivedCloudAttachmentSource(identifier, "https://files.example:444")).toBe("https://files.example:444/files/12/1.doc");
+});
+
+it("arms required anti-spam using trimmed effective aliases without mutating the source", () => {
+  const input = Object.freeze({ DECKO_MIGRATION_CONFIG: config({ antiSpam: "required", environmentAliases: [
+    { source: "SITE_SOURCE", target: "DECKO_RECAPTCHA_SITE_KEY" },
+    { source: "SECRET_SOURCE", target: "DECKO_RECAPTCHA_SECRET_KEY" },
+  ] }), SITE_SOURCE: " synthetic-site ", SECRET_SOURCE: " synthetic-secret " });
+  const prepared = prepareDeploymentMigration(input);
+  const actual = recaptchaConfigFromHostEnv(prepared.environment)!;
+  expect(actual.siteKey).toBe("synthetic-site"); expect(actual.secretKey).toBe("synthetic-secret");
+  expect(recaptchaOn({ siteKey: actual.siteKey, secretKey: actual.secretKey, envController: true,
+    signedIn: false, alwaysOk: false, needsSetup: false, captchaRuleContent: "1" })).toBe(true);
+  expect(input).not.toHaveProperty("DECKO_RECAPTCHA_SECRET_KEY");
+});
+
+for (const defect of ["required-key", "score", "alias-conflict", "public-url", "reference-origin", "unknown-field"] as const) {
+  it(`failed ${defect} preparation keeps the prior selected map and redacts complete diagnostics`, () => {
+    selected();
+    const sentinel = "SYNTHETIC_VALUE_NOT_FOR_ERROR_OUTPUT";
+    const common = { referenceStorage: { archive: { ...referenceStorage.archive, origin: "https://replacement.example" } } };
+    const input: Record<string, string> = { DECKO_MIGRATION_CONFIG: config(common) };
+    if (defect === "required-key") input.DECKO_MIGRATION_CONFIG = config({ ...common, antiSpam: "required" });
+    if (defect === "score") Object.assign(input, { DECKO_RECAPTCHA_SITE_KEY: "synthetic-site", DECKO_RECAPTCHA_SECRET_KEY: "synthetic-secret", DECKO_RECAPTCHA_MINIMUM_SCORE: sentinel });
+    if (defect === "alias-conflict") Object.assign(input, { DECKO_MIGRATION_CONFIG: config({ ...common, environmentAliases: [{ source: "SOURCE", target: "TARGET" }] }), SOURCE: sentinel, TARGET: "synthetic-other" });
+    if (defect === "public-url") Object.assign(input, { DECKO_MIGRATION_CONFIG: config({ ...common, publicUrlEnvironment: ["PUBLIC_SOURCE"] }), PUBLIC_SOURCE: `https://user:${sentinel}@public.example` });
+    if (defect === "reference-origin") input.DECKO_MIGRATION_CONFIG = config({ referenceStorage: { archive: { ...referenceStorage.archive, origin: `https://user:${sentinel}@files.example` } } });
+    if (defect === "unknown-field") input.DECKO_MIGRATION_CONFIG = config({ ...common, unsupported: sentinel });
+    const original = { ...input };
+    let failure: unknown;
+    try { prepareDeploymentMigration(input); } catch (error) { failure = error; }
+    expect(failure).toBeInstanceOf(Error);
+    expect(inspect(failure, { depth: null })).not.toContain(sentinel);
+    expect(input).toEqual(original);
+    expect(derivedCloudAttachmentSource(identifier)).toBe("https://files.example/files/12/34.abr.1.doc");
+  });
+}
+
+it("sequential no-manifest preparation clears only the selected reference map", () => {
+  selected();
+  const defaults = Object.freeze({ DECKO_ORIGIN: "https://default.example" });
+  expect(prepareDeploymentMigration(defaults).environment).toBe(defaults);
+  expect(derivedCloudAttachmentSource(identifier, "https://files.example")).toBe("https://files.example/files/12/1.doc");
+  selected();
+  expect(derivedCloudAttachmentSource(identifier)).toBe("https://files.example/files/12/34.abr.1.doc");
+});
+
+it("both actual Node public-origin bindings use the prepared alias", () => {
+  const environment = Object.freeze({ SOURCE_ORIGIN: "https://public.example", DECKO_MIGRATION_CONFIG: config({ environmentAliases: [{ source: "SOURCE_ORIGIN", target: "DECKO_ORIGIN" }], publicUrlEnvironment: ["DECKO_ORIGIN"] }) });
+  const migrationDeployment = prepareDeploymentMigration(environment);
+  const source = readFileSync(new URL("../../vm-staging-server.mjs", import.meta.url), "utf8");
+  const expression = /^const DECKO_ORIGIN = ([^\r\n]+);$/m.exec(source)?.[1];
+  expect(expression).toBeDefined();
+  expect(new Function("process", "port", "migrationDeployment", `return (${expression});`)({ env: environment }, 3100, migrationDeployment)).toBe("https://public.example");
+  const boot = /function ensureBootValuesOrigin\(\) \{([\s\S]*?)\n\}/.exec(source)?.[1];
+  expect(boot).toBeDefined();
+  expect(new Function("process", "migrationDeployment", boot!)({ env: environment }, migrationDeployment)).toBe("https://public.example");
+});
+
+it("the actual Node token binding honors an accepted required token-secret alias", () => {
+  const environment = Object.freeze({ SOURCE_SIGNING_KEY: "SYNTHETIC_SIGNING_KEY", DECKO_MIGRATION_CONFIG: config({
+    environmentAliases: [{ source: "SOURCE_SIGNING_KEY", target: "DECKO_TOKEN_SECRET" }], requiredEnvironment: ["DECKO_TOKEN_SECRET"],
+  }) });
+  const prepared = prepareDeploymentMigration(environment);
+  expect(prepared.environment.DECKO_TOKEN_SECRET).toBe("SYNTHETIC_SIGNING_KEY");
+  const source = readFileSync(new URL("../../vm-staging-server.mjs", import.meta.url), "utf8");
+  const expression = /const TOKEN_SECRET\s*=\s*([^;]+);/.exec(source)?.[1];
+  expect(expression).toBeDefined();
+  const fallback = vi.fn(() => ({ toString: () => "SYNTHETIC_RANDOM_FALLBACK" }));
+  const resolved = new Function("process", "crypto", "migrationDeployment", `return (${expression});`)({ env: environment }, { randomBytes: fallback }, prepared);
+  expect.soft(resolved).toBe("SYNTHETIC_SIGNING_KEY");
+  expect(fallback).not.toHaveBeenCalled();
+});

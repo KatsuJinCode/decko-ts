@@ -1,0 +1,92 @@
+{
+  "row": "reg-routes-A22",
+  "gemset": "decko-0.20.0 + card-1.110.0 + card-mod-format-0.20.0 (pinned)",
+  "wildcardRoute": {
+    "verb": "get",
+    "patterns": [
+      "*mark"
+    ],
+    "requirements": {
+      "view": "bad_address"
+    },
+    "action": "card#read",
+    "order": 28
+  },
+  "routesBeforeWildcard": [
+    {
+      "verb": "get",
+      "patterns": [
+        ":mark/:view(.:format)"
+      ],
+      "requirements": {},
+      "action": "card#read",
+      "order": 27
+    },
+    {
+      "verb": "get",
+      "patterns": [
+        "*mark"
+      ],
+      "requirements": {
+        "view": "bad_address"
+      },
+      "action": "card#read",
+      "order": 28
+    }
+  ],
+  "routeTableSize": 29,
+  "badAddressViewSource": [
+    {
+      "line": 23,
+      "text": "  view :bad_address, perms: :none do"
+    },
+    {
+      "line": 24,
+      "text": "    root.error_status = 404"
+    },
+    {
+      "line": 25,
+      "text": "    t(:format_bad_address)"
+    },
+    {
+      "line": 26,
+      "text": "  end"
+    }
+  ],
+  "badAddressErrorSource": [
+    {
+      "line": 81,
+      "text": "    # error with url"
+    },
+    {
+      "line": 82,
+      "text": "    class BadAddress < UserError"
+    },
+    {
+      "line": 83,
+      "text": "      self.status_code = 404"
+    },
+    {
+      "line": 84,
+      "text": "      self.view = :bad_address"
+    },
+    {
+      "line": 85,
+      "text": "    end"
+    }
+  ],
+  "unknownCardViews": [
+    {
+      "label": "a KNOWN card keeps the bad_address view",
+      "error": null,
+      "view": "bad_address",
+      "rootErrorStatus": null
+    },
+    {
+      "label": "an UNKNOWN card's view is replaced",
+      "error": null,
+      "view": "not_found",
+      "rootErrorStatus": 404
+    }
+  ]
+}

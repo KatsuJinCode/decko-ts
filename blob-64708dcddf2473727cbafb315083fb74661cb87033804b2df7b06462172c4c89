@@ -1,0 +1,125 @@
+# Decko TypeScript port: local source package
+
+This is a proposed source snapshot for review. It has not been published or
+accepted upstream. It is a derivative of Decko, targeting card 1.110.0 and
+decko 0.20.0. See NOTICE and LICENSE for attribution and terms.
+
+**Preparation status:** at source checkpoint
+7f88f3fe1ab8ee6c7279fa8b64dce7de5afac453, no final package for that source has
+been exported, built or graded by this preparation. No current package pass or
+failure is asserted. Final source-supply, privacy, sharing approval and native
+POSIX export-mode acceptance remain open.
+
+**Historical diagnostic:** engine 470b11d8350cb85af01c06f08b549bc51c4c042c,
+packaging/checker source 55d93fc504b6167f76b605d0d0fca105f256ad4a, recorded
+seven default-mode notification-link mismatches. Its rendering, semantics and
+persistence tallies belong only to that fixed historical run. It was an
+explicitly unqualified diagnostic, not a release grade. Source/checker bindings
+and the preserved older observation are in KNOWN-COMPARISON-FAILURE.md. They do
+not determine the result of the current source or settings.
+
+**Library source:** the complete official TinyMCE 5.10.7 source tree now
+accompanies its minified library under third-party-source/tinymce-5.10.7/.
+Its provenance record pins the official tag commit and every source file.
+Independent source-supply review and overall sharing approval remain separate.
+
+## Build from an empty working directory
+
+Prerequisites: Node.js 24 and npm, with a C++ build toolchain if the platform
+has no better-sqlite3 prebuilt binary. Dependency versions and integrity values
+are pinned by package-lock.json. No cloud account or credentials are required.
+The following is an inert recipe to qualify after source/package freeze, not
+an execution record or installation approval. Once the exact source package
+and prerequisites are independently qualified, its intended commands are:
+
+```sh
+npm ci --ignore-scripts
+npm run build:engine
+npm test
+```
+
+The build compiles src/ to dist/src/, verifies the static minifier, copies
+vendor/ into dist/vendor/, and imports the actual renderer and compiler.
+Earlier package checks reused installed dependency bytes. They do not qualify
+a clean installation, native module availability or a build for the current
+source. Each platform and exact locked dependency set needs its own check.
+The intended build receipt is .runtime/browser-build.json. Its provenance
+helper accepts HANDOVER-MANIFEST.json without an own Git checkout; an actual
+no-Git build of the current frozen package still needs its execution receipt.
+
+`npm test` here is deliberately a package smoke check, not the development
+repository's complete test suite. It opens the included synthetic deck, renders
+a card and checks the license and runtime assets. It does not establish full
+Ruby parity, hosted runtime support, or migration acceptance.
+
+## Run locally
+
+Prepare a disposable copy of the synthetic deck and its files. This also
+applies the data-version migration the renderer needs. Start the Node host
+with the copy's path and an unused port:
+
+```sh
+node tools/handover/prepare-demo.mjs
+node vm-staging-server.mjs ./tmp/demo/deck.sqlite3 3100
+```
+
+The held recipe is intended for a loopback host. Health, Home and graceful
+shutdown must be checked against the frozen host's actual control protocol;
+the older HTTP recipe is not current host/lifecycle acceptance. Never point
+this review host at a production database.
+The preparation command copies the synthetic deck's files beside its database
+and refuses to overwrite an existing demo. Hosting and deployment configuration are
+outside this local review package; no command above creates cloud resources.
+
+`node tools/handover/verify-local-host.mjs` is the held local-check helper;
+its compatibility with the frozen host and successful child cleanup require
+their own execution receipt. It was not run for the current preparation.
+
+## Local migration and recovery
+
+Importer and recovery source is retained under tools/migrate/.
+Read docs/handover/MIGRATION.md and docs/migration-recovery.md before using them.
+Recovery operates on isolated SQLite copies and upload trees, refuses existing
+restore destinations and preserves the failed target for reconciliation.
+Database and file writers must be paused for the snapshot; this is not an
+atomic live backup across both stores. Private inputs and their generated
+snapshots must stay outside the proposed source package.
+
+The development tests cited by those documents are not this package's smoke
+suite. Local synthetic checks do not establish a complete private-deck migration,
+original-user-password access, hosted providers, real attachments or a cutover.
+
+## Reproduce comparisons
+
+The intended snapshot selects the reference harness and its synthetic-v1 and
+write-battery-v1 decks. After final freeze and a qualified build, its intended
+diagnostic commands are:
+
+```sh
+node reference-harness/runner/run.mjs --adapter reference-harness/adapters/ts/adapter.json --fixture reference-harness/fixtures/synthetic-v1 --out tmp/reference-run
+node reference-harness/runner/grade.mjs --fixture reference-harness/fixtures/synthetic-v1 --actual tmp/reference-run --diagnostic
+```
+
+For a source-only snapshot without an own Git checkout, this command requests
+diagnostic comparison explicitly; it cannot produce a candidate or
+release pass. A release checkout must separately supply its exact full
+candidate commit to the source-qualifying checker. Read the raw report for rendering, semantics, persistence and side effects
+separately, including failures and skipped operations. Comparison rules are in
+reference-harness/SPEC.md and NORMALIZATION-EVIDENCE.md. Captured expectations
+are evidence for their fixed synthetic deck, not all existing decks.
+Fixture directories deliberately withheld pending disclosure are excluded from
+this package. A runner naming those missing steps is reporting unexecuted
+coverage, not a successful check of those steps.
+
+## Review order and privacy
+
+Read PORT-SCOPE.md, DIFFERENCES.md, RUBY-MAP.md, then source and NOTICE.
+When generated by the current writer, HANDOVER-MANIFEST.json inventories every
+packaged file with original Git mode, byte size and SHA-256. Windows mode
+metadata does not establish native POSIX permission preservation.
+Its sourceCommit names the packaging commit and engineCommit names the separately
+designated integrated engine checkpoint. These are distinct source identities.
+No .git directory or development commit history is included. Private history
+was not rewritten. The package scanner is a pattern check, not a guarantee that
+arbitrary secrets or real-deck data are absent; independent content and license
+review remains required before this exact snapshot can be approved for sharing.

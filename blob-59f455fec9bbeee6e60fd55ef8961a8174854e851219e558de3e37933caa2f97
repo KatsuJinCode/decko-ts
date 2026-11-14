@@ -1,0 +1,28 @@
+// Issue 253 lane scratch: for each committed native Ruby body, report every
+// name_context occurrence with surrounding context, so the warm-cache effect
+// can be read off the exact native bytes.
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+
+const base = 'docs/runs/name-context253-2026-11-01/';
+const manifest = JSON.parse(
+  execFileSync('git', ['show', `HEAD:${base}raw-handoff-manifest.json`], { encoding: 'utf8' }),
+);
+
+for (const entry of manifest.files) {
+  if (!entry.name.startsWith('raw-bodies/')) continue;
+  const buf = execFileSync('git', ['cat-file', 'blob', `HEAD:${base}${entry.name}`], {
+    maxBuffer: 1 << 30,
+  });
+  if (createHash('sha256').update(buf).digest('hex') !== entry.sha256) {
+    throw new Error(`hash mismatch ${entry.name}`);
+  }
+  const text = buf.toString('utf8');
+  const hits = [...text.matchAll(/name_context/g)];
+  console.log(`\n### ${entry.name} (${buf.length}B) name_context occurrences: ${hits.length}`);
+  for (const hit of hits) {
+    const start = Math.max(0, hit.index - 170);
+    const end = Math.min(text.length, hit.index + 60);
+    console.log(`  @${hit.index}: ${JSON.stringify(text.slice(start, end))}`);
+  }
+}

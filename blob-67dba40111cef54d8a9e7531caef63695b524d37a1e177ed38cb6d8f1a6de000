@@ -1,0 +1,117 @@
+{
+  "registerRow": "reg-mods-22",
+  "registerRowNumber": 22,
+  "mod": "card-mod-list",
+  "verdict": "WORKING",
+  "gap": "two measured gaps remain, so this row is open: (1) delist's body is not ported and its set membership has no port surface - Ruby reaches the event through include_set, which is CORE DSL (card-1.110.0 lib/card/set/inheritance.rb:32-41), so any set file, a custom mod's set file included, can include Card::Set::Abstract::Delist and the event then fires for the cards whose chain carries it; the port's manifest declares no include field and its set-module inclusion is the generated static include graph, so the port can never answer true for that path. The stock deck has no includer (the only reference to the module name in the pinned gemset is card-mod-list-0.20.0/spec/set/abstract/delist_spec.rb:1), which is why the event is dead THERE - absence from the stock deck is not general unreachability. (2) the third native ok_item_types override, TypePlusRight::BootswatchSkin::Stylesheets (card-mod-bootstrap-0.20.0 set/type_plus_right/bootswatch_skin/stylesheets.rb:3-5, ok_item_types %i[css scss]), is keyed on the RIGHT codename port-side (mod-event-state-sources.ts hasOkItemTypes and card-mod-list.ts OK_ITEM_TYPES_BY_RIGHT_CODENAME), while Ruby's set is the PAIR: a <skin-typed>+*stylesheets card, whose right codename is stylesheets. The port answers validate_item_type? false there, so it ACCEPTS a save Ruby refuses.",
+  "oracle": {
+    "source": "the pinned Ruby gem tree C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
+    "gem": "C:\\localProjects\\decko-ruby-oracle-gems\\ruby\\3.4.0\\gems\\card-mod-list-0.20.0",
+    "readBy": "tools/audit-mod-declaration-coverage.mjs (the family's declaration census) and this tool"
+  },
+  "port": {
+    "file": "src/card/mod-loader/mods/card-mod-list.ts",
+    "setPaths": [
+      "abstract/01_list",
+      "abstract/01_list/events",
+      "abstract/01_list/html_views",
+      "abstract/01_list/other_views",
+      "abstract/codename_list",
+      "abstract/delist",
+      "abstract/id_list",
+      "abstract/reference_list",
+      "all/supports_content_options",
+      "right/content_option_view",
+      "right/content_options",
+      "self/content_option_view",
+      "self/content_options",
+      "self/input_type/right/content_options",
+      "type/link_list",
+      "type/list",
+      "type/nest_list",
+      "type/pointer"
+    ],
+    "viewNames": [
+      "autocomplete",
+      "checkbox",
+      "input",
+      "links",
+      "list",
+      "multiselect",
+      "nest_list_input",
+      "one_line_content",
+      "radio",
+      "select",
+      "view_list"
+    ],
+    "eventNames": [
+      "add_and_drop_items",
+      "delist",
+      "insert_item_event",
+      "validate_item_type",
+      "validate_item_uniqueness"
+    ]
+  },
+  "gem": {
+    "setFiles": [
+      "abstract/01_list.rb",
+      "abstract/01_list/events.rb",
+      "abstract/01_list/html_views.rb",
+      "abstract/01_list/other_views.rb",
+      "abstract/codename_list.rb",
+      "abstract/delist.rb",
+      "abstract/id_list.rb",
+      "abstract/reference_list.rb",
+      "all/supports_content_options.rb",
+      "right/content_option_view.rb",
+      "right/content_options.rb",
+      "self/content_option_view.rb",
+      "self/content_options.rb",
+      "self/input_type/right/content_options.rb",
+      "type/link_list.rb",
+      "type/list.rb",
+      "type/nest_list.rb",
+      "type/pointer.rb"
+    ],
+    "viewNames": [
+      "autocomplete",
+      "checkbox",
+      "content",
+      "core",
+      "input",
+      "links",
+      "list",
+      "multiselect",
+      "nest_list_input",
+      "one_line_content",
+      "radio",
+      "select",
+      "titled",
+      "view_list"
+    ],
+    "eventNames": [
+      "add_and_drop_items",
+      "delist",
+      "insert_item_event",
+      "validate_item_type",
+      "validate_item_uniqueness"
+    ]
+  },
+  "namedSkips": [
+    {
+      "kind": "view",
+      "name": "core",
+      "reason": "the engine's own view table registers it (src/card/render/views.ts)"
+    },
+    {
+      "kind": "view",
+      "name": "content",
+      "reason": "the engine's own view table registers it (src/card/render/views.ts)"
+    },
+    {
+      "kind": "view",
+      "name": "titled",
+      "reason": "the engine's own view table registers it (src/card/render/views.ts)"
+    }
+  ]
+}

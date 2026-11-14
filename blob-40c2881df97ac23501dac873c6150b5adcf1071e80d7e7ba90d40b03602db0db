@@ -1,0 +1,112 @@
+import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { createRenderTestStorage, seedCard, seedReference, type RenderTestStorage } from "../render/render-test-storage.js";
+import { ModLoader, modEngineHost } from "../../../src/card/mod-loader.js";
+import cardModHistory from "../../../src/card/mod-loader/mods/card-mod-history.js";
+import { renderPageWithStatus } from "../../../src/card/render/page.js";
+import type { CardsRow, CardActsRow, CardActionsRow, CardChangesRow } from "../../../src/server/schema.js";
+import { ActWriter } from "../../../src/card/history/write-path.js";
+
+// These are unchanged raw action-summary fragments from the controlled
+// synthetic-v1 same-data Ruby/local-Bunny capture, not normalized HTML.
+const fixture = JSON.parse(readFileSync(new URL("./fixtures/html-history-captured.json", import.meta.url), "utf8")) as {
+  supportCards: CardsRow[];
+  supportReferences: Array<{ referer_id: number; referee_id: number; referee_key: string; ref_type: string }>;
+  rows: { cards: CardsRow[]; acts: CardActsRow[]; actions: CardActionsRow[]; changes: CardChangesRow[] };
+  cases: Array<{ name: string; actionId: number; ruby: { slot: string; content: string }; bunny: { slot: string; content: string } }>;
+};
+
+async function insertRows(s: RenderTestStorage, table: "cards" | "card_acts" | "card_actions", rows: object[]): Promise<void> {
+  for (const row of rows) {
+    const columns = Object.keys(row);
+    await s.counting.query(`INSERT INTO ${table}(${columns.join(",")}) VALUES(${columns.map(() => "?").join(",")})`, Object.values(row));
+  }
+}
+
+async function setup() {
+  const s = await createRenderTestStorage();
+  const loader = new ModLoader([{ manifest: cardModHistory }]);
+  try {
+    for (const row of fixture.supportCards) {
+      await seedCard(s, {
+        id: row.id, ...(row.name !== null ? { name: row.name } : {}),
+        ...(row.codename !== null ? { codename: row.codename } : {}),
+        ...(row.left_id !== null ? { leftId: row.left_id } : {}),
+        ...(row.right_id !== null ? { rightId: row.right_id } : {}),
+        typeId: row.type_id, dbContent: row.db_content ?? "",
+        createdAt: row.created_at, updatedAt: row.updated_at,
+        ...(row.read_rule_id !== null ? { readRuleId: row.read_rule_id } : {}),
+        ...(row.read_rule_class !== null ? { readRuleClass: row.read_rule_class } : {}),
+      });
+    }
+    for (const row of fixture.supportReferences) await seedReference(s, row.referer_id, row.referee_id, row.referee_key);
+    await insertRows(s, "cards", fixture.rows.cards);
+    await insertRows(s, "card_acts", fixture.rows.acts);
+    await insertRows(s, "card_actions", fixture.rows.actions);
+    // Only the wrapper layout is synthetic. Action-card and history rows are
+    // byte/value-identical to the two saved native/local captures.
+    const allId = fixture.supportCards.find(row => row.codename === "all")!.id;
+    await seedCard(s, { id: 5001, name: "History Test Layout", typeId: 39, dbContent: "{{_main|titled}}" });
+    await seedCard(s, { id: 5002, name: "*layout", codename: "layout", typeId: 6 });
+    await seedCard(s, { id: 5003, leftId: allId, rightId: 5002, dbContent: "[[History Test Layout]]" });
+    await seedReference(s, 5003, 5001, "history_test_layout");
+    loader.load(); await loader.installInto(modEngineHost(s.engine, s.fetcher)); s.engine.modLoader = loader;
+    s.fetcher.installNameEnvironment(); await s.fetcher.codenames.ensureLoaded();
+    return { ...s, close: () => { loader.reset(); s.close(); } };
+  } catch (error) { loader.reset(); s.close(); throw error; }
+}
+
+function actionSummaryContent(html: string, name: string): string {
+  const marker = `<div id="${name.toLowerCase().replaceAll(" ", "_")}-action_summary-view"`;
+  const start = html.indexOf(marker);
+  expect(start, "history must contain the captured action-summary slot").toBeGreaterThanOrEqual(0);
+  return html.slice(html.indexOf(">", start) + 1, html.indexOf("</div>", start));
+}
+
+async function expectUnchangedHistoryRows(s: RenderTestStorage): Promise<void> {
+  expect((await s.counting.query("SELECT * FROM cards WHERE id IN (895,896,897) ORDER BY id", [])).rows).toEqual(fixture.rows.cards);
+  expect((await s.counting.query("SELECT * FROM card_acts ORDER BY id", [])).rows).toEqual(fixture.rows.acts);
+  expect((await s.counting.query("SELECT * FROM card_actions ORDER BY id", [])).rows).toEqual(fixture.rows.actions);
+  expect((await s.counting.query("SELECT * FROM card_changes ORDER BY id", [])).rows).toEqual(fixture.rows.changes);
+}
+
+describe("captured HTML history diff mode", () => {
+  for (const row of fixture.cases) {
+    it.each(["history", "page", "action_summary"])(`${row.name} %s preserves the native escaped source and expansion link`, async view => {
+      const s = await setup();
+      try {
+        await expectUnchangedHistoryRows(s);
+        expect(row.bunny.content).not.toBe(row.ruby.content);
+        const html = view === "page"
+          ? (await renderPageWithStatus(s.engine, row.name, "history")).html
+          : await s.engine.render(row.name, view, view === "action_summary" ? { actionId: String(row.actionId) } : undefined);
+        expect(actionSummaryContent(html, row.name)).toBe(row.ruby.content);
+        await expectUnchangedHistoryRows(s);
+      } finally { s.close(); }
+    });
+  }
+
+  it("uses an included HTML action's mode while the parent keeps ordinary text diffs", async () => {
+    const s = await setup();
+    try {
+      const writer = new ActWriter({ driver: s.counting, actorId: 1, ipAddress: "127.0.0.1" });
+      const parent = await writer.createCard({ name: "Text Parent", key: "text_parent", type_id: 2, db_content: '<div class="parent">Parent plain text.</div>' });
+      await seedReference(s, parent.cardId, 895, "markup_1", "I");
+      const html = await s.engine.render("Text Parent", "history");
+      expect(actionSummaryContent(html, "Markup 1")).toBe(fixture.cases[0]!.ruby.content);
+      expect(actionSummaryContent(html, "Text Parent")).toBe("<ins class='diffins diff-added'>Parent plain text.</ins>");
+    } finally { s.close(); }
+  });
+
+  it("keeps an included text action in text mode under an HTML parent", async () => {
+    const s = await setup();
+    try {
+      const child = await new ActWriter({ driver: s.counting, actorId: 1, ipAddress: "127.0.0.1" })
+        .createCard({ name: "Text Child", key: "text_child", type_id: 2, db_content: '<div class="child">Child plain text.</div>' });
+      await seedReference(s, 895, child.cardId, "text_child", "I");
+      const html = await s.engine.render("Markup 1", "history");
+      expect(actionSummaryContent(html, "Markup 1")).toBe(fixture.cases[0]!.ruby.content);
+      expect(actionSummaryContent(html, "Text Child")).toBe("<ins class='diffins diff-added'>Child plain text.</ins>");
+    } finally { s.close(); }
+  });
+});

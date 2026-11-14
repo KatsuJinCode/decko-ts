@@ -1,0 +1,11 @@
+{
+  "row": "change-bucket-if-read-only",
+  "event_file": "card-mod-carrierwave-0.20.0/set/abstract/attachment/cloud.rb",
+  "event": "change_bucket_if_read_only",
+  "scenarios": [
+    {
+      "name": "an update of a cloud attachment whose bucket is read only: the body takes the storage type from the config",
+      "returns": { "storage_type_from_config": ":cloud" }
+    }
+  ]
+}

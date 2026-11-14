@@ -1,0 +1,79 @@
+import { describe, expect, it } from "vitest";
+import { createRenderTestStorage, seedCard, seedReference } from "../render/render-test-storage.js";
+import { ModLoader, modEngineHost } from "../../../src/card/mod-loader.js";
+import cardModHistory from "../../../src/card/mod-loader/mods/card-mod-history.js";
+import { ActWriter, cardFieldStateFromRow } from "../../../src/card/history/write-path.js";
+import { renderPageWithStatus } from "../../../src/card/render/page.js";
+
+async function historyFixture() {
+  const s = await createRenderTestStorage(), loader = new ModLoader([{ manifest: cardModHistory }]);
+  try {
+    for (const row of [
+      { id: 1, name: "Decko Bot", typeId: 2 }, { id: 2, name: "RichText" },
+      { id: 8, name: "*type", codename: "type", typeId: 14 },
+      { id: 10, name: "*all", codename: "all", typeId: 13 },
+      { id: 11, name: "*self", codename: "self", typeId: 14 },
+      { id: 12, name: "*update", codename: "update", typeId: 14 },
+      { id: 13, name: "Set", codename: "set", typeId: 13 },
+      { id: 14, name: "Setting", codename: "setting", typeId: 14 },
+      { id: 15, name: "Anonymous", codename: "anonymous", typeId: 14 },
+      { id: 16, name: "*read", codename: "read", typeId: 14 },
+      { id: 17, name: "*all+*read", leftId: 10, rightId: 16, typeId: 14, dbContent: "[[Anyone]]" },
+      { id: 18, name: "Anyone", codename: "anyone", typeId: 2 },
+      { id: 20, name: "Html", codename: "html", typeId: 2 },
+      { id: 21, name: "Default Layout", typeId: 20, dbContent: "{{_main|titled}}" },
+      { id: 22, name: "*layout", codename: "layout", typeId: 14 },
+      { id: 23, name: "*all+*layout", leftId: 10, rightId: 22, typeId: 14, dbContent: "[[Default Layout]]" },
+    ]) await seedCard(s, row);
+    await seedReference(s, 17, 18, "anyone");
+    await seedReference(s, 23, 21, "default_layout");
+    const writer = () => new ActWriter({ driver: s.counting, actorId: 1, ipAddress: "127.0.0.1" });
+    const prefix = "A long unchanged prefix with many words before the insertion. ";
+    const suffix = " A long unchanged suffix with many words after the insertion.";
+    const created = await writer().createCard({ name: "History Probe", key: "history_probe", type_id: 2, db_content: prefix + suffix });
+    const before = cardFieldStateFromRow((await s.counting.query("SELECT * FROM cards WHERE id=?", [created.cardId])).rows[0] as never);
+    const updated = await writer().updateCard({ cardId: created.cardId, before, after: { ...before, db_content: prefix + "Small addition." + suffix }, key: "history_probe" });
+    loader.load(); await loader.installInto(modEngineHost(s.engine, s.fetcher)); s.engine.modLoader = loader;
+    s.fetcher.installNameEnvironment(); await s.fetcher.codenames.ensureLoaded();
+    return { ...s, created, updated: updated!, close: () => { loader.reset(); s.close(); } };
+  } catch (error) { loader.reset(); s.close(); throw error; }
+}
+
+describe("history preparation boundaries", () => {
+  it.each([{ cardId: null, draft: 0 }, { cardId: null, draft: 1 }, { cardId: 999999, draft: 0 }])(
+    "omits unavailable actions before projections: %s", async ({ cardId, draft }) => {
+      const s = await historyFixture();
+      try {
+        await s.counting.query("INSERT INTO card_actions(card_id,card_act_id,action_type,draft) VALUES(?,?,1,?)", [cardId, s.updated.actId, draft]);
+        for (const view of ["history", "act", "action_summary"]) {
+          const html = await s.engine.render("History Probe", view, { actId: String(s.updated.actId), actionId: String(s.updated.actionId) });
+          expect(html).toContain("Small addition.");
+          expect(html).not.toContain("render-error");
+        }
+      } finally { s.close(); }
+    },
+  );
+
+  it("retains the missing-create diagnostic for an existing action card", async () => {
+    const s = await historyFixture();
+    try {
+      await seedCard(s, { id: 700, name: "Broken History", typeId: 2 });
+      await s.counting.query("INSERT INTO card_actions(card_id,card_act_id,action_type,draft) VALUES(700,?,1,1)", [s.updated.actId]);
+      await expect(s.engine.render("History Probe", "history")).rejects.toThrow("last_change_on: card 700 has no create action");
+    } finally { s.close(); }
+  });
+
+  it("keeps first, repeated, bare and reset history summary states distinct", async () => {
+    const s = await historyFixture();
+    try {
+      const toggle = `action_expanded?action_id=${s.updated.actionId}&amp;look_in_trash=true`;
+      const first = await renderPageWithStatus(s.engine, "History Probe", "history");
+      expect(first.status).toBe(200); expect(first.html).not.toContain(toggle);
+      const repeated = await renderPageWithStatus(s.engine, "History Probe", "history");
+      expect(repeated.status).toBe(200); expect(repeated.html).toContain(toggle);
+      expect(await s.engine.render("History Probe", "action_summary", { actionId: String(s.updated.actionId) })).toContain(toggle);
+      s.engine.resetCaches();
+      expect((await renderPageWithStatus(s.engine, "History Probe", "history")).html).not.toContain(toggle);
+    } finally { s.close(); }
+  });
+});

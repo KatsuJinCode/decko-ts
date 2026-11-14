@@ -1,0 +1,41 @@
+WITH RECURSIVE
+resolved(id, ckey) AS (
+  SELECT id, "key" FROM cards WHERE "key" IS NOT NULL AND trash = 0
+  UNION
+  SELECT j.id, l.ckey || '+' || r."key" FROM resolved l
+    JOIN cards j ON j.left_id = l.id AND j.trash = 0
+    JOIN cards r ON r.id = j.right_id AND r."key" IS NOT NULL
+  UNION
+  SELECT j.id, l."key" || '+' || r.ckey FROM resolved r
+    JOIN cards j ON j.right_id = r.id AND j.trash = 0
+    JOIN cards l ON l.id = j.left_id AND l."key" IS NOT NULL
+),
+frontier(t, rest) AS (
+  SELECT ?, NULL
+  UNION
+  SELECT f.t, substr(c.db_content, 1, 10000)
+  FROM frontier f
+  JOIN resolved rs ON rs.ckey = f.t
+  JOIN cards c ON c.id = rs.id AND c.trash = 0
+  WHERE f.rest IS NULL AND c.db_content LIKE '%{{%'
+  UNION
+  SELECT f.t, substr(f.rest, instr(f.rest, '{{') + 2) FROM frontier f
+   WHERE f.rest IS NOT NULL AND instr(f.rest, '{{') > 0
+  UNION
+  SELECT DISTINCT lower(replace(trim(CASE WHEN instr(substr(f.rest, instr(f.rest, '{{') + 2, instr(substr(f.rest, instr(f.rest, '{{') + 2), '}}') - 1), '|') = 0 THEN substr(f.rest, instr(f.rest, '{{') + 2, instr(substr(f.rest, instr(f.rest, '{{') + 2), '}}') - 1) ELSE substr(substr(f.rest, instr(f.rest, '{{') + 2, instr(substr(f.rest, instr(f.rest, '{{') + 2), '}}') - 1), 1, instr(substr(f.rest, instr(f.rest, '{{') + 2, instr(substr(f.rest, instr(f.rest, '{{') + 2), '}}') - 1), '|') - 1) END), ' ', '_')), NULL FROM frontier f
+   WHERE f.rest IS NOT NULL AND instr(f.rest, '{{') > 0 AND instr(substr(f.rest, instr(f.rest, '{{') + 2), '}}') > 1
+  UNION
+  SELECT f.t, NULL FROM frontier f
+   WHERE f.rest IS NOT NULL AND instr(f.rest, '{{') = 0
+)
+SELECT c.* FROM cards c WHERE c.trash = 0 AND c.id IN (
+  SELECT j.type_id FROM resolved rs JOIN frontier fj ON fj.t = rs.ckey
+        JOIN cards j ON j.id = rs.id AND j.trash = 0 WHERE j.type_id IS NOT NULL
+  UNION SELECT s.type_id FROM resolved rs JOIN frontier fj ON fj.t = rs.ckey
+        JOIN cards j ON j.id = rs.id AND j.trash = 0
+        JOIN cards s ON s.id IN (j.left_id, j.right_id) WHERE s.type_id IS NOT NULL
+  UNION SELECT j.left_id FROM resolved rs JOIN frontier fj ON fj.t = rs.ckey
+        JOIN cards j ON j.id = rs.id AND j.trash = 0 WHERE j.left_id IS NOT NULL
+  UNION SELECT j.right_id FROM resolved rs JOIN frontier fj ON fj.t = rs.ckey
+        JOIN cards j ON j.id = rs.id AND j.trash = 0 WHERE j.right_id IS NOT NULL
+)

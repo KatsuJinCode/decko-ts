@@ -1,0 +1,44 @@
+import {afterEach,beforeAll,expect,it} from 'vitest';
+import {spawnSync} from 'node:child_process';
+import {writeFileSync,mkdirSync} from 'node:fs';
+import {resolve} from 'node:path';
+import {defineMod} from '../../../src/card/mod-loader/mod-dsl.js';
+import {ModLoader} from '../../../src/card/mod-loader.js';
+import {createRenderTestStorage,seedCard} from '../render/render-test-storage.js';
+
+const cases = [
+  {id:'raw-escaping',tag:'section',defaults:{title:'A&B'},options:{title:'\"<&\'>'},content:'<em>A&B</em>'},
+  {id:'nil-array-callback-interior',tag:'div',defaults:{},options:{},content:['a',null,['b',false,0,'']]},
+  {id:'class-no-default',tag:'div',defaults:{},options:{class:['a',false,'',null,['b','a']]},content:'cake'},
+  {id:'blank-default-class',tag:'div',defaults:{class:' '},options:{class:'call'},content:'cake'},
+  {id:'default-class-false-interior',tag:'div',defaults:{class:'base'},options:{class:[false,'extra']},content:false},
+  {id:'data-html-json',tag:'div',defaults:{},options:{data:{payload:{html:'<em>&</em>',quote:'"',text:'line\u2028end'}}},content:'cake'},
+  {id:'data-flat-json',tag:'div',defaults:{},options:{data:{values:['<','&','>'],enabled:false,count:1.2}},content:'cake'},
+  {id:'textarea',tag:'textarea',defaults:{},options:{disabled:0},content:'\ncontent'},
+  {id:'default-null-override',tag:'section',defaults:{title:'default',data:{one:1}},options:{title:null,data:{two:2}},content:null},
+  {id:'scalar-aria-boolean',tag:'div',defaults:{},options:{aria:{hidden:false,label:'A&B'},hidden:'',readonly:false},content:0},
+] as const;
+let reference:{baseline:unknown,cases:Array<{id:string,body?:string,error?:{class:string,message:string}}>};
+beforeAll(()=>{
+  const native=spawnSync('ruby',[resolve('tests/card/mod-loader/ruby-adversarial-tag-values-probe.rb'),'C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems'],{
+    windowsHide:true,encoding:'utf8',input:JSON.stringify(cases),maxBuffer:Infinity,
+  });
+  expect(native.status,native.stderr).toBe(0);reference=JSON.parse(native.stdout);
+  mkdirSync(resolve('tmp'),{recursive:true});writeFileSync(resolve('tmp/attack-tag-values-native.json'),native.stdout);
+});
+const cleanup:Array<()=>void>=[];
+afterEach(()=>{while(cleanup.length)cleanup.pop()!();});
+for(const request of cases)it(`original tag values: ${request.id}`,async()=>{
+  const storage=await createRenderTestStorage();cleanup.push(()=>storage.close());
+  await seedCard(storage,{id:2,name:'RichText',codename:'basic'});
+  await seedCard(storage,{id:500,name:'Tag Example',typeId:2});
+  const manifest=defineMod('attack_tag_values',({set})=>set('all/attack_tag_values',({format})=>format('html',({wrapper,view})=>{
+    wrapper('attack',request.tag,request.defaults);
+    view('attack_values',{perms:'none'},ctx=>ctx.fmt.callFormatMethod('wrap_with_attack',()=>request.content,request.options) as string);
+  })));
+  const loader=new ModLoader([{manifest}],{});cleanup.push(()=>loader.reset());loader.load();storage.engine.modLoader=loader;
+  let actual;
+  try{actual={id:request.id,body:await storage.engine.render('Tag Example','attack_values')};}
+  catch(error){actual={id:request.id,error:{class:(error as Error).name,message:(error as Error).message}};}
+  expect(actual).toEqual(reference.cases.find(row=>row.id===request.id));
+});

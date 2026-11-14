@@ -1,0 +1,78 @@
+// Preserve the real Node runner's events and explicitly propagate failures.
+import { run } from 'node:test';
+import { createHash } from 'node:crypto';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+
+function json(value) {
+  return JSON.stringify(value, (_key, v) => {
+    if (typeof v === 'bigint') return { type: 'bigint', value: String(v) };
+    if (v instanceof Error) return { name: v.name, message: v.message, stack: v.stack, ...Object.fromEntries(Object.getOwnPropertyNames(v).filter(k => !['name', 'message', 'stack'].includes(k)).map(k => [k, v[k]])) };
+    return v;
+  });
+}
+export async function runNodeTests({ root, files, report }) {
+  root = path.resolve(root);
+  if (files === undefined) {
+    const { nodeTestFiles } = await import('./node-test-runners.mjs');
+    files = nodeTestFiles(root);
+  }
+  const expected = new Set(files.map(file => path.resolve(root, file)));
+  if (!expected.size || expected.size !== files.length) throw Error('nonempty unique Node test file inventory required');
+  for (const file of expected) { const rel = path.relative(root, file); if (rel.startsWith('..') || path.isAbsolute(rel)) throw Error('Node test file escapes selected source root'); }
+  const inputs = () => [...expected].map(file => ({ file: path.relative(root, file).replace(/\\/g, '/'), sha256: createHash('sha256').update(readFileSync(file)).digest('hex') }));
+  const sourceBefore = inputs();
+  if (report) { if (existsSync(report) || existsSync(report + '.events.jsonl')) throw Error('Node evidence output already exists'); mkdirSync(path.dirname(path.resolve(report)), { recursive: true }); writeFileSync(report + '.events.jsonl', '', { flag: 'wx' }); }
+  const seen = new Set(), failures = []; let summary;
+  const stream = run({ files: [...expected], concurrency: 1, cwd: root });
+  for await (const event of stream) {
+    if (report) appendFileSync(report + '.events.jsonl', json(event) + '\n');
+    const data = event.data;
+    if (data?.file && expected.has(path.resolve(data.file))) seen.add(path.resolve(data.file));
+    if (event.type === 'test:fail') failures.push(data);
+    if (event.type === 'test:summary') summary = data;
+  }
+  const missing = [...expected].filter(file => !seen.has(file));
+  const sourceAfter = inputs(), sourceUnchanged = JSON.stringify(sourceBefore) === JSON.stringify(sourceAfter);
+  const result = { runner: 'node:test', node: process.version, files, filesExecuted: files.length - missing.length, missing, sourceBefore, sourceAfter, sourceUnchanged, summary, failures, pass: Boolean(summary) && sourceUnchanged && failures.length === 0 && missing.length === 0 && summary.success === true };
+  if (report) writeFileSync(report, json(result) + '\n', { flag: 'wx' });
+  return result;
+}
+const usage = 'Usage: node tools/run-node-tests.mjs [--root <directory>] [--files-json <inventory.json>] [--report <report.json>]\n'
+  + '       node tools/run-node-tests.mjs --help\n'
+  + 'Without --files-json, discover Node tests under root. Help must be used alone.';
+
+function parseCliArguments(argv) {
+  if (argv.length === 1 && ['--help', '-h'].includes(argv[0])) return { help: true };
+  const allowed = new Set(['--root', '--files-json', '--report']), args = {};
+  for (let index = 0; index < argv.length; index += 2) {
+    const option = argv[index];
+    if (['--help', '-h'].includes(option)) throw Error('Help must be used alone.');
+    if (!allowed.has(option)) throw Error('Unknown option or positional argument: ' + option);
+    if (Object.hasOwn(args, option)) throw Error('Duplicate option: ' + option);
+    const value = argv[index + 1];
+    if (typeof value !== 'string' || !value.trim() || value.startsWith('-')) throw Error('Missing or invalid value for ' + option);
+    args[option] = value;
+  }
+  return args;
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+  try {
+    const args = parseCliArguments(process.argv.slice(2));
+    if (args.help) console.log(usage);
+    else {
+      const root = path.resolve(args['--root'] ?? '.');
+      const files = args['--files-json'] === undefined ? undefined : JSON.parse(readFileSync(args['--files-json'], 'utf8'));
+      if (files !== undefined && (!Array.isArray(files) || !files.length || files.some(file => typeof file !== 'string' || !file.trim())))
+        throw Error('--files-json must contain a nonempty array of file path strings.');
+      const result = await runNodeTests({ root, files, report: args['--report'] });
+      console.log(json({ runner: result.runner, files: result.files.length, filesExecuted: result.filesExecuted, summary: result.summary, failures: result.failures.length, pass: result.pass }));
+      process.exitCode = result.pass ? 0 : 1;
+    }
+  } catch (error) {
+    console.error('Node test runner: ' + (error?.message ?? String(error)));
+    process.exitCode = 1;
+  }
+}

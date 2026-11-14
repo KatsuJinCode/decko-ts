@@ -1,0 +1,66 @@
+{
+  "ruby": "ruby 3.4.11 (2026-09-23 revision 592f1ffdb3) +PRISM [x64-mingw-ucrt]",
+  "source": "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/view/options/voo_api.rb",
+  "sourceSha256": "d07e81178119105aca6307dab56a07b61199ff823ab3294e2785c5ad0067b79f",
+  "methods": {
+    "items": {
+      "code": "def items\n          live_options[:items] ||= {}\n        end",
+      "line": 41
+    },
+    "inherit_from_parent!": {
+      "code": "def inherit_from_parent! option_key\n          return unless (parent_value = parent.live_options[option_key])\n\n          @normalized_options[option_key] ||= parent_value\n        end",
+      "line": 143
+    }
+  },
+  "scope": "Actual original before dispatch and Voo getter/inherit methods; explicit module collection and shallow options adapter, not Rails initialization",
+  "rows": [
+    {
+      "id": "absent",
+      "parentItems": {
+        "view": "name",
+        "size": "medium"
+      },
+      "childItems": {
+        "view": "name",
+        "size": "medium"
+      },
+      "sameParentItems": true
+    },
+    {
+      "id": "nil",
+      "parentItems": {
+        "view": "name",
+        "size": "medium"
+      },
+      "childItems": {
+        "view": "name",
+        "size": "medium"
+      },
+      "sameParentItems": true
+    },
+    {
+      "id": "false",
+      "parentItems": {
+        "view": "name",
+        "size": "medium"
+      },
+      "childItems": {
+        "view": "name",
+        "size": "medium"
+      },
+      "sameParentItems": true
+    },
+    {
+      "id": "explicit-hash",
+      "parentItems": {
+        "view": "name",
+        "size": "medium"
+      },
+      "childItems": {
+        "view": "custom",
+        "size": "small"
+      },
+      "sameParentItems": false
+    }
+  ]
+}

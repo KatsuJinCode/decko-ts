@@ -1,0 +1,33 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { findOrphanedBrowserProfiles } from "../lib/launch.mjs";
+
+// A dead process id: spawn-and-exit is not needed; a pid far above the OS range never exists.
+const DEAD_PID = 2 ** 30 + 7;
+
+test("prior-run profiles are diagnosed and retained without stopping any process", (t) => {
+  t.mock.method(process, "kill", (pid, signal) => {
+    assert.equal(signal, 0, "diagnosis must never send a termination signal");
+    if (pid === DEAD_PID) throw Object.assign(new Error("not running"), { code: "ESRCH" });
+    return true;
+  });
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "reap-test-"));
+  try {
+    const dead = path.join(tmp, "decko-browser-profile-dead1");
+    const live = path.join(tmp, "decko-browser-profile-live1");
+    const legacy = path.join(tmp, "decko-browser-profile-legacy");
+    for (const d of [dead, live, legacy]) fs.mkdirSync(d);
+    fs.writeFileSync(path.join(dead, ".decko-owner.json"), JSON.stringify({ pid: DEAD_PID }));
+    fs.writeFileSync(path.join(live, ".decko-owner.json"), JSON.stringify({ pid: process.pid }));
+    const retained = findOrphanedBrowserProfiles({ tmp });
+    assert.deepEqual(retained, [dead]);
+    assert.equal(fs.existsSync(dead), true);
+    assert.equal(fs.existsSync(live), true);
+    assert.equal(fs.existsSync(legacy), true, "a profile with no owner record is left alone");
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});

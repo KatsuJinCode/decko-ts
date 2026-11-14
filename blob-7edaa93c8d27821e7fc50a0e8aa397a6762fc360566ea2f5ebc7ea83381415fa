@@ -1,0 +1,151 @@
+import { afterAll, afterEach, beforeAll, beforeEach, expect, it, vi } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { scratchDir, registeredScratch, scratchOwnershipMatches, removeScratchDir } from "../../support/scratch-dir.mjs";
+import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
+import { FetchEngine } from "../../../src/card/fetch.js";
+import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
+import { ModLoader } from "../../../src/card/mod-loader.js";
+import coreMod from "../../../src/card/mod-loader/mods/core-mod.js";
+import { JOE, fakeClock, seedStandardDeck, type ActionsTestStorage } from "./actions-test-storage.js";
+import { splitSqlStatements } from "../fetch/fetch-test-storage.js";
+
+let scratch: string;
+let scratchBytes = 0;
+let sequence = 0;
+let handles: LocalSqliteDriver[] = [];
+beforeAll(() => {
+  scratch = scratchDir("compound165-connections-");
+});
+beforeEach(() => vi.stubGlobal("fetch", vi.fn(() => { throw new Error("No network in independent compound connection tests"); })));
+afterEach(() => {
+  for (const driver of handles) driver.close();
+  handles = [];
+  vi.unstubAllGlobals();
+  expect(registeredScratch()).toContain(scratch);
+  expect(scratchOwnershipMatches(scratch)).toBe(true);
+  scratchBytes = fs.readdirSync(scratch).reduce((bytes, name) => {
+    const entry = fs.lstatSync(path.join(scratch, name));
+    expect(entry.isFile()).toBe(true);
+    return bytes + entry.size;
+  }, 0);
+});
+afterAll(() => {
+  expect(handles).toHaveLength(0);
+  // The shared file teardown may already have removed our registered root.
+  if (fs.existsSync(scratch)) {
+    expect(registeredScratch()).toContain(scratch);
+    expect(scratchOwnershipMatches(scratch)).toBe(true);
+    removeScratchDir(scratch);
+  }
+  expect(fs.existsSync(scratch)).toBe(false);
+  console.log(JSON.stringify({ event: "compound-test-scratch-removed", file: import.meta.url, scratch, logicalBytesRemoved: scratchBytes }));
+});
+
+async function fixture(registered: boolean) {
+  const file = path.join(scratch, `fixture-${++sequence}.sqlite`);
+  const a = new LocalSqliteDriver({ path: file }); handles.push(a);
+  const schema = fs.readFileSync(fileURLToPath(new URL("../../../db/schema.sqlite.sql", import.meta.url)), "utf8");
+  for (const statement of splitSqlStatements(schema)) await a.query(statement, []);
+  const fetchA = new FetchEngine(a);
+  const s: ActionsTestStorage = {
+    driver: a, engine: fetchA, close: () => a.close(),
+    selectAll: async <T>(sql: string, params: unknown[] = []) => (await a.query<T>(sql, params)).rows,
+    selectOne: async <T>(sql: string, params: unknown[] = []) => (await a.query<T>(sql, params)).rows[0],
+    count: async table => Number((await a.query<{ n: number }>(`SELECT COUNT(*) n FROM ${table}`, [])).rows[0]!.n),
+  };
+  await seedStandardDeck(s);
+  const b = new LocalSqliteDriver({ path: file }); handles.push(b);
+  const fetchB = new FetchEngine(b);
+  const uniqueness = coreMod.setModules!.flatMap(module => module.events ?? []).find(event => event.event === "validate_uniqueness_of_name");
+  expect(uniqueness).toBeDefined();
+  const loader = new ModLoader([{ manifest: { name: "connection-conflict", setModules: [{ setPath: "all/name_events", events: [uniqueness!] }] } }]);
+  loader.resolveOrder({ gemMods: ["connection-conflict"] }); loader.load();
+  const engine = (fetcher: FetchEngine) => new CardActionEngine(fetcher, {
+    actor: JOE, now: fakeClock(),
+    ...(registered ? { modEvents: { registry: loader.eventRegistry(), predicates: {} } } : {}),
+  });
+  fetchA.installNameEnvironment();
+  const snapshot = async () => Object.fromEntries(await Promise.all(
+    ["cards", "card_references", "card_acts", "card_actions", "card_changes"].map(async table => [table, await s.selectAll(`SELECT * FROM ${table} ORDER BY rowid`)]),
+  ));
+  return { s, a, b, fetchA, fetchB, writerA: engine(fetchA), writerB: engine(fetchB), snapshot };
+}
+
+for (const registered of [false, true]) {
+  const label = registered ? "registered event" : "built-in";
+  it(`${label}: independent connections contend for one compound identity`, async () => {
+    const f = await fixture(registered);
+    expect(f.a).not.toBe(f.b);
+    const results = await Promise.allSettled([
+      f.writerA.createCard({ name: "Pudding+waffle", content: "one" }),
+      f.writerB.createCard({ name: "Pudding+waffle", content: "two" }),
+    ]);
+    expect(results.filter(r => r.status === "fulfilled")).toHaveLength(1);
+    const failure = results.find(r => r.status === "rejected") as PromiseRejectedResult;
+    expect(failure.reason).toMatchObject({ code: "name-conflict", userMessage: "NAME: must be unique; 'Pudding+waffle' already exists." });
+    expect(await f.s.count("card_acts")).toBe(1);
+    expect(await f.s.count("card_actions")).toBe(2);
+    expect((await f.b.query("SELECT id FROM cards WHERE left_id=50 AND right_id IS NOT NULL", [])).rows).toHaveLength(1);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it(`${label}: warmed misses and rename collision observe another connection's nested commit`, async () => {
+    const f = await fixture(registered);
+    expect(await f.fetchB.lexicon.id("Pudding+waffle+Maple")).toBeUndefined();
+    await f.writerA.createCard({ name: "Pudding+waffle+Maple", content: "retained" });
+    const other = await f.writerB.createCard({ name: "Unoccupied Name" });
+    const before = await f.snapshot();
+    let failure: unknown;
+    try { await f.writerB.createCard({ name: "Pudding+waffle+Maple", content: "denied" }); } catch (error) { failure = error; }
+    console.log(label + " warmed-miss failure: " + JSON.stringify(failure, Object.getOwnPropertyNames(failure ?? {})));
+    expect.soft(failure).toMatchObject({ code: "name-conflict", userMessage: "NAME: must be unique; 'Pudding+waffle+Maple' already exists." });
+    await expect.soft(f.writerB.updateCard({ cardId: other.cardId, name: "Pudding+waffle+Maple" })).rejects.toMatchObject({ code: "name-conflict" });
+    expect(await f.snapshot()).toEqual(before);
+  });
+
+  it(`${label}: stale positive identity cannot block reuse after another connection renames it`, async () => {
+    const f = await fixture(registered);
+    const original = await f.writerA.createCard({ name: "Pudding+waffle" });
+    expect(await f.fetchB.lexicon.id("Pudding+waffle")).toBe(original.cardId);
+    expect(await f.writerA.updateCard({ cardId: original.cardId, name: "Pudding+syrup" })).not.toBeNull();
+    const stored = (await f.b.query("SELECT c.id,c.name,c.key,l.name left_name,r.name right_name FROM cards c JOIN cards l ON l.id=c.left_id JOIN cards r ON r.id=c.right_id WHERE c.id=?", [original.cardId])).rows;
+    console.log(label + " renamed junction stored rows: " + JSON.stringify(stored));
+    expect(stored).toEqual([{ id: original.cardId, name: null, key: null, left_name: "Pudding", right_name: "syrup" }]);
+    expect(await new FetchEngine(f.b).lexicon.id("Pudding+waffle")).toBeUndefined();
+    const before = await f.snapshot();
+    let failure: unknown;
+    let replacement: Awaited<ReturnType<CardActionEngine["createCard"]>> | undefined;
+    try { replacement = await f.writerB.createCard({ name: "Pudding+waffle", content: "new" }); } catch (error) { failure = error; }
+    if (failure !== undefined) expect(await f.snapshot()).toEqual(before);
+    expect(failure).toBeUndefined();
+    expect(replacement!.cardId).not.toBe(original.cardId);
+    expect((await new FetchEngine(f.b).fetchByName("Pudding+syrup"))?.id).toBe(original.cardId);
+    expect((await new FetchEngine(f.a).fetchByName("Pudding+waffle"))?.id).toBe(replacement!.cardId);
+  });
+
+  it(`${label}: rollback removes partial identities before the other connection creates`, async () => {
+    const f = await fixture(registered);
+    const before = await f.snapshot();
+    await expect(f.writerA.createCard({ name: "Pudding+waffle+Maple", subcards: { "+broken+": { content: "invalid" } } })).rejects.toMatchObject({ code: "name-illegal" });
+    expect(await f.snapshot()).toEqual(before);
+    await f.writerB.createCard({ name: "Pudding+waffle+Maple", content: "committed" });
+    const committed = await f.snapshot();
+    await expect(f.writerA.createCard({ name: "Pudding+waffle+Maple" })).rejects.toMatchObject({ code: "name-conflict" });
+    expect(await f.snapshot()).toEqual(committed);
+  });
+
+  it(`${label}: real unrelated UNIQUE error is not relabeled and partial save rolls back`, async () => {
+    const f = await fixture(registered);
+    await f.a.query("CREATE TABLE unrelated_guard(id INTEGER PRIMARY KEY)", []);
+    await f.a.query("INSERT INTO unrelated_guard VALUES(1)", []);
+    await f.a.query("CREATE TRIGGER reject_unrelated BEFORE INSERT ON cards WHEN NEW.db_content='trip-unrelated' BEGIN INSERT INTO unrelated_guard VALUES(1); END", []);
+    const before = await f.snapshot();
+    let failure: unknown;
+    try { await f.writerB.createCard({ name: "Pudding+new side", content: "trip-unrelated" }); } catch (error) { failure = error; }
+    expect(failure).toMatchObject({ code: "SQLITE_CONSTRAINT_PRIMARYKEY", message: "UNIQUE constraint failed: unrelated_guard.id" });
+    expect(await f.snapshot()).toEqual(before);
+    expect((await f.a.query("SELECT * FROM unrelated_guard", [])).rows).toEqual([{ id: 1 }]);
+  });
+}

@@ -1,0 +1,75 @@
+import { afterEach, describe, expect, it } from "vitest";
+import { mkdtempSync, copyFileSync, rmSync } from "node:fs";
+import { resolve, join, dirname } from "node:path";
+import { ModLoader } from "../../../src/card/mod-loader.js";
+import { RenderEngine } from "../../../src/card/render.js";
+import { FetchEngine } from "../../../src/card/fetch.js";
+import { HTML_VIEWS } from "../../../src/card/render/views.js";
+import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
+import { ensureFreshnessStamp } from "../../../src/server/freshness-stamp.js";
+
+const cleanup: Array<() => void> = [];
+afterEach(() => { while (cleanup.length) cleanup.pop()!(); });
+
+async function fixture(bot = false) {
+  const directory = mkdtempSync(resolve(".runtime/permission-scope-control-"));
+  const file = join(directory, "deck.sqlite3");
+  copyFileSync("reference-harness/fixtures/synthetic-v1/deck/deck.sqlite3", file);
+  const driver = new LocalSqliteDriver({ path: file });
+  const calls: string[] = [];
+  const loader = new ModLoader([{ manifest: { name: "independent_permission_scope", setModules: [
+    { setPath: "all/default_probe", formats: {
+      html: { views: [{ view: "scope_probe", config: { perms: "read" }, viewFn: ctx => { calls.push(`read:${ctx.fmt.card.name.s}`); return "PUBLIC-CONTROL"; } }] },
+      email_text: { views: [{ view: "scope_probe", config: { perms: "read" }, viewFn: () => { calls.push("text"); return "PUBLIC-TEXT"; } }] },
+    } },
+    { setPath: "type/basic", formats: { html: { views: [
+      { view: "scope_probe", config: { perms: "update" }, viewFn: () => { calls.push("protected"); return "PROTECTED-CONTROL"; } },
+      { view: "scoped_parent", config: { perms: "read" }, viewFn: ctx => ctx.fmt.renderView("scope_probe") },
+    ] } } },
+  ] } }], { ...HTML_VIEWS });
+  cleanup.push(() => {
+    loader.reset(); driver.close();
+    expect(dirname(directory)).toBe(resolve(".runtime"));
+    rmSync(directory, { recursive: true });
+  });
+  await ensureFreshnessStamp(driver);
+  loader.load();
+  const render = new RenderEngine(new FetchEngine(driver));
+  render.modLoader = loader;
+  render.viewer = bot ? { signedIn: true, actorId: 1 } : { signedIn: false };
+  return { render, calls };
+}
+
+describe("issue 52 independent actual renderer scope controls", () => {
+  it("prepares the restricted type's update task on a cold render and suppresses its body", async () => {
+    const { render, calls } = await fixture();
+    expect(await render.render("Home", "scope_probe")).toContain("permission (update)");
+    expect(render.taskAllowed(render.fetchRenderCard("Home")!, "update")).toBe(false);
+    expect(calls).toEqual([]);
+  });
+  it("keeps that type directive off another card in both warm-up orders", async () => {
+    for (const names of [["Home", "Topic 001"], ["Topic 001", "Home"]]) {
+      const { render, calls } = await fixture();
+      for (const name of names) expect(await render.render(name, "scope_probe"))
+        .toContain(name === "Home" ? "permission (update)" : "PUBLIC-CONTROL");
+      expect(calls).toEqual(["read:Topic 001"]);
+    }
+  });
+  it("keeps the HTML restriction out of the same card's email_text format", async () => {
+    const { render, calls } = await fixture();
+    expect(await render.render("Home", "scope_probe")).toContain("permission (update)");
+    expect(await render.render("Home", "scope_probe", { format: "email_text" })).toBe("PUBLIC-TEXT");
+    expect(calls).toEqual(["text"]);
+  });
+  it("prepares the restricted task reached only inside an otherwise readable scoped body", async () => {
+    const { render, calls } = await fixture();
+    expect(await render.render("Home", "scoped_parent")).toContain("permission (update)");
+    expect(calls).toEqual([]);
+  });
+  it("executes the protected body for the fixture's actual permitted bot", async () => {
+    const { render, calls } = await fixture(true);
+    expect(await render.render("Home", "scope_probe")).toBe("PROTECTED-CONTROL");
+    expect(render.taskAllowed(render.fetchRenderCard("Home")!, "update")).toBe(true);
+    expect(calls).toEqual(["protected"]);
+  });
+});

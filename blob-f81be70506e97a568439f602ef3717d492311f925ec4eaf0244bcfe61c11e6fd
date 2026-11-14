@@ -1,0 +1,47 @@
+Decko TypeScript port
+====================
+
+This is a modified TypeScript derivative of Decko, targeting card 1.110.0 and
+decko 0.20.0. This is a notice template for source checkpoint
+7f88f3fe1ab8ee6c7279fa8b64dce7de5afac453; no final package for that source has
+been exported, built or graded in this preparation. It is not an upstream
+release. Decko upstream: https://github.com/decko-commons/decko and https://decko.org.
+Upstream authors include Ethan McCutchen, Philipp Kühl, Gerry Gleason and the
+Decko contributors. Ported code retains upstream copyright and
+GPL-3.0-or-later terms; the complete GPL version 3 is in LICENSE.
+
+RUBY-MAP.md records the Ruby citations found in every packaged TypeScript
+module. Per-file source comments remain the detailed provenance record.
+
+Third-party components keep their own terms and notices. vendor/ and
+fixtures/vendor/ include license and provenance files beside the components;
+the edge asset snapshots embed those notices. This includes Bootstrap,
+Bootswatch, Select2, jQuery components, Apache-2.0 Bootstrap Colorpicker,
+LGPL-2.1 TinyMCE, the MIT/BSD Uglifier inputs, MIT LibSass, OFL fonts and
+Font Awesome. tools/libsass/libsass/ includes the compiler source and its
+MIT license; utf8-cpp there carries BSL-1.0 in its header. The source headers
+also attribute ports from ActiveSupport, kramdown, CodeRay, Haml and Rails.
+HTML extraction dependencies have notices under vendor/html-text-licenses/.
+The complete CodeRay 1.1.3 notice is in vendor/coderay-1.1.3/LICENSE.
+Complete upstream grants also accompany the kramdown, ActiveSupport and Haml
+ports in their named vendor directories, with their retrieval sources recorded.
+Dependency versions and integrity records are in package-lock.json.
+
+Redistribution review must check corresponding-source and modification
+requirements for every included component, including LGPL TinyMCE and compiled
+assets inside synthetic decks. A top-level GPL declaration alone is not a
+completed review of those obligations. No commercial license is asserted.
+The package is held for that review and approval before any sharing.
+
+TinyMCE 5.10.7 is included as minified library bytes and inside fixture bundles.
+Its complete official preferred-form source tree accompanies those bytes under
+third-party-source/tinymce-5.10.7/upstream/, with the full upstream license,
+build scripts, workspace manifests and lockfile. PROVENANCE.md and
+SOURCE-MANIFEST.json beside it pin the official tag commit and every raw source
+file. No deferred distributor offer or prior recipient delivery is asserted.
+Independent review of this exact source-supply material remains required.
+
+Finite held-source identity reviews do not approve a later generated package.
+Final source-supply, privacy, sharing approval and native POSIX export-mode
+acceptance remain open. This notice supplies no current compatibility result,
+source-to-binary rebuild claim or published binary checksum assertion.

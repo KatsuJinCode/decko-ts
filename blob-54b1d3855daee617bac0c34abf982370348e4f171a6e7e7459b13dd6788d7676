@@ -1,0 +1,107 @@
+{
+  "contract": "A pointer card can be edited: the select editor offers the pointer's items, choosing one changes the selection, and the new selection is stored.",
+  "facts": {
+    "client_pointer_content": "pointerContent: (vals) ->",
+    "client_pointer_content_join": "$.makeArray(vals).join \"\\n\"",
+    "client_select_body": "pointerContent @val()",
+    "client_select_handler": "'select.pointer-select': ->",
+    "editor_view_loop": "%i[autocomplete checkbox radio select multiselect].each do |editor_view|",
+    "editor_view_send": "view(editor_view) { send \"#{editor_view}_input\" }",
+    "prepare_db_content_clean": "clean_html? ? Card::Content.clean!(cont) : cont",
+    "prepare_db_content_default": "cont = standard_db_content || \"\"",
+    "select_input_class": "class: \"pointer-select form-control\"",
+    "select_input_options_blank": "options = { \"-- Select --\" => \"\" }.merge card.options_hash",
+    "select_input_options_selected": "options_for_select options, card.first_name",
+    "select_input_tag": "select_tag \"pointer_select-#{unique_id}\", select_input_options,",
+    "set_content_body": "self.content = prepare_db_content",
+    "set_content_event": "event :set_content, :store, on: :save do"
+  },
+  "gem_home": "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
+  "oracle": {
+    "client_pointer_content": {
+      "file_sha256": "832bf28994c09bca1f8d6791e0cc85569414c5494bd35740ea09746e4016855d",
+      "first_line": 48,
+      "gem": "card-mod-list-0.20.0",
+      "last_line": 49,
+      "marker": "pointerContent: (vals) ->",
+      "marker_line": 48,
+      "path": "assets/script/pointer_config.js.coffee",
+      "source": "  pointerContent: (vals) ->\n    $.makeArray(vals).join \"\\n\""
+    },
+    "client_select_handler": {
+      "file_sha256": "832bf28994c09bca1f8d6791e0cc85569414c5494bd35740ea09746e4016855d",
+      "first_line": 1,
+      "gem": "card-mod-list-0.20.0",
+      "last_line": 4,
+      "marker": "'select.pointer-select': ->",
+      "marker_line": 2,
+      "path": "assets/script/pointer_config.js.coffee",
+      "source": "$.extend decko.editors.content,\n    'select.pointer-select': ->\n      pointerContent @val()\n    'select.pointer-multiselect': ->"
+    },
+    "editor_view_loop": {
+      "file_sha256": "90f0c6eb841ca108ec701c346059a4b3ceaf75a0ddfc41117e29f56f363480d8",
+      "first_line": 55,
+      "gem": "card-mod-list-0.20.0",
+      "last_line": 58,
+      "marker": "%i[autocomplete checkbox radio select multiselect].each do |editor_view|",
+      "marker_line": 56,
+      "path": "set/abstract/01_list/html_views.rb",
+      "source": "\n  %i[autocomplete checkbox radio select multiselect].each do |editor_view|\n    view(editor_view) { send \"#{editor_view}_input\" }\n  end"
+    },
+    "prepare_db_content": {
+      "file_sha256": "44b78da993b5e4b8e3bb34c2b652ccf1888a319450d3052d564a37cc40a464dc",
+      "first_line": 42,
+      "gem": "card-1.110.0",
+      "last_line": 46,
+      "marker": "def prepare_db_content",
+      "marker_line": 42,
+      "path": "mod/core/set/all/content.rb",
+      "source": "def prepare_db_content\n  cont = standard_db_content || \"\" # necessary?\n\n  # TODO: move this html-specific code somewhere more appropriate\n  clean_html? ? Card::Content.clean!(cont) : cont"
+    },
+    "select_input": {
+      "file_sha256": "90f0c6eb841ca108ec701c346059a4b3ceaf75a0ddfc41117e29f56f363480d8",
+      "first_line": 72,
+      "gem": "card-mod-list-0.20.0",
+      "last_line": 75,
+      "marker": "def select_input",
+      "marker_line": 72,
+      "path": "set/abstract/01_list/html_views.rb",
+      "source": "  def select_input\n    select_tag \"pointer_select-#{unique_id}\", select_input_options,\n               class: \"pointer-select form-control\"\n  end"
+    },
+    "select_input_options": {
+      "file_sha256": "90f0c6eb841ca108ec701c346059a4b3ceaf75a0ddfc41117e29f56f363480d8",
+      "first_line": 108,
+      "gem": "card-mod-list-0.20.0",
+      "last_line": 112,
+      "marker": "def select_input_options",
+      "marker_line": 109,
+      "path": "set/abstract/01_list/html_views.rb",
+      "source": "\n  def select_input_options\n    options = { \"-- Select --\" => \"\" }.merge card.options_hash\n    options_for_select options, card.first_name\n  end"
+    },
+    "set_content_event": {
+      "file_sha256": "44b78da993b5e4b8e3bb34c2b652ccf1888a319450d3052d564a37cc40a464dc",
+      "first_line": 1,
+      "gem": "card-1.110.0",
+      "last_line": 5,
+      "marker": "event :set_content, :store, on: :save do",
+      "marker_line": 1,
+      "path": "mod/core/set/all/content.rb",
+      "source": "event :set_content, :store, on: :save do\n  self.content = prepare_db_content\n  @selected_action_id = @selected_content = nil\n  clear_drafts\nend"
+    }
+  },
+  "port_client_asset": {
+    "differing_line_count": 1,
+    "differing_lines": [
+      {
+        "gem": "    # can't find evidence that the following is in use: #efm",
+        "line": 28,
+        "port": "    # no evidence that the following is in use"
+      }
+    ],
+    "every_difference_is_a_comment": true,
+    "gem_sha256": "832bf28994c09bca1f8d6791e0cc85569414c5494bd35740ea09746e4016855d",
+    "line_count_difference": null,
+    "port_path": "fixtures/vendor/mod-script-assets/card-mod-list/assets/script/pointer_config.js.coffee",
+    "port_sha256": "fc78f87de0528e47b99913215c1a672d2709455acfbc05bddec190b390c826ca"
+  }
+}

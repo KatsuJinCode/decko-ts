@@ -1,0 +1,493 @@
+{
+  "_provenance": {
+    "captured_by": "tools/haml-slice/oracle-probe-haml-engine-semantics.rb (bundle exec ruby, from tools/oracle/decko-oracle-app)",
+    "default_options": {
+      "[]": "n/a",
+      "[]=": "n/a",
+      "attr_wrapper": "'",
+      "attr_wrapper=": "n/a",
+      "autoclose": [
+        "area",
+        "base",
+        "basefont",
+        "br",
+        "col",
+        "command",
+        "embed",
+        "frame",
+        "hr",
+        "img",
+        "input",
+        "isindex",
+        "keygen",
+        "link",
+        "menuitem",
+        "meta",
+        "param",
+        "source",
+        "track",
+        "wbr"
+      ],
+      "autoclose=": "n/a",
+      "cdata": false,
+      "cdata=": "n/a",
+      "compiler_class": "Haml::Compiler",
+      "compiler_class=": "n/a",
+      "encoding": "UTF-8",
+      "encoding=": "n/a",
+      "escape_attrs": true,
+      "escape_attrs=": "n/a",
+      "escape_attrs?": true,
+      "escape_filter_interpolations": null,
+      "escape_filter_interpolations=": "n/a",
+      "escape_html": false,
+      "escape_html=": "n/a",
+      "filename": "(haml)",
+      "filename=": "n/a",
+      "filters": {},
+      "filters=": "n/a",
+      "for_buffer": {},
+      "format": "html5",
+      "format=": "n/a",
+      "html4?": false,
+      "html5?": true,
+      "html?": true,
+      "hyphenate_data_attrs": true,
+      "hyphenate_data_attrs=": "n/a",
+      "hyphenate_data_attrs?": true,
+      "line": 1,
+      "line=": "n/a",
+      "mime_type": "text/html",
+      "mime_type=": "n/a",
+      "parser_class": "Haml::Parser",
+      "parser_class=": "n/a",
+      "preserve": [
+        "textarea",
+        "pre",
+        "code"
+      ],
+      "preserve=": "n/a",
+      "remove_whitespace": false,
+      "remove_whitespace=": "n/a",
+      "remove_whitespace?": false,
+      "suppress_eval": false,
+      "suppress_eval=": "n/a",
+      "suppress_eval?": false,
+      "trace": false,
+      "trace=": "n/a",
+      "xhtml?": false
+    },
+    "haml_version": "5.2.2",
+    "note": "decko calls Haml::Engine.new(haml).render(binding, locals) with NO options hash (card-1.110.0/lib/card/set/format/haml_paths.rb:8-14), so these DEFAULT options are what the deck actually gets."
+  },
+  "cases": {
+    "attr_dq_escape": {
+      "bytes": "<a title='a&#39;b'>t</a>\n",
+      "src": "%a{ title: \"a'b\" } t\n"
+    },
+    "attr_empty": {
+      "bytes": "<a>t</a>\n",
+      "src": "%a{} t\n"
+    },
+    "attr_merge_id_and_hash": {
+      "bytes": "<a id='j_i'>t</a>\n",
+      "src": "%a#i{ id: 'j' } t\n"
+    },
+    "attr_merge_id_short": {
+      "bytes": "<a class='c' id='i'>t</a>\n",
+      "src": "%a#i.c t\n"
+    },
+    "attr_merge_short_and_hash": {
+      "bytes": "<a class='b' href='x'>t</a>\n",
+      "src": "%a.b{ href: 'x' } t\n"
+    },
+    "attr_merge_short_class": {
+      "bytes": "<a class='c b'>t</a>\n",
+      "src": "%a.b{ class: 'c' } t\n"
+    },
+    "attr_order_class_after": {
+      "bytes": "<a class='c' href='x'>t</a>\n",
+      "src": "%a{ href: 'x', class: 'c' } t\n"
+    },
+    "attr_order_id_after": {
+      "bytes": "<a href='x' id='i'>t</a>\n",
+      "src": "%a{ href: 'x', id: 'i' } t\n"
+    },
+    "attr_rocket": {
+      "bytes": "<a href='x'>t</a>\n",
+      "src": "%a{ :href => 'x' } t\n"
+    },
+    "attr_selfclose_slash": {
+      "bytes": "<img>\n",
+      "src": "%img/ \n"
+    },
+    "attr_str_key": {
+      "bytes": "<a href='x'>t</a>\n",
+      "src": "%a{ 'href' => 'x' } t\n"
+    },
+    "attr_style_semicolon": {
+      "bytes": "<a style='color: red; top: 0'>t</a>\n",
+      "src": "%a{ style: 'color: red; top: 0' } t\n"
+    },
+    "class_hash_nested_merge": {
+      "bytes": "<a class='c d b' href='h'>d</a>\n",
+      "src": "%a.b{ class: 'c d', href: 'h' } d\n"
+    },
+    "class_merge_array": {
+      "bytes": "<a class='x y'>d</a>\n",
+      "src": "%a{ class: ['x', 'y'] } d\n"
+    },
+    "class_merge_dedupe": {
+      "bytes": "<a class='b a'>d</a>\n",
+      "src": "%a.b{ class: 'b a' } d\n"
+    },
+    "class_merge_dedupe2": {
+      "bytes": "<a class='c b'>d</a>\n",
+      "src": "%a.b.c{ class: 'c' } d\n"
+    },
+    "class_merge_hash_first": {
+      "bytes": "<a class='z'>.b d</a>\n",
+      "src": "%a{ class: 'z' }.b d\n"
+    },
+    "class_merge_short2_then_hash": {
+      "bytes": "<a class='z b c'>d</a>\n",
+      "src": "%a.b.c{ class: 'z' } d\n"
+    },
+    "class_merge_short_then_hash": {
+      "bytes": "<a class='c b'>d</a>\n",
+      "src": "%a.b{ class: 'c' } d\n"
+    },
+    "comment_between_tags": {
+      "bytes": "ERR Haml::SyntaxError: Illegal nesting: content can't be both given on the same line as %p and nested within it.",
+      "src": "%p a\n  -# c\n%p b\n"
+    },
+    "crlf": {
+      "bytes": "<p>a</p>\n<p>b</p>\n",
+      "src": "%p a\r\n%p b\r\n"
+    },
+    "div_class_only_no_tag": {
+      "bytes": "<div class='a'>\n<div class='b'></div>\n</div>\n",
+      "src": ".a\n  .b\n"
+    },
+    "div_dot_inline": {
+      "bytes": "<div class='a'>hello</div>\n",
+      "src": ".a hello\n"
+    },
+    "div_dot_only": {
+      "bytes": "ERR Haml::SyntaxError: Illegal element: classes and ids must have values.",
+      "src": ".\n  .b\n"
+    },
+    "doctype_1_1": {
+      "bytes": "<!DOCTYPE html>\n<p>x</p>\n",
+      "src": "!!! 1.1\n%p x\n"
+    },
+    "doctype_5": {
+      "bytes": "<!DOCTYPE html>\n<p>x</p>\n",
+      "src": "!!! 5\n%p x\n"
+    },
+    "doctype_dashed": {
+      "bytes": "<!DOCTYPE html>\n<p>x</p>\n",
+      "src": "!!!- doctype html\n%p x\n"
+    },
+    "doctype_html5": {
+      "bytes": "<!DOCTYPE html>\n<p>x</p>\n",
+      "src": "!!!\n%p x\n"
+    },
+    "doctype_xml": {
+      "bytes": "<p>x</p>\n",
+      "src": "!!! XML\n%p x\n"
+    },
+    "empty_line_between": {
+      "bytes": "<p>a</p>\n<p>b</p>\n",
+      "src": "%p a\n\n%p b\n"
+    },
+    "escaped_html": {
+      "bytes": "<!-- <b>x</b> -->\n",
+      "src": "/ <b>x</b>\n"
+    },
+    "filter_css": {
+      "bytes": "<style>\n  .a { color: red; }\n</style>\n",
+      "src": ":css\n  .a { color: red; }\n"
+    },
+    "filter_escaped": {
+      "bytes": "&lt;%= x %&gt;\n",
+      "src": ":escaped\n  <%= x %>\n"
+    },
+    "filter_indent_preserved": {
+      "bytes": "deep\n",
+      "src": ":plain\n    deep\n"
+    },
+    "filter_javascript": {
+      "bytes": "<script>\n  var x = 1;\n</script>\n",
+      "src": ":javascript\n  var x = 1;\n"
+    },
+    "filter_javascript_multi": {
+      "bytes": "<script>\n  a();\n  b();\n</script>\n",
+      "src": ":javascript\n  a();\n  b();\n"
+    },
+    "filter_markdown": {
+      "bytes": "<h1 id=\"head\">head</h1>\n",
+      "src": ":markdown\n  # head\n"
+    },
+    "filter_nested": {
+      "bytes": "a\nb\n",
+      "src": ":plain\n  a\n  b\n"
+    },
+    "filter_plain": {
+      "bytes": "raw text\n",
+      "src": ":plain\n  raw text\n"
+    },
+    "filter_preserve": {
+      "bytes": "1\n",
+      "src": ":preserve\n  #{1}\n"
+    },
+    "group_list": {
+      "bytes": "<p>\n<h5>\ngroup:\n</h5>\n<li class=\"list-group-item\">local</li>\n</p>\n",
+      "src": "- groups.each do |(title, items)|\n  %p\n    %h5\n      =title\n    =list_group(items)\n"
+    },
+    "group_list_empty": {
+      "bytes": "",
+      "src": "- groups.each do |(title, items)|\n  %p\n    %h5\n      =title\n    =list_group(items)\n"
+    },
+    "group_list_no_trailing_nl": {
+      "bytes": "<p>\n<h5>\na\n</h5>\n<li class=\"list-group-item\">b</li>\n</p>\n",
+      "src": "- groups.each do |(title, items)|\n  %p\n    %h5\n      =title\n    =list_group(items)"
+    },
+    "html_comment": {
+      "bytes": "",
+      "src": "-# a comment\n"
+    },
+    "html_comment_indent": {
+      "bytes": "ERR Haml::SyntaxError: Illegal nesting: content can't be both given on the same line as %p and nested within it.",
+      "src": "%p x\n  -# c\n"
+    },
+    "id_merge_two": {
+      "bytes": "<a class='k' id='j_i'>d</a>\n",
+      "src": "%a#i{ id: 'j', class: 'k' } d\n"
+    },
+    "indent_two": {
+      "bytes": "<p>\n<span>deep</span>\n</p>\n",
+      "src": "%p\n    %span deep\n"
+    },
+    "interpolation": {
+      "bytes": "<p>a 2 b</p>\n",
+      "src": "%p a 2 b\n"
+    },
+    "interpolation_only": {
+      "bytes": "2\n",
+      "src": "2\n"
+    },
+    "nested_text": {
+      "bytes": "<p>\nline one\nline two\n</p>\n",
+      "src": "%p\n  line one\n  line two\n"
+    },
+    "not_tag": {
+      "bytes": "text\n",
+      "src": "~ 'text'\n"
+    },
+    "not_tag_tag": {
+      "bytes": "ERR NameError: undefined local variable or method `foo' for main",
+      "src": "~ foo\n"
+    },
+    "output_array_join": {
+      "bytes": "1, 2\n",
+      "src": "= [1,2].join(', ')\n"
+    },
+    "output_escape": {
+      "bytes": "<b>&\"x</b>\n",
+      "src": "= '<b>&\"x</b>'\n"
+    },
+    "output_in_attr_nested": {
+      "bytes": "<a href='/x1'>t</a>\n",
+      "src": "%a{ href: \"/x#{1}\" } t\n"
+    },
+    "output_ivar": {
+      "bytes": "\n",
+      "src": "= @x\n"
+    },
+    "output_math": {
+      "bytes": "7\n",
+      "src": "= 2 * 3 + 1\n"
+    },
+    "output_method": {
+      "bytes": "Mod\n",
+      "src": "= card_name\n"
+    },
+    "output_nil": {
+      "bytes": "\n",
+      "src": "= nil\n"
+    },
+    "output_number": {
+      "bytes": "42\n",
+      "src": "= 42\n"
+    },
+    "output_string_concat": {
+      "bytes": "ab\n",
+      "src": "= 'a' + 'b'\n"
+    },
+    "output_string_interp": {
+      "bytes": "a1b\n",
+      "src": "= \"a#{1}b\"\n"
+    },
+    "output_unescape": {
+      "bytes": "'<b>x</b>'\n",
+      "src": "== '<b>x</b>'\n"
+    },
+    "silent_and_or": {
+      "bytes": "<p>2</p>\n",
+      "src": "- x = 1 && 2\n%p= x\n"
+    },
+    "silent_begin_end": {
+      "bytes": "ERR Haml::SyntaxError: You don't need to use \"- end\" in Haml. Un-indent to close a block:\n- if foo?\n  %strong Foo!\n- else\n  Not foo.\n%p This line is un-indented, so it isn't part of the \"if\" block",
+      "src": "- begin\n  %p a\n- end\n"
+    },
+    "silent_case": {
+      "bytes": "<p>one</p>\n",
+      "src": "- x = 1\n- case x\n- when 1\n  %p one\n- else\n  %p other\n"
+    },
+    "silent_comment": {
+      "bytes": "<p>a</p>\n<p>b</p>\n",
+      "src": "%p a\n-# hidden\n%p b\n"
+    },
+    "silent_comment_after_text": {
+      "bytes": "<p>a</p>\n",
+      "src": "%p a\n-# c\n"
+    },
+    "silent_comment_indent": {
+      "bytes": "<p>\n<span>y</span>\n</p>\n",
+      "src": "%p\n  -# hidden\n  %span y\n"
+    },
+    "silent_each": {
+      "bytes": "<li>1</li>\n<li>2</li>\n",
+      "src": "- [1, 2].each do |i|\n  %li= i\n"
+    },
+    "silent_if": {
+      "bytes": "<p>yes</p>\n",
+      "src": "- if true\n  %p yes\n"
+    },
+    "silent_if_false": {
+      "bytes": "<p>no</p>\n",
+      "src": "- if false\n  %p yes\n%p no\n"
+    },
+    "silent_multiline_if": {
+      "bytes": "ERR Haml::SyntaxError: (haml):2: syntax error, unexpected ';'\n;  false\n^\n",
+      "src": "- if true &&\n  - false\n  %p y\n"
+    },
+    "silent_ternary": {
+      "bytes": "<p>1</p>\n",
+      "src": "- x = true ? 1 : 2\n%p= x\n"
+    },
+    "silent_unless": {
+      "bytes": "<p>y</p>\n",
+      "src": "- unless false\n  %p y\n"
+    },
+    "tag_attrs_amp": {
+      "bytes": "<a href='/x?a=1&amp;b=2'>t</a>\n",
+      "src": "%a{ href: '/x?a=1&b=2' } t\n"
+    },
+    "tag_attrs_class_underscore": {
+      "bytes": "<a data-x='1'>t</a>\n",
+      "src": "%a{ data: { x: 1 } } t\n"
+    },
+    "tag_attrs_dash": {
+      "bytes": "<a aria-label='q'>t</a>\n",
+      "src": "%a{ 'aria-label' => 'q' } t\n"
+    },
+    "tag_attrs_false": {
+      "bytes": "<a hidden>t</a>\n",
+      "src": "%a{ hidden: true, disabled: false, 'data-x': nil } t\n"
+    },
+    "tag_attrs_hash": {
+      "bytes": "<a class='y z' href='x'>t</a>\n",
+      "src": "%a{ href: 'x', class: 'y z' } t\n"
+    },
+    "tag_attrs_hash_dq": {
+      "bytes": "<a class='y z' href='x'>t</a>\n",
+      "src": "%a{ href: \"x\", class: \"y z\" } t\n"
+    },
+    "tag_attrs_interp": {
+      "bytes": "<a title='a1b'>t</a>\n",
+      "src": "%a{ title: \"a1b\" } t\n"
+    },
+    "tag_attrs_nospace": {
+      "bytes": "<a href='x'>t</a>\n",
+      "src": "%a{href: 'x'} t\n"
+    },
+    "tag_attrs_num": {
+      "bytes": "<a tabindex='3'>t</a>\n",
+      "src": "%a{ tabindex: 3 } t\n"
+    },
+    "tag_attrs_ternary": {
+      "bytes": "ERR NameError: undefined local variable or method `x' for main",
+      "src": "%a{ class: (x ? 'y' : 'z') } t\n"
+    },
+    "tag_bare": {
+      "bytes": "<p></p>\n",
+      "src": "%p\n"
+    },
+    "tag_children_mixed": {
+      "bytes": "<div>\n1\ntext\n</div>\n",
+      "src": "%div\n  = 1\n  text\n"
+    },
+    "tag_class_short": {
+      "bytes": "<p class='a b'>x</p>\n",
+      "src": "%p.a.b x\n"
+    },
+    "tag_custom": {
+      "bytes": "<my-thing>x</my-thing>\n",
+      "src": "%my-thing x\n"
+    },
+    "tag_div_dot": {
+      "bytes": "<div>\n<div class='a'></div>\n</div>\n",
+      "src": "%div\n  .a\n"
+    },
+    "tag_id_short": {
+      "bytes": "<p id='a'>x</p>\n",
+      "src": "%p#a x\n"
+    },
+    "tag_multiline_attr": {
+      "bytes": "<a class='y' href='x'>t</a>\n",
+      "src": "%a{ href: 'x',\n    class: 'y' } t\n"
+    },
+    "tag_nested": {
+      "bytes": "<p>\n<span>x</span>\n</p>\n",
+      "src": "%p\n  %span x\n"
+    },
+    "tag_nested_after_inline": {
+      "bytes": "ERR Haml::SyntaxError: Illegal nesting: content can't be both given on the same line as %p and nested within it.",
+      "src": "%p text\n  %span s\n"
+    },
+    "tag_selfclose": {
+      "bytes": "<img src='a.png'>\n",
+      "src": "%img{src: 'a.png'}\n"
+    },
+    "tag_selfclose_slash_attr": {
+      "bytes": "<img src='a'>\n",
+      "src": "%img{src: 'a'}/ \n"
+    },
+    "tag_void": {
+      "bytes": "<meta>\n<input>\n<br>\n<img>\n<hr>\n",
+      "src": "%meta\n%input\n%br\n%img\n%hr\n"
+    },
+    "text": {
+      "bytes": "<p>hello world</p>\n",
+      "src": "%p hello world\n"
+    },
+    "text_after_tag": {
+      "bytes": "<p>2</p>\n",
+      "src": "%p= 1 + 1\n"
+    },
+    "trailing_ws": {
+      "bytes": "<p>a</p>\n",
+      "src": "%p a   \n"
+    },
+    "unescaped_html": {
+      "bytes": "<b>x</b>\n",
+      "src": "& <b>x</b>\n"
+    },
+    "whitespace_preserve_multiline_text": {
+      "bytes": "<p>\na\nb\n</p>\n",
+      "src": "%p\n  a\n\n  b\n"
+    }
+  }
+}

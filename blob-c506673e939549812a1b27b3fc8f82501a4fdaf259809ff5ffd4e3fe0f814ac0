@@ -1,0 +1,78 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import "../../support/typescript-source-loader.mjs";
+const { runModEventStage } = await import("../../../src/card/mod-loader/mod-event-dispatch.ts");
+const { ModEventRegistry } = await import("../../../src/card/mod-loader/mod-event-registry.ts");
+
+// Ruby event/all.rb checks every supplied condition. Within either dirty
+// condition any named field may match; supplying both conditions requires both.
+const unexpectedDependency = new Proxy({}, {
+  get(_target, key) {
+    throw new Error(`Dirty-condition test unexpectedly accessed dependency ${String(key)}`);
+  },
+});
+
+async function dispatch(options, changedFields, action = "update") {
+  const registry = new ModEventRegistry();
+  const calls = [];
+  registry.register({
+    event: "dirty_condition_probe",
+    at: "validate",
+    setPath: "all/dirty_condition_probe",
+    modName: "dirty_condition_probe",
+    ...options,
+    fn: () => { calls.push("body"); },
+  });
+  const report = await runModEventStage(
+    { registry },
+    "validate",
+    { name: "Probe", id: 50, key: "probe", action, changedFields, act: { action } },
+    { driver: unexpectedDependency, lexicon: unexpectedDependency },
+  );
+  assert.deepEqual(report.failed, [], "no event body may fail");
+  return { report, calls };
+}
+
+async function expectOutcome(options, changedFields, fires, action = "update") {
+  const { report, calls } = await dispatch(options, changedFields, action);
+  assert.deepEqual(calls, fires ? ["body"] : [], "event body execution");
+  assert.deepEqual(report.fired, fires ? ["dirty_condition_probe"] : [], "fired report");
+  assert.equal(report.skipped.length, fires ? 0 : 1, "skipped report");
+  if (!fires) assert.equal(report.skipped[0].event, "dirty_condition_probe");
+}
+
+for (const { label, options, left, right } of [
+  { label: "name and content alias", options: { changed: ["name"], changing: ["content"] }, left: "name", right: "db_content" },
+  { label: "content and type aliases", options: { changed: ["content"], changing: ["type"] }, left: "db_content", right: "type_id" },
+  { label: "canonical content and type columns", options: { changed: ["db_content"], changing: ["type_id"] }, left: "db_content", right: "type_id" },
+]) {
+  for (const { label: dirty, fields, fires } of [
+    { label: "neither field changes", fields: [], fires: false },
+    { label: "only changed condition matches", fields: [left], fires: false },
+    { label: "only changing condition matches", fields: [right], fires: false },
+    { label: "both conditions match", fields: [left, right], fires: true },
+  ]) {
+    test(`both dirty conditions: ${label}; ${dirty}`, () => expectOutcome(options, fields, fires));
+  }
+}
+
+for (const option of ["changed", "changing"]) {
+  test(`${option} alone retains any-field matching and aliases`, async () => {
+    const options = { [option]: ["content", "type"] };
+    await expectOutcome(options, [], false);
+    await expectOutcome(options, ["name"], false);
+    await expectOutcome(options, ["db_content"], true);
+    await expectOutcome(options, ["type_id"], true);
+  });
+
+  test(`empty ${option} does not suppress the other dirty condition`, async () => {
+    const other = option === "changed" ? "changing" : "changed";
+    const options = { [option]: [], [other]: ["content"] };
+    await expectOutcome(options, ["name"], false);
+    await expectOutcome(options, ["db_content"], true);
+  });
+}
+
+test("dirty conditions retain their create-action bypass", async () => {
+  await expectOutcome({ changed: ["name"], changing: ["content"] }, [], true, "create");
+});
