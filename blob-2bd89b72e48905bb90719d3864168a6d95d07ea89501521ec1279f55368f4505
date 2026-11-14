@@ -1,0 +1,171 @@
+// Guard for the root Worker's authenticated reads (worker.ts getReadDeck).
+//
+// The isolate keeps one anonymous render engine (getDeck), and its read
+// verdicts memoize per card. A signed-in actor's read must be judged by that
+// actor's own engine (ActorRenderEngines), never by the shared anonymous one,
+// in either order of requests. Each scenario boots a fresh isolate so the
+// order of the two reads is the only variable.
+//
+// Scenario shape: the probe card is readable by Role A only. Without the
+// fix, a member read goes through the shared engine and is refused, and an
+// anonymous read after a member read reuses the member's verdict.
+
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { LocalSqliteDriver } from "../../src/server/drivers/local-sqlite.js";
+import { SessionStore } from "../../src/card/auth/session-store.js";
+import { splitSqlStatements } from "../card/render/render-test-storage.js";
+import type {
+  D1BindValue,
+  D1DatabaseLike,
+  D1PreparedStatementLike,
+  D1ResultLike,
+} from "../../src/server/drivers/d1.js";
+
+const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
+const MIGRATIONS = `${REPO_ROOT}deploy/migrations/0001-schema.sql`;
+const SEED = `${REPO_ROOT}deploy/seed/seed.sql`;
+const AUTH_SESSIONS = `${REPO_ROOT}db/migrations/001-auth-sessions.sql`;
+
+const T = "2026-09-20 00:00:00.000";
+const SECRET = "AUTHENTICATED READ GUARD SECRET BODY";
+const PROBE_CARD_ID = 9310;
+const SELF_SET_CARD_ID = 9311;
+const SELF_CARD_ID = 9304;
+const RULE_CARD_ID = 9312;
+const ROLE_A_ID = 9307;
+const SEED_SET_ID = 7;
+const SEED_READ_ID = 26;
+const SEED_ANYONE_ID = 27;
+
+/** Probe card, its *self set, and the *read rule card. The rule starts as
+ *  [[Role A]] so only that party reads the probe. Ids sit in the 93xx band
+ *  the seed does not use. */
+const SKELETON_STATEMENTS = [
+  `INSERT INTO cards (id, name, key, codename, left_id, right_id, current_revision_id,
+     created_at, updated_at, creator_id, updater_id,
+     read_rule_class, read_rule_id, references_expired, trash, type_id, db_content)
+   VALUES (${SELF_CARD_ID}, '*self', 'self', 'self', NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 3, NULL)`,
+  `INSERT INTO cards (id, name, key, codename, left_id, right_id, current_revision_id,
+     created_at, updated_at, creator_id, updater_id,
+     read_rule_class, read_rule_id, references_expired, trash, type_id, db_content)
+   VALUES (${ROLE_A_ID}, 'Role A', 'role_a', NULL, NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 5, NULL)`,
+  `INSERT INTO cards (id, name, key, codename, left_id, right_id, current_revision_id,
+     created_at, updated_at, creator_id, updater_id,
+     read_rule_class, read_rule_id, references_expired, trash, type_id, db_content)
+   VALUES (${PROBE_CARD_ID}, 'Guard Probe', 'guard_probe', NULL, NULL, NULL, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 5, '${SECRET}')`,
+  `INSERT INTO cards (id, name, key, codename, left_id, right_id, current_revision_id,
+     created_at, updated_at, creator_id, updater_id,
+     read_rule_class, read_rule_id, references_expired, trash, type_id, db_content)
+   VALUES (${SELF_SET_CARD_ID}, NULL, NULL, NULL, ${PROBE_CARD_ID}, ${SELF_CARD_ID}, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, ${SEED_SET_ID}, NULL)`,
+  `INSERT INTO cards (id, name, key, codename, left_id, right_id, current_revision_id,
+     created_at, updated_at, creator_id, updater_id,
+     read_rule_class, read_rule_id, references_expired, trash, type_id, db_content)
+   VALUES (${RULE_CARD_ID}, NULL, NULL, NULL, ${SELF_SET_CARD_ID}, ${SEED_READ_ID}, NULL, '${T}', '${T}', 1, 1, NULL, NULL, NULL, 0, 5, '[[Role A]]')`,
+  `INSERT INTO card_references (referer_id, referee_key, referee_id, ref_type, is_present)
+   VALUES (${RULE_CARD_ID}, 'role_a', ${ROLE_A_ID}, 'L', NULL)`,
+  `UPDATE cards SET read_rule_id = ${RULE_CARD_ID}, read_rule_class = 'R' WHERE id = ${PROBE_CARD_ID}`,
+];
+
+/** The D1 binding both workers duck-type, backed by the local sqlite driver. */
+function d1Shim(driver: LocalSqliteDriver): D1DatabaseLike {
+  const run = async (sql: string, params: D1BindValue[]): Promise<D1ResultLike> => {
+    const result = await driver.query(sql, params as unknown[]);
+    return {
+      success: true,
+      results: result.rows as Record<string, unknown>[],
+      meta: { changes: 0, rows_read: result.rowsRead, rows_written: 0 },
+    };
+  };
+  return {
+    prepare(sql: string): D1PreparedStatementLike {
+      let bound: D1BindValue[] = [];
+      const statement = {
+        bind(...values: D1BindValue[]) {
+          bound = values;
+          return statement;
+        },
+        all: () => run(sql, bound),
+        run: () => run(sql, bound),
+      };
+      return statement as unknown as D1PreparedStatementLike;
+    },
+    batch(statements: D1PreparedStatementLike[]): Promise<D1ResultLike[]> {
+      return Promise.all(
+        statements.map((statement) =>
+          (statement as unknown as { all: () => Promise<D1ResultLike> }).all(),
+        ),
+      );
+    },
+  };
+}
+
+type RootWorker = { fetch: (request: Request, env: unknown) => Promise<Response> };
+
+interface Scenario {
+  driver: LocalSqliteDriver;
+  root: RootWorker;
+  memberToken: string;
+}
+
+async function bootScenario(): Promise<Scenario> {
+  const driver = new LocalSqliteDriver({ path: ":memory:" });
+  for (const file of [MIGRATIONS, SEED]) {
+    for (const statement of splitSqlStatements(readFileSync(file, "utf8"))) {
+      await driver.query(statement, []);
+    }
+  }
+  for (const statement of SKELETON_STATEMENTS) await driver.query(statement, []);
+  for (const statement of splitSqlStatements(readFileSync(AUTH_SESSIONS, "utf8"))) {
+    await driver.query(statement, []);
+  }
+  // A fresh module graph gives this scenario a fresh isolate: its own
+  // anonymous engine, its own actor engines.
+  vi.resetModules();
+  const rootModule = await import("../../worker.js");
+  const root = (rootModule.default ?? rootModule) as unknown as RootWorker;
+  const { token } = await new SessionStore({ driver }).createSession(ROLE_A_ID);
+  return { driver, root, memberToken: token };
+}
+
+function cardRequest(cookieToken?: string): Request {
+  return new Request("https://root.test/api/card/Guard%20Probe", {
+    headers: cookieToken === undefined ? {} : { cookie: `decko_ts_session=${cookieToken}` },
+  });
+}
+
+const open: Scenario[] = [];
+async function scenario(): Promise<Scenario> {
+  const s = await bootScenario();
+  open.push(s);
+  return s;
+}
+
+afterEach(() => {
+  for (const s of open.splice(0)) s.driver.close();
+});
+
+describe("root Worker authenticated card reads are judged for the signed-in actor", () => {
+  it("a member read is served even after an anonymous read on the same isolate was refused", async () => {
+    const s = await scenario();
+    const anonymous = await s.root.fetch(cardRequest(), { DB: d1Shim(s.driver) });
+    expect(anonymous.status).toBe(403);
+
+    const member = await s.root.fetch(cardRequest(s.memberToken), { DB: d1Shim(s.driver) });
+    expect(member.status, "the member read was judged by the shared anonymous engine").toBe(200);
+    expect(await member.text()).toContain(SECRET);
+  });
+
+  it("an anonymous read is refused even after a member read on the same isolate was served", async () => {
+    const s = await scenario();
+    const member = await s.root.fetch(cardRequest(s.memberToken), { DB: d1Shim(s.driver) });
+    expect(member.status).toBe(200);
+
+    const anonymous = await s.root.fetch(cardRequest(), { DB: d1Shim(s.driver) });
+    const body = await anonymous.text();
+    expect(anonymous.status, "the member's verdict leaked to an anonymous read").toBe(403);
+    expect(body).not.toContain(SECRET);
+  });
+});

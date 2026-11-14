@@ -1,0 +1,38 @@
+import { afterAll, beforeAll, expect, it } from "vitest";
+import Database from "better-sqlite3";
+import { PGlite } from "@electric-sql/pglite";
+import { PostgresDriver, translateSqliteToPostgres } from "../../../src/server/drivers/postgres.js";
+
+let client: PGlite, driver: PostgresDriver;
+beforeAll(async () => { client = await PGlite.create(); driver = new PostgresDriver({ client }); });
+afterAll(async () => { await driver?.close(); });
+
+for (const [name, rhs] of [
+  ["scalar SELECT", "n = (SELECT 5)"],
+  ["current timestamp", "note = CURRENT_TIMESTAMP"],
+] as const) {
+  it(`does not corrupt valid ${name} UPSERT syntax accepted by both actual databases`, async () => {
+    const sqlite = new Database(":memory:");
+    try {
+      const ddl = "CREATE TABLE rhs_syntax (id INTEGER PRIMARY KEY, n INTEGER, note TEXT)";
+      sqlite.exec(ddl);
+      await client.exec("DROP TABLE IF EXISTS rhs_syntax");
+      await client.exec(ddl);
+      const seed = "INSERT INTO rhs_syntax VALUES(1,1,'before')";
+      sqlite.exec(seed); await client.exec(seed);
+      const sql = `INSERT INTO rhs_syntax VALUES(1,2,'proposed') ON CONFLICT(id) DO UPDATE SET ${rhs}`;
+      sqlite.exec(sql);
+      // Independent positive control: the unmodified SQL is accepted by the
+      // actual PostgreSQL runtime too, before the adapter rewrites it.
+      await client.exec(sql);
+      await client.exec("UPDATE rhs_syntax SET n=1,note='before' WHERE id=1");
+      let failure: unknown;
+      try { await driver.query(sql, []); } catch (error) { failure = error; }
+      expect(failure, "adapter output: " + translateSqliteToPostgres(sql).sql).toBeUndefined();
+      const pg = (await driver.query<{ n: number; note: string }>("SELECT n,note FROM rhs_syntax", [])).rows[0];
+      const expected = sqlite.prepare("SELECT n,note FROM rhs_syntax").get() as { n: number; note: string };
+      if (name === "scalar SELECT") expect(pg).toEqual(expected);
+      else expect(pg?.note).not.toBe("before");
+    } finally { sqlite.close(); }
+  });
+}

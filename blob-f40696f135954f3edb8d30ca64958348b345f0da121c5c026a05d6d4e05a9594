@@ -1,0 +1,132 @@
+# mx-B-054: the history page lists the card's acts (not just a 200)
+
+The roster row `mx-B-054-7b-further-signed-in-capabilit` (family [Family])
+reads "the history page lists the card's acts (not just a 200)", verdict
+PASS, bucket DONE, with the evidence basis "verified - every instrument
+entry for B-054 is pass (live-acceptance-lane+whole-harness)". This receipt
+is the family's own adjudication of that row: the instrument the registry's
+own ledger records for it, the Ruby oracle that pins the surfaces the
+instrument touches, and a fresh measurement at this tip.
+
+## What the row is
+
+A history page that answers 200 can still be empty. The row is the check
+that the page lists the card's own acts: the revision entries the page is
+for, with the run's own edit among them.
+
+## The instrument
+
+The read is driven by the exercise's own H1 leg
+(tools/edge-signed-in-exercise.mjs:1240-1257). It visits the card's history
+URL (:1241), counts the page's own accordion items, the buttons whose
+target is an act id
+(`button.accordion-button[data-bs-target^='#act-id-']`, :1252), reads the
+page body and asks whether it carries the run's own edit content (:1253-1254),
+and records PASS only when the status is 200 AND at least two act toggles
+are present AND the run's own edit is listed (:1255-1256).
+
+The tool's own comment above that leg (:1242-1251) records why the check is
+shaped this way, and it is worth repeating because it is the row's whole
+point: an earlier, broader predicate was satisfied by the signed-in
+navbar's "Changes" link on any 200 page, so the count was computed and
+never used. The check now counts the history page's own accordion items,
+the same bytes the exhaustive runner's H3 case reads, and requires the run's
+own typed-and-saved edit to appear among the listed acts' drafts.
+
+The registry's own ledger for this row
+(C:/localProjects/brandonDojoTech/docs/registry/instrument-coverage-matrix.json,
+action "the history page lists the card's acts (not just a 200)", id ACT-054,
+check_ids ["B-054"]) records these instrument entries:
+
+    - live-acceptance-lane, live-bundle, live-deployment: pass
+    - whole-harness, headless-dom, native-local-bundle: pass
+
+## The oracle
+
+RUBY'S OWN ACT LISTING IS CAPTURED IN THIS REPOSITORY, WITH ITS OWN
+BYTES. The capture arm
+`probe-view:366:act@set/all/history/views.rb` in
+reference-harness/fixtures/synthetic-v2-mod-probes/expected/render.jsonl
+carries Ruby's own single-act rendering, and its accordion item is exactly
+what the instrument counts:
+
+    <div class='accordion-item'>
+    <h2 class='accordion-header nodblclick w-100'>
+    <button class='collapsed accordion-button' data-bs-target='#act-id-105328' data-bs-toggle='collapse' type='button'>
+    ...
+    <div class='accordion-collapse collapse' id='act-id-105328'>
+
+The act's own body is the draft diff, and the arm
+`probe-view:367:action_expanded@set/all/history/views.rb` carries it:
+
+    <ins class='diffins diff-added'><br>  This is the account that makes any automated updates &mdash; cards<br>  created when someone signs up, link updates when renaming cards, etc.<br></ins>
+
+so an act's content is rendered as a diff inside the accordion body, which
+is where the run's own edit content shows up.
+
+RUBY'S OWN SOURCE OWNS THE VIEWS. The history mod
+(card-mod-history-0.20.0/set/all/history/views.rb, read from the pinned
+oracle gem set at
+C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems) at :4-9 makes
+the history view the frame over `relative_history`, at :11-13 makes the act
+view `act_listing act_from_context`, at :28-30 the action summary and at
+:32-34 the expanded action.
+
+THE PORT OWNS THE SAME BYTES. The port's history mod
+(src/card/mod-loader/mods/card-mod-history.ts) renders the same accordion
+item: `accordionItemBytes` (:1674-1699) writes
+`<div class='accordion-item'>` (:1681),
+`<h2 class='accordion-header nodblclick w-100'>` (:1682),
+`<button class='collapsed accordion-button' data-bs-target='#<act id>'
+data-bs-toggle='collapse' type='button'>` (:1686) and
+`<div class='accordion-collapse collapse' id='<act id>'>` (:1690), with the
+collapse id built as `act-id-<act id>` (:1755, :1820, :2425). The history
+view itself is `historyView` (:1760-1798): it walks the page's acts
+(:1771-1780), renders each one through `relativeActItemBytes` (:1731),
+and wraps them in the acts layout's accordion row (:1787).
+
+## What is oracle-matched and what is not, stated plainly
+
+Oracle-matched: the act item's own markup, its accordion classes, its
+collapse target shape (`#act-id-<id>`), its `data-bs-toggle="collapse"`,
+its collapse body, and the fact that an act's content is rendered as a
+diff inside that body.
+
+Not oracle-matched, and stated rather than glossed over: this receipt does
+not claim a byte-exact comparison of the whole history page between Ruby
+and the port. The port renders the act's body through its own
+action-summary machinery, and the two renderings of a given act's diff are
+not compared byte for byte here. What is claimed is that the elements the
+instrument counts are the ones Ruby renders, with the same class names and
+the same collapse-target shape.
+
+Also named as the port's own facts rather than oracle-matched: the
+instrument's own locator for the act items (:1252) and its own body scan
+for the run's edit content (:1253-1254), and the string "Harness rich
+text", which is the exercise's own marker rather than a deck fixture.
+
+## The measurement at this tip
+
+    node tools/edge-signed-in-exercise.mjs \
+      --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 \
+      --out .runtime/signed-in-exercise-round11-20261024/rows-r1/report.md
+
+    source 71d4f686007e9f26e75cbfe66db964bd2ccc08cd, started
+    2026-10-24T22:21:12.528Z, completed 2026-10-24T22:42:55.803Z,
+    the source files clean
+    verdict: PASS
+    evidence: {"status":200,"actToggles":4,"runEditListed":true}
+
+The history page answered 200, carried four of the page's own act
+accordion items, and the run's own edit was among them. The run as a whole
+graded 253 of 253 checks passed, 0 failed, 0 skipped by write mode.
+
+## What this receipt does NOT claim
+
+- The row's port side is what the instrument grades, and it is green. This
+  receipt does not claim anything about the live deployment: no live request
+  was made by the lane, and nothing deploys.
+- The row's DONE condition in the roster is not changed by this receipt;
+  this receipt adds the family's own evidence for the row.
+- A byte-exact equality between Ruby's history page and the port's history
+  page is not claimed.

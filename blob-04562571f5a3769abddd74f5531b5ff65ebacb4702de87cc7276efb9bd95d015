@@ -1,0 +1,328 @@
+{
+  "row": "reg-routes-C10",
+  "gemset": "decko-0.20.0 + card-1.110.0 (pinned)",
+  "classes": {
+    "notFoundStatusCode": 404,
+    "notFoundView": "not_found",
+    "userErrorStatusCode": 422,
+    "userErrorView": "errors",
+    "codenameNotFoundStatusCode": 404,
+    "codenameNotFoundView": "not_found",
+    "codenameNotFoundDeclaresOwnStatus": false,
+    "codenameNotFoundDeclaresOwnView": false,
+    "notFoundIsUserErrorSubclass": true,
+    "codenameNotFoundIsNotFoundSubclass": true,
+    "notFoundInUserErrorRoster": false,
+    "codenameNotFoundInUserErrorRoster": false,
+    "userErrorRoster": [
+      "Card::Error::UserError",
+      "ActionController::BadRequest",
+      "ActionController::MissingFile",
+      "ActiveRecord::RecordNotFound",
+      "ActiveRecord::RecordInvalid"
+    ],
+    "badAddressStatusCode": 404,
+    "badAddressView": "bad_address"
+  },
+  "rescueRow": {
+    "view": "not_found",
+    "statusCode": 404,
+    "rendered": {
+      "body": "PAGE(file,:not_found)",
+      "status": 404,
+      "content_type": "text/html"
+    },
+    "pageCalls": [
+      {
+        "view": ":not_found",
+        "format": "file"
+      }
+    ]
+  },
+  "loadCardRaiseSite": {
+    "uriFetchAsks": [
+      {
+        "mark": "Ghost"
+      }
+    ],
+    "raised": "Card::Error::NotFound: Card::Error::NotFound",
+    "raisedClassStatusCode": 404,
+    "raisedClassView": "not_found",
+    "mainNameWrites": []
+  },
+  "viewForUnknown": [
+    {
+      "label": "the second 404 producer: main page, root view: :not_found and root.error_status 404",
+      "settingView": "errors",
+      "view": "not_found",
+      "rootErrorStatus": 404,
+      "rootErrorStatusWrites": [
+        404
+      ],
+      "calls": [
+        "main?",
+        "voo",
+        "root",
+        ":rootErrorStatusRead"
+      ],
+      "vooCalls": [
+        "root?"
+      ]
+    },
+    {
+      "label": "the 404 arm does not read the setting view: no setting view still answers :not_found",
+      "settingView": null,
+      "view": "not_found",
+      "rootErrorStatus": 404,
+      "rootErrorStatusWrites": [
+        404
+      ],
+      "calls": [
+        "main?",
+        "voo",
+        "root",
+        ":rootErrorStatusRead"
+      ],
+      "vooCalls": [
+        "root?"
+      ]
+    },
+    {
+      "label": "off the root view: the setting view answers, and no status is written",
+      "settingView": "errors",
+      "view": "errors",
+      "rootErrorStatus": null,
+      "rootErrorStatusWrites": [],
+      "calls": [
+        "main?",
+        "voo",
+        ":rootErrorStatusRead"
+      ],
+      "vooCalls": [
+        "root?"
+      ]
+    },
+    {
+      "label": "off the main page: the setting view answers, and no status is written",
+      "settingView": "errors",
+      "view": "errors",
+      "rootErrorStatus": null,
+      "rootErrorStatusWrites": [],
+      "calls": [
+        "main?",
+        ":rootErrorStatusRead"
+      ],
+      "vooCalls": []
+    },
+    {
+      "label": "off the root view with no setting view: :unknown, and still no status",
+      "settingView": null,
+      "view": "unknown",
+      "rootErrorStatus": null,
+      "rootErrorStatusWrites": [],
+      "calls": [
+        "main?",
+        "voo",
+        ":rootErrorStatusRead"
+      ],
+      "vooCalls": [
+        "root?"
+      ]
+    },
+    {
+      "label": "a KNOWN card on the main page at root: the same :not_found and 404, because card is never read",
+      "settingView": "errors",
+      "view": "not_found",
+      "rootErrorStatus": 404,
+      "rootErrorStatusWrites": [
+        404
+      ],
+      "calls": [
+        "main?",
+        "voo",
+        "root",
+        ":rootErrorStatusRead"
+      ],
+      "vooCalls": [
+        "root?"
+      ]
+    }
+  ],
+  "rigArtifacts": [
+    "Card.uri_fetch is stood in for as a RECORDED nil answerer (there is no database): the ask is recorded and the answer is nil, so the pinned `raise Card::Error::NotFound unless card` (rest.rb:51) is what fires. The 404 measured here is the pinned raise site's, not the fetch's - the fetch's own contract is row B1's evidence.",
+    "the PINNED Card::Format::Error module is loaded whole (card-1.110.0/lib/card/format/error.rb) and view_for_unknown is executed as the pinned body. Its collaborators that this method reads - main?, voo.root?, voo.depth, root - are answered by a probe that RECORDS each ask; the collaborators its OTHER methods read (Card.config, t, safe_name) are never called, so their absence changes nothing. root is a probe object with an error_status= that records its writes, because that write IS the second 404.",
+    "view_for_unknown does not read card at all - the recorded calls show it - so the UNKNOWN-ness it branches on is main?/voo.root? alone, not a card lookup. That is why the second 404 producer needs no exception and no database."
+  ],
+  "sources": {
+    "notFoundAndBadAddressClasses": [
+      {
+        "line": 82,
+        "text": "    class BadAddress < UserError"
+      },
+      {
+        "line": 83,
+        "text": "      self.status_code = 404"
+      },
+      {
+        "line": 84,
+        "text": "      self.view = :bad_address"
+      },
+      {
+        "line": 85,
+        "text": "    end"
+      },
+      {
+        "line": 86,
+        "text": ""
+      },
+      {
+        "line": 87,
+        "text": "    # card not found"
+      },
+      {
+        "line": 88,
+        "text": "    class NotFound < UserError"
+      },
+      {
+        "line": 89,
+        "text": "      self.status_code = 404"
+      },
+      {
+        "line": 90,
+        "text": "      self.view = :not_found"
+      },
+      {
+        "line": 91,
+        "text": "    end"
+      },
+      {
+        "line": 92,
+        "text": ""
+      },
+      {
+        "line": 93,
+        "text": "    class CodenameNotFound < NotFound"
+      },
+      {
+        "line": 94,
+        "text": "    end"
+      },
+      {
+        "line": 95,
+        "text": ""
+      },
+      {
+        "line": 96,
+        "text": "    # two editors altering the same card at once"
+      },
+      {
+        "line": 97,
+        "text": "    class EditConflict < UserError"
+      },
+      {
+        "line": 98,
+        "text": "      self.status_code = 409"
+      },
+      {
+        "line": 99,
+        "text": "      self.view = :conflict"
+      },
+      {
+        "line": 100,
+        "text": "    end"
+      }
+    ],
+    "loadCard": [
+      {
+        "line": 49,
+        "text": "    def load_card"
+      },
+      {
+        "line": 50,
+        "text": "      @card = Card.uri_fetch params"
+      },
+      {
+        "line": 51,
+        "text": "      raise Card::Error::NotFound unless card"
+      },
+      {
+        "line": 52,
+        "text": ""
+      },
+      {
+        "line": 53,
+        "text": "      record_as_main"
+      },
+      {
+        "line": 54,
+        "text": "    end"
+      }
+    ],
+    "formatViewForUnknown": [
+      {
+        "line": 18,
+        "text": "      def view_for_unknown setting_view"
+      },
+      {
+        "line": 19,
+        "text": "        if main? && voo.root?"
+      },
+      {
+        "line": 20,
+        "text": "          root.error_status = page_status_for_unknown"
+      },
+      {
+        "line": 21,
+        "text": "          page_view_for_unknown"
+      },
+      {
+        "line": 22,
+        "text": "        else"
+      },
+      {
+        "line": 23,
+        "text": "          setting_view || :unknown"
+      },
+      {
+        "line": 24,
+        "text": "        end"
+      },
+      {
+        "line": 25,
+        "text": "      end"
+      },
+      {
+        "line": 47,
+        "text": "      end"
+      },
+      {
+        "line": 48,
+        "text": ""
+      },
+      {
+        "line": 49,
+        "text": "      def page_status_for_unknown"
+      },
+      {
+        "line": 50,
+        "text": "        404"
+      },
+      {
+        "line": 51,
+        "text": "      end"
+      },
+      {
+        "line": 52,
+        "text": ""
+      },
+      {
+        "line": 53,
+        "text": "      def page_view_for_unknown"
+      },
+      {
+        "line": 54,
+        "text": "        :not_found"
+      }
+    ]
+  }
+}

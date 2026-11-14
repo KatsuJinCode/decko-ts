@@ -1,0 +1,63 @@
+// The rss arm's LANDING on this tree (register-routes D3), bound to a check
+// that runs.
+//
+// The register's D3 row graded the port PARTIAL because "the staging host
+// had no rss arm at all, so a .rss suffix was stripped and the html page
+// rendered", and its own remaining step was machine-checked at fold time:
+// "the canonical tree carries no rss arm at all (a grep of the canonical
+// tree for isRssRequest finds no hit)".
+//
+// THE CHECK THIS FILE MAKES RUNS: the arm's presence on BOTH serving
+// hosts is asserted against the port's own sources, so an arm that is
+// removed (or a host that stops answering the feed) fails a test instead
+// of waiting for the next fold to notice. The arm's own bytes are pinned
+// by tests/server/rss-format-parity.test.ts against the capture and the
+// focused host tests. Qualified native HTTP provenance is recorded in
+// docs/runs/local-ruby-reference-recovery-2026-10-29.md.
+
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
+import { parsePath } from "../../deploy/bunny-worker-src/bunny-edge-lineage-worker-surface.js";
+
+const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+
+const read = (relative: string): string => readFileSync(path.join(REPO, relative), "utf8");
+
+describe("the rss arm is LANDED on this tree (D3)", () => {
+  it("the staging host carries the arm: the gate, the answer and the dispatch branch", () => {
+    const staging = read("vm-staging-server.mjs");
+    // The gate (the suffix and the query door, with the segment rule).
+    expect(staging).toContain("function isRssRequest(");
+    // The answer (the engine's own renderFormatShow(..., "rss")).
+    expect(staging).toContain("async function rssFormatResponse(");
+    // The dispatch branch, ahead of the html arms.
+    expect(staging).toContain("isRssRequest(pathname, url.searchParams)");
+  });
+
+  it("the edge host carries the arm: the grammar split and the request core's answer", () => {
+    const surface = read("deploy/bunny-worker-src/bunny-edge-lineage-worker-surface.ts");
+    expect(surface).toContain('rawView.endsWith(".rss")');
+    const core = read("deploy/bunny-worker-src/bunny-edge-engine-request.ts");
+    expect(core).toContain('parsed.format === "rss"');
+    expect(core).toContain('"Content-Type": "text/html; charset=utf-8"');
+  });
+
+  it("the port's own grammar answers the feed for the suffix and the query door", () => {
+    const suffix = parsePath("/Alpha.rss") as { name: string; view: string; format?: string };
+    expect(suffix.name).toBe("Alpha");
+    // The feed is the only default shape (rss.rb:10-13's `view ||= :feed`).
+    expect(suffix.view).toBe("feed");
+    expect(suffix.format).toBe("rss");
+    const query = parsePath("/Alpha", new URLSearchParams("format=rss")) as {
+      name: string;
+      view: string;
+      format?: string;
+    };
+    expect(query.name).toBe("Alpha");
+    expect(query.view).toBe("feed");
+    expect(query.format).toBe("rss");
+  });
+
+});

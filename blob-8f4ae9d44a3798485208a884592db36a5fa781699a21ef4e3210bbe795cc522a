@@ -1,0 +1,75 @@
+import { afterEach, expect, it, vi } from "vitest";
+import { createRenderTestStorage, seedCard, type RenderTestStorage } from "../render/render-test-storage.js";
+import { findRule } from "../../../src/card/rules/lookup.js";
+import { ruleNamesForCard } from "../../../src/card/set-patterns/rule-names.js";
+import { getNameEnvironment } from "../../../src/card/name/environment.js";
+
+const cleanup: Array<() => void> = [];
+afterEach(() => { vi.restoreAllMocks(); while (cleanup.length) cleanup.pop()!(); });
+const card = { name: "Member+Field", isNew: true, leftTypeName: "Role" };
+async function deck(label: string): Promise<RenderTestStorage> {
+  const storage = await createRenderTestStorage({ bootstrapReadRules: false });
+  cleanup.push(() => storage.close());
+  for (const row of [
+    { id: 1, name: "Set", codename: "set" }, { id: 2, name: "Setting", codename: "setting" },
+    { id: 3, name: `*${label} All`, codename: "all", typeId: 1 },
+    { id: 4, name: "Assistance", codename: "help", typeId: 2 },
+    { id: 5, leftId: 3, rightId: 4, dbContent: `${label}-general` },
+    { id: 8, name: `*${label} Compound`, codename: "type_plus_right", typeId: 1 },
+    { id: 9, name: "Role", codename: "role" }, { id: 10, name: "Field" },
+    { id: 11, leftId: 9, rightId: 10 }, { id: 12, leftId: 11, rightId: 8, typeId: 1 },
+    { id: 13, leftId: 12, rightId: 4, dbContent: `${label}-specific` },
+  ]) await seedCard(storage, row);
+  await storage.fetcher.codenames.ensureLoaded();
+  return storage;
+}
+
+it("keeps overlapping receiving name reads separate without replacing the ambient environment", async () => {
+  const a = await deck("Alpha"), b = await deck("Beta");
+  a.fetcher.installNameEnvironment();
+  let release!: () => void, bothStarted!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  const started = new Promise<void>(resolve => { bothStarted = resolve; });
+  const seen = new Set<string>();
+  for (const [label, storage] of [["Alpha", a], ["Beta", b]] as const) {
+    const original = storage.fetcher.codenames.name.bind(storage.fetcher.codenames);
+    vi.spyOn(storage.fetcher.codenames, "name").mockImplementation(async code => {
+      seen.add(label); if (seen.size === 2) bothStarted();
+      await gate;
+      return original(code);
+    });
+  }
+  const pending = Promise.all([findRule(a.fetcher, card, "Assistance"), findRule(b.fetcher, card, "Assistance")]);
+  await started;
+  b.fetcher.installNameEnvironment(); const ambient = getNameEnvironment();
+  release();
+  const [first, second] = await pending;
+  expect(first?.rule.dbContent).toBe("Alpha-specific");
+  expect(first?.setName).toBe("Role+Field+*Alpha Compound");
+  expect(second?.rule.dbContent).toBe("Beta-specific");
+  expect(second?.setName).toBe("Role+Field+*Beta Compound");
+  expect(first?.candidates.some(name => name.includes("Beta"))).toBe(false);
+  expect(second?.candidates.some(name => name.includes("Alpha"))).toBe(false);
+  expect(getNameEnvironment()).toBe(ambient);
+});
+
+it("refreshes receiving aliases after reset while another deck remains ambient", async () => {
+  const a = await deck("Alpha"), b = await deck("Beta");
+  b.fetcher.installNameEnvironment();
+  const general = { name: "Example", isNew: true };
+  expect((await findRule(a.fetcher, general, "Assistance"))?.setName).toBe("*Alpha All");
+  await a.counting.query("UPDATE cards SET name = ?, key = ? WHERE id = ?", ["*Renamed Local All", "*renamed_local_all", 3]);
+  a.fetcher.resetCaches();
+  const result = await findRule(a.fetcher, general, "Assistance");
+  expect(result?.rule.id).toBe(5);
+  expect(result?.setName).toBe("*Renamed Local All");
+  expect((await findRule(b.fetcher, general, "Assistance"))?.setName).toBe("*Beta All");
+});
+
+it("uses canonical defaults for missing entries in an explicit scope instead of ambient aliases", async () => {
+  const foreign = await deck("Foreign"); foreign.fetcher.installNameEnvironment();
+  const names = ruleNamesForCard(card, "Assistance", new Map([["all", "*Scoped All"]]));
+  expect(names).toContain("Role+Field+*type plus right+Assistance");
+  expect(names).toContain("*Scoped All+Assistance");
+  expect(names.some(name => name.includes("Foreign"))).toBe(false);
+});

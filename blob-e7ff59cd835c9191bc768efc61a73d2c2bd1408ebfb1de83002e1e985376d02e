@@ -1,0 +1,482 @@
+{
+  "builtAt": "2026-10-26T03:03:47.479Z",
+  "baseUrl": "http://127.0.0.1:3118",
+  "directions": {
+    "productGrid": {
+      "door": "Culturesmith+Product Grid Door",
+      "layout": "Product Grid Layout",
+      "url": "http://127.0.0.1:3118/Culturesmith%2BProduct%20Grid%20Door"
+    },
+    "threeDoors": {
+      "door": "Culturesmith+Three Doors",
+      "layout": "Three Doors Layout",
+      "url": "http://127.0.0.1:3118/Culturesmith%2BThree%20Doors"
+    }
+  },
+  "homeCard": "not touched (shared with the other front-door lanes; seating a picked direction on Home is one PUT)",
+  "cards": [
+    {
+      "name": "Product Grid Layout",
+      "role": "direction 1 layout: the Product Grid skin",
+      "ok": true,
+      "method": "PUT",
+      "path": "/Product%20Grid%20Layout",
+      "status": 303,
+      "readStatus": 200,
+      "readBytes": 2614,
+      "storedType": "Layout",
+      "written": true,
+      "classesKept": true,
+      "typeKept": true
+    },
+    {
+      "name": "Three Doors Layout",
+      "role": "direction 2 layout: the Three Doors skin",
+      "ok": true,
+      "method": "PUT",
+      "path": "/Three%20Doors%20Layout",
+      "status": 303,
+      "readStatus": 200,
+      "readBytes": 2377,
+      "storedType": "Layout",
+      "written": true,
+      "classesKept": true,
+      "typeKept": true
+    },
+    {
+      "name": "Culturesmith+Product Grid Door",
+      "role": "direction 1 door: the landing card a visitor meets",
+      "ok": true,
+      "method": "PUT",
+      "path": "/Culturesmith%2BProduct%20Grid%20Door",
+      "status": 303,
+      "readStatus": 200,
+      "readBytes": 1148,
+      "storedType": "HTML",
+      "written": true,
+      "classesKept": true,
+      "typeKept": true
+    },
+    {
+      "name": "Culturesmith+Product Grid Door+Library Tile",
+      "role": "direction 1 tile: the recorded classes",
+      "ok": true,
+      "method": "PUT",
+      "path": "/Culturesmith%2BProduct%20Grid%20Door%2BLibrary%20Tile",
+      "status": 303,
+      "readStatus": 200,
+      "readBytes": 838,
+      "storedType": "HTML",
+      "written": true,
+      "classesKept": true,
+      "typeKept": true
+    },
+    {
+      "name": "Culturesmith+Product Grid Door+Training Tile",
+      "role": "direction 1 tile: Conflict Done Well training",
+      "ok": true,
+      "method": "PUT",
+      "path": "/Culturesmith%2BProduct%20Grid%20Door%2BTraining%20Tile",
+      "status": 303,
+      "readStatus": 200,
+      "readBytes": 885,
+      "storedType": "HTML",
+      "written": true,
+      "classesKept": true,
+      "typeKept": true
+    },
+    {
+      "name": "Culturesmith+Product Grid Door+Certification Tile",
+      "role": "direction 1 tile: the certification names",
+      "ok": true,
+      "method": "PUT",
+      "path": "/Culturesmith%2BProduct%20Grid%20Door%2BCertification%20Tile",
+      "status": 303,
+      "readStatus": 200,
+      "readBytes": 890,
+      "storedType": "HTML",
+      "written": true,
+      "classesKept": true,
+      "typeKept": true
+    },
+    {
+      "name": "Culturesmith+Product Grid Door+Guardians Tile",
+      "role": "direction 1 tile: the community standard",
+      "ok": true,
+      "method": "PUT",
+      "path": "/Culturesmith%2BProduct%20Grid%20Door%2BGuardians%20Tile",
+      "status": 303,
+      "readStatus": 200,
+      "readBytes": 853,
+      "storedType": "HTML",
+      "written": true,
+      "classesKept": true,
+      "typeKept": true
+    },
+    {
+      "name": "Culturesmith+Three Doors",
+      "role": "direction 2 door: the landing card a visitor meets",
+      "ok": true,
+      "method": "PUT",
+      "path": "/Culturesmith%2BThree%20Doors",
+      "status": 303,
+      "readStatus": 200,
+      "readBytes": 865,
+      "storedType": "HTML",
+      "written": true,
+      "classesKept": true,
+      "typeKept": true
+    },
+    {
+      "name": "Culturesmith+Three Doors+Guest Door",
+      "role": "direction 2 door: guest, practice",
+      "ok": true,
+      "method": "PUT",
+      "path": "/Culturesmith%2BThree%20Doors%2BGuest%20Door",
+      "status": 303,
+      "readStatus": 200,
+      "readBytes": 695,
+      "storedType": "HTML",
+      "written": true,
+      "classesKept": true,
+      "typeKept": true
+    },
+    {
+      "name": "Culturesmith+Three Doors+Member Door",
+      "role": "direction 2 door: member, team",
+      "ok": true,
+      "method": "PUT",
+      "path": "/Culturesmith%2BThree%20Doors%2BMember%20Door",
+      "status": 303,
+      "readStatus": 200,
+      "readBytes": 694,
+      "storedType": "HTML",
+      "written": true,
+      "classesKept": true,
+      "typeKept": true
+    },
+    {
+      "name": "Culturesmith+Three Doors+Student Door",
+      "role": "direction 2 door: student, library",
+      "ok": true,
+      "method": "PUT",
+      "path": "/Culturesmith%2BThree%20Doors%2BStudent%20Door",
+      "status": 303,
+      "readStatus": 200,
+      "readBytes": 740,
+      "storedType": "HTML",
+      "written": true,
+      "classesKept": true,
+      "typeKept": true
+    },
+    {
+      "name": "Culturesmith+Product Grid Door+*self+*layout",
+      "role": "seats direction 1 on its layout",
+      "ok": true,
+      "method": "PUT",
+      "path": "/Culturesmith%2BProduct%20Grid%20Door%2B*self%2B*layout",
+      "status": 303,
+      "readStatus": 200,
+      "readBytes": 432,
+      "storedType": "Pointer",
+      "written": true,
+      "classesKept": true,
+      "typeKept": true
+    },
+    {
+      "name": "Culturesmith+Three Doors+*self+*layout",
+      "role": "seats direction 2 on its layout",
+      "ok": true,
+      "method": "PUT",
+      "path": "/Culturesmith%2BThree%20Doors%2B*self%2B*layout",
+      "status": 303,
+      "readStatus": 200,
+      "readBytes": 418,
+      "storedType": "Pointer",
+      "written": true,
+      "classesKept": true,
+      "typeKept": true
+    }
+  ],
+  "views": [
+    {
+      "path": "/Home",
+      "status": 200,
+      "homeUntouched": true
+    },
+    {
+      "path": "/Culturesmith%2BProduct%20Grid%20Door",
+      "status": 200,
+      "bytes": 24383,
+      "skinLive": true
+    },
+    {
+      "path": "/Culturesmith%2BThree%20Doors",
+      "status": 200,
+      "bytes": 22093,
+      "skinLive": true
+    }
+  ],
+  "passed": 17,
+  "total": 17,
+  "steps": [
+    {
+      "name": "sign-in",
+      "ok": true,
+      "detail": "POST /_signin -> 200, session cookie issued",
+      "evidence": {
+        "status": 200
+      }
+    },
+    {
+      "name": "layout: Product Grid Layout",
+      "ok": true,
+      "detail": "PUT /Product%20Grid%20Layout -> 303; read back 200, 2614 bytes",
+      "evidence": {
+        "ok": true,
+        "method": "PUT",
+        "path": "/Product%20Grid%20Layout",
+        "status": 303,
+        "readStatus": 200,
+        "readBytes": 2614,
+        "storedType": "Layout",
+        "written": true,
+        "classesKept": true,
+        "typeKept": true
+      }
+    },
+    {
+      "name": "layout: Three Doors Layout",
+      "ok": true,
+      "detail": "PUT /Three%20Doors%20Layout -> 303; read back 200, 2377 bytes",
+      "evidence": {
+        "ok": true,
+        "method": "PUT",
+        "path": "/Three%20Doors%20Layout",
+        "status": 303,
+        "readStatus": 200,
+        "readBytes": 2377,
+        "storedType": "Layout",
+        "written": true,
+        "classesKept": true,
+        "typeKept": true
+      }
+    },
+    {
+      "name": "card: Culturesmith+Product Grid Door",
+      "ok": true,
+      "detail": "PUT /Culturesmith%2BProduct%20Grid%20Door -> 303; read back 200, 1148 bytes",
+      "evidence": {
+        "ok": true,
+        "method": "PUT",
+        "path": "/Culturesmith%2BProduct%20Grid%20Door",
+        "status": 303,
+        "readStatus": 200,
+        "readBytes": 1148,
+        "storedType": "HTML",
+        "written": true,
+        "classesKept": true,
+        "typeKept": true
+      }
+    },
+    {
+      "name": "card: Culturesmith+Product Grid Door+Library Tile",
+      "ok": true,
+      "detail": "PUT /Culturesmith%2BProduct%20Grid%20Door%2BLibrary%20Tile -> 303; read back 200, 838 bytes",
+      "evidence": {
+        "ok": true,
+        "method": "PUT",
+        "path": "/Culturesmith%2BProduct%20Grid%20Door%2BLibrary%20Tile",
+        "status": 303,
+        "readStatus": 200,
+        "readBytes": 838,
+        "storedType": "HTML",
+        "written": true,
+        "classesKept": true,
+        "typeKept": true
+      }
+    },
+    {
+      "name": "card: Culturesmith+Product Grid Door+Training Tile",
+      "ok": true,
+      "detail": "PUT /Culturesmith%2BProduct%20Grid%20Door%2BTraining%20Tile -> 303; read back 200, 885 bytes",
+      "evidence": {
+        "ok": true,
+        "method": "PUT",
+        "path": "/Culturesmith%2BProduct%20Grid%20Door%2BTraining%20Tile",
+        "status": 303,
+        "readStatus": 200,
+        "readBytes": 885,
+        "storedType": "HTML",
+        "written": true,
+        "classesKept": true,
+        "typeKept": true
+      }
+    },
+    {
+      "name": "card: Culturesmith+Product Grid Door+Certification Tile",
+      "ok": true,
+      "detail": "PUT /Culturesmith%2BProduct%20Grid%20Door%2BCertification%20Tile -> 303; read back 200, 890 bytes",
+      "evidence": {
+        "ok": true,
+        "method": "PUT",
+        "path": "/Culturesmith%2BProduct%20Grid%20Door%2BCertification%20Tile",
+        "status": 303,
+        "readStatus": 200,
+        "readBytes": 890,
+        "storedType": "HTML",
+        "written": true,
+        "classesKept": true,
+        "typeKept": true
+      }
+    },
+    {
+      "name": "card: Culturesmith+Product Grid Door+Guardians Tile",
+      "ok": true,
+      "detail": "PUT /Culturesmith%2BProduct%20Grid%20Door%2BGuardians%20Tile -> 303; read back 200, 853 bytes",
+      "evidence": {
+        "ok": true,
+        "method": "PUT",
+        "path": "/Culturesmith%2BProduct%20Grid%20Door%2BGuardians%20Tile",
+        "status": 303,
+        "readStatus": 200,
+        "readBytes": 853,
+        "storedType": "HTML",
+        "written": true,
+        "classesKept": true,
+        "typeKept": true
+      }
+    },
+    {
+      "name": "card: Culturesmith+Three Doors",
+      "ok": true,
+      "detail": "PUT /Culturesmith%2BThree%20Doors -> 303; read back 200, 865 bytes",
+      "evidence": {
+        "ok": true,
+        "method": "PUT",
+        "path": "/Culturesmith%2BThree%20Doors",
+        "status": 303,
+        "readStatus": 200,
+        "readBytes": 865,
+        "storedType": "HTML",
+        "written": true,
+        "classesKept": true,
+        "typeKept": true
+      }
+    },
+    {
+      "name": "card: Culturesmith+Three Doors+Guest Door",
+      "ok": true,
+      "detail": "PUT /Culturesmith%2BThree%20Doors%2BGuest%20Door -> 303; read back 200, 695 bytes",
+      "evidence": {
+        "ok": true,
+        "method": "PUT",
+        "path": "/Culturesmith%2BThree%20Doors%2BGuest%20Door",
+        "status": 303,
+        "readStatus": 200,
+        "readBytes": 695,
+        "storedType": "HTML",
+        "written": true,
+        "classesKept": true,
+        "typeKept": true
+      }
+    },
+    {
+      "name": "card: Culturesmith+Three Doors+Member Door",
+      "ok": true,
+      "detail": "PUT /Culturesmith%2BThree%20Doors%2BMember%20Door -> 303; read back 200, 694 bytes",
+      "evidence": {
+        "ok": true,
+        "method": "PUT",
+        "path": "/Culturesmith%2BThree%20Doors%2BMember%20Door",
+        "status": 303,
+        "readStatus": 200,
+        "readBytes": 694,
+        "storedType": "HTML",
+        "written": true,
+        "classesKept": true,
+        "typeKept": true
+      }
+    },
+    {
+      "name": "card: Culturesmith+Three Doors+Student Door",
+      "ok": true,
+      "detail": "PUT /Culturesmith%2BThree%20Doors%2BStudent%20Door -> 303; read back 200, 740 bytes",
+      "evidence": {
+        "ok": true,
+        "method": "PUT",
+        "path": "/Culturesmith%2BThree%20Doors%2BStudent%20Door",
+        "status": 303,
+        "readStatus": 200,
+        "readBytes": 740,
+        "storedType": "HTML",
+        "written": true,
+        "classesKept": true,
+        "typeKept": true
+      }
+    },
+    {
+      "name": "rule: Culturesmith+Product Grid Door+*self+*layout",
+      "ok": true,
+      "detail": "PUT /Culturesmith%2BProduct%20Grid%20Door%2B*self%2B*layout -> 303; read back 200, 432 bytes",
+      "evidence": {
+        "ok": true,
+        "method": "PUT",
+        "path": "/Culturesmith%2BProduct%20Grid%20Door%2B*self%2B*layout",
+        "status": 303,
+        "readStatus": 200,
+        "readBytes": 432,
+        "storedType": "Pointer",
+        "written": true,
+        "classesKept": true,
+        "typeKept": true
+      }
+    },
+    {
+      "name": "rule: Culturesmith+Three Doors+*self+*layout",
+      "ok": true,
+      "detail": "PUT /Culturesmith%2BThree%20Doors%2B*self%2B*layout -> 303; read back 200, 418 bytes",
+      "evidence": {
+        "ok": true,
+        "method": "PUT",
+        "path": "/Culturesmith%2BThree%20Doors%2B*self%2B*layout",
+        "status": 303,
+        "readStatus": 200,
+        "readBytes": 418,
+        "storedType": "Pointer",
+        "written": true,
+        "classesKept": true,
+        "typeKept": true
+      }
+    },
+    {
+      "name": "landing: Home untouched",
+      "ok": true,
+      "detail": "GET /Home -> 200, neither direction nested true",
+      "evidence": {
+        "status": 200,
+        "homeClean": true
+      }
+    },
+    {
+      "name": "view: Culturesmith+Product Grid Door",
+      "ok": true,
+      "detail": "GET /Culturesmith%2BProduct%20Grid%20Door -> 200, 24383 bytes, skin live true",
+      "evidence": {
+        "status": 200,
+        "bytes": 24383,
+        "skinLive": true
+      }
+    },
+    {
+      "name": "view: Culturesmith+Three Doors",
+      "ok": true,
+      "detail": "GET /Culturesmith%2BThree%20Doors -> 200, 22093 bytes, skin live true",
+      "evidence": {
+        "status": 200,
+        "bytes": 22093,
+        "skinLive": true
+      }
+    }
+  ]
+}

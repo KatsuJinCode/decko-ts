@@ -1,0 +1,140 @@
+import { afterEach, describe, expect, it } from "vitest";
+import { ModLoader, setDefaultModLoader } from "../../../src/card/mod-loader.js";
+import type { ModSetModuleFile } from "../../../src/card/mod-loader/mod-manifest.js";
+import { superView, viewWrapInherited } from "../../../src/card/mod-loader/mod-view-helpers.js";
+import { createRenderTestStorage, seedCard } from "../render/render-test-storage.js";
+
+const cleanup: Array<() => void> = [];
+afterEach(() => { while (cleanup.length) cleanup.pop()!(); setDefaultModLoader(undefined); });
+async function fixture(label: string, wrap = false) {
+  const storage = await createRenderTestStorage();
+  await seedCard(storage, { id: 2, name: "RichText", codename: "basic" });
+  await seedCard(storage, { id: 500, name: "Home", typeId: 2 });
+  const files: ModSetModuleFile[] = [
+    { setPath: "abstract/a_provider", formats: { html: { views: [{ view: "owner_probe",
+      config: { perms: "none", ...(wrap ? { wrap: { div: { class: label } } } : {}) }, viewFn: () => `${label}P` }] } } },
+    { setPath: "type/basic", includeSets: [{ setPath: "abstract/a_provider" }], formats: { html: { views: [
+      { view: "owner_probe", config: { perms: "none" }, viewFn: ctx => wrap
+        ? viewWrapInherited(ctx, "owner_probe", label) : `${label}:${superView(ctx, "Type::Basic", "owner_probe")}` },
+    ] } } },
+  ];
+  const loader = new ModLoader([{ manifest: { name: `owner_${label}`, setModules: files } }], {});
+  cleanup.push(() => { loader.reset(); storage.close(); });
+  loader.load();
+  storage.engine.modLoader = loader;
+  setDefaultModLoader(loader);
+  return { storage, loader };
+}
+
+describe("mod view delegation stays with its owning real engine", () => {
+  it("keeps a loader-less engine's flat views stable across another deck's load and reset", async () => {
+    setDefaultModLoader(undefined);
+    const storage = await createRenderTestStorage();
+    cleanup.push(() => storage.close());
+    await seedCard(storage, { id: 2, name: "RichText", codename: "basic" });
+    await seedCard(storage, { id: 500, name: "Home", typeId: 2, dbContent: "original body" });
+    const first = await storage.engine.render("Home", "core");
+    expect(first).toBe("original body");
+    const other = new ModLoader([{ manifest: { name: "other_deck", setModules: [
+      { setPath: "all/overlay", formats: { html: { views: [
+        { view: "core", config: { perms: "none" }, viewFn: () => "OTHER-DECK" },
+      ] } } },
+    ] } }]);
+    cleanup.push(() => other.reset());
+    other.load();
+    setDefaultModLoader(other);
+    storage.engine.resetCaches();
+    expect(storage.engine.modLoader).toBeUndefined();
+    expect(await storage.engine.render("Home", "core")).toBe(first);
+    other.reset();
+    storage.engine.resetCaches();
+    expect(await storage.engine.render("Home", "core")).toBe(first);
+  });
+
+  it("does not inherit an earlier unrelated deck's flat registrations at construction", async () => {
+    setDefaultModLoader(undefined);
+    const other = new ModLoader([{ manifest: { name: "earlier_deck", setModules: [
+      { setPath: "all/overlay", formats: { html: { views: [
+        { view: "core", config: { perms: "none" }, viewFn: () => "EARLIER-DECK" },
+      ] } } },
+    ] } }]);
+    cleanup.push(() => other.reset());
+    other.load();
+    const storage = await createRenderTestStorage();
+    cleanup.push(() => storage.close());
+    await seedCard(storage, { id: 2, name: "RichText", codename: "basic" });
+    await seedCard(storage, { id: 500, name: "Home", typeId: 2, dbContent: "original body" });
+    expect(storage.engine.modLoader).toBeUndefined();
+    expect(await storage.engine.render("Home", "core")).toBe("original body");
+  });
+
+  it("keeps explicit flat registrations local to their engine", async () => {
+    setDefaultModLoader(undefined);
+    const a = await createRenderTestStorage();
+    const b = await createRenderTestStorage();
+    cleanup.push(() => { a.close(); b.close(); });
+    for (const storage of [a, b]) {
+      await seedCard(storage, { id: 2, name: "RichText", codename: "basic" });
+      await seedCard(storage, { id: 500, name: "Home", typeId: 2, dbContent: "original body" });
+    }
+    a.engine.views.core = () => "LOCAL-A";
+    expect(await a.engine.render("Home", "core")).toBe("LOCAL-A");
+    expect(await b.engine.render("Home", "core")).toBe("original body");
+  });
+
+  it("preserves a real engine's explicitly absent loader binding", async () => {
+    const a = await fixture("A");
+    a.loader.add({ manifest: { name: "absence_a", setModules: [{ setPath: "type/basic", formats: { html: { views: [
+      { view: "absence_probe", config: { perms: "none" }, viewFn: ctx => {
+        a.storage.engine.modLoader = undefined;
+        try { return viewWrapInherited(ctx, "owner_probe", String(superView(ctx, "Type::Basic", "owner_probe"))); }
+        finally { a.storage.engine.modLoader = a.loader; }
+      } },
+    ] } } }] } });
+    a.loader.resolveOrder({ gemMods: ["owner_A", "absence_a"] }); a.loader.load();
+    await fixture("B", true);
+    expect(await a.storage.engine.render("Home", "absence_probe")).toBe("");
+  });
+  it("preserves A's super chain after B becomes the process default", async () => {
+    const a = await fixture("A");
+    const first = await a.storage.engine.render("Home", "owner_probe");
+    const b = await fixture("B");
+    expect([first, await b.storage.engine.render("Home", "owner_probe"), await a.storage.engine.render("Home", "owner_probe")])
+      .toEqual(["A:AP", "B:BP", "A:AP"]);
+  });
+  it("preserves A's inherited wrapper after B becomes the process default", async () => {
+    const a = await fixture("A", true);
+    const first = await a.storage.engine.render("Home", "owner_probe");
+    const b = await fixture("B", true);
+    expect([first, await b.storage.engine.render("Home", "owner_probe"), await a.storage.engine.render("Home", "owner_probe")])
+      .toEqual(['<div class="A">A</div>', '<div class="B">B</div>', '<div class="A">A</div>']);
+  });
+  it("keeps inherited wrapper selection on the requested format", async () => {
+    const { storage, loader } = await fixture("A", true);
+    loader.add({ manifest: { name: "text_wrap", setModules: [
+      { setPath: "abstract/a_provider", formats: { email_text: { views: [{ view: "owner_probe",
+        config: { perms: "none", wrap: { div: { class: "TEXT" } } }, viewFn: () => "TEXT-PROVIDER" }] } } },
+      { setPath: "type/basic", formats: { email_text: { views: [{ view: "owner_probe", config: { perms: "none" },
+        viewFn: ctx => viewWrapInherited(ctx, "owner_probe", "TEXT-BODY") }] } } },
+    ] } });
+    loader.resolveOrder({ gemMods: ["owner_A", "text_wrap"] }); loader.load();
+    expect(await storage.engine.render("Home", "owner_probe", { format: "email_text" }))
+      .toBe('<div class="TEXT">TEXT-BODY</div>');
+  });
+  it("does not take another engine's global overlay as the terminal compiled base", async () => {
+    const a = await fixture("A");
+    a.loader.add({ manifest: { name: "terminal_a", setModules: [{ setPath: "type/basic", formats: { html: { views: [
+      { view: "core", config: { perms: "none" }, viewFn: ctx => `A:${superView(ctx, "Type::Basic", "core")}` },
+    ] } } }] } });
+    a.loader.resolveOrder({ gemMods: ["owner_A", "terminal_a"] }); a.loader.load();
+    const first = await a.storage.engine.render("Home", "core");
+    const b = await fixture("B");
+    const bOverlay = new ModLoader([{ manifest: { name: "global_overlay_b", setModules: [
+      { setPath: "all/core_b", formats: { html: { views: [{ view: "core", config: { perms: "none" }, viewFn: () => "B-CORE" }] } } },
+    ] } }]);
+    cleanup.push(() => bOverlay.reset()); bOverlay.load(); b.storage.engine.modLoader = bOverlay; setDefaultModLoader(bOverlay);
+    expect(first.startsWith("A:")).toBe(true);
+    expect([first, await b.storage.engine.render("Home", "core"), await a.storage.engine.render("Home", "core")])
+      .toEqual([first, "B-CORE", first]);
+  });
+});

@@ -1,0 +1,64 @@
+import { expect, it } from "vitest";
+import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
+import { FetchEngine } from "../../../src/card/fetch.js";
+import { DatabaseOutcomeUnknownError, type SQLDatabaseDriver } from "../../../src/server/driver.js";
+import type { AttachmentStore, AttachmentStoreInput } from "../../../src/card/attachments/attachment-store.js";
+import { configureStrictParity, strictParityFlags } from "../../../src/card/parity/strict-parity-flags.js";
+import { createActionsTestStorage, seedCard, seedStandardDeck, JOE } from "./actions-test-storage.js";
+
+it("keeps a recoverable copy of overwritten asset bytes when rollback acknowledgement is lost", async () => {
+  const storage=await createActionsTestStorage();
+  try {
+    await seedStandardDeck(storage);
+    for(const row of [
+      {id:400,name:"Pointer",codename:"pointer"}, {id:401,name:"File",codename:"file"},
+      {id:402,name:"Bootswatch skin",codename:"bootswatch_skin"},
+      {id:410,name:"*style",codename:"style"}, {id:411,name:"*asset input",codename:"asset_input"},
+      {id:412,name:"*asset output",codename:"asset_output"},
+      {id:420,name:"Recovery Skin",typeId:402},
+      {id:430,name:"*all+*style",leftId:7,rightId:410,typeId:400,dbContent:"Other Skin"},
+      {id:431,name:"*all+*style+*asset output",leftId:430,rightId:412,typeId:401,dbContent:"previous.css"},
+    ]) await seedCard(storage,row);
+    configureStrictParity({...strictParityFlags(),scriptBundleClockNames:true});
+    const date=new Date("2026-10-29T12:00:00Z");
+    const stamp=Math.floor(date.getTime()/1000);
+    const identifier=`~431/${stamp}.css`;
+    const previous=new TextEncoder().encode(".previous{color:blue}");
+    const files=new Map<string,Uint8Array>([[identifier,previous.slice()]]);
+    await storage.driver.query("UPDATE cards SET db_content=? WHERE id=?",[identifier,431]);
+    const key=(input:AttachmentStoreInput)=>`~${input.cardId}/${input.actionId}${input.ext}`;
+    const store:AttachmentStore={
+      async read(cardId,actionId,ext){return files.get(`~${cardId}/${actionId}${ext}`)?.slice();},
+      async store(input){files.set(key(input),input.bytes.slice());return {identifier:key(input),size:input.bytes.length};},
+      async discard(input){files.delete(key(input));},
+    };
+    const rollbackTrigger=new Error("injected failure after external output replacement");
+    const uncertain:SQLDatabaseDriver={
+      query:(sql,params)=>storage.driver.query(sql,params),
+      batch:statements=>storage.driver.batch(statements),
+      transactionGuarantee:storage.driver.transactionGuarantee,
+      transaction:async work=>{
+        try {
+          await storage.driver.transaction!(async()=>{await work();throw rollbackTrigger;});
+        }catch(error){
+          if(error!==rollbackTrigger)throw error;
+          // The database rolled back. Its acknowledgement never reached the client.
+          throw new DatabaseOutcomeUnknownError("rollback",new Error("injected lost ROLLBACK acknowledgement"));
+        }
+        throw new Error("injection did not run");
+      },
+    };
+    const engine=new CardActionEngine(new FetchEngine(uncertain),{actor:JOE,now:()=>date,attachmentStore:store,
+      scssCompiler:async()=>".replacement{color:red}"});
+    let failure:unknown;
+    try{await engine.updateCard({cardId:430,content:"Recovery Skin"});}catch(error){failure=error;}
+    expect(failure).toMatchObject({code:"database-outcome-unknown",operation:"rollback",retrySafe:false});
+    expect((await storage.selectOne<{db_content:string}>("SELECT db_content FROM cards WHERE id=430"))?.db_content).toBe("Other Skin");
+    expect((await storage.selectOne<{db_content:string}>("SELECT db_content FROM cards WHERE id=431"))?.db_content).toBe(identifier);
+    // Keeping the new output alone destroys the only prior bytes even though
+    // the persisted deck still points to that same identifier after rollback.
+    // An unknown outcome must preserve a recoverable prior copy until reconciliation.
+    expect([...files.values()].some(bytes=>new TextDecoder().decode(bytes)===".previous{color:blue}"),
+      "previous output has no recoverable copy after the database rolls back").toBe(true);
+  } finally {configureStrictParity(undefined);storage.close();}
+});

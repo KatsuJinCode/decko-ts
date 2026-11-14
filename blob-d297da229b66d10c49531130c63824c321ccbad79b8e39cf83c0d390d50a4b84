@@ -1,0 +1,1701 @@
+{
+  "row": "reg-routes-A23, B7, B10, B11, C16, C17, D4, D5",
+  "gemset": "decko-0.20.0 (pinned route table, drawn into the pinned rails router)",
+  "rows": {
+    "A23": "the deck app template's conditional mount JasmineRails::Engine => \"#{rel_root}/specs\"",
+    "B7": "the read path's Token authenticator",
+    "B10": "initial_setup? -> prepare_setup_card!",
+    "B11": "load_action (select_action_by_params + the edit draft)",
+    "C16": "the CSRF/origin posture",
+    "C17": "Token auth and X-API-Key on reads",
+    "D4": "the file sender for an unregistered format suffix",
+    "D5": "the URL format registry and its negotiation"
+  },
+  "routerAnswers": {
+    "A23": [
+      {
+        "path": "/specs/spec_helper",
+        "verb": "get",
+        "matched": true,
+        "answer": {
+          "verb": "GET",
+          "path": "/:mark/:view(.:format)",
+          "defaults": {
+            "controller": "card",
+            "action": "read"
+          },
+          "parameters": {
+            "controller": "card",
+            "action": "read",
+            "mark": "specs",
+            "view": "spec_helper"
+          }
+        },
+        "matches": [
+          {
+            "verb": "GET",
+            "path": "/:mark/:view(.:format)",
+            "defaults": {
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "controller": "card",
+              "action": "read",
+              "mark": "specs",
+              "view": "spec_helper"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "specs/spec_helper"
+            }
+          }
+        ]
+      },
+      {
+        "path": "/jasmine/specs/jasmine.js",
+        "verb": "get",
+        "matched": true,
+        "answer": {
+          "verb": "GET",
+          "path": "/jasmine/*mark(.:format)",
+          "defaults": {
+            "controller": "card",
+            "action": "asset"
+          },
+          "parameters": {
+            "controller": "card",
+            "action": "asset",
+            "mark": "specs/jasmine",
+            "format": "js"
+          }
+        },
+        "matches": [
+          {
+            "verb": "GET",
+            "path": "/jasmine/*mark(.:format)",
+            "defaults": {
+              "controller": "card",
+              "action": "asset"
+            },
+            "parameters": {
+              "controller": "card",
+              "action": "asset",
+              "mark": "specs/jasmine",
+              "format": "js"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/jasmine/*mark(.:format)",
+            "defaults": {
+              "controller": "card",
+              "action": "asset"
+            },
+            "parameters": {
+              "controller": "card",
+              "action": "asset",
+              "mark": "specs/jasmine",
+              "format": "js"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "jasmine/specs/jasmine",
+              "format": "js"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "jasmine/specs/jasmine",
+              "format": "js"
+            }
+          }
+        ]
+      }
+    ],
+    "B7": [
+      {
+        "path": "/Alpha",
+        "verb": "get",
+        "matched": true,
+        "answer": {
+          "verb": "GET",
+          "path": "/:mark(.:format)",
+          "defaults": {
+            "controller": "card",
+            "action": "read"
+          },
+          "parameters": {
+            "controller": "card",
+            "action": "read",
+            "mark": "Alpha"
+          }
+        },
+        "matches": [
+          {
+            "verb": "GET",
+            "path": "/:mark(.:format)",
+            "defaults": {
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "controller": "card",
+              "action": "read",
+              "mark": "Alpha"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "Alpha"
+            }
+          }
+        ]
+      }
+    ],
+    "B10": [
+      {
+        "path": "/",
+        "verb": "get",
+        "matched": true,
+        "answer": {
+          "verb": "GET",
+          "path": "/",
+          "defaults": {
+            "controller": "card",
+            "action": "read"
+          },
+          "parameters": {
+            "controller": "card",
+            "action": "read"
+          }
+        },
+        "matches": [
+          {
+            "verb": "GET",
+            "path": "/",
+            "defaults": {
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "controller": "card",
+              "action": "read"
+            }
+          }
+        ]
+      },
+      {
+        "path": "/setup",
+        "verb": "get",
+        "matched": true,
+        "answer": {
+          "verb": "GET",
+          "path": "/:mark(.:format)",
+          "defaults": {
+            "controller": "card",
+            "action": "read"
+          },
+          "parameters": {
+            "controller": "card",
+            "action": "read",
+            "mark": "setup"
+          }
+        },
+        "matches": [
+          {
+            "verb": "GET",
+            "path": "/:mark(.:format)",
+            "defaults": {
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "controller": "card",
+              "action": "read",
+              "mark": "setup"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "setup"
+            }
+          }
+        ]
+      }
+    ],
+    "B11": [
+      {
+        "path": "/Alpha",
+        "verb": "get",
+        "matched": true,
+        "answer": {
+          "verb": "GET",
+          "path": "/:mark(.:format)",
+          "defaults": {
+            "controller": "card",
+            "action": "read"
+          },
+          "parameters": {
+            "controller": "card",
+            "action": "read",
+            "mark": "Alpha"
+          }
+        },
+        "matches": [
+          {
+            "verb": "GET",
+            "path": "/:mark(.:format)",
+            "defaults": {
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "controller": "card",
+              "action": "read",
+              "mark": "Alpha"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "Alpha"
+            }
+          }
+        ]
+      }
+    ],
+    "C16": [
+      {
+        "path": "/Alpha",
+        "verb": "post",
+        "matched": true,
+        "answer": {
+          "verb": "POST",
+          "path": "/:mark(.:format)",
+          "defaults": {
+            "controller": "card",
+            "action": "create"
+          },
+          "parameters": {
+            "controller": "card",
+            "action": "create",
+            "mark": "Alpha"
+          }
+        },
+        "matches": [
+          {
+            "verb": "POST",
+            "path": "/:mark(.:format)",
+            "defaults": {
+              "controller": "card",
+              "action": "create"
+            },
+            "parameters": {
+              "controller": "card",
+              "action": "create",
+              "mark": "Alpha"
+            }
+          }
+        ]
+      }
+    ],
+    "C17": [
+      {
+        "path": "/Alpha",
+        "verb": "get",
+        "matched": true,
+        "answer": {
+          "verb": "GET",
+          "path": "/:mark(.:format)",
+          "defaults": {
+            "controller": "card",
+            "action": "read"
+          },
+          "parameters": {
+            "controller": "card",
+            "action": "read",
+            "mark": "Alpha"
+          }
+        },
+        "matches": [
+          {
+            "verb": "GET",
+            "path": "/:mark(.:format)",
+            "defaults": {
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "controller": "card",
+              "action": "read",
+              "mark": "Alpha"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "Alpha"
+            }
+          }
+        ]
+      }
+    ],
+    "D4": [
+      {
+        "path": "/Alpha.bin",
+        "verb": "get",
+        "matched": true,
+        "answer": {
+          "verb": "GET",
+          "path": "/:mark(.:format)",
+          "defaults": {
+            "controller": "card",
+            "action": "read"
+          },
+          "parameters": {
+            "controller": "card",
+            "action": "read",
+            "mark": "Alpha",
+            "format": "bin"
+          }
+        },
+        "matches": [
+          {
+            "verb": "GET",
+            "path": "/:mark(.:format)",
+            "defaults": {
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "controller": "card",
+              "action": "read",
+              "mark": "Alpha",
+              "format": "bin"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "Alpha",
+              "format": "bin"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "Alpha",
+              "format": "bin"
+            }
+          }
+        ]
+      },
+      {
+        "path": "/files/Alpha/42.png",
+        "verb": "get",
+        "matched": true,
+        "answer": {
+          "verb": "GET",
+          "path": "/files/:mark/:rev_id(-:size).:format",
+          "defaults": {
+            "explicit_file": "true",
+            "controller": "card",
+            "action": "read"
+          },
+          "parameters": {
+            "explicit_file": "true",
+            "controller": "card",
+            "action": "read",
+            "mark": "Alpha",
+            "rev_id": "42",
+            "format": "png"
+          }
+        },
+        "matches": [
+          {
+            "verb": "GET",
+            "path": "/files/:mark/:rev_id(-:size).:format",
+            "defaults": {
+              "explicit_file": "true",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "explicit_file": "true",
+              "controller": "card",
+              "action": "read",
+              "mark": "Alpha",
+              "rev_id": "42",
+              "format": "png"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "files/Alpha/42",
+              "format": "png"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "files/Alpha/42",
+              "format": "png"
+            }
+          }
+        ]
+      }
+    ],
+    "D5": [
+      {
+        "path": "/Alpha.css",
+        "verb": "get",
+        "matched": true,
+        "answer": {
+          "verb": "GET",
+          "path": "/:mark(.:format)",
+          "defaults": {
+            "controller": "card",
+            "action": "read"
+          },
+          "parameters": {
+            "controller": "card",
+            "action": "read",
+            "mark": "Alpha",
+            "format": "css"
+          }
+        },
+        "matches": [
+          {
+            "verb": "GET",
+            "path": "/:mark(.:format)",
+            "defaults": {
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "controller": "card",
+              "action": "read",
+              "mark": "Alpha",
+              "format": "css"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "Alpha",
+              "format": "css"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "Alpha",
+              "format": "css"
+            }
+          }
+        ]
+      },
+      {
+        "path": "/Alpha.scss",
+        "verb": "get",
+        "matched": true,
+        "answer": {
+          "verb": "GET",
+          "path": "/:mark(.:format)",
+          "defaults": {
+            "controller": "card",
+            "action": "read"
+          },
+          "parameters": {
+            "controller": "card",
+            "action": "read",
+            "mark": "Alpha",
+            "format": "scss"
+          }
+        },
+        "matches": [
+          {
+            "verb": "GET",
+            "path": "/:mark(.:format)",
+            "defaults": {
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "controller": "card",
+              "action": "read",
+              "mark": "Alpha",
+              "format": "scss"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "Alpha",
+              "format": "scss"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "Alpha",
+              "format": "scss"
+            }
+          }
+        ]
+      },
+      {
+        "path": "/Alpha.js",
+        "verb": "get",
+        "matched": true,
+        "answer": {
+          "verb": "GET",
+          "path": "/:mark(.:format)",
+          "defaults": {
+            "controller": "card",
+            "action": "read"
+          },
+          "parameters": {
+            "controller": "card",
+            "action": "read",
+            "mark": "Alpha",
+            "format": "js"
+          }
+        },
+        "matches": [
+          {
+            "verb": "GET",
+            "path": "/:mark(.:format)",
+            "defaults": {
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "controller": "card",
+              "action": "read",
+              "mark": "Alpha",
+              "format": "js"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "Alpha",
+              "format": "js"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "Alpha",
+              "format": "js"
+            }
+          }
+        ]
+      },
+      {
+        "path": "/Alpha.csv",
+        "verb": "get",
+        "matched": true,
+        "answer": {
+          "verb": "GET",
+          "path": "/:mark(.:format)",
+          "defaults": {
+            "controller": "card",
+            "action": "read"
+          },
+          "parameters": {
+            "controller": "card",
+            "action": "read",
+            "mark": "Alpha",
+            "format": "csv"
+          }
+        },
+        "matches": [
+          {
+            "verb": "GET",
+            "path": "/:mark(.:format)",
+            "defaults": {
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "controller": "card",
+              "action": "read",
+              "mark": "Alpha",
+              "format": "csv"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "Alpha",
+              "format": "csv"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "Alpha",
+              "format": "csv"
+            }
+          }
+        ]
+      },
+      {
+        "path": "/Alpha.xml",
+        "verb": "get",
+        "matched": true,
+        "answer": {
+          "verb": "GET",
+          "path": "/:mark(.:format)",
+          "defaults": {
+            "controller": "card",
+            "action": "read"
+          },
+          "parameters": {
+            "controller": "card",
+            "action": "read",
+            "mark": "Alpha",
+            "format": "xml"
+          }
+        },
+        "matches": [
+          {
+            "verb": "GET",
+            "path": "/:mark(.:format)",
+            "defaults": {
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "controller": "card",
+              "action": "read",
+              "mark": "Alpha",
+              "format": "xml"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "Alpha",
+              "format": "xml"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "Alpha",
+              "format": "xml"
+            }
+          }
+        ]
+      },
+      {
+        "path": "/Alpha.yaml",
+        "verb": "get",
+        "matched": true,
+        "answer": {
+          "verb": "GET",
+          "path": "/:mark(.:format)",
+          "defaults": {
+            "controller": "card",
+            "action": "read"
+          },
+          "parameters": {
+            "controller": "card",
+            "action": "read",
+            "mark": "Alpha",
+            "format": "yaml"
+          }
+        },
+        "matches": [
+          {
+            "verb": "GET",
+            "path": "/:mark(.:format)",
+            "defaults": {
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "controller": "card",
+              "action": "read",
+              "mark": "Alpha",
+              "format": "yaml"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "Alpha",
+              "format": "yaml"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "Alpha",
+              "format": "yaml"
+            }
+          }
+        ]
+      },
+      {
+        "path": "/Alpha.jsonld",
+        "verb": "get",
+        "matched": true,
+        "answer": {
+          "verb": "GET",
+          "path": "/:mark(.:format)",
+          "defaults": {
+            "controller": "card",
+            "action": "read"
+          },
+          "parameters": {
+            "controller": "card",
+            "action": "read",
+            "mark": "Alpha",
+            "format": "jsonld"
+          }
+        },
+        "matches": [
+          {
+            "verb": "GET",
+            "path": "/:mark(.:format)",
+            "defaults": {
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "controller": "card",
+              "action": "read",
+              "mark": "Alpha",
+              "format": "jsonld"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "Alpha",
+              "format": "jsonld"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "Alpha",
+              "format": "jsonld"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "pinnedMethods": {
+    "A23": {
+      "templateFile": "card-1.110.0/lib/generators/deck/templates/config/routes.rb.erb",
+      "templateLines": [
+        {
+          "line": 1,
+          "text": "# -*- encoding : utf-8 -*-"
+        },
+        {
+          "line": 2,
+          "text": ""
+        },
+        {
+          "line": 3,
+          "text": "Decko.application.routes.draw do"
+        },
+        {
+          "line": 4,
+          "text": "  <% if !shark? %>"
+        },
+        {
+          "line": 5,
+          "text": "    if !Rails.env.production? && Object.const_defined?( :JasmineRails )"
+        },
+        {
+          "line": 6,
+          "text": "      engine = Object.const_get(:JasmineRails).const_get :Engine"
+        },
+        {
+          "line": 7,
+          "text": "      mount engine => \"#{rel_root}/specs\""
+        },
+        {
+          "line": 8,
+          "text": "    end"
+        },
+        {
+          "line": 9,
+          "text": "  <% end %>"
+        },
+        {
+          "line": 10,
+          "text": "  mount Decko::Engine => \"/\""
+        },
+        {
+          "line": 11,
+          "text": "end"
+        }
+      ],
+      "constant": "JasmineRails",
+      "constantHits": [
+        {
+          "file": "card-1.110.0/config/environments/test.rb",
+          "line": 17,
+          "text": "  config.assets.enabled = true if Object.const_defined?(:JasmineRails)"
+        },
+        {
+          "file": "card-1.110.0/lib/generators/deck/templates/config/routes.rb.erb",
+          "line": 5,
+          "text": "    if !Rails.env.production? && Object.const_defined?( :JasmineRails )"
+        },
+        {
+          "file": "card-1.110.0/lib/generators/deck/templates/config/routes.rb.erb",
+          "line": 6,
+          "text": "      engine = Object.const_get(:JasmineRails).const_get :Engine"
+        }
+      ],
+      "jasmineGems": []
+    },
+    "B10": {
+      "sourceFile": "decko-0.20.0/lib/card_controller/mark.rb",
+      "method": "CardController::Mark#implicit_mark",
+      "cells": [
+        {
+          "name": "the census is open and the request is an HTML one",
+          "cell": {
+            "needsSetup": true,
+            "html": true,
+            "answerMark": "",
+            "paramsAfter": {
+              "card": {
+                "type_id": 99
+              },
+              "view": "setup"
+            }
+          }
+        },
+        {
+          "name": "the census is closed",
+          "cell": {
+            "needsSetup": false,
+            "html": true,
+            "answerMark": "Home",
+            "paramsAfter": {}
+          }
+        },
+        {
+          "name": "the census is open but the request is not an HTML one",
+          "cell": {
+            "needsSetup": true,
+            "html": false,
+            "answerMark": "Home",
+            "paramsAfter": {}
+          }
+        },
+        {
+          "name": "the census is open and the request names a view",
+          "cell": {
+            "needsSetup": true,
+            "html": true,
+            "answerMark": "",
+            "paramsAfter": {
+              "view": "setup",
+              "card": {
+                "type_id": 99
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "portSurface": {
+    "A23": [
+      {
+        "host": "the port's deprecated asset prefixes",
+        "file": "src/server/worker-shared-surface.ts",
+        "lines": [
+          {
+            "line": 417,
+            "text": "export const DEPRECATED_ASSET_ROUTE_PREFIXES = [\"assets\", \"javascripts\", \"jasmine\"] as const;"
+          },
+          {
+            "line": 418,
+            "text": ""
+          },
+          {
+            "line": 419,
+            "text": "/** The body the pinned card#asset method renders (rest.rb:23). */"
+          },
+          {
+            "line": 420,
+            "text": "export const DEPRECATED_ASSET_BODY = \"Decko installation error: missing public directory symlinks\";"
+          },
+          {
+            "line": 421,
+            "text": ""
+          },
+          {
+            "line": 422,
+            "text": "/** The line the pinned card#asset method logs before it renders"
+          },
+          {
+            "line": 423,
+            "text": " *  (rest.rb:24): the body, a full stop, and the rake hint. */"
+          },
+          {
+            "line": 424,
+            "text": "export const DEPRECATED_ASSET_LOG_LINE = `${DEPRECATED_ASSET_BODY}.\\n  >>> Try \\`rake card:mod:symlink\\``;"
+          },
+          {
+            "line": 425,
+            "text": ""
+          },
+          {
+            "line": 426,
+            "text": "export function isDeprecatedAssetRoute(segments: readonly string[]): boolean {"
+          },
+          {
+            "line": 427,
+            "text": "  return segments.length >= 2 && (DEPRECATED_ASSET_ROUTE_PREFIXES as readonly string[]).includes(segments[0]!);"
+          },
+          {
+            "line": 428,
+            "text": "}"
+          }
+        ]
+      }
+    ],
+    "B7": [
+      {
+        "host": "the port's shared authenticators",
+        "file": "src/server/request-authenticators.ts",
+        "lines": [
+          {
+            "line": 72,
+            "text": "// ---------------------------------------------------------------------------"
+          },
+          {
+            "line": 73,
+            "text": "//   The api_key half of the authenticators (the X-API-Key header) is the"
+          },
+          {
+            "line": 74,
+            "text": "//   api_key gem's own mixin. ROUND SEVEN LANDED IT: the request's api_key"
+          },
+          {
+            "line": 75,
+            "text": "//   is read by `requestApiKey` in this file, and the sign-in it buys is the"
+          },
+          {
+            "line": 76,
+            "text": "//   api_key arm of `signin_with` (resolveReadAuthenticators below, over"
+          },
+          {
+            "line": 77,
+            "text": "//   the card-side lookup in src/card/auth/api-key-lookup.ts)."
+          },
+          {
+            "line": 78,
+            "text": "//"
+          },
+          {
+            "line": 79,
+            "text": "//   The ORDER is an order, not a lookup (card-mod-api_key-0.20.0/lib/"
+          },
+          {
+            "line": 80,
+            "text": "//   card/auth/api_key.rb:7-15):"
+          },
+          {
+            "line": 81,
+            "text": "//"
+          },
+          {
+            "line": 82,
+            "text": "//     if token then signin_with_token token"
+          },
+          {
+            "line": 83,
+            "text": "//     elsif api_key then signin_with_api_key api_key"
+          }
+        ]
+      }
+    ],
+    "B10": [
+      {
+        "host": "the port's census and its env gate",
+        "file": "src/card/auth/first-run-setup.ts",
+        "lines": [
+          {
+            "line": 162,
+            "text": "//   2. The env gates (DECKO_FIRST_RUN, and the deploy-profile preset). Ruby"
+          },
+          {
+            "line": 163,
+            "text": "//      has no env gate: needs_setup? is purely the census. The port's census"
+          },
+          {
+            "line": 164,
+            "text": "//      is the same, but the port ALSO requires an explicit opt-in, because the"
+          },
+          {
+            "line": 165,
+            "text": "//      port must not add a route to a deployment that never asked for one."
+          },
+          {
+            "line": 166,
+            "text": "//"
+          }
+        ]
+      },
+      {
+        "host": "the port's setup route gate",
+        "file": "src/server/first-run-routes.ts",
+        "lines": [
+          {
+            "line": 183,
+            "text": " */"
+          },
+          {
+            "line": 184,
+            "text": "export async function handleFirstRunRequest("
+          },
+          {
+            "line": 185,
+            "text": "  ctx: FirstRunRouteContext,"
+          },
+          {
+            "line": 186,
+            "text": "  req: FirstRunRouteRequest,"
+          },
+          {
+            "line": 187,
+            "text": "): Promise<FirstRunRouteResponse | null> {"
+          },
+          {
+            "line": 188,
+            "text": "  if (!firstRunEnabled()) return null;"
+          },
+          {
+            "line": 189,
+            "text": "  if (req.pathname !== SETUP_PATH) return null;"
+          },
+          {
+            "line": 190,
+            "text": "  if (req.method !== \"GET\" && req.method !== \"POST\") return null;"
+          }
+        ]
+      }
+    ],
+    "B11": [
+      {
+        "host": "the port's edit-draft emitter",
+        "file": "src/card/mod-loader/mods/card-mod-history.ts",
+        "lines": [
+          {
+            "line": 1912,
+            "text": "/** act_renderer.rb:134-139 autosaved_draft_link - the rollback_or_edit_link"
+          },
+          {
+            "line": 1913,
+            "text": " *  draft arm's \"continue editing\" anchor (gem-source-derived: the path is"
+          },
+          {
+            "line": 1914,
+            "text": " *  {edit_draft: true}, add_class \"navbar-link\", the"
+          },
+          {
+            "line": 1915,
+            "text": " *  link_to_view :edit slotterification lands only when a real edit link"
+          },
+          {
+            "line": 1916,
+            "text": " *  renders). */"
+          },
+          {
+            "line": 1917,
+            "text": "function boardAutosavedDraftLink(ctx: ViewContext): string {"
+          },
+          {
+            "line": 1918,
+            "text": "  return `<a class=\"navbar-link\" href=\"/${h(ctx.fmt.urlKey())}?edit_draft=true\">continue editing</a>`;"
+          }
+        ]
+      }
+    ],
+    "C16": [
+      {
+        "host": "the port's origin check on the write path",
+        "file": "src/server/write-routes.ts",
+        "lines": [
+          {
+            "line": 1087,
+            "text": "/** A write or sign-in refused by the same-origin check: 403, the class Ruby"
+          },
+          {
+            "line": 1088,
+            "text": " *  uses for a forbidden action (error.rb:103-105). The reason is logged by"
+          },
+          {
+            "line": 1089,
+            "text": " *  hosts that log responses; the visitor sees a plain explanation. */"
+          },
+          {
+            "line": 1090,
+            "text": "function crossOriginResponse(json: boolean, reason: string): WriteRouteResponse {"
+          },
+          {
+            "line": 1091,
+            "text": "  const message = `${CROSS_ORIGIN_MESSAGE} (${reason})`;"
+          },
+          {
+            "line": 1092,
+            "text": "  return json"
+          },
+          {
+            "line": 1093,
+            "text": "    ? jsonResponse(403, { error: { code: \"cross-origin\", message } })"
+          },
+          {
+            "line": 1094,
+            "text": "    : htmlResponse(403, \"Error (cross-origin)\", `<pre>${escapeHtml(message)}</pre>`);"
+          },
+          {
+            "line": 1095,
+            "text": "}"
+          }
+        ]
+      }
+    ],
+    "C17": [
+      {
+        "host": "the port's api_key half of the authenticators",
+        "file": "src/server/request-authenticators.ts",
+        "lines": [
+          {
+            "line": 72,
+            "text": "// ---------------------------------------------------------------------------"
+          },
+          {
+            "line": 73,
+            "text": "//   The api_key half of the authenticators (the X-API-Key header) is the"
+          },
+          {
+            "line": 74,
+            "text": "//   api_key gem's own mixin. ROUND SEVEN LANDED IT: the request's api_key"
+          },
+          {
+            "line": 75,
+            "text": "//   is read by `requestApiKey` in this file, and the sign-in it buys is the"
+          },
+          {
+            "line": 76,
+            "text": "//   api_key arm of `signin_with` (resolveReadAuthenticators below, over"
+          },
+          {
+            "line": 77,
+            "text": "//   the card-side lookup in src/card/auth/api-key-lookup.ts)."
+          },
+          {
+            "line": 78,
+            "text": "//"
+          }
+        ]
+      },
+      {
+        "host": "the port's api_key mod header",
+        "file": "src/card/mod-loader/mods/card-mod-api_key.ts",
+        "lines": [
+          {
+            "line": 41,
+            "text": "// NOT ported here :"
+          },
+          {
+            "line": 42,
+            "text": "//   - lib/card/auth/api_key.rb + lib/card_controller/api_key.rb: the"
+          },
+          {
+            "line": 43,
+            "text": "//     Card::Auth::ApiKey mixin and the CardController::ApiKey mixin. The"
+          },
+          {
+            "line": 44,
+            "text": "//     lib/ files add methods to Card::Auth and CardController (NOT set"
+          },
+          {
+            "line": 45,
+            "text": "//     modules); the mod loader's manifest surface only carries set/"
+          },
+          {
+            "line": 46,
+            "text": "//     files, so lib/ methods do not have a registration slot in THIS"
+          },
+          {
+            "line": 47,
+            "text": "//     mod. The READ half of that surface is ported, in the two places"
+          },
+          {
+            "line": 48,
+            "text": "//     that own it: the reader and the authenticator order are in"
+          }
+        ]
+      }
+    ],
+    "D4": [
+      {
+        "host": "the port's file route",
+        "file": "src/server/file-routes.ts",
+        "lines": [
+          {
+            "line": 82,
+            "text": "/** The attachment route entry: null = this request is not an attachment"
+          },
+          {
+            "line": 83,
+            "text": " *  route (the host falls through to its next handler). */"
+          },
+          {
+            "line": 84,
+            "text": "export async function handleAttachmentRoute("
+          },
+          {
+            "line": 85,
+            "text": "  request: Request,"
+          },
+          {
+            "line": 86,
+            "text": "  deps: FileRouteDeps,"
+          },
+          {
+            "line": 87,
+            "text": "): Promise<Response | null> {"
+          },
+          {
+            "line": 88,
+            "text": "  const url = new URL(request.url);"
+          },
+          {
+            "line": 89,
+            "text": "  const segments = url.pathname.replace(/\\/+$/, \"\").split(\"/\").slice(1);"
+          },
+          {
+            "line": 90,
+            "text": "  if (request.method === \"GET\" || request.method === \"HEAD\") {"
+          },
+          {
+            "line": 91,
+            "text": "    // THE FILE SENDER for the general mapping (row D4): a card read whose"
+          },
+          {
+            "line": 92,
+            "text": "    // requested format is UNREGISTERED is the file sender (the pinned fold,"
+          },
+          {
+            "line": 93,
+            "text": "    // response.rb:102-105), and the answer is the card's own file. The"
+          },
+          {
+            "line": 94,
+            "text": "    // shape is the one-segment mark arm with an unregistered suffix"
+          },
+          {
+            "line": 95,
+            "text": "    // (engine_routes.rb:22's (.:format) capture), so this arm answers"
+          },
+          {
+            "line": 96,
+            "text": "    // BEFORE the /files/ routes, which are a different shape."
+          },
+          {
+            "line": 97,
+            "text": "    if (segments.length === 1) {"
+          },
+          {
+            "line": 98,
+            "text": "      const sender = fileSenderRoute(segments[0]!);"
+          }
+        ]
+      }
+    ],
+    "D5": [
+      {
+        "host": "the port's read grammar",
+        "file": "deploy/bunny-worker-src/bunny-edge-lineage-worker-surface.ts",
+        "lines": [
+          {
+            "line": 36,
+            "text": "import { decodeName, decodeViewSegment, isDeprecatedAssetRoute } from \"../../src/server/worker-shared-surface.js\";"
+          },
+          {
+            "line": 37,
+            "text": "import {"
+          },
+          {
+            "line": 38,
+            "text": "  registeredFormatDefaultView,"
+          },
+          {
+            "line": 39,
+            "text": "  splitRegisteredFormatSuffix,"
+          },
+          {
+            "line": 40,
+            "text": "} from \"../../src/server/registered-format-route.js\";"
+          },
+          {
+            "line": 41,
+            "text": ""
+          },
+          {
+            "line": 42,
+            "text": "// engine_routes.rb:24,51: the .:format capture rides the VIEW segment, and"
+          },
+          {
+            "line": 43,
+            "text": "// the PINNED matcher splits the suffix off the view and into params[:format]"
+          },
+          {
+            "line": 44,
+            "text": "// for EVERY format. The route segment's own regexp excludes \".\" (the"
+          },
+          {
+            "line": 45,
+            "text": "// default separator class in actionpack's journey/path/pattern.rb), so"
+          },
+          {
+            "line": 46,
+            "text": "// \"/Front/view/open.rss\" is the view \"open\" in the rss format, never a view"
+          },
+          {
+            "line": 47,
+            "text": "// named \"open.rss\". The executed matcher agrees"
+          },
+          {
+            "line": 48,
+            "text": "// (fixtures/captured/rails-route-recognition-ruby-oracle.json, the cases"
+          },
+          {
+            "line": 49,
+            "text": "// \"GET /Front/view/open.rss\" and \"GET /Front/view/open.json\")."
+          },
+          {
+            "line": 50,
+            "text": "//"
+          },
+          {
+            "line": 51,
+            "text": "// The port serves two formats on this surface: json (the engine's own"
+          },
+          {
+            "line": 52,
+            "text": "// json-format dispatch) and rss (the rss surface, register-routes D3). A"
+          },
+          {
+            "line": 53,
+            "text": "// suffix that is neither stays in the view segment, and that is the"
+          },
+          {
+            "line": 54,
+            "text": "// engine's unsupported-view answer."
+          },
+          {
+            "line": 55,
+            "text": "//"
+          },
+          {
+            "line": 56,
+            "text": "// THE REGISTERED-FORMAT ARM (row D5) adds the seven names the"
+          },
+          {
+            "line": 57,
+            "text": "// port answers in their own format (css, scss, js, text, txt, csv, xml):"
+          },
+          {
+            "line": 58,
+            "text": "// the pinned matcher splits the suffix for EVERY format (the executed case"
+          },
+          {
+            "line": 59,
+            "text": "// \"GET /Front/view/open.rss\" answers the view \"open\" in the rss format),"
+          },
+          {
+            "line": 60,
+            "text": "// and the pinned registry (the capture's thirteen names) makes each of"
+          },
+          {
+            "line": 61,
+            "text": "// them its own format with its own mime type. An UNREGISTERED suffix is"
+          },
+          {
+            "line": 62,
+            "text": "// not split here: the pinned deck folds it to the FILE sender"
+          },
+          {
+            "line": 63,
+            "text": "// (response.rb:102-105), which is row D4's own arm."
+          },
+          {
+            "line": 64,
+            "text": "function splitViewFormat(rawView: string): { view: string; format?: string } {"
+          },
+          {
+            "line": 65,
+            "text": "  if (rawView.endsWith(\".json\")) return { view: rawView.slice(0, -\".json\".length), format: \"json\" };"
+          },
+          {
+            "line": 66,
+            "text": "  if (rawView.endsWith(\".rss\")) return { view: rawView.slice(0, -\".rss\".length), format: \"rss\" };"
+          },
+          {
+            "line": 67,
+            "text": "  const registered = splitRegisteredFormatSuffix(rawView);"
+          }
+        ]
+      }
+    ]
+  },
+  "rigArtifacts": [
+    "the PINNED deck's own route table is drawn into a REAL pinned-rails route set (the pinned actionpack-7.2.4 that carries Journey) and the PINNED router is asked to recognize each probe path with each probe verb. The answer is the route the pinned deck dispatches to, with its own parameters, in the pinned deck's own matching precedence. A path no route matches is the pinned deck's own router 404 (ActionController::RoutingError).",
+    "the PORT's own serving source is quoted with line numbers at THIS branch's line numbers, because the port has moved since the register build. The quotes are the port's own bytes, so a reader can check the surface rather than take the register's citation on trust.",
+    "THE ROWS WHOSE PINNED METHOD IS ALREADY CAPTURED keep that capture: B7 (tests/server/oracle-capture-request-authenticators-ruby.rb), B11 (oracle-capture-load-action-ruby.rb), C16 (oracle-capture-forgery-posture-ruby.rb), C17 (oracle-capture-api-key-authenticators-ruby.rb), D4 and D5 (oracle-capture-format-registry-ruby.rb, oracle-capture-explicit-file-route-ruby.rb). This file adds what those captures cannot: the pinned ROUTER's answer for each row's probe paths, the two pinned methods that had no capture (A23's generator template, B10's implicit mark), and the port's own source for every row."
+  ]
+}

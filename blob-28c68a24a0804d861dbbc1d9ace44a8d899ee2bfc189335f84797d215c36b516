@@ -1,0 +1,49 @@
+{
+  "format": "decko-ts-promised-deliverable-capture/1",
+  "row": "mods-carrierwave-attachment-write-path-500-on-bytes",
+  "family": "mods",
+  "capturedAt": "2026-10-25T20:35:47.000Z",
+  "tree": {
+    "commit": "c17906dbb39220a3dd1bcd58847d0fa0d1c9696b",
+    "branch": "port/workbatch-h-20261025"
+  },
+  "instrument": "tools/drive-multipart-upload-against-deployed-bundle.mjs",
+  "bundle": {
+    "builtBy": "node tools/bundle-bunny-edge-engine.mjs",
+    "path": "deploy/dist/bunny-edge-engine.bundle.js",
+    "bytes": 7449150,
+    "sha256": "38a62110d241e1324e27d2260c7bd10f79d9af28e64505254c8520ede12dd247"
+  },
+  "sourceDeck": "C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3",
+  "hostContacted": "none; the harness serves a local HTTPS origin on 127.0.0.1",
+  "arms": [
+    {
+      "name": "files area CONFIGURED",
+      "flags": [],
+      "control": { "status": 422, "body": { "error_status": 422, "errors": { "file": "is missing" } } },
+      "multipartWithFile": { "status": 200, "bodyBytes": 123, "cardId": 53053, "actId": 1 },
+      "cardRowCommitted": true,
+      "dbContent": "~53053/1.txt",
+      "bytesStored": true,
+      "bytesByteIdenticalToPosted": true,
+      "serveBack": { "status": 200, "bytes": 87, "contentType": "text/plain" }
+    },
+    {
+      "name": "files area ABSENT",
+      "flags": ["--no-storage"],
+      "control": { "status": 422, "body": { "error_status": 422, "errors": { "file": "is missing" } } },
+      "multipartWithFile": { "status": 500, "bodyBytes": 490 },
+      "cardRowCommitted": false,
+      "bytesStored": false,
+      "errorBodyCarries": [
+        "attachment save requires the engine's attachmentStore option (CardActionEngineOptions.attachmentStore)",
+        "This Bunny Edge Script has no files area: the script reads its storage zone from the DECKO_STORAGE_ZONE and DECKO_STORAGE_PASSWORD variables (a pair, set both), and its region endpoint host from DECKO_STORAGE_HOST (default storage.bunnycdn.com)."
+      ]
+    }
+  ],
+  "reading": "The write path stores a multipart create end to end when the host arms its files area. The 500 is the host's files area being unarmed, and the 500 now carries the throw site and the host's own files-area sentence. The live observation of 2026-10-19 was a bare zero-byte 500 because the throw escaped every handler; that boundary has since landed (commit 53cfa84b).",
+  "companionPins": [
+    "tests/server/write-routes-multipart-upload.test.ts (10 tests, green at this tree)",
+    "tests/server/write-surface-crash-boundary.test.ts (5 tests, green at this tree)"
+  ]
+}

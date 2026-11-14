@@ -1,0 +1,34 @@
+{
+  "what": "the held row mx-B-086 re-proven at the newest pushed tip: the row's four upload legs are green on its own instrument and the named blocker is real, so the exact residual is recorded and the row stays held",
+  "row": "mx-B-086-cover-b-files-upload-a-file-an",
+  "check": "B-086: F1 a file can be uploaded through the File create form; F3 an image can be uploaded through the Image create form; F5 an empty file is refused; F7 a member can upload a file",
+  "command": "node tools/edge-signed-in-exercise.mjs --only cover-b --case F1,F3,F5,F7 --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 --out .runtime/held-mx-closeout-20261026/mx-B-086/report-r1.md",
+  "source": "86e147b676f95dba89f369a8d5ee97b4b8fe543e (port/held-mx-closeout-20261026, the newest pushed tip; bundle SHA256 9b23a398c7c690dd867b153d1f51477c80e7b6f831e8702d14f82eee1595da46 rebuilt from this tree, byte-identical to the sibling row's slice run)",
+  "result": "PASS",
+  "runTotals": "11 / 11 checks passed; capability coverage 5 covered, 0 partial, 89 not covered, 1 out of scope (of 96); exit code 1 by the tool's own rule (tools/edge-signed-in-exercise.mjs:1931), not by any failure",
+  "startedAt": "2026-10-26T02:04:12.552Z",
+  "completedAt": "2026-10-26T02:05:13.961Z",
+  "evidence": {
+    "F1": { "writeStatus": 200, "afterStatus": 200, "stored": true },
+    "F3": { "writeStatus": 200, "afterStatus": 200, "stored": true },
+    "F3 image change": { "firstUploadFailures": 0, "changeFailures": 0, "sourceMoved": true, "createWriteStatus": 200, "editWriteStatus": 200, "uploadedStatus": 200, "afterStatus": 200 },
+    "F1 download link": { "href": "/files/~53056/10.txt", "roundTrip": true, "uploadRoundTripStatus": 200, "chipPresent": true },
+    "F5": { "writeStatus": 422, "errorShown": true, "createdAnyway": false },
+    "F7": { "writeStatus": 200, "afterStatus": 200, "stored": true },
+    "cleanup": { "removed": 5, "remaining": 0 },
+    "assetAudit": { "contexts": 1, "failures": 0 }
+  },
+  "blockerAdjudication": {
+    "named": "the guarded deploy of bundle 45d1ead3 to live 96867, blocked on arming the files-area pair (the roster row files-area-arming-decko-storage-pair-absent)",
+    "realAtThisTip": true,
+    "checks": [
+      "the row ledger (roster timestamp 2026-10-25T22:35:52.211Z) holds files-area-arming-decko-storage-pair-absent at verdict BLOCKED: the DECKO_STORAGE_ZONE / DECKO_STORAGE_PASSWORD values do not exist in the Bunny account, so the arm script has never fired",
+      "git grep over docs/reports at 86e147b6 for files-area and 96867 names only the receipts that define and carry the blocker; no receipt records an armed pair or a landed guarded deploy",
+      "45d1ead3 is not a git object in this repository (git cat-file -t 45d1ead3 finds nothing); it is the candidate bundle the row's DONE sentence named on 2026-10-20; this tip's tree rebuilds to 9b23a398c7c690dd867b153d1f51477c80e7b6f831e8702d14f82eee1595da46; the deploy leg has never run under any revision",
+      "this lane made no deploy and no live request"
+    ]
+  },
+  "residual": "The row's DONE condition, the guarded live deploy to live 96867 of the bundle carrying the upload fixes, has never run because the files-area pair does not exist in the Bunny account (row files-area-arming-decko-storage-pair-absent, verdict BLOCKED: the DECKO_STORAGE_ZONE / DECKO_STORAGE_PASSWORD values are an operator account-side call that has not been made), so the row's four upload legs are proven on the local stack only and the live leg cannot be run by any lane.",
+  "rowState": "FAIL held, WORKING ON IT (port surface green at 86e147b6; the remaining blocker is the operator-side guarded deploy)",
+  "guardsHonored": "no live request, nothing deploys, no git reset/stash/clean/rm, the roster was not written"
+}

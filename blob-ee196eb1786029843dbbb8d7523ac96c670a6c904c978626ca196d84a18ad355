@@ -1,0 +1,173 @@
+// Execute the actual export modules with virtual project I/O only.
+// The only native reads are the explicitly allowed implementation modules.
+import fs from "node:fs";
+import path from "node:path";
+import vm from "node:vm";
+import { createHash } from "node:crypto";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
+const repository = fileURLToPath(new URL("../../../", import.meta.url));
+const sourceRef = process.env.DECKO_EXPORT_TEST_SOURCE_REF;
+if (sourceRef && !/^[a-f0-9]{40}$/.test(sourceRef)) throw Error("The inert source pin must be an exact Git commit");
+const allowed = new Set([
+  "tools/handover/package.mjs",
+  "tools/handover/source-snapshot.mjs",
+  "tools/platform/source-export-file.mjs",
+]);
+const sourceCache = new Map();
+const sourceDigests = {};
+function sourceOf(file) {
+  if (!allowed.has(file)) throw Error(`Unexpected inert implementation module: ${file}`);
+  if (!sourceCache.has(file)) {
+    let raw;
+    if (sourceRef) {
+      const result = spawnSync("git", ["-C", repository, "show", `${sourceRef}:${file}`], { windowsHide: true, maxBuffer: Infinity });
+      if (result.status !== 0 || result.error || result.signal) throw Error(`Pinned source unavailable: ${file}`);
+      raw = result.stdout;
+    } else raw = fs.readFileSync(path.join(repository, file));
+    sourceDigests[file] = createHash("sha256").update(raw).digest("hex");
+    sourceCache.set(file, raw.toString("utf8"));
+  }
+  return sourceCache.get(file);
+}
+
+function virtualProject() {
+  const entries = new Map(), calls = [];
+  const normalize = file => path.resolve(String(file));
+  function directory(file) {
+    const full = normalize(file), parent = path.dirname(full);
+    if (parent !== full && !entries.has(parent)) directory(parent);
+    if (!entries.has(full)) entries.set(full, { kind: "directory", mode: 0o755 });
+  }
+  function put(file, bytes, mode = 0o644) {
+    const full = normalize(file);
+    directory(path.dirname(full));
+    entries.set(full, { kind: "file", bytes: Buffer.from(bytes), mode });
+  }
+  function requireEntry(file) {
+    const entry = entries.get(normalize(file));
+    if (!entry) throw Object.assign(Error(`Missing virtual path: ${file}`), { code: "ENOENT" });
+    return entry;
+  }
+  const io = {
+    existsSync: file => entries.has(normalize(file)),
+    lstatSync(file) {
+      const entry = requireEntry(file);
+      return { mode: entry.mode, isFile: () => entry.kind === "file", isDirectory: () => entry.kind === "directory", isSymbolicLink: () => entry.kind === "link" };
+    },
+    mkdirSync(file, options = {}) {
+      const full = normalize(file);
+      calls.push({ operation: "mkdir", file: full });
+      if (options.recursive !== true) {
+        if (entries.has(full)) throw Object.assign(Error("Virtual directory exists"), { code: "EEXIST" });
+        const parent = requireEntry(path.dirname(full));
+        if (parent.kind !== "directory") throw Object.assign(Error("Virtual parent is not a directory"), { code: "ENOTDIR" });
+      }
+      directory(file);
+    },
+    readFileSync(file, encoding) {
+      const entry = requireEntry(file);
+      if (entry.kind !== "file") throw Error("Virtual read is not a regular file");
+      return encoding ? entry.bytes.toString(encoding) : Buffer.from(entry.bytes);
+    },
+    writeFileSync(file, bytes, options = {}) {
+      calls.push({ operation: "write", file: normalize(file) });
+      if (options.flag === "wx" && entries.has(normalize(file))) throw Object.assign(Error("Virtual output exists"), { code: "EEXIST" });
+      put(file, bytes, options.mode ?? 0o644);
+    },
+    chmodSync(file, mode) { calls.push({ operation: "chmod", file: normalize(file) }); requireEntry(file).mode = mode; },
+    readdirSync(file, options = {}) {
+      requireEntry(file);
+      const full = normalize(file), names = new Map();
+      for (const [candidate, entry] of entries) if (candidate !== full && path.dirname(candidate) === full) names.set(path.basename(candidate), entry);
+      return [...names].map(([name, entry]) => options.withFileTypes ? {
+        name, isFile: () => entry.kind === "file", isDirectory: () => entry.kind === "directory", isSymbolicLink: () => entry.kind === "link",
+      } : name);
+    },
+  };
+  put(path.join(repository, "package.json"), '{"name":"inert-export-fixture","scripts":{}}\n');
+  put(path.join(repository, "tsconfig.json"), '{}\n');
+  put(path.join(repository, "src/example.ts"), "export const value = 1;\n", 0o755);
+  for (const file of ["README.md", "PORT-SCOPE.md", "DIFFERENCES.md", "NOTICE.md", "KNOWN-COMPARISON-FAILURE.md"]) put(path.join(repository, "docs/handover", file), "General engine fixture.\n");
+  directory(path.join(repository, "tmp"));
+  const output = path.join(repository, "tmp", "inert-handover-output");
+  const outputState = () => JSON.stringify([...entries].filter(([file]) => file === output || file.startsWith(output + path.sep)).map(([file, entry]) => [file, entry.kind, entry.mode, entry.bytes?.toString("base64")]).sort());
+  return { io, entries, calls, put, directory, output, outputState };
+}
+
+async function execute(project, { platform = "win32", refuseCustody = false } = {}) {
+  const messages = [], processState = { argv: ["node", path.join(repository, "tools/handover/package.mjs"), project.output], platform, exitCode: 0 };
+  const context = vm.createContext({ Buffer, URL, process: processState, console: { log: text => messages.push(String(text)) } });
+  const cache = new Map(), before = project.calls.length;
+  let custodyChecks = 0;
+  const synthetic = (name, values) => new vm.SyntheticModule(Object.keys(values), function () {
+    for (const [key, value] of Object.entries(values)) this.setExport(key, value);
+  }, { context, identifier: name });
+  const builtins = new Map([
+    ["node:fs", synthetic("node:fs", project.io)],
+    ["node:path", synthetic("node:path", { default: path })],
+    ["node:crypto", synthetic("node:crypto", { createHash })],
+    ["node:url", synthetic("node:url", { fileURLToPath })],
+    ["node:child_process", synthetic("node:child_process", { execFileSync(command, args) {
+      if (command !== "git") throw Error("Unexpected virtual command");
+      if (args[0] === "ls-files") return ["package.json", "tsconfig.json", "src/example.ts"].map(file => `${file.startsWith("src/") ? "100755" : "100644"} ${"1".repeat(40)} 0\t${file}\0`).join("");
+      if (args[0] === "status" || args[0] === "merge-base") return "";
+      if (args[0] === "rev-parse") return "1".repeat(40);
+      throw Error("Unexpected virtual Git operation");
+    } })],
+  ]);
+  function moduleAt(url) {
+    if (cache.has(url)) return cache.get(url);
+    const file = path.relative(repository, fileURLToPath(url)).split(path.sep).join("/");
+    let module;
+    if (file === "tools/handover/tinymce-export-custody.mjs") module = synthetic(url, { assertTinyMceExportCustody() {
+      custodyChecks++;
+      if (refuseCustody) throw Error("Synthetic upstream custody refusal");
+      return { purpose: "inert allocation control, not upstream custody evidence" };
+    } });
+    else module = new vm.SourceTextModule(sourceOf(file), { context, identifier: url, initializeImportMeta(meta) { meta.url = url; } });
+    cache.set(url, module);
+    return module;
+  }
+  let error = null;
+  try {
+    const entry = moduleAt(pathToFileURL(path.join(repository, "tools/handover/package.mjs")).href);
+    await entry.link((specifier, referring) => builtins.get(specifier) ?? moduleAt(new URL(specifier, referring.identifier).href));
+    await entry.evaluate();
+  } catch (caught) { error = caught.message; processState.exitCode = 1; }
+  const report = messages.length ? JSON.parse(messages.at(-1)) : null;
+  return { exitCode: processState.exitCode, error, report, custodyChecks, writes: project.calls.slice(before) };
+}
+
+const cases = [];
+{
+  const project = virtualProject();
+  project.put(path.join(repository, "src/example.ts"), 'export const path = "C:/Users/example/private";\n', 0o755);
+  cases.push({ name: "blocked", attempt: await execute(project) });
+}
+for (const name of ["identical", "changed-input", "changed-output", "extra-output", "output-link", "parent-link", "linux-mode", "incomplete-output"]) {
+  const project = virtualProject(), platform = name === "linux-mode" ? "linux" : "win32";
+  const seed = await execute(project, { platform });
+  if (seed.exitCode !== 0) {
+    cases.push({ name, seed, attempt: { exitCode: 1, error: "Seed export failed", writes: [] }, outputUnchanged: true });
+    continue;
+  }
+  if (name === "changed-input") project.put(path.join(repository, "src/example.ts"), "export const value = 2;\n", 0o755);
+  if (name === "changed-output") project.put(path.join(project.output, "src/example.ts"), "changed export bytes\n", 0o755);
+  if (name === "extra-output") project.put(path.join(project.output, "unknown.txt"), "Unrecognized data.\n");
+  if (name === "output-link") project.entries.set(project.output, { kind: "link", mode: 0o755 });
+  if (name === "parent-link") {
+    for (const key of [...project.entries.keys()]) if (key === project.output || key.startsWith(project.output + path.sep)) project.entries.delete(key);
+    project.entries.set(path.dirname(project.output), { kind: "link", mode: 0o755 });
+  }
+  if (name === "linux-mode") project.entries.get(path.join(project.output, "src/example.ts")).mode = 0o644;
+  if (name === "incomplete-output") project.entries.delete(path.join(project.output, "src/example.ts"));
+  const before = project.outputState(), attempt = await execute(project, { platform });
+  cases.push({ name, seed, attempt, outputUnchanged: before === project.outputState() });
+}
+for (const [name, options] of [["custody-refusal", { refuseCustody: true }], ["unsupported-platform", { platform: "unsupported-fixture" }]]) {
+  const project = virtualProject();
+  cases.push({ name, attempt: await execute(project, options) });
+}
+process.stdout.write(JSON.stringify({ scope: "Actual export modules with virtual project I/O and controlled Git/custody boundaries; no real export or install", sourceRef: sourceRef ?? "working-tree", sourceDigests, cases }) + "\n");

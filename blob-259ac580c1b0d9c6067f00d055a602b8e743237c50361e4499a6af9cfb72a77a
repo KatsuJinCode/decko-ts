@@ -1,0 +1,168 @@
+require "minitest/autorun"
+require_relative "api-key-capture-evidence"
+
+class ApiKeyCaptureEvidenceTest < Minitest::Test
+  class Auth
+    attr_accessor :current_id, :as_id
+    def always_ok? = true
+  end
+
+  class Probe
+    attr_reader :id, :attributes
+    attr_accessor :deleted
+    def initialize(id, order = [])
+      @id = id
+      @order = order
+      @attributes = { "id" => id, "db_content" => "synthetic" }
+    end
+    def ok?(_task) = true
+    def new_card? = false
+    def delete!
+      @deleted = true
+      @order << @id
+      self
+    end
+  end
+
+  def auth
+    Auth.new.tap { |value| value.current_id = value.as_id = 1 }
+  end
+
+  def test_initialization_is_observed_without_reading_or_initializing_auth
+    value = Auth.new
+    value.define_singleton_method(:current_id) { raise "must not invoke current_id" }
+    assert_equal({ "current_id" => { "defined" => false, "value" => nil },
+                   "as_id" => { "defined" => false, "value" => nil } },
+                 ApiKeyCaptureEvidence.initial_auth(value))
+    value.instance_variable_set(:@current_id, 21)
+    assert_equal({ "defined" => true, "value" => 21 }, ApiKeyCaptureEvidence.initial_auth(value)["current_id"])
+  end
+
+  def test_records_actual_before_and_after_actor_and_permissions
+    body, evidence = ApiKeyCaptureEvidence.record_render(Probe.new(5), auth, 1) { "<p>Synthetic</p>" }
+    assert_equal "<p>Synthetic</p>", body
+    assert_equal({ "current_id" => 1, "effective_id" => 1, "bot_id" => 1, "always_ok" => true }, evidence["before"])
+    assert_equal evidence["before"], evidence["after"]
+    assert_equal({ "read" => true, "update" => true }, evidence["permissions"])
+    assert_match(/\A[0-9a-f]{64}\z/, evidence["target_sha256"])
+  end
+
+  def test_an_actor_change_fails_instead_of_becoming_captured_bytes
+    value = auth
+    error = assert_raises(RuntimeError) do
+      ApiKeyCaptureEvidence.record_render(Probe.new(5), value, 1) { value.as_id = 21; "body" }
+    end
+    assert_equal "Capture actor changed during render", error.message
+  end
+
+  def test_a_target_change_fails
+    probe = Probe.new(5)
+    assert_raises(RuntimeError) do
+      ApiKeyCaptureEvidence.record_render(probe, auth, 1) { probe.attributes["db_content"] = "changed"; "body" }
+    end
+  end
+
+  def test_render_errors_remain_errors
+    error = assert_raises(ArgumentError) do
+      ApiKeyCaptureEvidence.record_render(Probe.new(5), auth, 1) { raise ArgumentError, "synthetic render failure" }
+    end
+    assert_equal "synthetic render failure", error.message
+  end
+
+  def test_a_proxy_bot_does_not_establish_a_bot_current_actor
+    value = auth
+    value.current_id = 21
+    calls = 0
+    assert_raises(RuntimeError) do
+      ApiKeyCaptureEvidence.record_render(Probe.new(5), value, 1) { calls += 1; "body" }
+    end
+    assert_equal 0, calls
+  end
+
+  def test_a_failed_permission_observation_stops_before_rendering
+    probe = Probe.new(5)
+    probe.define_singleton_method(:ok?) { |_task| false }
+    calls = 0
+    assert_raises(RuntimeError) do
+      ApiKeyCaptureEvidence.record_render(probe, auth, 1) { calls += 1; "body" }
+    end
+    assert_equal 0, calls
+  end
+
+  def test_a_missing_body_is_not_written_as_a_successful_capture
+    assert_raises(RuntimeError) { ApiKeyCaptureEvidence.record_render(Probe.new(5), auth, 1) { nil } }
+    assert_raises(RuntimeError) { ApiKeyCaptureEvidence.record_render(Probe.new(5), auth, 1) { "" } }
+  end
+
+  def test_cleanup_only_visits_created_probes_in_reverse_order
+    order = []
+    probes = { "pre-existing" => Probe.new(4, order), "parent" => Probe.new(5, order), "child" => Probe.new(6, order) }
+    ApiKeyCaptureEvidence.cleanup_created({ "parent" => 5, "child" => 6 }) { |name| probes.fetch(name) }
+    assert_equal [6, 5], order
+    refute probes["pre-existing"].deleted
+  end
+
+  def test_a_replacement_under_the_same_name_is_not_deleted
+    replacement = Probe.new(99)
+    assert_raises(RuntimeError) { ApiKeyCaptureEvidence.cleanup_created({ "own" => 5 }) { replacement } }
+    refute replacement.deleted
+  end
+
+  def test_unknown_owned_identity_stops_before_fetch_or_cleanup
+    called = false
+    assert_raises(RuntimeError) { ApiKeyCaptureEvidence.cleanup_created({ "own" => nil }) { called = true } }
+    refute called
+  end
+
+  def test_cleanup_failure_is_not_swallowed
+    probe = Probe.new(5)
+    probe.define_singleton_method(:delete!) { raise "synthetic cleanup failure" }
+    assert_raises(RuntimeError) { ApiKeyCaptureEvidence.cleanup_created({ "own" => 5 }) { probe } }
+    probe.define_singleton_method(:delete!) { false }
+    assert_raises(RuntimeError) { ApiKeyCaptureEvidence.cleanup_created({ "own" => 5 }) { probe } }
+  end
+
+  def test_the_historical_destination_is_refused_before_any_capture_work
+    historical = File.expand_path("../../../fixtures/captured/api-key-views.json", __dir__)
+    assert_raises(RuntimeError) { ApiKeyCaptureEvidence.output_path([]) }
+    assert_raises(RuntimeError) { ApiKeyCaptureEvidence.output_path([historical]) }
+  end
+
+  def seed_class(existing, created_card = nil)
+    Class.new.tap do |value|
+      value.define_singleton_method(:fetch) { |_name, **_options| existing }
+      value.define_singleton_method(:create!) { |_attrs| created_card || raise("must not create a duplicate") }
+    end
+  end
+
+  def test_existing_matching_probes_are_not_owned_or_modified
+    probe = Struct.new(:id, :type_id, :db_content) { def new_card? = false }.new(5, 2, "synthetic")
+    owned = {}
+    assert_equal "present", ApiKeyCaptureEvidence.seed_card(seed_class(probe), { name: "Probe", type_id: 2, content: "synthetic" }, owned)
+    assert_empty owned
+  end
+
+  def test_existing_nonmatching_probes_are_refused_without_capturing_their_content
+    probe = Struct.new(:id, :type_id, :db_content) { def new_card? = false }.new(5, 2, "not the synthetic seed")
+    owned = {}
+    assert_raises(RuntimeError) do
+      ApiKeyCaptureEvidence.seed_card(seed_class(probe), { name: "Probe", type_id: 2, content: "synthetic" }, owned)
+    end
+    assert_empty owned
+  end
+
+  def test_only_actual_created_identity_enters_cleanup_inventory
+    missing = Object.new
+    missing.define_singleton_method(:new_card?) { true }
+    owned = {}
+    assert_equal "created", ApiKeyCaptureEvidence.seed_card(seed_class(missing, Probe.new(5)), { name: "Probe" }, owned)
+    assert_equal({ "Probe" => 5 }, owned)
+    assert_raises(RuntimeError) { ApiKeyCaptureEvidence.seed_card(seed_class(missing, Probe.new(nil)), { name: "Unknown" }, owned) }
+    refute owned.key?("Unknown")
+  end
+
+  def test_target_hash_is_independent_of_hash_key_insertion_order
+    assert_equal ApiKeyCaptureEvidence.digest({ "id" => 1, "content" => "x" }),
+                 ApiKeyCaptureEvidence.digest({ "content" => "x", "id" => 1 })
+  end
+end

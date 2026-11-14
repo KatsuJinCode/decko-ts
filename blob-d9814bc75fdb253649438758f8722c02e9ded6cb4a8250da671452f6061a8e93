@@ -1,0 +1,40 @@
+import {afterEach,beforeAll,expect,it} from 'vitest';
+import {spawnSync} from 'node:child_process';
+import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
+import {resolve} from 'node:path';
+import {defineMod} from '../../../src/card/mod-loader/mod-dsl.js';
+import {ModLoader} from '../../../src/card/mod-loader.js';
+import {createRenderTestStorage,seedCard} from '../render/render-test-storage.js';
+
+const cases=[
+  {id:'array-all-unicode-space',tag:'div',defaults:{},options:{class:['\t\n\r\u0085\u00a0\u1680\u2000\u2001\u200a\u2028\u2029\u202f\u205f\u3000',0,'0','keep','keep']},content:'cake'},
+  {id:'default-unicode-space-array',tag:'div',defaults:{class:['\u0085',' ',false]},options:{class:[' ',false,0,'0']},content:'cake'},
+  {id:'default-zero-not-blank',tag:'div',defaults:{class:0},options:{class:[false,0,'0',null]},content:'cake'},
+  {id:'json-escape-literal-combination',tag:'section',defaults:{data:{old:'old'}},options:{data:{object:{value:'<&>\u2028\u2029\\u003c😀',numeric:0,disabled:false},text:'<&>\u2028\u2029\\u003c😀'}},content:'<raw>&</raw>'},
+  {id:'json-empty-nested-values',tag:'div',defaults:{},options:{data:{list:[null,false,0,'',[],{}],obj:{none:null,list:[]},empty:[],zero:0}},content:null},
+  {id:'default-false-class-scalar',tag:'div',defaults:{class:false,title:'default'},options:{class:['a','',false,'a'],title:null},content:['a',false,0,null,['b']]},
+  {id:'default-present-caller-array',tag:'div',defaults:{class:['a',null,'a','b']},options:{class:['b',false,'','c','c']},content:'cake'},
+] as const;
+let reference:{baseline:unknown,cases:Array<{id:string,body:string}>};
+beforeAll(()=>{
+  const native=spawnSync('ruby',[resolve('tests/card/mod-loader/ruby-adversarial-tag-values-probe.rb'),'C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems'],{windowsHide:true,encoding:'utf8',input:JSON.stringify(cases),maxBuffer:Infinity});
+  expect(native.status,native.stderr).toBe(0);reference=JSON.parse(native.stdout);
+  const fixture=JSON.parse(readFileSync(resolve('tests/card/mod-loader/fixtures/declared-tag-wrapper-native.json'),'utf8'));delete fixture.probeSha256;
+  expect(reference.baseline).toEqual(fixture);
+  mkdirSync(resolve('tmp'),{recursive:true});writeFileSync(resolve('tmp/attack-tag-boundaries-native.json'),native.stdout);
+});
+const cleanup:Array<()=>void>=[];
+afterEach(()=>{while(cleanup.length)cleanup.pop()!();});
+for(const request of cases)it(`matches additional original boundary: ${request.id}`,async()=>{
+  const storage=await createRenderTestStorage();cleanup.push(()=>storage.close());
+  await seedCard(storage,{id:2,name:'RichText',codename:'basic'});await seedCard(storage,{id:500,name:'Boundary Example',typeId:2});
+  const before=JSON.stringify(request.options);
+  const manifest=defineMod('attack_tag_boundaries',({set})=>set('all/attack_tag_boundaries',({format})=>format('html',({wrapper,view})=>{
+    wrapper('boundary',request.tag,request.defaults);
+    view('boundary_values',{perms:'none'},ctx=>ctx.fmt.callFormatMethod('wrap_with_boundary',()=>request.content,request.options) as string);
+  })));
+  const loader=new ModLoader([{manifest}],{});cleanup.push(()=>loader.reset());loader.load();storage.engine.modLoader=loader;
+  const expected=reference.cases.find(row=>row.id===request.id);
+  for(let invocation=0;invocation<2;invocation++)expect({id:request.id,body:await storage.engine.render('Boundary Example','boundary_values')}).toEqual(expected);
+  expect(JSON.stringify(request.options)).toBe(before);
+});

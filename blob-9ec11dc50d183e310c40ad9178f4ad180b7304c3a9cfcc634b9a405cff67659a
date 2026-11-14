@@ -1,0 +1,25 @@
+// Explicit diagnostic for issue 253. Ruby's cache-stub behavior is the
+// reference; this is not an automatic correctness gate or a cache emulator.
+import '../../support/typescript-source-loader.mjs';
+const {createRenderTestStorage, seedCard} = await import('./render-test-storage.ts');
+const storage = await createRenderTestStorage();
+try {
+  await seedCard(storage, {id: 97260, name: 'Topic', typeId: 2,
+    dbContent: '{{+results|content}}'});
+  await seedCard(storage, {id: 97261, name: 'results', typeId: 2});
+  await seedCard(storage, {id: 97262, leftId: 97260, rightId: 97261,
+    typeId: 2, dbContent: 'Owned context diagnostic'});
+  const cold = await storage.engine.render('Topic', 'content');
+  const titled = await storage.engine.render('Topic', 'titled');
+  const afterTitled = await storage.engine.render('Topic', 'content');
+  const slots = html => [...html.matchAll(/data-slot="([^"]*)"/g)]
+    .map(match => match[1]).filter(slot => slot.includes('+results'));
+  const output = {
+    scope: 'Owned synthetic native SQLite renderer diagnostic; exact slot strings, no HTTP/Rails acceptance',
+    cold: slots(cold), titled: slots(titled), afterTitled: slots(afterTitled),
+    comparison: 'Pinned Ruby retains context on cached nested stubs; direct TypeScript rendering starts fresh',
+  };
+  console.log(JSON.stringify(output, null, 2));
+  if (!output.titled.some(slot => slot.includes('name_context'))) throw Error('Diagnostic fixture did not establish titled context');
+  process.exitCode = output.afterTitled.some(slot => slot.includes('name_context')) ? 0 : 1;
+} finally {storage.close();}

@@ -1,0 +1,82 @@
+import { afterEach, describe, expect, it } from "vitest";
+import { ModLoader, setDefaultModLoader } from "../../../src/card/mod-loader.js";
+import type { ModSetModuleFile } from "../../../src/card/mod-loader/mod-manifest.js";
+import { superView } from "../../../src/card/mod-loader/mod-view-helpers.js";
+import { createRenderTestStorage, seedCard } from "../render/render-test-storage.js";
+
+const cleanup: Array<() => void> = [];
+afterEach(() => {
+  while (cleanup.length) cleanup.pop()!();
+  setDefaultModLoader(undefined);
+});
+
+async function fixture(files: ModSetModuleFile[]) {
+  const storage = await createRenderTestStorage();
+  cleanup.push(() => storage.close());
+  await seedCard(storage, { id: 2, name: "RichText", codename: "basic" });
+  await seedCard(storage, { id: 499, name: "Home", typeId: 2 });
+  await seedCard(storage, { id: 500, name: "Review Tag", codename: "review_tag" });
+  await seedCard(storage, { id: 501, name: "Home+Review Tag", typeId: 2, leftId: 499, rightId: 500 });
+  const loader = new ModLoader([{ manifest: { name: "cross_pattern", setModules: files } }], {});
+  cleanup.push(() => loader.reset());
+  loader.load();
+  storage.engine.modLoader = loader;
+  return { storage, loader };
+}
+
+const view = "cross_pattern_probe";
+const keys = "ALL TYPE-basic RIGHT-review_tag";
+
+describe("issue 87: shared format ancestors across set patterns", () => {
+  it("preserves the intervening concrete body through the owned renderer", async () => {
+    const calls: string[] = [];
+    const { storage, loader } = await fixture([
+      { setPath: "abstract/a_provider", formats: { html: { views: [{ view, config: { perms: "none" },
+        viewFn: () => { calls.push("A"); return "A"; } }] } } },
+      { setPath: "abstract/b_provider", includeSets: [{ setPath: "abstract/a_provider" }],
+        formats: { html: { views: [{ view, viewFn: ctx => {
+          calls.push("B"); return `B:${superView(ctx, "Abstract::BProvider", view)}`;
+        } }] } } },
+      { setPath: "type/basic", includeSets: [{ setPath: "abstract/a_provider" }],
+        formats: { html: { views: [{ view, viewFn: ctx => {
+          calls.push("ROOT"); return `ROOT:${superView(ctx, "Type::Basic", view)}`;
+        } }] } } },
+      { setPath: "right/review_tag", includeSets: [{ setPath: "abstract/b_provider" }] },
+    ]);
+    expect(await storage.engine.render("Home+Review Tag", view)).toBe("B:ROOT:A");
+    expect(calls).toEqual(["B", "ROOT", "A"]);
+    expect(loader.viewChain(keys, view).map(entry => entry.setModule))
+      .toEqual(["Abstract::BProvider", "Type::Basic", "Abstract::AProvider"]);
+  });
+
+  it("keeps a helper-only shared ancestor behind the concrete permission helper", async () => {
+    const { storage, loader } = await fixture([
+      { setPath: "abstract/a_provider", formats: { html: {
+        methods: [{ name: "cross_pattern_allowed?", fn: () => true }],
+      } } },
+      { setPath: "abstract/b_provider", includeSets: [{ setPath: "abstract/a_provider" }] },
+      { setPath: "type/basic", includeSets: [{ setPath: "abstract/a_provider" }], formats: { html: {
+        methods: [{ name: "cross_pattern_allowed?", fn: () => false }],
+        views: [{ view, config: { perms: "cross_pattern_allowed?" }, viewFn: () => "PRIVATE_BODY" }],
+      } } },
+      { setPath: "right/review_tag", includeSets: [{ setPath: "abstract/b_provider" }] },
+    ]);
+    expect(loader.formatMethodForCard(keys, "cross_pattern_allowed?")?.({} as never)).toBe(false);
+    expect(await storage.engine.render("Home+Review Tag", view)).not.toContain("PRIVATE_BODY");
+  });
+
+  it("resolves view directives through the same whole ancestry as bodies and helpers", async () => {
+    const { loader } = await fixture([
+      { setPath: "abstract/a_provider", formats: { html: {
+        views: [{ view, config: { perms: "none" }, viewFn: () => "A" }],
+      } } },
+      { setPath: "abstract/b_provider", includeSets: [{ setPath: "abstract/a_provider" }] },
+      { setPath: "type/basic", includeSets: [{ setPath: "abstract/a_provider" }], formats: { html: {
+        views: [{ view, config: { perms: "update" }, viewFn: () => "ROOT" }],
+      } } },
+      { setPath: "right/review_tag", includeSets: [{ setPath: "abstract/b_provider" }] },
+    ]);
+    expect(loader.viewSettingForCard(keys, view, "perms")).toBe("update");
+  });
+
+});

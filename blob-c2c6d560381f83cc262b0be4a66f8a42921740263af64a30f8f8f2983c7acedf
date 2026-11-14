@@ -1,0 +1,30 @@
+{
+  "row": "widget-single-statement-cas-test",
+  "instrument": "recovery/release/private-probes/private-tool-repairs-20261018/widget-single-statement-cas.test.mjs",
+  "suiteOutput": "cas-suite.tap",
+  "tests": 4,
+  "pass": 1,
+  "fail": 3,
+  "cancelled": 0,
+  "skipped": 0,
+  "durationMs": null,
+  "cases": [
+    "one mismatching content cell refuses every update even with a fresh version"
+  ],
+  "failures": [
+    "one statement changes exactly12 content cells and guarded rollback restores every card while versions stay monotonic",
+    "an unrelated intervening card edit refuses stale admission and rollback refuses a later edit",
+    "a trigger failure partway through the statement rolls back every content and version change"
+  ],
+  "deck": {
+    "path": "C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3",
+    "sha256": "6aebb6546a0620f3c61efad28cd01023e104d47ffd583272ce18036038f73b78",
+    "version": 62958,
+    "versionRows": 1,
+    "cardsPresent": 12,
+    "cardsNotTrashed": 12,
+    "cardsCarryingBeforeContent": 0,
+    "cardsCarryingAfterContent": 12,
+    "admissionMatches": 0
+  }
+}

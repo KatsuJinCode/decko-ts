@@ -1,0 +1,174 @@
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { copyFileSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { resolve } from "node:path";
+import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
+import { FetchEngine } from "../../../src/card/fetch.js";
+import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
+import { defaultDeckLoader } from "../../../src/card/mod-loader/default-mod-deck.js";
+import { observedModEventRuntime } from "../../../src/server/write-routes.js";
+import { actorBot } from "../../../src/card/auth/actor.js";
+import { RenderEngine } from "../../../src/card/render.js";
+import { openSameDatabase } from "../../../src/server/same-database.js";
+import { createVirtualCardLookup } from "../../../src/card/fetch/virtual-cards.js";
+import { structureRuleUniverseStatement, structureUniverseFromResults, structureRuleTypesFromResults } from "../../../src/card/rules/structure.js";
+import { ModEventRegistry } from "../../../src/card/mod-loader/mod-event-registry.js";
+
+async function isolatedRuntime() {
+  const runtime = await observedModEventRuntime({driver,fetcher});
+  const registry = new ModEventRegistry();
+  for (const event of runtime.registry.all()) registry.register(event);
+  return {...runtime,registry};
+}
+
+let dir: string, driver: LocalSqliteDriver, fetcher: FetchEngine, engine: CardActionEngine;
+beforeEach(async () => {
+  mkdirSync(resolve("tmp"), { recursive: true });
+  dir = mkdtempSync(resolve("tmp/attack-original-actions-"));
+  copyFileSync(resolve("reference-harness/fixtures/synthetic-v1/deck/deck.sqlite3"), resolve(dir, "deck.sqlite3"));
+  driver = new LocalSqliteDriver({ path: resolve(dir, "deck.sqlite3") });
+  await openSameDatabase(driver);
+  defaultDeckLoader();
+  fetcher = new FetchEngine(driver);
+  engine = new CardActionEngine(fetcher, { actor: await actorBot(driver),
+    modEvents: await observedModEventRuntime({ driver, fetcher }) });
+});
+afterEach(() => { driver?.close(); rmSync(dir, { recursive: true }); });
+
+describe("original rule and trash examples", () => {
+  it("Rule::All makes Set of +*type", async () => {
+    // card-1.110.0/spec/card/rule/all_spec.rb: setting data setup.
+    await engine.createCard({ name: "SpeciForm", typeName: "Cardtype" });
+    const result = await engine.createCard({ name: "SpeciForm+*type" });
+    const row = (await driver.query<{codename:string}>("SELECT t.codename FROM cards c JOIN cards t ON t.id=c.type_id WHERE c.id = ?", [result.cardId])).rows[0];
+    expect(row?.codename).toBe("set");
+  });
+
+  it("Trash protects the indestructible *all+*default rule", async () => {
+    // card-1.110.0/mod/core/spec/set/all/trash_spec.rb: validate_delete.
+    const card = await fetcher.fetchByName("*all+*default");
+    expect(card).toBeDefined();
+    await expect(engine.deleteCard({ cardId: card!.id! })).rejects.toThrow(/indestructible rule/);
+    expect((await driver.query<{trash:number}>("SELECT trash FROM cards WHERE id = ?", [card!.id])).rows[0]?.trash).toBe(0);
+  });
+
+  it("Trash removes descendants through both sides and preserves other parts", async () => {
+    // core/spec/set/all/trash_spec.rb: event delete_children / removes descendants.
+    const parent = await engine.createCard({ name: "born to die" });
+    const descendants = [];
+    for (const name of ["born to die+slowly", "slowly+born to die", "born to die+slowly+without regrets"]) {
+      descendants.push(await engine.createCard({ name }));
+    }
+    await engine.deleteCard({ cardId: parent.cardId });
+    for (const card of [parent, ...descendants]) {
+      expect((await driver.query<{trash:number}>("SELECT trash FROM cards WHERE id=?", [card.cardId])).rows[0]?.trash).toBe(1);
+    }
+    expect(await fetcher.fetchByName("slowly")).toBeDefined();
+    expect(await fetcher.fetchByName("without regrets")).toBeDefined();
+  });
+
+  it("Trash revives the original id and keeps history", async () => {
+    // core/spec/set/all/trash_spec.rb: manage_trash / pulls deleted card from trash.
+    const original = await engine.createCard({ name: "Revival example", content: "basiccontent" });
+    await engine.deleteCard({ cardId: original.cardId });
+    const revived = await engine.createCard({ name: "Revival example", content: "revived content" });
+    expect(revived.cardId).toBe(original.cardId);
+    expect((await driver.query<{n:number}>("SELECT count(*) n FROM card_actions WHERE card_id=?", [original.cardId])).rows[0]?.n).toBe(3);
+    expect((await fetcher.fetchByName("Revival example"))?.dbContent).toBe("revived content");
+  });
+
+  it("NameEvents updates descendants when either part is renamed", async () => {
+    // core/spec/set/all/name_events_spec.rb: updates descendants.
+    const one = await engine.createCard({ name: "One" });
+    const originals = ["One+Two", "One+Two+Three", "Four+One", "Four+One+Five"];
+    const expected = ["Uno+Two", "Uno+Two+Three", "Four+Uno", "Four+Uno+Five"];
+    const cards = [];
+    for (const name of originals) cards.push(await engine.createCard({ name }));
+    await engine.updateCard({ cardId: one.cardId, name: "Uno" });
+    for (let i=0;i<cards.length;i++) expect((await fetcher.fetchById(cards[i]!.cardId))?.name?.s).toBe(expected[i]);
+  });
+
+  for (const sameContent of [false, true]) it(`Conflict feature rejects concurrent ${sameContent ? "identical" : "different"} edits`, async () => {
+    // decko-0.20.0/features/conflict.feature: both scenarios' engine conflict verdict.
+    // Browser window handling and colored diff presentation are not checked here.
+    const card = await engine.createCard({ name: "Duck Soup", content: "Laurel and Hardy" });
+    const stale = card.actionId;
+    const other = await fetcher.fetchByName("Ada Admin");
+    expect(other?.id).toBeDefined();
+    const otherEngine = new CardActionEngine(new FetchEngine(driver), {
+      actor: { id: other!.id!, name: "Ada Admin" }, modEvents: await observedModEventRuntime({driver,fetcher}),
+    });
+    await otherEngine.updateCard({ cardId: card.cardId, content: "Oliver Laurel" });
+    await expect(engine.updateCard({ cardId: card.cardId, content: sameContent ? "Oliver Laurel" : "Stan Hardy",
+      lastActionIdBeforeEdit: stale })).rejects.toMatchObject({ code: "conflict" });
+    expect((await fetcher.fetchById(card.cardId))?.dbContent).toBe("Oliver Laurel");
+  });
+
+  it("Structure feature engine operations create and edit templated subcards with a right default", async () => {
+    // decko-0.20.0/features/structure.feature: engine operations underlying
+    // Create and edit templated card. Browser form-field generation is not checked.
+    await engine.createCard({ name: "Movie", typeName: "Cardtype" });
+    await engine.createCard({ name: "Movie+*type+*structure", typeName: "RichText", content: "{{+director}} {{+lead}} {{+color}}" });
+    await engine.createCard({ name: "color+*right+*default", typeName: "Phrase", content: "true dat" });
+    const defaulted = await engine.createCard({name: "Standalone+color"});
+    expect((await fetcher.fetchById(defaulted.cardId))?.dbContent).toBe("true dat");
+    const movie = await engine.createCard({ name: "Star Wars", typeName: "Movie", subcards: {
+      "+director": {content:"George Lucas"}, "+lead": {content:"Harrison Ford"}, "+color": {content:"true dat"},
+    }});
+    fetcher.installNameEnvironment();
+    await fetcher.warmLexicon((await driver.query<{id:number}>("SELECT id FROM cards WHERE trash=0", [])).rows.map(r=>r.id));
+    const [universe] = await driver.batch([structureRuleUniverseStatement()]);
+    fetcher.virtualCardLookup = createVirtualCardLookup(fetcher, {
+      contents: structureUniverseFromResults(universe), ruleTypeIds: structureRuleTypesFromResults(universe),
+    });
+    const renderer = new RenderEngine(fetcher);
+    renderer.viewer = { signedIn: true, actorId: (await actorBot(driver)).id };
+    const first = await renderer.render("Star Wars", "content");
+    expect(first).toContain("George Lucas"); expect(first).toContain("Harrison Ford");
+    await engine.updateCard({ cardId: movie.cardId, subcards: {
+      "+director": {content:"G. Lucas"}, "+lead": {content:"H. Ford"},
+    }});
+    const second = await renderer.render("Star Wars", "content");
+    expect(second).toContain("G. Lucas"); expect(second).toContain("H. Ford"); expect(second).toContain("true dat");
+  });
+
+  it("Event::All executes changed-content callbacks with the original content in every stage", async () => {
+    // card-1.110.0/spec/card/set/event/all_spec.rb: first two examples.
+    const card = await engine.createCard({name:"Event example",content:"before"});
+    const runtime = await isolatedRuntime();
+    const log: {stage:string,before:string|null|undefined}[] = [];
+    for (const stage of ["validate","store","finalize","integrate"] as const) runtime.registry.register({
+      event:`attack_observe_${stage}`,at:stage,on:["update"],changed:["content"],
+      setPath:"all/attack",modName:"attack",fn:c=>{if(c.name==="Event example")log.push({stage,before:c.dbContentBeforeAct});},
+    });
+    const observed = new CardActionEngine(fetcher,{actor:await actorBot(driver),modEvents:runtime});
+    await observed.updateCard({cardId:card.cardId,content:"after"});
+    expect(log).toEqual(["validate","store","finalize","integrate"].map(stage=>({stage,before:"before"})));
+  });
+
+  for (const [setPath, changing, expected] of [
+    ["type/basic", undefined, 0], ["type/basic", ["type"], 1], ["type/phrase", undefined, 1],
+  ] as const) it(`Event::All type change: ${setPath}, changing=${String(changing)}`, async () => {
+    // card-1.110.0/spec/card/set/event/all_spec.rb: changing type.
+    const card = await engine.createCard({name:"Event type example",typeName:"RichText",content:"before"});
+    const runtime = await isolatedRuntime();
+    let calls=0;
+    runtime.registry.register({event:"attack_type_transition",at:"validate",on:["update"],
+      setPath,...(changing === undefined ? {} : {changing}),modName:"attack",fn:c=>{if(c.name==="Event type example")calls++;},
+    });
+    const observed = new CardActionEngine(fetcher,{actor:await actorBot(driver),modEvents:runtime});
+    await observed.updateCard({cardId:card.cardId,typeName:"Phrase"});
+    expect(calls).toBe(expected);
+  });
+
+  it("Content::All replaces an earlier content draft instead of accumulating drafts", async()=>{
+    // card-1.110.0/spec/card/content/all_spec.rb.
+    const card=await engine.createCard({name:"mango",content:"foo"});
+    await engine.updateCard({cardId:card.cardId,content:"bar",draft:true});
+    await engine.updateCard({cardId:card.cardId,content:"booboo",draft:true});
+    const drafts=(await driver.query<{id:number}>("SELECT id FROM card_actions WHERE card_id=? AND draft=1",[card.cardId])).rows;
+    expect(drafts).toHaveLength(1);
+    const changes=(await driver.query<{value:string}>("SELECT value FROM card_changes WHERE card_action_id=?",[drafts[0]!.id])).rows;
+    expect(changes.map(c=>c.value)).toContain("booboo");
+    expect((await fetcher.fetchById(card.cardId))?.dbContent).toBe("foo");
+  });
+});

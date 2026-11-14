@@ -1,0 +1,68 @@
+import assert from "node:assert/strict";
+import {isDeepStrictEqual} from "node:util";
+
+const terminal="compiled-terminal";
+const commonAll={base:["All::Probe/base"],html:["All::Probe/html"],rss:["All::Probe/rss"]};
+export const formatSuperScenarios=[
+  {name:"all_child_parent_base",format:"rss",all:commonAll,scoped:{},owners:["All::Probe/rss","All::Probe/html","All::Probe/base",terminal]},
+  {name:"all_child_different_parent_module",format:"rss",all:{html:["All::Parent/html"],rss:["All::Child/rss"]},scoped:{},owners:["All::Child/rss","All::Parent/html",terminal]},
+  {name:"all_parent_only",format:"rss",all:{base:["All::Probe/base"],html:["All::Probe/html"]},scoped:{},owners:["All::Probe/html","All::Probe/base",terminal]},
+  {name:"all_css_excludes_html",format:"css",all:{base:["All::Probe/base"],html:["All::Probe/html"]},scoped:{},owners:["All::Probe/base",terminal]},
+  {name:"scoped_base_over_all_child",format:"rss",all:{rss:["All::Child/rss"]},scoped:{"Type::Probe":{base:["Type::Probe/base"]}},owners:["Type::Probe/base","All::Child/rss",terminal]},
+  {name:"scoped_child_parent_base",format:"rss",all:commonAll,scoped:{"Type::Probe":{base:["Type::Probe/base"],html:["Type::Probe/html"],rss:["Type::Probe/rss"]}},owners:["Type::Probe/rss","Type::Probe/html","Type::Probe/base","All::Probe/rss","All::Probe/html","All::Probe/base",terminal]},
+  {name:"scoped_two_sets_cross_formats",format:"rss",all:{html:["All::Probe/html"]},scoped:{"Self::Probe":{html:["Self::Probe/html"]},"Type::Probe":{rss:["Type::Probe/rss"]}},owners:["Type::Probe/rss","Self::Probe/html","All::Probe/html",terminal]},
+];
+export const formatSuperSourceSuffixes=["lib/card/format/registration.rb","lib/card/format.rb","lib/card/set/pattern/all.rb","config/initializers/01_core_extensions/module.rb"];
+function object(value,label){assert.ok(value!==null&&typeof value==="object"&&!Array.isArray(value),`${label}: expected object`);}
+function keys(value,expected,label){object(value,label);assert.deepEqual(Object.keys(value).sort(),[...expected].sort(),`${label}: exact fields required`);}
+function strings(value,label){assert.ok(Array.isArray(value)&&value.length>0,`${label}: nonempty typed array required`);value.forEach(item=>assert.equal(typeof item,"string",label));}
+
+export function validateFormatSuperReference(reference){
+  keys(reference,["scope","runtime","checker_sha256","sources","cases"],"reference");
+  assert.equal(typeof reference.scope,"string");assert.equal(typeof reference.runtime,"string");assert.match(reference.checker_sha256,/^[a-f0-9]{64}$/);
+  assert.ok(Array.isArray(reference.cases));
+  assert.deepEqual(reference.cases.map(row=>row.name),formatSuperScenarios.map(row=>row.name),"missing, duplicate, unknown or reordered ancestry scenario");
+  reference.cases.forEach((row,index)=>{
+    const expected=formatSuperScenarios[index],label=`ancestry case ${index}`;
+    keys(row,["name","format","all","scoped","body","owners","ancestry_depth"],label);
+    assert.equal(row.format,expected.format,`${label}: format`);
+    assert.deepEqual(row.all,expected.all,`${label}: exact all-set declarations required`);
+    assert.deepEqual(row.scoped,expected.scoped,`${label}: exact scoped declarations required`);
+    assert.deepEqual(Object.keys(row.scoped),Object.keys(expected.scoped),`${label}: scoped precedence order`);
+    strings(row.body,`${label}: body`);strings(row.owners,`${label}: owners`);
+    assert.deepEqual(row.owners,expected.owners,`${label}: native owner walk`);
+    assert.deepEqual(row.body,row.owners,`${label}: complete native super walk`);
+    assert.equal(row.ancestry_depth,expected.format==="css"?3:4,`${label}: declared synthetic hierarchy depth`);
+  });
+  object(reference.sources,"sources");const files=Object.keys(reference.sources);
+  assert.equal(files.length,formatSuperSourceSuffixes.length,"complete native source set required");
+  let root;const seen=new Set();
+  for(const file of files){
+    const suffix=formatSuperSourceSuffixes.find(suffix=>file.endsWith(`/card-1.110.0/${suffix}`));
+    assert.ok(suffix!==undefined&&!seen.has(suffix),"unknown or duplicate native source role");seen.add(suffix);
+    const prefix=file.slice(0,-suffix.length);root??=prefix;assert.equal(prefix,root,"mixed native source roots");assert.match(reference.sources[file],/^[a-f0-9]{64}$/);
+  }
+}
+
+export function formatSuperMismatches(actual,expected){
+  const mismatches=[];
+  if(Object.hasOwn(actual,"error"))mismatches.push("unexpected_error");
+  if(!isDeepStrictEqual(actual.body,expected.body))mismatches.push("body");
+  if(!isDeepStrictEqual(actual.calls,expected.owners))mismatches.push("owner_walk");
+  return mismatches;
+}
+export function validateFormatSuperRows(rows,reference){
+  validateFormatSuperReference(reference);
+  assert.deepEqual(rows.map(row=>row.name),formatSuperScenarios.map(row=>row.name),"complete output ancestry identities required");
+  rows.forEach((row,index)=>{
+    const expected=reference.cases[index];
+    assert.equal(row.format,expected.format);
+    assert.deepEqual(row.expected,{body:expected.body,owners:expected.owners});
+    object(row.actual,"actual");strings(row.actual.calls,"actual call walk");
+    if(Object.hasOwn(row.actual,"error")){
+      keys(row.actual,["error","calls"],"failed actual");keys(row.actual.error,["name","message"],"actual error");
+      assert.equal(typeof row.actual.error.name,"string");assert.equal(typeof row.actual.error.message,"string");
+    }else{keys(row.actual,["body","calls"],"actual");strings(row.actual.body,"actual body");}
+    assert.deepEqual(row.mismatches,formatSuperMismatches(row.actual,row.expected),"saved ancestry mismatches inconsistent");
+  });
+}

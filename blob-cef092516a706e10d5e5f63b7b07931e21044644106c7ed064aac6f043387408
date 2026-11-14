@@ -1,0 +1,141 @@
+{
+  "instrument": "benchmarks/edge-cold-start/measure-static-vs-dynamic-import-of-gzip-inlined-wasm.mjs",
+  "plugin": "tools/vendor/gzip-inline-wasm-blobs-esbuild-plugin.mjs",
+  "measured_at": "2026-10-19T18:54:27.067Z",
+  "node": "v24.19.0",
+  "platform": "win32 x64",
+  "reps": 7,
+  "libsass_module": "C:\\localProjects\\decko-ts-mini-edge-coldstart-20261020\\vendor\\libsass-wasm\\libsass-3.6.4-wasm-base64.js",
+  "outer_bundle_bytes": {
+    "static": 577600,
+    "dynamic": 577880
+  },
+  "static_import_ms": {
+    "n": 7,
+    "min": 92.31,
+    "p50": 110.83,
+    "max": 120.95,
+    "mean": 108.82
+  },
+  "dynamic_import_ms": {
+    "n": 7,
+    "min": 3.65,
+    "p50": 3.89,
+    "max": 5.24,
+    "mean": 4.23
+  },
+  "dynamic_deferred_call_ms": {
+    "n": 7,
+    "min": 94.99,
+    "p50": 103.75,
+    "max": 136.9,
+    "mean": 106.81
+  },
+  "moved_off_boot_path_ms": 106.94,
+  "payload_identical": true,
+  "shapes": {
+    "static": {
+      "import_ms": 110.64,
+      "deferred_call_ms": 0,
+      "kind": "string",
+      "length": 2229360
+    },
+    "dynamic": {
+      "import_ms": 4.2,
+      "deferred_call_ms": 96.18,
+      "kind": "string",
+      "length": 2229360
+    }
+  },
+  "caveat": "Node 24 / win32 through the same plugin; NOT a Bunny runtime number. The Bunny-side cold/warm TTFB is measured separately against staging 96895.",
+  "runs": {
+    "static": [
+      {
+        "import_ms": 110.64,
+        "deferred_call_ms": 0,
+        "kind": "string",
+        "length": 2229360
+      },
+      {
+        "import_ms": 120.95,
+        "deferred_call_ms": 0,
+        "kind": "string",
+        "length": 2229360
+      },
+      {
+        "import_ms": 92.31,
+        "deferred_call_ms": 0,
+        "kind": "string",
+        "length": 2229360
+      },
+      {
+        "import_ms": 113.69,
+        "deferred_call_ms": 0,
+        "kind": "string",
+        "length": 2229360
+      },
+      {
+        "import_ms": 110.83,
+        "deferred_call_ms": 0,
+        "kind": "string",
+        "length": 2229360
+      },
+      {
+        "import_ms": 115.99,
+        "deferred_call_ms": 0,
+        "kind": "string",
+        "length": 2229360
+      },
+      {
+        "import_ms": 97.36,
+        "deferred_call_ms": 0,
+        "kind": "string",
+        "length": 2229360
+      }
+    ],
+    "dynamic": [
+      {
+        "import_ms": 4.2,
+        "deferred_call_ms": 96.18,
+        "kind": "string",
+        "length": 2229360
+      },
+      {
+        "import_ms": 3.67,
+        "deferred_call_ms": 103.75,
+        "kind": "string",
+        "length": 2229360
+      },
+      {
+        "import_ms": 3.65,
+        "deferred_call_ms": 109.47,
+        "kind": "string",
+        "length": 2229360
+      },
+      {
+        "import_ms": 5.18,
+        "deferred_call_ms": 136.9,
+        "kind": "string",
+        "length": 2229360
+      },
+      {
+        "import_ms": 5.24,
+        "deferred_call_ms": 107.51,
+        "kind": "string",
+        "length": 2229360
+      },
+      {
+        "import_ms": 3.8,
+        "deferred_call_ms": 94.99,
+        "kind": "string",
+        "length": 2229360
+      },
+      {
+        "import_ms": 3.89,
+        "deferred_call_ms": 98.84,
+        "kind": "string",
+        "length": 2229360
+      }
+    ]
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "history": [
+    {
+      "act_id": 10,
+      "actor_id": 7,
+      "acted_at": "2026-10-20 12:00:00",
+      "act_card_id": 200,
+      "action_id": 20,
+      "card_id": 200,
+      "action_type": "update",
+      "comment": null,
+      "changes": {
+        "db_content": "new"
+      }
+    },
+    {
+      "act_id": 11,
+      "actor_id": 7,
+      "acted_at": "2026-10-20 12:01:00",
+      "act_card_id": 200,
+      "action_id": 21,
+      "card_id": 200,
+      "action_type": "draft",
+      "comment": "draft note",
+      "changes": {
+        "db_content": "draft"
+      }
+    },
+    {
+      "act_id": 10,
+      "actor_id": 7,
+      "acted_at": "2026-10-20 12:00:00",
+      "act_card_id": 200,
+      "action_id": 22,
+      "card_id": 201,
+      "action_type": "create",
+      "comment": null,
+      "changes": {}
+    }
+  ],
+  "actions": [
+    {
+      "act_id": 10,
+      "actor_id": 7,
+      "acted_at": "2026-10-20 12:00:00",
+      "act_card_id": 200,
+      "action_id": 20,
+      "card_id": 200,
+      "action_type": "update",
+      "comment": null,
+      "changes": {
+        "db_content": "new"
+      }
+    }
+  ]
+}

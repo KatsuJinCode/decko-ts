@@ -1,0 +1,263 @@
+{
+  "registerRow": "reg-mods-28",
+  "registerRowNumber": 28,
+  "mod": "card-mod-search",
+  "verdict": "DONE",
+  "gap": "",
+  "oracle": {
+    "source": "the pinned Ruby gem tree C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
+    "gem": "C:\\localProjects\\decko-ruby-oracle-gems\\ruby\\3.4.0\\gems\\card-mod-search-0.20.0",
+    "readBy": "tools/audit-mod-declaration-coverage.mjs (the family's declaration census) and this tool"
+  },
+  "port": {
+    "file": "src/card/mod-loader/mods/card-mod-search.ts",
+    "setPaths": [
+      "abstract/0_search",
+      "abstract/0_search/views",
+      "abstract/search_views",
+      "all/autocomplete",
+      "self/search"
+    ],
+    "viewNames": [
+      "add_autocomplete_item",
+      "checkbox_list",
+      "complete",
+      "core",
+      "count",
+      "goto_autocomplete_item",
+      "one_line_content",
+      "results_for_keyword",
+      "search_box_complete",
+      "search_count",
+      "search_error",
+      "select2_option"
+    ],
+    "eventNames": []
+  },
+  "gem": {
+    "setFiles": [
+      "abstract/0_search.rb",
+      "abstract/0_search/search_params.rb",
+      "abstract/0_search/views.rb",
+      "abstract/cql_search.rb",
+      "abstract/search_views.rb",
+      "abstract/type_index.rb",
+      "abstract/virtual_search.rb",
+      "all/autocomplete.rb",
+      "right/by_create.rb",
+      "right/by_name.rb",
+      "right/by_update.rb",
+      "right/children.rb",
+      "right/count.rb",
+      "right/created.rb",
+      "right/creator.rb",
+      "right/edited.rb",
+      "right/editors.rb",
+      "right/last_edited.rb",
+      "right/linked_to_by.rb",
+      "right/links_to.rb",
+      "right/mates.rb",
+      "right/nested_by.rb",
+      "right/nests.rb",
+      "right/referred_to_by.rb",
+      "right/refers_to.rb",
+      "self/recent.rb",
+      "self/search.rb",
+      "type/cardtype.rb",
+      "type/search_type.rb"
+    ],
+    "viewNames": [
+      "add_autocomplete_item",
+      "bar",
+      "body",
+      "card_list",
+      "checkbox_list",
+      "complete",
+      "core",
+      "count",
+      "feed_body",
+      "feed_item_description",
+      "goto_autocomplete_item",
+      "molecule",
+      "name_complete",
+      "name_match",
+      "no_search_results",
+      "one_line_content",
+      "results_for_keyword",
+      "search_box",
+      "search_box_complete",
+      "search_count",
+      "search_error",
+      "select2_option",
+      "title"
+    ],
+    "eventNames": []
+  },
+  "namedSkips": [
+    {
+      "kind": "set-file",
+      "name": "self/recent",
+      "reason": "the recent-cards module (set/self/recent.rb) is not registered port-side: the port's recent-cards surface is the render layer's own, so the module's three views (:title, :core, :feed_item_description) carry no registration on this mod file"
+    },
+    {
+      "kind": "view",
+      "name": "body",
+      "reason": "the csv-format body view (0_search/views.rb:102-106): the port's render seam computes no view for a format outside the html lineage, so a csv-keyed registration has nothing to answer (src/card/mod-loader/mods/card-mod-search.ts:39-44)"
+    },
+    {
+      "kind": "view",
+      "name": "feed_body",
+      "reason": "the rss-format body view (search_views.rb:16-23): the port's rss output is the format dispatch's own (src/card/render/format-families.ts) and the XML-writing feed family is still named unported (src/card/mod-loader/mods/card-mod-search.ts:45-48)"
+    },
+    {
+      "kind": "view",
+      "name": "feed_item_description",
+      "reason": "PORTED as the render layer's rssItemDescriptionView (src/card/mod-loader/mods/card-mod-format.ts:2262); the search mod does not register the name"
+    },
+    {
+      "kind": "view",
+      "name": "molecule",
+      "reason": "PORTED as the render layer's jsonMolecule (src/card/render/format-families.ts:396-427); the search mod does not register the name"
+    },
+    {
+      "kind": "view",
+      "name": "search_box",
+      "reason": "the port's search box is the render layer's own (src/card/render/navbar-views.ts:261); the search mod does not register the name"
+    },
+    {
+      "kind": "set-file",
+      "name": "abstract/0_search/search_params",
+      "reason": "a method-only set module (no view or event declaration)"
+    },
+    {
+      "kind": "set-file",
+      "name": "abstract/cql_search",
+      "reason": "a method-only set module (no view or event declaration)"
+    },
+    {
+      "kind": "set-file",
+      "name": "abstract/type_index",
+      "reason": "a method-only set module (no view or event declaration)"
+    },
+    {
+      "kind": "set-file",
+      "name": "abstract/virtual_search",
+      "reason": "a method-only set module (no view or event declaration)"
+    },
+    {
+      "kind": "set-file",
+      "name": "right/by_create",
+      "reason": "a method-only set module (no view or event declaration)"
+    },
+    {
+      "kind": "set-file",
+      "name": "right/by_name",
+      "reason": "a method-only set module (no view or event declaration)"
+    },
+    {
+      "kind": "set-file",
+      "name": "right/by_update",
+      "reason": "a method-only set module (no view or event declaration)"
+    },
+    {
+      "kind": "set-file",
+      "name": "right/children",
+      "reason": "a method-only set module (no view or event declaration)"
+    },
+    {
+      "kind": "set-file",
+      "name": "right/count",
+      "reason": "a method-only set module (no view or event declaration)"
+    },
+    {
+      "kind": "set-file",
+      "name": "right/created",
+      "reason": "a method-only set module (no view or event declaration)"
+    },
+    {
+      "kind": "set-file",
+      "name": "right/creator",
+      "reason": "a method-only set module (no view or event declaration)"
+    },
+    {
+      "kind": "set-file",
+      "name": "right/edited",
+      "reason": "a method-only set module (no view or event declaration)"
+    },
+    {
+      "kind": "set-file",
+      "name": "right/editors",
+      "reason": "a method-only set module (no view or event declaration)"
+    },
+    {
+      "kind": "set-file",
+      "name": "right/last_edited",
+      "reason": "a method-only set module (no view or event declaration)"
+    },
+    {
+      "kind": "set-file",
+      "name": "right/linked_to_by",
+      "reason": "a method-only set module (no view or event declaration)"
+    },
+    {
+      "kind": "set-file",
+      "name": "right/links_to",
+      "reason": "a method-only set module (no view or event declaration)"
+    },
+    {
+      "kind": "set-file",
+      "name": "right/mates",
+      "reason": "a method-only set module (no view or event declaration)"
+    },
+    {
+      "kind": "set-file",
+      "name": "right/nested_by",
+      "reason": "a method-only set module (no view or event declaration)"
+    },
+    {
+      "kind": "set-file",
+      "name": "right/nests",
+      "reason": "a method-only set module (no view or event declaration)"
+    },
+    {
+      "kind": "set-file",
+      "name": "right/referred_to_by",
+      "reason": "a method-only set module (no view or event declaration)"
+    },
+    {
+      "kind": "set-file",
+      "name": "right/refers_to",
+      "reason": "a method-only set module (no view or event declaration)"
+    },
+    {
+      "kind": "set-file",
+      "name": "type/cardtype",
+      "reason": "a method-only set module (no view or event declaration)"
+    },
+    {
+      "kind": "set-file",
+      "name": "type/search_type",
+      "reason": "a method-only set module (no view or event declaration)"
+    },
+    {
+      "kind": "view",
+      "name": "card_list",
+      "reason": "the engine's own view table registers it (src/card/render/views.ts)"
+    },
+    {
+      "kind": "view",
+      "name": "no_search_results",
+      "reason": "the engine's own view table registers it (src/card/render/views.ts)"
+    },
+    {
+      "kind": "view",
+      "name": "bar",
+      "reason": "the engine's own view table registers it (src/card/render/views.ts)"
+    },
+    {
+      "kind": "view",
+      "name": "title",
+      "reason": "the engine's own view table registers it (src/card/render/views.ts)"
+    }
+  ]
+}

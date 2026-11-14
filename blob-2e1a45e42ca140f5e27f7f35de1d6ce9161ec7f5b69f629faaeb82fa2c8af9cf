@@ -1,0 +1,6 @@
+{
+  "name": "ruby",
+  "description": "Stock Ruby Decko (decko 0.20.0, card 1.110.0) served by its own controller: the reference.",
+  "command": ["bash", "ruby-server.sh"],
+  "ready": "/__harness/ready"
+}
