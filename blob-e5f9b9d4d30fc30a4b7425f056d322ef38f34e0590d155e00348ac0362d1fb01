@@ -1,0 +1,162 @@
+{
+  "row": "reg-routes-B4",
+  "gemset": "decko-0.20.0 + card-1.110.0 (pinned)",
+  "deleteAction": [
+    {
+      "label": "a delete of an EXISTING card: the model is asked to update with trash: true",
+      "error": null,
+      "cardCalls": [
+        "new_card?",
+        "update!"
+      ],
+      "updateArgs": {
+        "trash": true
+      },
+      "redirected": {
+        "url": "/",
+        "status": 303
+      },
+      "rendered": null
+    },
+    {
+      "label": "a delete of a card that does NOT exist: the model is asked NOTHING and the handle raises the 422 class",
+      "error": "Card::Error::UserError: Card::Error::UserError",
+      "cardCalls": [
+        "new_card?"
+      ],
+      "updateArgs": null,
+      "redirected": null,
+      "rendered": null
+    }
+  ],
+  "rigArtifacts": [
+    "the rig's SuccessDouble answers to_url from the envelope's OWN name, while the PINNED envelope resolves its TARGET card (card-1.110.0/lib/card/env/success.rb:19-22); the recorded redirect STATUS is the pinned one.",
+    "the PINNED card gem's trash set file is evaluated into a module here, with its empty_trash task registration and its three event registrations absorbed by two stand-ins (a task basket and a no-op event). The card gem's mod loader is not part of this row; the file's delete! and add_to_trash bodies are the pinned ones and they execute."
+  ],
+  "sources": {
+    "delete": [
+      {
+        "line": 18,
+        "text": "    def delete"
+      },
+      {
+        "line": 19,
+        "text": "      handle { card.delete! }"
+      },
+      {
+        "line": 20,
+        "text": "    end"
+      }
+    ],
+    "handle": [
+      {
+        "line": 74,
+        "text": "    def handle"
+      },
+      {
+        "line": 75,
+        "text": "      Card::Env.success card.name"
+      },
+      {
+        "line": 76,
+        "text": "      yield ? cud_success : raise(Card::Error::UserError)"
+      },
+      {
+        "line": 77,
+        "text": "    end"
+      }
+    ],
+    "update": [
+      {
+        "line": 14,
+        "text": "    def update"
+      },
+      {
+        "line": 15,
+        "text": "      card.new_card? ? create : handle { card.update! params[:card]&.to_unsafe_h }"
+      },
+      {
+        "line": 16,
+        "text": "    end"
+      }
+    ],
+    "pinnedTrashDelete": [
+      {
+        "line": 17,
+        "text": "def delete! args={}"
+      },
+      {
+        "line": 18,
+        "text": "  add_to_trash args do |delete_args|"
+      },
+      {
+        "line": 19,
+        "text": "    update! delete_args"
+      },
+      {
+        "line": 20,
+        "text": "  end"
+      },
+      {
+        "line": 21,
+        "text": "end"
+      }
+    ],
+    "pinnedTrashHelper": [
+      {
+        "line": 70,
+        "text": "def add_to_trash args"
+      },
+      {
+        "line": 71,
+        "text": "  yield args.merge(trash: true) unless new_card?"
+      },
+      {
+        "line": 72,
+        "text": "end"
+      }
+    ],
+    "pinnedUserError": [
+      {
+        "line": 20,
+        "text": "    self.view = :errors"
+      },
+      {
+        "line": 21,
+        "text": "    self.status_code = 422"
+      },
+      {
+        "line": 68,
+        "text": "    class UserError < Error"
+      },
+      {
+        "line": 69,
+        "text": "      cattr_accessor :user_error_classes"
+      },
+      {
+        "line": 70,
+        "text": "      self.user_error_classes = [self,"
+      },
+      {
+        "line": 71,
+        "text": "                                 ActionController::BadRequest,"
+      },
+      {
+        "line": 72,
+        "text": "                                 ActionController::MissingFile,"
+      },
+      {
+        "line": 73,
+        "text": "                                 ActiveRecord::RecordNotFound,"
+      },
+      {
+        "line": 74,
+        "text": "                                 ActiveRecord::RecordInvalid]"
+      },
+      {
+        "line": 75,
+        "text": "    end"
+      }
+    ]
+  }
+}

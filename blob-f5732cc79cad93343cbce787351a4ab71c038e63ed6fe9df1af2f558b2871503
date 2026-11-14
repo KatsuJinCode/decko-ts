@@ -1,0 +1,29 @@
+{
+  "what": "row mx-155 tranche 4: the tranche-3 named gap (item 3, the +*following junction's virtual flag) closed together with its :core view, so the virtual registration swaps nothing - the junction renders its own two-armed core",
+  "row": "mx-155-capability-catalog-follow",
+  "branch": "port/matrix-journey-tranche4-20261021",
+  "base": "c18e3f44 (port/matrix-journey-tranche-20261020 tip; the ask's named base 48d1e0dc plus the family's four tranche-3 commits)",
+  "rubySource": "card-mod-follow-0.20.0 set/right/following.rb:2 (assign_type :list), :4-6 (def virtual?; new?; end), :13-19 (view :core, the signed-in render_rule_editor arm and the signed-out/missing-left nest of the left's +*followers titled with items view :link)",
+  "change": [
+    "src/card/mod-loader/mods/card-mod-follow.ts: right/following registration carries virtual: true + assignsType: \"list\" + the new followingCoreView (both arms)",
+    "src/card/follow/follow-render-seam.ts: isFollowingJunction joins followSeamRootNeeded; the follower-names walk and the rule_editor bundle branch prepare for a following-junction root",
+    "src/card/render.ts: the seam-prepare tail warms the root's LEFT card and the LEFT's +*followers junction, and takes the rule_editor names warm for the following root"
+  ],
+  "namedRunnableCheck": {
+    "command": "npx vitest run tests/card/follow/",
+    "before": "7 files, 33 tests, all passed (at base c18e3f44, before the change)",
+    "after": "8 files, 38 tests, all passed (the new act155-w4-following-junction-core.test.ts, 5 legs)"
+  },
+  "battery": {
+    "mod-loader": "121 files: 1895 passed, 1 skipped, 0 failed (one pre-re-pin run carried the view census red at 1894/1; the census re-pin is part of this change and the re-run is the recorded number)",
+    "render": "260 files: 228 passed, 31 skipped, 1 failed file with 3 legs - the pre-existing data-absence failure (archive Ruby sources absent on this machine; recorded since tranche 1)",
+    "tsc": "3 pre-existing diagnostics in tests/card/actions/write-path-races.test.ts:132 and :526; no new diagnostic"
+  },
+  "censusRepin": "tests/card/mod-loader/view-dispatch-css-js-format-ancestry-census.test.ts html 342 -> 343 (the new right/following :core registration), cause named in the pin comment",
+  "stillOpen": [
+    "THE DEPLOY HALF of the DONE condition: operator-blocked (the files-area pair armed, the guarded deploy reaching live, the followers-probe re-run). Nothing here deploys.",
+    "THE MEMBER'S FOLLOW PREFERENCE LEG: the ACT-155 probe's storedMember clause expects materialization on the card's own +*self set; Ruby's resolution is the set-pattern walk over the *all set. The probe leg stays RED; the probe is unchanged.",
+    "THE FOLLOWERS WALK'S CACHE: Ruby caches follower ids (follower_ids.rb:25-45); the port resolves fresh per call. Byte-invisible; named."
+  ],
+  "rowState": "WORKING ON IT (the port side of the named gap is closed; the row's remaining blocker is the operator-side deploy)"
+}

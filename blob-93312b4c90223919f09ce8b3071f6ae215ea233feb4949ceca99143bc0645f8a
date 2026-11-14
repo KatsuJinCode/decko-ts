@@ -1,0 +1,77 @@
+{
+  "row": "update-structurees-type",
+  "event": "update_structurees_type",
+  "pinned_file": "card-mod-content-0.20.0/set/right/structure.rb",
+  "pinned_declaration": "event :update_structurees_type, :finalize,\n      changed: :type_id, when: proc { |c| c.assigns_type? } do",
+  "pinned_declaration_line": 44,
+  "pinned_body": "  update_structurees type_id: type_id",
+  "pinned_body_lines": [
+    {
+      "line": 46,
+      "text": "  update_structurees type_id: type_id"
+    }
+  ],
+  "pinned_helper": "  # NOTE: that this is not smart about overriding templating rules\n  # for example, if someone were to change the type of a\n  # +*right+*structure rule that was overridden\n  # by a +*type plus right+*structure rule, the override would not be respected.\n  return unless (query = structuree_query(return: :id))\n\n  Auth.as_bot do\n    query.run.each_slice(100) do |id_batch|\n      Card.where(id: id_batch).update_all args\n    end\n  end",
+  "scenarios": [
+    {
+      "scenario": "no structuree query",
+      "structuree_count": 0,
+      "structuree_ids": null,
+      "type_id": 7,
+      "calls": [
+        {
+          "call": "structuree_query",
+          "arguments": [
+            {
+              "return": "id"
+            }
+          ]
+        }
+      ],
+      "where_calls": [],
+      "update_all_calls": [],
+      "as_bot_calls": 0,
+      "outcome": {
+        "raised": null
+      }
+    },
+    {
+      "scenario": "three structurees",
+      "structuree_count": 3,
+      "structuree_ids": [
+        101,
+        102,
+        103
+      ],
+      "type_id": 7,
+      "calls": [
+        {
+          "call": "structuree_query",
+          "arguments": [
+            {
+              "return": "id"
+            }
+          ]
+        }
+      ],
+      "where_calls": [
+        {
+          "id": [
+            101,
+            102,
+            103
+          ]
+        }
+      ],
+      "update_all_calls": [
+        {
+          "type_id": 7
+        }
+      ],
+      "as_bot_calls": 1,
+      "outcome": {
+        "raised": null
+      }
+    }
+  ]
+}

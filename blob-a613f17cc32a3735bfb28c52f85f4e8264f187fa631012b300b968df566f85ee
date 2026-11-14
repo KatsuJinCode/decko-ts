@@ -1,0 +1,266 @@
+{
+  "row": "widget-single-statement-cas-test",
+  "instrument": "recovery/release/private-probes/private-tool-repairs-20261018/widget-single-statement-cas.test.mjs",
+  "instrumentSha256": "db4b12ca711678bbaf865e6f41b06ea38d7047d37d52102808caeecb10ccaac3",
+  "measuredAt": "2026-10-25T07:22:03.360Z",
+  "deck": {
+    "livePath": "C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3",
+    "liveSha256": "6aebb6546a0620f3c61efad28cd01023e104d47ffd583272ce18036038f73b78",
+    "preApplyPath": "C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3.pre-widget-fallback-20261019",
+    "preApplySha256": "15545aa78c6d8cc99427a400f31c36ca137d407be6c6f951d8df11e84b2ddf01",
+    "receiptBaselineSha256": "15545aa78c6d8cc99427a400f31c36ca137d407be6c6f951d8df11e84b2ddf01",
+    "live": {
+      "path": "C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3",
+      "present": true,
+      "sha256": "6aebb6546a0620f3c61efad28cd01023e104d47ffd583272ce18036038f73b78",
+      "version": 62958,
+      "versionRows": 1,
+      "cardsPresent": 12,
+      "cardsNotTrashed": 12,
+      "cardsCarryingBeforeContent": 0,
+      "cardsCarryingAfterContent": 12,
+      "admissionMatches": 0,
+      "cards": [
+        {
+          "id": 613,
+          "present": true,
+          "trash": 0,
+          "deckCarriesBeforeContent": false,
+          "deckCarriesAfterContent": true
+        },
+        {
+          "id": 1513,
+          "present": true,
+          "trash": 0,
+          "deckCarriesBeforeContent": false,
+          "deckCarriesAfterContent": true
+        },
+        {
+          "id": 1514,
+          "present": true,
+          "trash": 0,
+          "deckCarriesBeforeContent": false,
+          "deckCarriesAfterContent": true
+        },
+        {
+          "id": 2670,
+          "present": true,
+          "trash": 0,
+          "deckCarriesBeforeContent": false,
+          "deckCarriesAfterContent": true
+        },
+        {
+          "id": 2672,
+          "present": true,
+          "trash": 0,
+          "deckCarriesBeforeContent": false,
+          "deckCarriesAfterContent": true
+        },
+        {
+          "id": 2673,
+          "present": true,
+          "trash": 0,
+          "deckCarriesBeforeContent": false,
+          "deckCarriesAfterContent": true
+        },
+        {
+          "id": 2674,
+          "present": true,
+          "trash": 0,
+          "deckCarriesBeforeContent": false,
+          "deckCarriesAfterContent": true
+        },
+        {
+          "id": 2675,
+          "present": true,
+          "trash": 0,
+          "deckCarriesBeforeContent": false,
+          "deckCarriesAfterContent": true
+        },
+        {
+          "id": 2676,
+          "present": true,
+          "trash": 0,
+          "deckCarriesBeforeContent": false,
+          "deckCarriesAfterContent": true
+        },
+        {
+          "id": 10207,
+          "present": true,
+          "trash": 0,
+          "deckCarriesBeforeContent": false,
+          "deckCarriesAfterContent": true
+        },
+        {
+          "id": 13115,
+          "present": true,
+          "trash": 0,
+          "deckCarriesBeforeContent": false,
+          "deckCarriesAfterContent": true
+        },
+        {
+          "id": 15709,
+          "present": true,
+          "trash": 0,
+          "deckCarriesBeforeContent": false,
+          "deckCarriesAfterContent": true
+        }
+      ]
+    },
+    "preApply": {
+      "path": "C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3.pre-widget-fallback-20261019",
+      "present": true,
+      "sha256": "15545aa78c6d8cc99427a400f31c36ca137d407be6c6f951d8df11e84b2ddf01",
+      "version": 62943,
+      "versionRows": 1,
+      "cardsPresent": 12,
+      "cardsNotTrashed": 12,
+      "cardsCarryingBeforeContent": 12,
+      "cardsCarryingAfterContent": 0,
+      "admissionMatches": 12,
+      "cards": [
+        {
+          "id": 613,
+          "present": true,
+          "trash": 0,
+          "deckCarriesBeforeContent": true,
+          "deckCarriesAfterContent": false
+        },
+        {
+          "id": 1513,
+          "present": true,
+          "trash": 0,
+          "deckCarriesBeforeContent": true,
+          "deckCarriesAfterContent": false
+        },
+        {
+          "id": 1514,
+          "present": true,
+          "trash": 0,
+          "deckCarriesBeforeContent": true,
+          "deckCarriesAfterContent": false
+        },
+        {
+          "id": 2670,
+          "present": true,
+          "trash": 0,
+          "deckCarriesBeforeContent": true,
+          "deckCarriesAfterContent": false
+        },
+        {
+          "id": 2672,
+          "present": true,
+          "trash": 0,
+          "deckCarriesBeforeContent": true,
+          "deckCarriesAfterContent": false
+        },
+        {
+          "id": 2673,
+          "present": true,
+          "trash": 0,
+          "deckCarriesBeforeContent": true,
+          "deckCarriesAfterContent": false
+        },
+        {
+          "id": 2674,
+          "present": true,
+          "trash": 0,
+          "deckCarriesBeforeContent": true,
+          "deckCarriesAfterContent": false
+        },
+        {
+          "id": 2675,
+          "present": true,
+          "trash": 0,
+          "deckCarriesBeforeContent": true,
+          "deckCarriesAfterContent": false
+        },
+        {
+          "id": 2676,
+          "present": true,
+          "trash": 0,
+          "deckCarriesBeforeContent": true,
+          "deckCarriesAfterContent": false
+        },
+        {
+          "id": 10207,
+          "present": true,
+          "trash": 0,
+          "deckCarriesBeforeContent": true,
+          "deckCarriesAfterContent": false
+        },
+        {
+          "id": 13115,
+          "present": true,
+          "trash": 0,
+          "deckCarriesBeforeContent": true,
+          "deckCarriesAfterContent": false
+        },
+        {
+          "id": 15709,
+          "present": true,
+          "trash": 0,
+          "deckCarriesBeforeContent": true,
+          "deckCarriesAfterContent": false
+        }
+      ]
+    }
+  },
+  "runInPlace": {
+    "cwd": "C:/localProjects/brandonDojoTech/recovery/release/private-probes/private-tool-repairs-20261018",
+    "exitCode": 1,
+    "tests": 4,
+    "pass": 1,
+    "fail": 3,
+    "cases": [
+      "one mismatching content cell refuses every update even with a fresh version"
+    ],
+    "failures": [
+      "one statement changes exactly12 content cells and guarded rollback restores every card while versions stay monotonic",
+      "an unrelated intervening card edit refuses stale admission and rollback refuses a later edit",
+      "a trigger failure partway through the statement rolls back every content and version change"
+    ],
+    "output": "TAP version 13\n# Subtest: one statement changes exactly12 content cells and guarded rollback restores every card while versions stay monotonic\nnot ok 1 - one statement changes exactly12 content cells and guarded rollback restores every card while versions stay monotonic\n  ---\n  duration_ms: 131.7161\n  type: 'test'\n  location: 'C:\\\\localProjects\\\\brandonDojoTech\\\\recovery\\\\release\\\\private-probes\\\\private-tool-repairs-20261018\\\\widget-single-statement-cas.test.mjs:14:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    Expected values to be strictly equal:\n    \n    0 !== 12\n    \n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected: 12\n  actual: 0\n  operator: 'strictEqual'\n  stack: |-\n    TestContext.<anonymous> (file:///C:/localProjects/brandonDojoTech/recovery/release/private-probes/private-tool-repairs-20261018/widget-single-statement-cas.test.mjs:15:95)\n    Test.runInAsyncScope (node:async_hooks:227:14)\n    Test.run (node:internal/test_runner/test:1402:25)\n    Test.start (node:internal/test_runner/test:1262:17)\n    startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17)\n  ...\n# Subtest: one mismatching content cell refuses every update even with a fresh version\nok 2 - one mismatching content cell refuses every update even with a fresh version\n  ---\n  duration_ms: 555.5108\n  type: 'test'\n  ...\n# Subtest: an unrelated intervening card edit refuses stale admission and rollback refuses a later edit\nnot ok 3 - an unrelated intervening card edit refuses stale admission and rollback refuses a later edit\n  ---\n  duration_ms: 566.9514\n  type: 'test'\n  location: 'C:\\\\localProjects\\\\brandonDojoTech\\\\recovery\\\\release\\\\private-probes\\\\private-tool-repairs-20261018\\\\widget-single-statement-cas.test.mjs:23:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    Expected values to be strictly equal:\n    \n    0 !== 12\n    \n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected: 12\n  actual: 0\n  operator: 'strictEqual'\n  stack: |-\n    TestContext.<anonymous> (file:///C:/localProjects/brandonDojoTech/recovery/release/private-probes/private-tool-repairs-20261018/widget-single-statement-cas.test.mjs:25:23)\n    Test.runInAsyncScope (node:async_hooks:227:14)\n    Test.run (node:internal/test_runner/test:1402:25)\n    Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n    Test.postRun (node:internal/test_runner/test:1542:19)\n    Test.run (node:internal/test_runner/test:1467:12)\n    async Test.processPendingSubtests (node:internal/test_runner/test:974:7)\n  ...\n# Subtest: a trigger failure partway through the statement rolls back every content and version change\nnot ok 4 - a trigger failure partway through the statement rolls back every content and version change\n  ---\n  duration_ms: 407.0562\n  type: 'test'\n  location: 'C:\\\\localProjects\\\\brandonDojoTech\\\\recovery\\\\release\\\\private-probes\\\\private-tool-repairs-20261018\\\\widget-single-statement-cas.test.mjs:28:1'\n  failureType: 'testCodeFailure'\n  error: 'Missing expected exception.'\n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected:\n  operator: 'throws'\n  stack: |-\n    TestContext.<anonymous> (file:///C:/localProjects/brandonDojoTech/recovery/release/private-probes/private-tool-repairs-20261018/widget-single-statement-cas.test.mjs:29:230)\n    Test.runInAsyncScope (node:async_hooks:227:14)\n    Test.run (node:internal/test_runner/test:1402:25)\n    Test.processPendingSubtests (node:internal/test_runner/test:974:18)\n    Test.postRun (node:internal/test_runner/test:1542:19)\n    Test.run (node:internal/test_runner/test:1467:12)\n    async Test.processPendingSubtests (node:internal/test_runner/test:974:7)\n  ...\n1..4\n# tests 4\n# suites 0\n# pass 1\n# fail 3\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 1775.0142\n"
+  },
+  "runOverThePreApplyDeck": {
+    "cwd": "C:\\localProjects\\decko-ts-smell-test-round4-20261025\\tmp\\smell-r6\\cas-tree\\private-tool-repairs-20261018",
+    "exitCode": 0,
+    "tests": 4,
+    "pass": 4,
+    "fail": 0,
+    "cases": [
+      "one statement changes exactly12 content cells and guarded rollback restores every card while versions stay monotonic",
+      "one mismatching content cell refuses every update even with a fresh version",
+      "an unrelated intervening card edit refuses stale admission and rollback refuses a later edit",
+      "a trigger failure partway through the statement rolls back every content and version change"
+    ],
+    "failures": [],
+    "output": "TAP version 13\n# Subtest: one statement changes exactly12 content cells and guarded rollback restores every card while versions stay monotonic\nok 1 - one statement changes exactly12 content cells and guarded rollback restores every card while versions stay monotonic\n  ---\n  duration_ms: 385.8484\n  type: 'test'\n  ...\n# Subtest: one mismatching content cell refuses every update even with a fresh version\nok 2 - one mismatching content cell refuses every update even with a fresh version\n  ---\n  duration_ms: 553.0907\n  type: 'test'\n  ...\n# Subtest: an unrelated intervening card edit refuses stale admission and rollback refuses a later edit\nok 3 - an unrelated intervening card edit refuses stale admission and rollback refuses a later edit\n  ---\n  duration_ms: 963.869\n  type: 'test'\n  ...\n# Subtest: a trigger failure partway through the statement rolls back every content and version change\nok 4 - a trigger failure partway through the statement rolls back every content and version change\n  ---\n  duration_ms: 481.2841\n  type: 'test'\n  ...\n1..4\n# tests 4\n# suites 0\n# pass 4\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 2504.4365\n",
+    "changedLines": [
+      {
+        "line": 4,
+        "before": "const snapshot=fs.readFileSync('C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3');",
+        "after": "const snapshot=fs.readFileSync('C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3.pre-widget-fallback-20261019');"
+      }
+    ],
+    "copiedFiles": [
+      {
+        "file": "widget-single-statement-cas.test.mjs",
+        "sha256": "68a3dad2d843f19a80adccd3e383fd0243923c95226db2724027745ee7a35d88"
+      },
+      {
+        "file": "widget-single-statement-cas.mjs",
+        "sha256": "f080f54dda02d372a9da51d57b84b99e3d17accd72ac291492e10b4feee0e586"
+      },
+      {
+        "file": "../authorized-widget-content-20261018-r2/application-receipt.json",
+        "sha256": "15ecdcb9861174a14b9d7c559bc5602fdb6dd20f2c974e89cdc8b190f1f0ce4e"
+      },
+      {
+        "file": "../widget-fallback-proposal-20261017/proposal.json",
+        "sha256": "07de39ba0e3951bb291e34aa8af377f49b3c142c1853f08952453b5319b0b411"
+      }
+    ],
+    "note": "one line of the suite changed: the path it reads the deck from. The module under test, the four test bodies, the application receipt and the proposal are the originals."
+  }
+}

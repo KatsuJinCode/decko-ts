@@ -1,0 +1,21 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import {tmpdir} from 'node:os';
+import {spawnSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
+import {pathToFileURL} from 'node:url';
+const moduleUrl=process.env.MATRIX_CUSTODY_TEST_MODULE?pathToFileURL(process.env.MATRIX_CUSTODY_TEST_MODULE).href:new URL('../../tools/runtime-db-matrix/source-profile.mjs',import.meta.url).href;
+const {inspectMatrixSource,verifyMatrixProfile}=await import(moduleUrl);
+const base=fs.mkdtempSync(path.join(tmpdir(),'decko-custody-'));
+console.log(`Owned source custody controls: ${base}`);
+const git=(root,args)=>{const r=spawnSync('git',args,{cwd:root,windowsHide:true,encoding:'utf8',env:{...process.env,GIT_AUTHOR_NAME:'Matrix Custody Fixture',GIT_AUTHOR_EMAIL:'fixture@example.invalid',GIT_COMMITTER_NAME:'Matrix Custody Fixture',GIT_COMMITTER_EMAIL:'fixture@example.invalid',GIT_OPTIONAL_LOCKS:'0'}});assert.equal(r.status,0,r.stderr);return r.stdout.trim();};
+let serial=0;
+function fixture(){const root=path.join(base,String(++serial));fs.mkdirSync(root);git(root,['init']);for(const p of ['src/engine.mjs','reference-harness/runner/tool.mjs']){fs.mkdirSync(path.dirname(path.join(root,p)),{recursive:true});fs.writeFileSync(path.join(root,p),'export const identity=1;\n');}git(root,['add','--','src/engine.mjs','reference-harness/runner/tool.mjs']);git(root,['commit','-m','Synthetic source custody inputs','--','src/engine.mjs','reference-harness/runner/tool.mjs']);return{root,pin:git(root,['rev-parse','HEAD'])};}
+function snapshot(f){const source=inspectMatrixSource(f.root,f.pin),sentinel=path.join(base,`sentinel-${serial}`);fs.writeFileSync(sentinel,'runtime identity sentinel');const bytes=fs.readFileSync(sentinel);return{source,runtime:{node:{path:sentinel,physicalPath:fs.realpathSync.native(sentinel),bytes:bytes.length,sha256:createHash('sha256').update(bytes).digest('hex')},packages:[],entries:[],files:[],missingOptional:[],nativeInventory:[]},tools:[],obligations:[]};}
+function relocate(f,name='src'){const external=path.join(base,`external-${serial}`);fs.renameSync(path.join(f.root,name),external);fs.symlinkSync(external,path.join(f.root,name),process.platform==='win32'?'junction':'dir');return external;}
+test('declared src junction to external identical bytes refuses at admission',()=>{const f=fixture();relocate(f);assert.throws(()=>inspectMatrixSource(f.root,f.pin),/alias|custody/i);});
+test('declared src junction replacement after snapshot refuses at verify',()=>{const f=fixture(),p=snapshot(f);relocate(f);assert.throws(()=>verifyMatrixProfile(p),/alias|custody/i);});
+test('a junction in a declared tree ancestor is refused',()=>{const f=fixture();relocate(f,'reference-harness');assert.throws(()=>inspectMatrixSource(f.root,f.pin),/alias|custody/i);});
+test('ordinary same-byte source directory replacement changes physical custody',()=>{const f=fixture(),p=snapshot(f),external=path.join(base,`ordinary-${serial}`);fs.renameSync(path.join(f.root,'src'),external);fs.mkdirSync(path.join(f.root,'src'));fs.copyFileSync(path.join(external,'engine.mjs'),path.join(f.root,'src/engine.mjs'));assert.throws(()=>verifyMatrixProfile(p),/custody|identity/i);});

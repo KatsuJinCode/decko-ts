@@ -1,0 +1,91 @@
+{
+  "lane": "w5-record-alignment-2026-10-03",
+  "inverseOf": "w5-record-alignment-swap-manifest.json",
+  "shardBefore": {
+    "view-lane/recapture-raw-shard-000007.jsonl": "a6e83ebb2c4dc56a2d1c197b982da5361ffcc97046798c4c6496e6c19d3783fa",
+    "view-lane/recapture-raw-shard-000003.jsonl": "090082cfde7b36371d4ac6f1eb2c2a147f82359de80b11b9358dcf1a772e99e7",
+    "view-lane/recapture-raw-shard-000039.jsonl": "e633211515eb967f48a1037c5a0eb2736f9f458fd21962d3bc6b1d64528b2fe7"
+  },
+  "shardAfter": {
+    "view-lane/recapture-raw-shard-000007.jsonl": "a95f95ac1444056e2cfb624a8e8bec80e04753a293da5ef3b1b4d1637d3c12f6",
+    "view-lane/recapture-raw-shard-000003.jsonl": "0c4ceac6ce54caf95ee9f3e32145550aea0948ba549ecc3dc3a4469fbe960ec5",
+    "view-lane/recapture-raw-shard-000039.jsonl": "3ebe127e825dd56d4eb69593e48f1bfc561585852f3fac95b164eef89be81656"
+  },
+  "entries": [
+    {
+      "id": "dual-lane-view:*input type+*right+*content options:record",
+      "lane": "view-lane",
+      "shard": "recapture-raw-shard-000007.jsonl",
+      "line": 1,
+      "name": "*input type+*right+*content options",
+      "field": "record.content",
+      "appliedSha256": "6cdfa0bc82ed2573eb83a10c154635957df7fc8535012582947f359724a2e823",
+      "originalSha256": "2d16c9f771da39a47e52509daaa4cc0b12356c4a7420afceb052540b89e3d862",
+      "originalEscapedLiteral": "\"radio\\ncheckbox\\nselect\\nmultiselect\\nlist\\nautocomplete\\ntext area\\ntext field\\nace editor\\ncalendar\\ntinymce editor\"",
+      "appliedFullLiteral": "\"overridden\"",
+      "mirrorRowId": 11745,
+      "mirrorContentSha256": "6cdfa0bc82ed2573eb83a10c154635957df7fc8535012582947f359724a2e823",
+      "mirrorContentBytes": 10
+    },
+    {
+      "id": "dual-lane-view:*alerts:record",
+      "lane": "view-lane",
+      "shard": "recapture-raw-shard-000003.jsonl",
+      "line": 1,
+      "name": "*alerts",
+      "field": "record.content",
+      "appliedSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "originalSha256": "f3f0dcf80998e13a6ab855c0475dc42da635d51d8dc0dd028d96176c75adc5b6",
+      "originalEscapedLiteral": "\"<!-- *alerts is deprecated. please remove from layout -->\"",
+      "appliedFullLiteral": "\"\"",
+      "mirrorRowId": 4032,
+      "mirrorContentSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mirrorContentBytes": 0
+    },
+    {
+      "id": "dual-lane-view:*now:record",
+      "lane": "view-lane",
+      "shard": "recapture-raw-shard-000003.jsonl",
+      "line": 9,
+      "name": "*now",
+      "field": "record.content",
+      "appliedSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "originalSha256": "d31bfd068f124a6e39f93039383b74c020aa87ff2cc0be85f1457381f08e2b8a",
+      "originalEscapedLiteral": "\"Monday, September 28, 2026 03:12 PM Pacific Standard Time\"",
+      "appliedFullLiteral": "\"\"",
+      "mirrorRowId": 4036,
+      "mirrorContentSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mirrorContentBytes": 0
+    },
+    {
+      "id": "dual-lane-view:*version:record",
+      "lane": "view-lane",
+      "shard": "recapture-raw-shard-000003.jsonl",
+      "line": 16,
+      "name": "*version",
+      "field": "record.content",
+      "appliedSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "originalSha256": "9ee118c5b49b6c7b1c1b7e2bfc322a7619f8bc84e5ea50d17183e178f6768293",
+      "originalEscapedLiteral": "\"0.20.0\"",
+      "appliedFullLiteral": "\"\"",
+      "mirrorRowId": 4037,
+      "mirrorContentSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mirrorContentBytes": 0
+    },
+    {
+      "id": "dual-lane-view:Mod:record",
+      "lane": "view-lane",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "line": 124,
+      "name": "Mod",
+      "field": "record.content",
+      "appliedSha256": "94bd0296b3899664dfbdafa9ef86ad6a20a9a9570618983818f97f6831b2c361",
+      "originalSha256": "c3d9dcf70d1c314e37a67def78097eb2b46202a8128ce08e90b9a143fbf2ede8",
+      "originalEscapedLiteral": "\"#<Cardio::Mod:0x00000174845e02a0>_mod\\n#<Cardio::Mod:0x0000017486a5e348>_mod\\n#<Cardio::Mod:0x0000017486a5c778>_mod\\n#<Cardio::Mod:0x0000017486a5b288>_mod\\n#<Cardio::Mod:0x0000017486a59d98>_mod\\n#<Cardio::Mod:0x0000017486a585d8>_mod\\n#<Cardio::Mod:0x0000017486a56fa8>_mod\\n#<Cardio::Mod:0x0000017486a55748>_mod\\n#<Cardio::Mod:0x0000017486a54028>_mod\\n#<Cardio::Mod:0x0000017486a52908>_mod\\n#<Cardio::Mod:0x0000017486a51328>_mod\\n#<Cardio::Mod:0x0000017486a0fa68>_mod\\n#<Cardio::Mod:0x0000017486a0e618>_mod\\n#<Cardio::Mod:0x0000017486a0d038>_mod\\n#<Cardio::Mod:0x0000017486a0bcd8>_mod\\n#<Cardio::Mod:0x0000017486a0a2e8>_mod\\n#<Cardio::Mod:0x0000017486a09208>_mod\\n#<Cardio::Mod:0x0000017486a07778>_mod\\n#<Cardio::Mod:0x0000017486a06058>_mod\\n#<Cardio::Mod:0x0000017486a04a28>_mod\\n#<Cardio::Mod:0x0000017486a03498>_mod\\n#<Cardio::Mod:0x0000017486a01eb8>_mod\\n#<Cardio::Mod:0x0000017486a00608>_mod\\n#<Cardio::Mod:0x000001748669ecf8>_mod\\n#<Cardio::Mod:0x000001748669d5d8>_mod\\n#<Cardio::Mod:0x000001748669c4f8>_mod\\n#<Cardio::Mod:0x000001748669b0a8>_mod\\n#<Cardio::Mod:0x0000017486699848>_mod\\n#<Cardio::Mod:0x0000017486698128>_mod\\n#<Cardio::Mod:0x0000017486696a08>_mod\\n#<Cardio::Mod:0x00000174866956f8>_mod\\n#<Cardio::Mod:0x00000174866942f8>_mod\\n#<Cardio::Mod:0x00000174866921d8>_mod\\n#<Cardio::Mod:0x000001748652f700>_mod\"",
+      "appliedFullLiteral": "\"<p>{{+description|content}}</p>\\n<p>{{_|add_button}}{{_|configure_button}}</p>\\n<p>{{+*type+by name|content}}</p>\\n\"",
+      "mirrorRowId": 45410,
+      "mirrorContentSha256": "94bd0296b3899664dfbdafa9ef86ad6a20a9a9570618983818f97f6831b2c361",
+      "mirrorContentBytes": 112
+    }
+  ]
+}

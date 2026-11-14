@@ -1,0 +1,41 @@
+import { afterEach, expect, it } from "vitest";
+import { createRenderTestStorage, seedCard } from "../render/render-test-storage.js";
+import { ruleContentForCard } from "../../../src/card/actions/rule-content-walk.js";
+import { getNameEnvironment } from "../../../src/card/name/environment.js";
+
+const cleanup: Array<() => void> = [];
+afterEach(() => { while (cleanup.length) cleanup.pop()!(); });
+async function deck(label: string, content: string) {
+  const storage = await createRenderTestStorage({ bootstrapReadRules: false });
+  cleanup.push(() => storage.close());
+  for (const row of [
+    { id: 1, name: "Set", codename: "set" }, { id: 2, name: "Setting", codename: "setting" },
+    { id: 3, name: `*${label} All`, codename: "all", typeId: 1 },
+    { id: 4, name: `*${label} Validation`, codename: "captcha", typeId: 2 },
+    { id: 5, leftId: 3, rightId: 4, dbContent: content },
+  ]) await seedCard(storage, row);
+  await storage.fetcher.codenames.ensureLoaded();
+  return storage;
+}
+
+it("uses receiving setting and pattern aliases without replacing another engine's environment", async () => {
+  const a = await deck("Local", "1"), b = await deck("Foreign", "0");
+  b.fetcher.installNameEnvironment(); const ambient = getNameEnvironment();
+  const card = { name: "Example", isNew: true };
+  const results = await Promise.all([
+    ruleContentForCard(a.fetcher, card, "captcha"), ruleContentForCard(b.fetcher, card, "captcha"),
+  ]);
+  expect(results).toEqual(["1", "0"]);
+  expect(getNameEnvironment()).toBe(ambient);
+});
+
+it("does not borrow a foreign code after the receiving setting code changes", async () => {
+  const a = await deck("Local", "1"), b = await deck("Foreign", "0");
+  b.fetcher.installNameEnvironment();
+  const card = { name: "Example", isNew: true };
+  expect(await ruleContentForCard(a.fetcher, card, "captcha")).toBe("1");
+  await a.counting.query("UPDATE cards SET codename = ? WHERE id = ?", ["other_captcha", 4]);
+  a.fetcher.resetCaches();
+  expect(await ruleContentForCard(a.fetcher, card, "captcha")).toBeUndefined();
+  expect(await ruleContentForCard(b.fetcher, card, "captcha")).toBe("0");
+});

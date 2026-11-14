@@ -1,0 +1,226 @@
+import {afterEach, describe, expect, it, vi} from "vitest";
+import fs from "node:fs";
+import path from "node:path";
+import {ModLoader, type DeckoModManifest} from "../../../src/card/mod-loader.js";
+import {HTML_VIEWS} from "../../../src/card/render/views.js";
+import {RenderEngine} from "../../../src/card/render.js";
+import {FetchEngine} from "../../../src/card/fetch.js";
+import {LocalSqliteDriver} from "../../../src/server/drivers/local-sqlite.js";
+import {ensureFreshnessStamp} from "../../../src/server/freshness-stamp.js";
+import {viewPermissionChecks, viewPermissionDenial, viewDeniedTask, type ViewPermissionDirective} from "../../../src/card/permissions/view-perms.js";
+import type {ModFormatMethodDefinition, ModFormatMethodFn} from "../../../src/card/mod-loader/mod-manifest.js";
+import cardModFormat from "../../../src/card/mod-loader/mods/card-mod-format.js";
+
+type Views = NonNullable<NonNullable<NonNullable<DeckoModManifest["setModules"]>[number]["formats"]>[string]["views"]>;
+const cleanups: Array<() => void> = [];
+afterEach(() => {while (cleanups.length) cleanups.pop()!(); vi.restoreAllMocks();});
+async function engine(views: Views, bot = false, format = "html", methods: readonly ModFormatMethodDefinition[] = []) {
+  fs.mkdirSync(path.resolve(".runtime"), { recursive: true });
+  const directory = fs.mkdtempSync(path.resolve(".runtime/custom-view-permission-"));
+  const file = path.join(directory, "deck.sqlite3");
+  fs.copyFileSync("reference-harness/fixtures/synthetic-v1/deck/deck.sqlite3", file);
+  const driver = new LocalSqliteDriver({path: file});
+  const loader = new ModLoader([{manifest: {name: "custom_permissions", setModules: [{setPath: "all/permission_probe", formats: {[format]: {views, methods}}}]}}], {...HTML_VIEWS});
+  cleanups.push(() => {loader.reset(); driver.close(); expect(path.dirname(directory)).toBe(path.resolve(".runtime")); fs.rmSync(directory, {recursive: true});});
+  await ensureFreshnessStamp(driver);
+  loader.load();
+  const render = new RenderEngine(new FetchEngine(driver));
+  render.modLoader = loader;
+  render.viewer = bot ? {signedIn: true, actorId: 1} : {signedIn: false}; // fixture's stored decko_bot
+  return render;
+}
+
+describe("custom mod permissions through the real render preparation and dispatch", () => {
+  it("classifies an undeclared format helper as NoMethodError", async () => {
+    const render = await engine([{view: "missing_helper_probe", config: {perms: "none"},
+      viewFn: ctx => String(ctx.fmt.callFormatMethod("missing_helper"))}]);
+    await expect(render.render("Topic 001", "missing_helper_probe")).rejects.toMatchObject({
+      name: "NoMethodError", message: "Format method is not implemented: missing_helper",
+    });
+  });
+
+  it("removes an old exemption from an already used real engine after reload", async () => {
+    const render = await engine([{view: "protected_probe", config: {perms: "update"}, viewFn: () => "PROTECTED"}]);
+    const loader = render.modLoader!;
+    loader.add({manifest: {name: "exemption", setModules: [{setPath: "all/exemption", formats: {html: {views: [{view: "protected_probe", config: {perms: "none"}, viewFn: () => "EXEMPT"}]}}}]}});
+    loader.resolveOrder({gemMods: ["custom_permissions", "exemption"]});
+    loader.load();
+    expect(await render.render("Topic 001", "protected_probe")).toBe("EXEMPT");
+    loader.resolveOrder({gemMods: ["custom_permissions"]});
+    loader.load();
+    expect(await render.render("Topic 001", "protected_probe")).toContain("permission (update)");
+  });
+  it("dispatches a cyclic denial target once without checking its own permission", async () => {
+    let a = 0, b = 0;
+    const render = await engine([
+      {view: "denied_a", config: {perms: "update", denial: "denied_b"}, viewFn: () => {a++; return "A";}},
+      {view: "denied_b", config: {perms: "delete", denial: "denied_a"}, viewFn: ctx => {b++; return `B:${ctx.voo.requestedView}`;}},
+    ]);
+    const checked: string[] = [];
+    const allowed = render.taskAllowed.bind(render);
+    render.taskAllowed = (card, task) => {checked.push(task); return allowed(card, task);};
+    expect(await render.render("Topic 001", "denied_a")).toBe("B:denied_a");
+    expect({a, b, checked}).toEqual({a: 0, b: 1, checked: ["update"]});
+  });
+  it("dispatches a custom default denial body even if that body's directive would deny", async () => {
+    let calls = 0;
+    const render = await engine([
+      {view: "protected_probe", config: {perms: "update"}, viewFn: () => "PROTECTED"},
+      {view: "denial", config: {perms: "delete"}, viewFn: ctx => {calls++; return `CUSTOM-DENIAL:${ctx.voo.requestedView}`;}},
+    ]);
+    expect(await render.render("Topic 001", "protected_probe", {focalRoot: true})).toBe("CUSTOM-DENIAL:protected_probe");
+    expect(calls).toBe(1);
+  });
+  it("uses the actual core denial body for implicit and explicit default focal refusal", async () => {
+    const render = await engine([
+      {view: "implicit_refusal", config: {perms: "update"}, viewFn: () => "PROTECTED"},
+      {view: "explicit_refusal", config: {perms: "update", denial: "denial"}, viewFn: () => "PROTECTED"},
+    ]);
+    const loader = render.modLoader!;
+    loader.add({manifest: cardModFormat});
+    loader.resolveOrder({gemMods: ["format", "custom_permissions"]});
+    loader.load();
+    for (const view of ["implicit_refusal", "explicit_refusal"]) {
+      expect(await render.render("Topic 001", view, {focalRoot: true})).toContain("sign up</a> to update this.");
+      expect(await render.render("Topic 001", view)).toContain("permission (update)");
+    }
+  });
+  it("evaluates a focal permission predicate once and preserves its false task label", async () => {
+    let calls = 0;
+    const render = await engine([{view: "focal_predicate", config: {perms: "once_ok?"}, viewFn: () => "PROTECTED"}], false, "html", [
+      {name: "once_ok?", fn: () => {calls++; return false;}},
+    ]);
+    expect(await render.render("Topic 001", "focal_predicate", {focalRoot: true})).toContain("sign up</a> to do that.");
+    expect(calls).toBe(1);
+  });
+  it("uses declared synchronous format methods with Ruby truthiness", async () => {
+    const values = [false, null, undefined, 0, "", [], {}, true];
+    const render = await engine(values.map((_, index) => ({view: `truth_${index}`, config: {perms: `truth_${index}?`}, viewFn: () => "BODY"})), false, "html",
+      values.map((value, index) => ({name: `truth_${index}?`, fn: () => value})));
+    for (let index = 0; index < values.length; index++) {
+      const value = values[index];
+      expect(await render.render("Topic 001", `truth_${index}`)).toBe(value === false || value === null || value === undefined
+        ? '<span class="denied"><!-- Sorry, you don\'t have permission (false) --></span>' : "BODY");
+    }
+  });
+  it("passes the active format and arguments to nested helpers and rechecks a warm predicate", async () => {
+    let permitted = true;
+    const render = await engine([{view: "helper_probe", config: {perms: "custom_ok?"}, viewFn: () => "BODY"}], false, "html", [
+      {name: "custom_ok?", fn: ctx => ctx.fmt.callFormatMethod("helper", "Topic 001")},
+      {name: "helper", fn: (ctx, expected) => permitted && ctx.fmt.card.name.s === expected && ctx.voo.requestedView === "helper_probe"},
+    ]);
+    expect(await render.render("Topic 001", "helper_probe")).toBe("BODY");
+    permitted = false;
+    expect(await render.render("Topic 001", "helper_probe")).toContain("permission (false)");
+  });
+  it("rejects native async declarations before invoking them", async () => {
+    let calls = 0;
+    await expect(engine([{view: "async_probe", config: {perms: "async_ok?"}, viewFn: () => "BODY"}], false, "html", [
+      {name: "async_ok?", fn: (async () => {calls++; return false;}) as unknown as ModFormatMethodFn},
+    ])).rejects.toThrow("Format methods must be synchronous: async_ok?");
+    expect(calls).toBe(0);
+  });
+  it("reports a mistyped returned promise and its rejection without executing the body", async () => {
+    const rejection = new Error("private fixture predicate rejection");
+    const reported = vi.spyOn(console, "error").mockImplementation(() => {});
+    let calls = 0;
+    const render = await engine([{view: "promise_probe", config: {perms: "promise_ok?"}, viewFn: () => {calls++; return "BODY";}}], false, "html", [
+      {name: "promise_ok?", fn: (() => Promise.reject(rejection)) as unknown as ModFormatMethodFn},
+    ]);
+    await expect(render.render("Topic 001", "promise_probe")).rejects.toThrow("Format methods must return synchronously: promise_ok?");
+    await new Promise(resolve => setImmediate(resolve));
+    expect(reported).toHaveBeenCalledWith("[format-method] asynchronous promise_ok? rejected", rejection);
+    expect(calls).toBe(0);
+  });
+  it("blocks a cold custom update view before its body executes", async () => {
+    let calls = 0;
+    const render = await engine([{view: "protected_probe", config: {perms: "update"}, viewFn: () => {calls++; return "PROTECTED-CONTROL";}}]);
+    expect(await render.render("Topic 001", "protected_probe")).toContain("permission (update)");
+    expect(calls).toBe(0);
+  });
+  it("executes the same task-gated view for the actual fixture bot", async () => {
+    let calls = 0;
+    const render = await engine([{view: "protected_probe", config: {perms: "update"}, viewFn: () => {calls++; return "PROTECTED-CONTROL";}}], true);
+    expect(await render.render("Topic 001", "protected_probe")).toBe("PROTECTED-CONTROL");
+    expect(calls).toBe(1);
+  });
+  it("prepares a task directive reached only through an imperative custom subrender", async () => {
+    for (const bot of [false, true]) {
+      let calls = 0;
+      const render = await engine([
+        {view: "caller_probe", viewFn: ctx => ctx.fmt.renderView("protected_probe")},
+        {view: "protected_probe", config: {perms: "update"}, viewFn: () => {calls++; return "PROTECTED-CONTROL";}},
+      ], bot);
+      expect(await render.render("Topic 001", "caller_probe")).toContain(bot ? "PROTECTED-CONTROL" : "permission (update)");
+      expect(calls).toBe(bot ? 1 : 0);
+    }
+  });
+  it("prepares task directives for a non-HTML format without inheriting HTML settings", async () => {
+    for (const bot of [false, true]) {
+      let calls = 0;
+      const render = await engine([{view: "protected_probe", config: {perms: "update"}, viewFn: () => {calls++; return "PROTECTED-TEXT";}}], bot, "email_text");
+      // Actual base-format focal? is depth.zero?: the root denial is text.
+      expect(await render.render("Topic 001", "protected_probe", {format: "email_text"})).toBe(bot ? "PROTECTED-TEXT" : "Permission Denied");
+      expect(calls).toBe(bot ? 1 : 0);
+    }
+  });
+  it("honors the configured blank and named denial substitutions", async () => {
+    const render = await engine([
+      {view: "blank_denied", config: {perms: "delete", denial: "blank"}, viewFn: () => "PROTECTED"},
+      {view: "named_denied", config: {perms: "update", denial: "custom_refusal"}, viewFn: () => "PROTECTED"},
+      {view: "custom_refusal", config: {perms: "none"}, viewFn: () => "CUSTOM-REFUSAL"},
+    ]);
+    expect(await render.render("Topic 001", "blank_denied")).toBe("");
+    expect(await render.render("Topic 001", "named_denied")).toBe("CUSTOM-REFUSAL");
+  });
+  it("checks ordered permission arrays and permits the empty array", async () => {
+    const render = await engine([
+      {view: "array_probe", config: {perms: ["read", "update"]}, viewFn: () => "PROTECTED"},
+      {view: "empty_probe", config: {perms: []}, viewFn: () => "EMPTY-ALLOWED"},
+    ]);
+    expect(await render.render("Topic 001", "array_probe")).toContain("permission (update)");
+    expect(await render.render("Topic 001", "empty_probe")).toBe("EMPTY-ALLOWED");
+  });
+  it("exposes an unsupported predicate failure without executing the protected body", async () => {
+    let calls = 0;
+    const render = await engine([{view: "predicate_probe", config: {perms: "missing_probe_predicate?"}, viewFn: () => {calls++; return "PROTECTED";}}]);
+    await expect(render.render("Topic 001", "predicate_probe")).rejects.toThrow("View permission predicate is not implemented: missing_probe_predicate?");
+    expect(calls).toBe(0);
+  });
+  it("prepares the supported predicate even without a configure_button nest", async () => {
+    let calls = 0;
+    const render = await engine([{view: "configure_probe", config: {perms: "can_configure?"}, viewFn: () => {calls++; return "PROTECTED";}}]);
+    expect(await render.render("Topic 001", "configure_probe")).toContain("permission (false)");
+    expect(calls).toBe(0);
+  });
+  it("scalar none skips unknown alteration, while an empty array still follows it", async () => {
+    const render = await engine([
+      {view: "none_probe", config: {perms: "none"}, viewFn: () => "NONE-ALLOWED"},
+      {view: "empty_probe", config: {perms: []}, viewFn: () => "EMPTY-PROTECTED"},
+    ]);
+    expect(await render.render("Never Existed Permission Probe", "none_probe", {absentCard: true})).toBe("NONE-ALLOWED");
+    expect(await render.render("Never Existed Permission Probe", "empty_probe", {absentCard: true})).not.toContain("EMPTY-PROTECTED");
+  });
+});
+
+describe("permission decisions from the native Ruby probe cases", () => {
+  it("keeps scalar none distinct from an empty array and an array containing none", () => {
+    expect(viewPermissionChecks("probe", "none")).toBeNull();
+    expect(viewPermissionChecks("probe", [])).toEqual([]);
+    expect(viewPermissionChecks("probe", ["none"])).toEqual([{check: true, predicate: true, task: "none"}]);
+  });
+  it("checks create for a new update view but retains update in the denial label", () => {
+    const checked: string[] = [];
+    expect(viewPermissionDenial("probe", {declaredPerms: "update", renderOpts: {}, isNewCard: true, taskAllowed: task => {checked.push(task); return false;}})).toContain("permission (update)");
+    expect(checked).toEqual(["create"]);
+  });
+  it("stops at the first failing directive and honors explicit render skip", () => {
+    const checked: string[] = [];
+    const input = {declaredPerms: ["read", "update", "delete"] as ViewPermissionDirective, renderOpts: {}, taskAllowed: (task: string) => {checked.push(task); return task === "read";}};
+    expect(viewDeniedTask("probe", input)).toEqual({task: "update"});
+    expect(checked).toEqual(["read", "update"]);
+    checked.length = 0;
+    expect(viewDeniedTask("probe", {...input, renderOpts: {skip_perms: true}})).toBeUndefined();
+    expect(checked).toEqual([]);
+  });
+});

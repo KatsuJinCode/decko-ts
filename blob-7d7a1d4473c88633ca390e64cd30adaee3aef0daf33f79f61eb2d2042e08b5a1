@@ -1,0 +1,35 @@
+{
+  "what": "the held row mx-155 re-proven at the newest pushed tip: every local leg the row names is green on committed instruments, the later lanes' fixes are verified in place, and the named blocker (the never-fired guarded live deploy) is real, so the exact residual is recorded and the row stays held",
+  "row": "mx-155-capability-catalog-follow",
+  "check": "ACT-155 / capability W4 (followers list and all-followed-cards view) plus the row's own legs W1, W3, W5, W6, R1",
+  "command": "node tools/edge-signed-in-exercise.mjs --only cover-b --case W1,W3,R1 --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 --out .runtime/held-mx-closeout-20261026/mx-155/report-coverb-r1.md ; node tools/edge-signed-in-exercise.mjs --only w4-follow-views --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 --out .runtime/held-mx-closeout-20261026/mx-155/report-w4-r1.md ; node tools/edge-signed-in-exercise.mjs --only content-flows --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 --out .runtime/held-mx-closeout-20261026/mx-155/report-flows-r1.md",
+  "source": "86e147b676f95dba89f369a8d5ee97b4b8fe543e (port/held-mx-closeout-20261026, the newest pushed tip; contains the canonical roll c29e4c3f; all three slice runs rebuilt the same bundle SHA256 9b23a398c7c690dd867b153d1f51477c80e7b6f831e8702d14f82eee1595da46 from this tree)",
+  "result": "PASS",
+  "runTotals": "10 / 10 (cover-b W1,W3,R1) + 9 / 9 (w4-follow-views) + 25 / 25 (content-flows) checks passed, 0 failed; each slice exits 1 by the tool's own rule (tools/edge-signed-in-exercise.mjs:1931), not by any failure",
+  "startedAt": "2026-10-26T02:06:35.825Z",
+  "completedAt": "2026-10-26T02:12:05.040Z",
+  "legs": {
+    "W1": "a card can be followed from the board's Engage tab: PASS",
+    "W3": "a card and a cardtype can be watched (each gets a *follow rule): PASS",
+    "R1": "rename with referers following, form shape and re-pointed references: 3 of 3 PASS",
+    "W4": "followers list names exactly the follower set; Engage count equals the list; all-followed-cards lists followed and no unfollowed; unfollowed card shows empty list: 4 of 4 PASS, reconciled against the deck's own stored follow rules",
+    "W5": "follower mailed on followed-card edits with Ruby's template shape, one notice per act, none for non-notable changes: 6 of 6 PASS",
+    "W6": "the unfollow link in the follower mail stops the follow rule the way Ruby's stop-follow does: 4 of 4 PASS"
+  },
+  "laterLanesClearance": {
+    "unfollowWriteRefusal": "fixed at the canonical roll c29e4c3f; the shipped evaluator receipt docs/runs/follow-compound-create-fix-2026-10-25/follow-operations-evaluator-report.json reads verdict pass with follow-admin-operation-persistence, unfollow-member-operation-persistence and unfollow-mail-operation-persistence all true; this lane's W6 legs are green on the same tree",
+    "instruments": "the W4 probe (tools/edge-signed-in-exercise/checks-w4-follow-views.mjs) and the W5/W6 mail contract (tools/edge-signed-in-exercise/lib/follower-notice-contract.mjs) are committed and ran green at this tip"
+  },
+  "blockerAdjudication": {
+    "named": "the row's verdict and bucket wait on the guarded live deploy, and the ACT-155 LIVE leg needs that deploy landed before it can run against the live host (the roster row files-area-arming-decko-storage-pair-absent)",
+    "realAtThisTip": true,
+    "checks": [
+      "the row ledger (roster timestamp 2026-10-25T22:35:52.211Z) holds files-area-arming-decko-storage-pair-absent at verdict BLOCKED: the DECKO_STORAGE_ZONE / DECKO_STORAGE_PASSWORD values do not exist in the Bunny account",
+      "git grep over docs/reports at 86e147b6 for files-area and 96867 names only the receipts that define and carry the blocker",
+      "the fix rides the candidate roll c29e4c3f, which is a branch, not a deployment; this lane made no deploy and no live request, so the ACT-155 LIVE leg remains unrunnable by any lane"
+    ]
+  },
+  "residual": "The row's ACT-155 LIVE leg and its DONE condition both wait on the guarded live deploy to live 96867, which has never run because the files-area pair does not exist in the Bunny account (row files-area-arming-decko-storage-pair-absent, verdict BLOCKED: the DECKO_STORAGE_ZONE / DECKO_STORAGE_PASSWORD values are an operator account-side call that has not been made), so the live leg cannot be run by any lane; every local leg the row names is green at 86e147b6.",
+  "rowState": "FAIL held, WORKING ON IT (every local leg green at 86e147b6, later lanes' fixes verified; the remaining blocker is the operator-side guarded deploy)",
+  "guardsHonored": "no live request, nothing deploys, no git reset/stash/clean/rm, the roster was not written"
+}

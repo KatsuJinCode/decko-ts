@@ -1,0 +1,338 @@
+{
+  "mechanism": {
+    "adapter_match_output": "REGEXP 'x'",
+    "adapter_name": "Mysql2",
+    "cards_table_collation": "utf8mb4_general_ci",
+    "connection_collation": "utf8mb4_general_ci",
+    "generated_sql_for_word": "(c0.name REGEXP 'matchprobe' OR c0.db_content REGEXP 'matchprobe')",
+    "match_method_source": [
+      "C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/card-1.110.0/config/initializers/02_patches/active_record.rb",
+      "101"
+    ],
+    "server_version": "11.4.5-MariaDB"
+  },
+  "queries": {
+    "array_value_joined": {
+      "query": {
+        "match": [
+          "quick",
+          "brown"
+        ],
+        "sort": "name"
+      },
+      "result": [
+        "Matchprobe Alpha"
+      ]
+    },
+    "case_name_lower": {
+      "query": {
+        "match": "MATCHPROBE LOWER",
+        "sort": "name"
+      },
+      "result": [
+        "matchprobe lower"
+      ]
+    },
+    "case_query_lower": {
+      "query": {
+        "match": "uppercase",
+        "sort": "name"
+      },
+      "result": [
+        "Matchprobe UPPER"
+      ]
+    },
+    "case_query_mixed": {
+      "query": {
+        "match": "UpPeRcAsE",
+        "sort": "name"
+      },
+      "result": [
+        "Matchprobe UPPER"
+      ]
+    },
+    "case_query_upper": {
+      "query": {
+        "match": "UPPERCASE",
+        "sort": "name"
+      },
+      "result": [
+        "Matchprobe UPPER"
+      ]
+    },
+    "compound_child_name_token": {
+      "query": {
+        "match": "zeta",
+        "sort": "name"
+      },
+      "result": [
+        "zeta"
+      ]
+    },
+    "content_restricted": {
+      "query": {
+        "content": [
+          "match",
+          "fox"
+        ],
+        "sort": "name"
+      },
+      "result": [
+        "Matchprobe Alpha"
+      ]
+    },
+    "dot_literal": {
+      "query": {
+        "match": "wel.come",
+        "sort": "name"
+      },
+      "result": [
+        "Matchprobe Dots"
+      ]
+    },
+    "dot_raw_regex": {
+      "query": {
+        "match": "~~wel.come",
+        "sort": "name"
+      },
+      "result": [
+        "Matchprobe Dots"
+      ]
+    },
+    "dot_raw_word_boundary": {
+      "query": {
+        "match": "~~\\bcome\\b",
+        "sort": "name"
+      },
+      "result": [
+        "Matchprobe Dots"
+      ]
+    },
+    "empty_match_noop": {
+      "query": {
+        "limit": 3,
+        "match": "",
+        "sort": "name"
+      },
+      "result": [
+        "*all+*read",
+        "*all+*default",
+        "Cardtype+description"
+      ]
+    },
+    "equals_case_variant": {
+      "query": {
+        "match": "=matchprobe upper",
+        "sort": "name"
+      },
+      "result": [
+        "Matchprobe UPPER"
+      ]
+    },
+    "equals_exact_name": {
+      "query": {
+        "match": "=Matchprobe UPPER",
+        "sort": "name"
+      },
+      "result": [
+        "Matchprobe UPPER"
+      ]
+    },
+    "equals_nonexistent": {
+      "query": {
+        "match": "=Matchprobe Nowhere",
+        "sort": "name"
+      },
+      "result": []
+    },
+    "name_restricted": {
+      "query": {
+        "name": [
+          "match",
+          "upper"
+        ],
+        "sort": "name"
+      },
+      "result": [
+        "Matchprobe UPPER"
+      ]
+    },
+    "nonascii_accented": {
+      "query": {
+        "match": "café",
+        "sort": "name"
+      },
+      "result": [
+        "Matchprobe Unicode"
+      ]
+    },
+    "nonascii_case_fold": {
+      "query": {
+        "match": "CAFÉ",
+        "sort": "name"
+      },
+      "result": [
+        "Matchprobe Unicode"
+      ]
+    },
+    "nonascii_cjk": {
+      "query": {
+        "match": "日本語",
+        "sort": "name"
+      },
+      "result": [
+        "Matchprobe Unicode"
+      ]
+    },
+    "nonascii_raw_dot_cjk": {
+      "query": {
+        "match": "~~日本語.テキスト",
+        "sort": "name"
+      },
+      "result": []
+    },
+    "nonascii_unaccented_query": {
+      "query": {
+        "match": "naive",
+        "sort": "name"
+      },
+      "result": []
+    },
+    "plain_word": {
+      "query": {
+        "match": "matchprobe",
+        "sort": "name"
+      },
+      "result": [
+        "Matchprobe Alpha",
+        "Matchprobe Beta",
+        "Matchprobe Compound",
+        "Matchprobe Dots",
+        "matchprobe lower",
+        "Matchprobe Punct",
+        "Matchprobe Search",
+        "Matchprobe Unicode",
+        "Matchprobe UPPER"
+      ]
+    },
+    "plain_word_fox": {
+      "query": {
+        "match": "fox",
+        "sort": "name"
+      },
+      "result": [
+        "Matchprobe Alpha"
+      ]
+    },
+    "punct_literal_brackets": {
+      "query": {
+        "match": "[braces]",
+        "sort": "name"
+      },
+      "result": [
+        "Matchprobe Punct"
+      ]
+    },
+    "punct_literal_parens": {
+      "query": {
+        "match": "(regex)",
+        "sort": "name"
+      },
+      "result": [
+        "Matchprobe Punct"
+      ]
+    },
+    "punct_literal_plus": {
+      "query": {
+        "match": "+ plus",
+        "sort": "name"
+      },
+      "result": [
+        "Matchprobe Punct"
+      ]
+    },
+    "raw_backreference": {
+      "query": {
+        "match": "~~(wel)\\1",
+        "sort": "name"
+      },
+      "result": [
+        "Matchprobe Dots"
+      ]
+    },
+    "raw_case_upper": {
+      "query": {
+        "match": "~~MATCHPROBE",
+        "sort": "name"
+      },
+      "result": [
+        "Matchprobe Alpha",
+        "Matchprobe Beta",
+        "Matchprobe Compound",
+        "Matchprobe Dots",
+        "matchprobe lower",
+        "Matchprobe Punct",
+        "Matchprobe Search",
+        "Matchprobe Unicode",
+        "Matchprobe UPPER"
+      ]
+    },
+    "raw_digit_class": {
+      "query": {
+        "match": "~~v[0-9]\\.0",
+        "sort": "name"
+      },
+      "result": [
+        "Matchprobe Dots"
+      ]
+    },
+    "raw_mysql57_wordstart": {
+      "query": {
+        "match": "~~[[:<:]]come",
+        "sort": "name"
+      },
+      "result": [
+        "Matchprobe Dots"
+      ]
+    },
+    "raw_posix_alpha": {
+      "query": {
+        "limit": 4,
+        "match": "~~[[:alpha:]]+",
+        "sort": "name"
+      },
+      "result": [
+        "*all+*read",
+        "Cardtype+description",
+        "User+description",
+        "Cardtype+*type+*structure"
+      ]
+    },
+    "raw_unicode_class": {
+      "query": {
+        "match": "~~\\p{Han}+",
+        "sort": "name"
+      },
+      "result": [
+        "Matchprobe Unicode"
+      ]
+    }
+  },
+  "rendered_match_search": {
+    "bar": "<div id=\"matchprobe_search-bar-view\" class=\"card-slot bar-view ALL TYPE-search SELF-matchprobe_search\" data-card-id=\"RANDOMIZED\" data-card-name=\"Matchprobe Search\" data-card-type-id=\"98\" data-card-type-name=\"Search\" data-card-link-name=\"Matchprobe_Search\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;bar&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;one_line_content&quot;,&quot;bar_middle&quot;]}\"><div class='bar ALL TYPE-search SELF-matchprobe_search with-bar-menu nodblclick d-flex _card-link' data-card-id=\"RANDOMIZED\" data-card-link-name='Matchprobe_Search' data-card-name='Matchprobe Search' data-card-type-id='98' data-card-type-name='Search' data-slot-id=\"RANDOMIZED\">\n<div class='bar-body row g-0'>\n<div class='bar-left col-9'>\n<span class=\"card-title\" title=\"Matchprobe Search\">Matchprobe Search</span>\n</div>\n<div class='bar-right col-3'>\n\n</div>\n</div>\n\n<div class='bar-menu _over-card-link _card-link-clickable'>\n<div class='bar-menu-dropdown dropdown'>\n<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>\n<i class=\"notranslate material-icons\">more_horiz</i>\n</div>\n<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>\n<div class='dropdown-item'>\n<a class=\"full-page-link known-card\" href=\"/Matchprobe_Search\"><i class=\"notranslate material-icons\">open_in_full</i> page</a>\n</div>\n<div class='dropdown-item'>\n<a data-slotter-mode=\"modal\" data-modal-class=\"modal-dialog modal-dialog-centered modal-xl\" size=\"xl\" class=\"_modal-page-link slotter\" href=\"/Matchprobe_Search?layout=modal\" data-remote=\"true\"><i class=\"notranslate material-icons\">fullscreen</i> modal</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"edit-link slotter\" title=\"Edit\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal\" data-modal-class=\"modal-lg\" href=\"/Matchprobe_Search/edit\" data-remote=\"true\"><i class=\"notranslate material-icons\">edit</i> edit</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"board-link slotter\" title=\"Advanced\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal-replace\" href=\"/Matchprobe_Search/board\" data-remote=\"true\"><i class=\"notranslate material-icons\">space_dashboard</i> advanced</a>\n</div>\n</div>\n</div>\n</div>\n\n</div>\n</div>",
+    "content": "<div id=\"matchprobe_search-content-view\" class=\"card-slot content-view ALL TYPE-search SELF-matchprobe_search d0-card-content\" data-card-id=\"RANDOMIZED\" data-card-name=\"Matchprobe Search\" data-card-type-id=\"98\" data-card-type-name=\"Search\" data-card-link-name=\"Matchprobe_Search\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;content&quot;,&quot;show&quot;:[&quot;content&quot;]}\"><div class=\"card-list card-list-bar search-result-list\"><div class=\"search-result-item item-bar\"><div id=\"matchprobe_alpha-bar-view\" class=\"card-slot bar-view ALL TYPE-rich_text SELF-matchprobe_alpha\" data-card-id=\"RANDOMIZED\" data-card-name=\"Matchprobe Alpha\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"Matchprobe_Alpha\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;Matchprobe Alpha&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;size&quot;:null}\"><div class='bar ALL TYPE-rich_text SELF-matchprobe_alpha with-bar-menu nodblclick d-flex _card-link' data-card-id=\"RANDOMIZED\" data-card-link-name='Matchprobe_Alpha' data-card-name='Matchprobe Alpha' data-card-type-id='2' data-card-type-name='RichText' data-slot-id=\"RANDOMIZED\">\n<div class='bar-body row g-0'>\n<div class='bar-left col-9'>\n<span class=\"card-title\" title=\"Matchprobe Alpha\">Matchprobe Alpha</span>\n</div>\n<div class='bar-right col-3'>\n\n</div>\n</div>\n\n<div class='bar-menu _over-card-link _card-link-clickable'>\n<div class='bar-menu-dropdown dropdown'>\n<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>\n<i class=\"notranslate material-icons\">more_horiz</i>\n</div>\n<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>\n<div class='dropdown-item'>\n<a class=\"full-page-link known-card\" href=\"/Matchprobe_Alpha\"><i class=\"notranslate material-icons\">open_in_full</i> page</a>\n</div>\n<div class='dropdown-item'>\n<a data-slotter-mode=\"modal\" data-modal-class=\"modal-dialog modal-dialog-centered modal-xl\" size=\"xl\" class=\"_modal-page-link slotter\" href=\"/Matchprobe_Alpha?layout=modal\" data-remote=\"true\"><i class=\"notranslate material-icons\">fullscreen</i> modal</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"edit-link slotter\" title=\"Edit\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal\" data-modal-class=\"modal-lg\" href=\"/Matchprobe_Alpha/edit\" data-remote=\"true\"><i class=\"notranslate material-icons\">edit</i> edit</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"board-link slotter\" title=\"Advanced\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal-replace\" href=\"/Matchprobe_Alpha/board\" data-remote=\"true\"><i class=\"notranslate material-icons\">space_dashboard</i> advanced</a>\n</div>\n</div>\n</div>\n</div>\n\n</div>\n</div></div>\n<div class=\"search-result-item item-bar\"><div id=\"matchprobe_betum-bar-view\" class=\"card-slot bar-view ALL TYPE-rich_text SELF-matchprobe_betum\" data-card-id=\"RANDOMIZED\" data-card-name=\"Matchprobe Beta\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"Matchprobe_Beta\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;Matchprobe Beta&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;size&quot;:null}\"><div class='bar ALL TYPE-rich_text SELF-matchprobe_betum with-bar-menu nodblclick d-flex _card-link' data-card-id=\"RANDOMIZED\" data-card-link-name='Matchprobe_Beta' data-card-name='Matchprobe Beta' data-card-type-id='2' data-card-type-name='RichText' data-slot-id=\"RANDOMIZED\">\n<div class='bar-body row g-0'>\n<div class='bar-left col-9'>\n<span class=\"card-title\" title=\"Matchprobe Beta\">Matchprobe Beta</span>\n</div>\n<div class='bar-right col-3'>\n\n</div>\n</div>\n\n<div class='bar-menu _over-card-link _card-link-clickable'>\n<div class='bar-menu-dropdown dropdown'>\n<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>\n<i class=\"notranslate material-icons\">more_horiz</i>\n</div>\n<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>\n<div class='dropdown-item'>\n<a class=\"full-page-link known-card\" href=\"/Matchprobe_Beta\"><i class=\"notranslate material-icons\">open_in_full</i> page</a>\n</div>\n<div class='dropdown-item'>\n<a data-slotter-mode=\"modal\" data-modal-class=\"modal-dialog modal-dialog-centered modal-xl\" size=\"xl\" class=\"_modal-page-link slotter\" href=\"/Matchprobe_Beta?layout=modal\" data-remote=\"true\"><i class=\"notranslate material-icons\">fullscreen</i> modal</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"edit-link slotter\" title=\"Edit\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal\" data-modal-class=\"modal-lg\" href=\"/Matchprobe_Beta/edit\" data-remote=\"true\"><i class=\"notranslate material-icons\">edit</i> edit</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"board-link slotter\" title=\"Advanced\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal-replace\" href=\"/Matchprobe_Beta/board\" data-remote=\"true\"><i class=\"notranslate material-icons\">space_dashboard</i> advanced</a>\n</div>\n</div>\n</div>\n</div>\n\n</div>\n</div></div>\n<div class=\"search-result-item item-bar\"><div id=\"matchprobe_compound-bar-view\" class=\"card-slot bar-view ALL TYPE-rich_text SELF-matchprobe_compound\" data-card-id=\"RANDOMIZED\" data-card-name=\"Matchprobe Compound\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"Matchprobe_Compound\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;Matchprobe Compound&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;size&quot;:null}\"><div class='bar ALL TYPE-rich_text SELF-matchprobe_compound with-bar-menu nodblclick d-flex _card-link' data-card-id=\"RANDOMIZED\" data-card-link-name='Matchprobe_Compound' data-card-name='Matchprobe Compound' data-card-type-id='2' data-card-type-name='RichText' data-slot-id=\"RANDOMIZED\">\n<div class='bar-body row g-0'>\n<div class='bar-left col-9'>\n<span class=\"card-title\" title=\"Matchprobe Compound\">Matchprobe Compound</span>\n</div>\n<div class='bar-right col-3'>\n\n</div>\n</div>\n\n<div class='bar-menu _over-card-link _card-link-clickable'>\n<div class='bar-menu-dropdown dropdown'>\n<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>\n<i class=\"notranslate material-icons\">more_horiz</i>\n</div>\n<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>\n<div class='dropdown-item'>\n<a class=\"full-page-link known-card\" href=\"/Matchprobe_Compound\"><i class=\"notranslate material-icons\">open_in_full</i> page</a>\n</div>\n<div class='dropdown-item'>\n<a data-slotter-mode=\"modal\" data-modal-class=\"modal-dialog modal-dialog-centered modal-xl\" size=\"xl\" class=\"_modal-page-link slotter\" href=\"/Matchprobe_Compound?layout=modal\" data-remote=\"true\"><i class=\"notranslate material-icons\">fullscreen</i> modal</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"edit-link slotter\" title=\"Edit\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal\" data-modal-class=\"modal-lg\" href=\"/Matchprobe_Compound/edit\" data-remote=\"true\"><i class=\"notranslate material-icons\">edit</i> edit</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"board-link slotter\" title=\"Advanced\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal-replace\" href=\"/Matchprobe_Compound/board\" data-remote=\"true\"><i class=\"notranslate material-icons\">space_dashboard</i> advanced</a>\n</div>\n</div>\n</div>\n</div>\n\n</div>\n</div></div>\n<div class=\"search-result-item item-bar\"><div id=\"matchprobe_dot-bar-view\" class=\"card-slot bar-view ALL TYPE-rich_text SELF-matchprobe_dot\" data-card-id=\"RANDOMIZED\" data-card-name=\"Matchprobe Dots\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"Matchprobe_Dots\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;Matchprobe Dots&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;size&quot;:null}\"><div class='bar ALL TYPE-rich_text SELF-matchprobe_dot with-bar-menu nodblclick d-flex _card-link' data-card-id=\"RANDOMIZED\" data-card-link-name='Matchprobe_Dots' data-card-name='Matchprobe Dots' data-card-type-id='2' data-card-type-name='RichText' data-slot-id=\"RANDOMIZED\">\n<div class='bar-body row g-0'>\n<div class='bar-left col-9'>\n<span class=\"card-title\" title=\"Matchprobe Dots\">Matchprobe Dots</span>\n</div>\n<div class='bar-right col-3'>\n\n</div>\n</div>\n\n<div class='bar-menu _over-card-link _card-link-clickable'>\n<div class='bar-menu-dropdown dropdown'>\n<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>\n<i class=\"notranslate material-icons\">more_horiz</i>\n</div>\n<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>\n<div class='dropdown-item'>\n<a class=\"full-page-link known-card\" href=\"/Matchprobe_Dots\"><i class=\"notranslate material-icons\">open_in_full</i> page</a>\n</div>\n<div class='dropdown-item'>\n<a data-slotter-mode=\"modal\" data-modal-class=\"modal-dialog modal-dialog-centered modal-xl\" size=\"xl\" class=\"_modal-page-link slotter\" href=\"/Matchprobe_Dots?layout=modal\" data-remote=\"true\"><i class=\"notranslate material-icons\">fullscreen</i> modal</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"edit-link slotter\" title=\"Edit\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal\" data-modal-class=\"modal-lg\" href=\"/Matchprobe_Dots/edit\" data-remote=\"true\"><i class=\"notranslate material-icons\">edit</i> edit</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"board-link slotter\" title=\"Advanced\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal-replace\" href=\"/Matchprobe_Dots/board\" data-remote=\"true\"><i class=\"notranslate material-icons\">space_dashboard</i> advanced</a>\n</div>\n</div>\n</div>\n</div>\n\n</div>\n</div></div>\n<div class=\"search-result-item item-bar\"><div id=\"matchprobe_lower-bar-view\" class=\"card-slot bar-view ALL TYPE-rich_text SELF-matchprobe_lower\" data-card-id=\"RANDOMIZED\" data-card-name=\"matchprobe lower\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"matchprobe_lower\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;matchprobe lower&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;size&quot;:null}\"><div class='bar ALL TYPE-rich_text SELF-matchprobe_lower with-bar-menu nodblclick d-flex _card-link' data-card-id=\"RANDOMIZED\" data-card-link-name='matchprobe_lower' data-card-name='matchprobe lower' data-card-type-id='2' data-card-type-name='RichText' data-slot-id=\"RANDOMIZED\">\n<div class='bar-body row g-0'>\n<div class='bar-left col-9'>\n<span class=\"card-title\" title=\"matchprobe lower\">matchprobe lower</span>\n</div>\n<div class='bar-right col-3'>\n\n</div>\n</div>\n\n<div class='bar-menu _over-card-link _card-link-clickable'>\n<div class='bar-menu-dropdown dropdown'>\n<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>\n<i class=\"notranslate material-icons\">more_horiz</i>\n</div>\n<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>\n<div class='dropdown-item'>\n<a class=\"full-page-link known-card\" href=\"/matchprobe_lower\"><i class=\"notranslate material-icons\">open_in_full</i> page</a>\n</div>\n<div class='dropdown-item'>\n<a data-slotter-mode=\"modal\" data-modal-class=\"modal-dialog modal-dialog-centered modal-xl\" size=\"xl\" class=\"_modal-page-link slotter\" href=\"/matchprobe_lower?layout=modal\" data-remote=\"true\"><i class=\"notranslate material-icons\">fullscreen</i> modal</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"edit-link slotter\" title=\"Edit\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal\" data-modal-class=\"modal-lg\" href=\"/matchprobe_lower/edit\" data-remote=\"true\"><i class=\"notranslate material-icons\">edit</i> edit</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"board-link slotter\" title=\"Advanced\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal-replace\" href=\"/matchprobe_lower/board\" data-remote=\"true\"><i class=\"notranslate material-icons\">space_dashboard</i> advanced</a>\n</div>\n</div>\n</div>\n</div>\n\n</div>\n</div></div>\n<div class=\"search-result-item item-bar\"><div id=\"matchprobe_punct-bar-view\" class=\"card-slot bar-view ALL TYPE-rich_text SELF-matchprobe_punct\" data-card-id=\"RANDOMIZED\" data-card-name=\"Matchprobe Punct\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"Matchprobe_Punct\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;Matchprobe Punct&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;size&quot;:null}\"><div class='bar ALL TYPE-rich_text SELF-matchprobe_punct with-bar-menu nodblclick d-flex _card-link' data-card-id=\"RANDOMIZED\" data-card-link-name='Matchprobe_Punct' data-card-name='Matchprobe Punct' data-card-type-id='2' data-card-type-name='RichText' data-slot-id=\"RANDOMIZED\">\n<div class='bar-body row g-0'>\n<div class='bar-left col-9'>\n<span class=\"card-title\" title=\"Matchprobe Punct\">Matchprobe Punct</span>\n</div>\n<div class='bar-right col-3'>\n\n</div>\n</div>\n\n<div class='bar-menu _over-card-link _card-link-clickable'>\n<div class='bar-menu-dropdown dropdown'>\n<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>\n<i class=\"notranslate material-icons\">more_horiz</i>\n</div>\n<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>\n<div class='dropdown-item'>\n<a class=\"full-page-link known-card\" href=\"/Matchprobe_Punct\"><i class=\"notranslate material-icons\">open_in_full</i> page</a>\n</div>\n<div class='dropdown-item'>\n<a data-slotter-mode=\"modal\" data-modal-class=\"modal-dialog modal-dialog-centered modal-xl\" size=\"xl\" class=\"_modal-page-link slotter\" href=\"/Matchprobe_Punct?layout=modal\" data-remote=\"true\"><i class=\"notranslate material-icons\">fullscreen</i> modal</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"edit-link slotter\" title=\"Edit\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal\" data-modal-class=\"modal-lg\" href=\"/Matchprobe_Punct/edit\" data-remote=\"true\"><i class=\"notranslate material-icons\">edit</i> edit</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"board-link slotter\" title=\"Advanced\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal-replace\" href=\"/Matchprobe_Punct/board\" data-remote=\"true\"><i class=\"notranslate material-icons\">space_dashboard</i> advanced</a>\n</div>\n</div>\n</div>\n</div>\n\n</div>\n</div></div>\n<div class=\"search-result-item item-bar\"><div id=\"matchprobe_search-bar-view\" class=\"card-slot bar-view ALL TYPE-search SELF-matchprobe_search\" data-card-id=\"RANDOMIZED\" data-card-name=\"Matchprobe Search\" data-card-type-id=\"98\" data-card-type-name=\"Search\" data-card-link-name=\"Matchprobe_Search\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;Matchprobe Search&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;one_line_content&quot;,&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;size&quot;:null}\"><div class='bar ALL TYPE-search SELF-matchprobe_search with-bar-menu nodblclick d-flex _card-link' data-card-id=\"RANDOMIZED\" data-card-link-name='Matchprobe_Search' data-card-name='Matchprobe Search' data-card-type-id='98' data-card-type-name='Search' data-slot-id=\"RANDOMIZED\">\n<div class='bar-body row g-0'>\n<div class='bar-left col-9'>\n<span class=\"card-title\" title=\"Matchprobe Search\">Matchprobe Search</span>\n</div>\n<div class='bar-right col-3'>\n\n</div>\n</div>\n\n<div class='bar-menu _over-card-link _card-link-clickable'>\n<div class='bar-menu-dropdown dropdown'>\n<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>\n<i class=\"notranslate material-icons\">more_horiz</i>\n</div>\n<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>\n<div class='dropdown-item'>\n<a class=\"full-page-link known-card\" href=\"/Matchprobe_Search\"><i class=\"notranslate material-icons\">open_in_full</i> page</a>\n</div>\n<div class='dropdown-item'>\n<a data-slotter-mode=\"modal\" data-modal-class=\"modal-dialog modal-dialog-centered modal-xl\" size=\"xl\" class=\"_modal-page-link slotter\" href=\"/Matchprobe_Search?layout=modal\" data-remote=\"true\"><i class=\"notranslate material-icons\">fullscreen</i> modal</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"edit-link slotter\" title=\"Edit\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal\" data-modal-class=\"modal-lg\" href=\"/Matchprobe_Search/edit\" data-remote=\"true\"><i class=\"notranslate material-icons\">edit</i> edit</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"board-link slotter\" title=\"Advanced\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal-replace\" href=\"/Matchprobe_Search/board\" data-remote=\"true\"><i class=\"notranslate material-icons\">space_dashboard</i> advanced</a>\n</div>\n</div>\n</div>\n</div>\n\n</div>\n</div></div>\n<div class=\"search-result-item item-bar\"><div id=\"matchprobe_unicode-bar-view\" class=\"card-slot bar-view ALL TYPE-rich_text SELF-matchprobe_unicode\" data-card-id=\"RANDOMIZED\" data-card-name=\"Matchprobe Unicode\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"Matchprobe_Unicode\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;Matchprobe Unicode&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;size&quot;:null}\"><div class='bar ALL TYPE-rich_text SELF-matchprobe_unicode with-bar-menu nodblclick d-flex _card-link' data-card-id=\"RANDOMIZED\" data-card-link-name='Matchprobe_Unicode' data-card-name='Matchprobe Unicode' data-card-type-id='2' data-card-type-name='RichText' data-slot-id=\"RANDOMIZED\">\n<div class='bar-body row g-0'>\n<div class='bar-left col-9'>\n<span class=\"card-title\" title=\"Matchprobe Unicode\">Matchprobe Unicode</span>\n</div>\n<div class='bar-right col-3'>\n\n</div>\n</div>\n\n<div class='bar-menu _over-card-link _card-link-clickable'>\n<div class='bar-menu-dropdown dropdown'>\n<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>\n<i class=\"notranslate material-icons\">more_horiz</i>\n</div>\n<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>\n<div class='dropdown-item'>\n<a class=\"full-page-link known-card\" href=\"/Matchprobe_Unicode\"><i class=\"notranslate material-icons\">open_in_full</i> page</a>\n</div>\n<div class='dropdown-item'>\n<a data-slotter-mode=\"modal\" data-modal-class=\"modal-dialog modal-dialog-centered modal-xl\" size=\"xl\" class=\"_modal-page-link slotter\" href=\"/Matchprobe_Unicode?layout=modal\" data-remote=\"true\"><i class=\"notranslate material-icons\">fullscreen</i> modal</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"edit-link slotter\" title=\"Edit\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal\" data-modal-class=\"modal-lg\" href=\"/Matchprobe_Unicode/edit\" data-remote=\"true\"><i class=\"notranslate material-icons\">edit</i> edit</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"board-link slotter\" title=\"Advanced\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal-replace\" href=\"/Matchprobe_Unicode/board\" data-remote=\"true\"><i class=\"notranslate material-icons\">space_dashboard</i> advanced</a>\n</div>\n</div>\n</div>\n</div>\n\n</div>\n</div></div>\n<div class=\"search-result-item item-bar\"><div id=\"matchprobe_upper-bar-view\" class=\"card-slot bar-view ALL TYPE-rich_text SELF-matchprobe_upper\" data-card-id=\"RANDOMIZED\" data-card-name=\"Matchprobe UPPER\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"Matchprobe_UPPER\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;Matchprobe UPPER&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;size&quot;:null}\"><div class='bar ALL TYPE-rich_text SELF-matchprobe_upper with-bar-menu nodblclick d-flex _card-link' data-card-id=\"RANDOMIZED\" data-card-link-name='Matchprobe_UPPER' data-card-name='Matchprobe UPPER' data-card-type-id='2' data-card-type-name='RichText' data-slot-id=\"RANDOMIZED\">\n<div class='bar-body row g-0'>\n<div class='bar-left col-9'>\n<span class=\"card-title\" title=\"Matchprobe UPPER\">Matchprobe UPPER</span>\n</div>\n<div class='bar-right col-3'>\n\n</div>\n</div>\n\n<div class='bar-menu _over-card-link _card-link-clickable'>\n<div class='bar-menu-dropdown dropdown'>\n<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>\n<i class=\"notranslate material-icons\">more_horiz</i>\n</div>\n<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>\n<div class='dropdown-item'>\n<a class=\"full-page-link known-card\" href=\"/Matchprobe_UPPER\"><i class=\"notranslate material-icons\">open_in_full</i> page</a>\n</div>\n<div class='dropdown-item'>\n<a data-slotter-mode=\"modal\" data-modal-class=\"modal-dialog modal-dialog-centered modal-xl\" size=\"xl\" class=\"_modal-page-link slotter\" href=\"/Matchprobe_UPPER?layout=modal\" data-remote=\"true\"><i class=\"notranslate material-icons\">fullscreen</i> modal</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"edit-link slotter\" title=\"Edit\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal\" data-modal-class=\"modal-lg\" href=\"/Matchprobe_UPPER/edit\" data-remote=\"true\"><i class=\"notranslate material-icons\">edit</i> edit</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"board-link slotter\" title=\"Advanced\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal-replace\" href=\"/Matchprobe_UPPER/board\" data-remote=\"true\"><i class=\"notranslate material-icons\">space_dashboard</i> advanced</a>\n</div>\n</div>\n</div>\n</div>\n\n</div>\n</div></div></div>\n</div>",
+    "open": "<div id=\"matchprobe_search-open-view\" class=\"card-slot open-view ALL TYPE-search SELF-matchprobe_search\" data-card-id=\"RANDOMIZED\" data-card-name=\"Matchprobe Search\" data-card-type-id=\"98\" data-card-type-name=\"Search\" data-card-link-name=\"Matchprobe_Search\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;open&quot;,&quot;show&quot;:[&quot;open&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;]}\"><div class='accordion-item bar ALL TYPE-search SELF-matchprobe_search'>\n<h2 class='accordion-header nodblclick w-100'>\n<button class='accordion-button' data-bs-target='#card-matchprobe_search-closed-collapse-id' data-bs-toggle='collapse' type='button'>\n<div class='bar-body row g-0'>\n<div class='bar-left col-9'>\n<span class=\"card-title\" title=\"Matchprobe Search\">Matchprobe Search</span>\n</div>\n<div class='bar-right col-3'>\n\n</div>\n</div>\n\n</button>\n</h2>\n<div class='show accordion-collapse collapse' id='card-matchprobe_search-closed-collapse-id'>\n<div class='accordion-subheader bg-light p-2 text-end'>\n<div class=\"card-menu nodblclick _show-on-hover\"><a tabindex=\"0\" data-bs-toggle=\"popover\" data-bs-trigger=\"hover focus\" data-bs-content=\"&amp;nbsp;\" data-bs-placement=\"left\" class=\"help-link ps-1 _popover_link _card-menu-popover\" data-bs-title=\"&lt;a class=&quot;known-card&quot; href=&quot;/Matchprobe_Search&quot;&gt;Matchprobe Search&lt;/a&gt; (&lt;a class=&quot;cardtype known-card&quot; href=&quot;/Search&quot;&gt;Search&lt;/a&gt;) \" href=\"#\"><i class=\"notranslate material-icons\">help</i></a>\n<a rel=\"nofollow\" class=\"edit-link slotter\" title=\"Edit\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal\" data-modal-class=\"modal-lg\" href=\"/Matchprobe_Search/edit\" data-remote=\"true\"><i class=\"notranslate material-icons\">edit</i> </a>\n<a rel=\"nofollow\" class=\"board-link slotter\" title=\"Advanced\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" href=\"/Matchprobe_Search/board\" data-remote=\"true\"><i class=\"notranslate material-icons\">space_dashboard</i> </a></div>\n</div>\n<div class='accordion-body d0-card-body'>\n<div id=\"matchprobe_search-content-view\" class=\"card-slot content-view ALL TYPE-search SELF-matchprobe_search d0-card-content\" data-card-id=\"RANDOMIZED\" data-card-name=\"Matchprobe Search\" data-card-type-id=\"98\" data-card-type-name=\"Search\" data-card-link-name=\"Matchprobe_Search\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;content&quot;,&quot;show&quot;:[&quot;open&quot;,&quot;bar_bottom&quot;,&quot;content&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;content&quot;}\"><div class=\"card-list card-list-bar search-result-list\"><div class=\"search-result-item item-bar\"><div id=\"matchprobe_alpha-bar-view\" class=\"card-slot bar-view ALL TYPE-rich_text SELF-matchprobe_alpha\" data-card-id=\"RANDOMIZED\" data-card-name=\"Matchprobe Alpha\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"Matchprobe_Alpha\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;Matchprobe Alpha&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;size&quot;:null}\"><div class='bar ALL TYPE-rich_text SELF-matchprobe_alpha with-bar-menu nodblclick d-flex _card-link' data-card-id=\"RANDOMIZED\" data-card-link-name='Matchprobe_Alpha' data-card-name='Matchprobe Alpha' data-card-type-id='2' data-card-type-name='RichText' data-slot-id=\"RANDOMIZED\">\n<div class='bar-body row g-0'>\n<div class='bar-left col-9'>\n<span class=\"card-title\" title=\"Matchprobe Alpha\">Matchprobe Alpha</span>\n</div>\n<div class='bar-right col-3'>\n\n</div>\n</div>\n\n<div class='bar-menu _over-card-link _card-link-clickable'>\n<div class='bar-menu-dropdown dropdown'>\n<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>\n<i class=\"notranslate material-icons\">more_horiz</i>\n</div>\n<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>\n<div class='dropdown-item'>\n<a class=\"full-page-link known-card\" href=\"/Matchprobe_Alpha\"><i class=\"notranslate material-icons\">open_in_full</i> page</a>\n</div>\n<div class='dropdown-item'>\n<a data-slotter-mode=\"modal\" data-modal-class=\"modal-dialog modal-dialog-centered modal-xl\" size=\"xl\" class=\"_modal-page-link slotter\" href=\"/Matchprobe_Alpha?layout=modal\" data-remote=\"true\"><i class=\"notranslate material-icons\">fullscreen</i> modal</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"edit-link slotter\" title=\"Edit\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal\" data-modal-class=\"modal-lg\" href=\"/Matchprobe_Alpha/edit\" data-remote=\"true\"><i class=\"notranslate material-icons\">edit</i> edit</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"board-link slotter\" title=\"Advanced\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal-replace\" href=\"/Matchprobe_Alpha/board\" data-remote=\"true\"><i class=\"notranslate material-icons\">space_dashboard</i> advanced</a>\n</div>\n</div>\n</div>\n</div>\n\n</div>\n</div></div>\n<div class=\"search-result-item item-bar\"><div id=\"matchprobe_betum-bar-view\" class=\"card-slot bar-view ALL TYPE-rich_text SELF-matchprobe_betum\" data-card-id=\"RANDOMIZED\" data-card-name=\"Matchprobe Beta\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"Matchprobe_Beta\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;Matchprobe Beta&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;size&quot;:null}\"><div class='bar ALL TYPE-rich_text SELF-matchprobe_betum with-bar-menu nodblclick d-flex _card-link' data-card-id=\"RANDOMIZED\" data-card-link-name='Matchprobe_Beta' data-card-name='Matchprobe Beta' data-card-type-id='2' data-card-type-name='RichText' data-slot-id=\"RANDOMIZED\">\n<div class='bar-body row g-0'>\n<div class='bar-left col-9'>\n<span class=\"card-title\" title=\"Matchprobe Beta\">Matchprobe Beta</span>\n</div>\n<div class='bar-right col-3'>\n\n</div>\n</div>\n\n<div class='bar-menu _over-card-link _card-link-clickable'>\n<div class='bar-menu-dropdown dropdown'>\n<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>\n<i class=\"notranslate material-icons\">more_horiz</i>\n</div>\n<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>\n<div class='dropdown-item'>\n<a class=\"full-page-link known-card\" href=\"/Matchprobe_Beta\"><i class=\"notranslate material-icons\">open_in_full</i> page</a>\n</div>\n<div class='dropdown-item'>\n<a data-slotter-mode=\"modal\" data-modal-class=\"modal-dialog modal-dialog-centered modal-xl\" size=\"xl\" class=\"_modal-page-link slotter\" href=\"/Matchprobe_Beta?layout=modal\" data-remote=\"true\"><i class=\"notranslate material-icons\">fullscreen</i> modal</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"edit-link slotter\" title=\"Edit\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal\" data-modal-class=\"modal-lg\" href=\"/Matchprobe_Beta/edit\" data-remote=\"true\"><i class=\"notranslate material-icons\">edit</i> edit</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"board-link slotter\" title=\"Advanced\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal-replace\" href=\"/Matchprobe_Beta/board\" data-remote=\"true\"><i class=\"notranslate material-icons\">space_dashboard</i> advanced</a>\n</div>\n</div>\n</div>\n</div>\n\n</div>\n</div></div>\n<div class=\"search-result-item item-bar\"><div id=\"matchprobe_compound-bar-view\" class=\"card-slot bar-view ALL TYPE-rich_text SELF-matchprobe_compound\" data-card-id=\"RANDOMIZED\" data-card-name=\"Matchprobe Compound\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"Matchprobe_Compound\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;Matchprobe Compound&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;size&quot;:null}\"><div class='bar ALL TYPE-rich_text SELF-matchprobe_compound with-bar-menu nodblclick d-flex _card-link' data-card-id=\"RANDOMIZED\" data-card-link-name='Matchprobe_Compound' data-card-name='Matchprobe Compound' data-card-type-id='2' data-card-type-name='RichText' data-slot-id=\"RANDOMIZED\">\n<div class='bar-body row g-0'>\n<div class='bar-left col-9'>\n<span class=\"card-title\" title=\"Matchprobe Compound\">Matchprobe Compound</span>\n</div>\n<div class='bar-right col-3'>\n\n</div>\n</div>\n\n<div class='bar-menu _over-card-link _card-link-clickable'>\n<div class='bar-menu-dropdown dropdown'>\n<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>\n<i class=\"notranslate material-icons\">more_horiz</i>\n</div>\n<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>\n<div class='dropdown-item'>\n<a class=\"full-page-link known-card\" href=\"/Matchprobe_Compound\"><i class=\"notranslate material-icons\">open_in_full</i> page</a>\n</div>\n<div class='dropdown-item'>\n<a data-slotter-mode=\"modal\" data-modal-class=\"modal-dialog modal-dialog-centered modal-xl\" size=\"xl\" class=\"_modal-page-link slotter\" href=\"/Matchprobe_Compound?layout=modal\" data-remote=\"true\"><i class=\"notranslate material-icons\">fullscreen</i> modal</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"edit-link slotter\" title=\"Edit\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal\" data-modal-class=\"modal-lg\" href=\"/Matchprobe_Compound/edit\" data-remote=\"true\"><i class=\"notranslate material-icons\">edit</i> edit</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"board-link slotter\" title=\"Advanced\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal-replace\" href=\"/Matchprobe_Compound/board\" data-remote=\"true\"><i class=\"notranslate material-icons\">space_dashboard</i> advanced</a>\n</div>\n</div>\n</div>\n</div>\n\n</div>\n</div></div>\n<div class=\"search-result-item item-bar\"><div id=\"matchprobe_dot-bar-view\" class=\"card-slot bar-view ALL TYPE-rich_text SELF-matchprobe_dot\" data-card-id=\"RANDOMIZED\" data-card-name=\"Matchprobe Dots\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"Matchprobe_Dots\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;Matchprobe Dots&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;size&quot;:null}\"><div class='bar ALL TYPE-rich_text SELF-matchprobe_dot with-bar-menu nodblclick d-flex _card-link' data-card-id=\"RANDOMIZED\" data-card-link-name='Matchprobe_Dots' data-card-name='Matchprobe Dots' data-card-type-id='2' data-card-type-name='RichText' data-slot-id=\"RANDOMIZED\">\n<div class='bar-body row g-0'>\n<div class='bar-left col-9'>\n<span class=\"card-title\" title=\"Matchprobe Dots\">Matchprobe Dots</span>\n</div>\n<div class='bar-right col-3'>\n\n</div>\n</div>\n\n<div class='bar-menu _over-card-link _card-link-clickable'>\n<div class='bar-menu-dropdown dropdown'>\n<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>\n<i class=\"notranslate material-icons\">more_horiz</i>\n</div>\n<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>\n<div class='dropdown-item'>\n<a class=\"full-page-link known-card\" href=\"/Matchprobe_Dots\"><i class=\"notranslate material-icons\">open_in_full</i> page</a>\n</div>\n<div class='dropdown-item'>\n<a data-slotter-mode=\"modal\" data-modal-class=\"modal-dialog modal-dialog-centered modal-xl\" size=\"xl\" class=\"_modal-page-link slotter\" href=\"/Matchprobe_Dots?layout=modal\" data-remote=\"true\"><i class=\"notranslate material-icons\">fullscreen</i> modal</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"edit-link slotter\" title=\"Edit\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal\" data-modal-class=\"modal-lg\" href=\"/Matchprobe_Dots/edit\" data-remote=\"true\"><i class=\"notranslate material-icons\">edit</i> edit</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"board-link slotter\" title=\"Advanced\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal-replace\" href=\"/Matchprobe_Dots/board\" data-remote=\"true\"><i class=\"notranslate material-icons\">space_dashboard</i> advanced</a>\n</div>\n</div>\n</div>\n</div>\n\n</div>\n</div></div>\n<div class=\"search-result-item item-bar\"><div id=\"matchprobe_lower-bar-view\" class=\"card-slot bar-view ALL TYPE-rich_text SELF-matchprobe_lower\" data-card-id=\"RANDOMIZED\" data-card-name=\"matchprobe lower\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"matchprobe_lower\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;matchprobe lower&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;size&quot;:null}\"><div class='bar ALL TYPE-rich_text SELF-matchprobe_lower with-bar-menu nodblclick d-flex _card-link' data-card-id=\"RANDOMIZED\" data-card-link-name='matchprobe_lower' data-card-name='matchprobe lower' data-card-type-id='2' data-card-type-name='RichText' data-slot-id=\"RANDOMIZED\">\n<div class='bar-body row g-0'>\n<div class='bar-left col-9'>\n<span class=\"card-title\" title=\"matchprobe lower\">matchprobe lower</span>\n</div>\n<div class='bar-right col-3'>\n\n</div>\n</div>\n\n<div class='bar-menu _over-card-link _card-link-clickable'>\n<div class='bar-menu-dropdown dropdown'>\n<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>\n<i class=\"notranslate material-icons\">more_horiz</i>\n</div>\n<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>\n<div class='dropdown-item'>\n<a class=\"full-page-link known-card\" href=\"/matchprobe_lower\"><i class=\"notranslate material-icons\">open_in_full</i> page</a>\n</div>\n<div class='dropdown-item'>\n<a data-slotter-mode=\"modal\" data-modal-class=\"modal-dialog modal-dialog-centered modal-xl\" size=\"xl\" class=\"_modal-page-link slotter\" href=\"/matchprobe_lower?layout=modal\" data-remote=\"true\"><i class=\"notranslate material-icons\">fullscreen</i> modal</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"edit-link slotter\" title=\"Edit\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal\" data-modal-class=\"modal-lg\" href=\"/matchprobe_lower/edit\" data-remote=\"true\"><i class=\"notranslate material-icons\">edit</i> edit</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"board-link slotter\" title=\"Advanced\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal-replace\" href=\"/matchprobe_lower/board\" data-remote=\"true\"><i class=\"notranslate material-icons\">space_dashboard</i> advanced</a>\n</div>\n</div>\n</div>\n</div>\n\n</div>\n</div></div>\n<div class=\"search-result-item item-bar\"><div id=\"matchprobe_punct-bar-view\" class=\"card-slot bar-view ALL TYPE-rich_text SELF-matchprobe_punct\" data-card-id=\"RANDOMIZED\" data-card-name=\"Matchprobe Punct\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"Matchprobe_Punct\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;Matchprobe Punct&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;size&quot;:null}\"><div class='bar ALL TYPE-rich_text SELF-matchprobe_punct with-bar-menu nodblclick d-flex _card-link' data-card-id=\"RANDOMIZED\" data-card-link-name='Matchprobe_Punct' data-card-name='Matchprobe Punct' data-card-type-id='2' data-card-type-name='RichText' data-slot-id=\"RANDOMIZED\">\n<div class='bar-body row g-0'>\n<div class='bar-left col-9'>\n<span class=\"card-title\" title=\"Matchprobe Punct\">Matchprobe Punct</span>\n</div>\n<div class='bar-right col-3'>\n\n</div>\n</div>\n\n<div class='bar-menu _over-card-link _card-link-clickable'>\n<div class='bar-menu-dropdown dropdown'>\n<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>\n<i class=\"notranslate material-icons\">more_horiz</i>\n</div>\n<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>\n<div class='dropdown-item'>\n<a class=\"full-page-link known-card\" href=\"/Matchprobe_Punct\"><i class=\"notranslate material-icons\">open_in_full</i> page</a>\n</div>\n<div class='dropdown-item'>\n<a data-slotter-mode=\"modal\" data-modal-class=\"modal-dialog modal-dialog-centered modal-xl\" size=\"xl\" class=\"_modal-page-link slotter\" href=\"/Matchprobe_Punct?layout=modal\" data-remote=\"true\"><i class=\"notranslate material-icons\">fullscreen</i> modal</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"edit-link slotter\" title=\"Edit\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal\" data-modal-class=\"modal-lg\" href=\"/Matchprobe_Punct/edit\" data-remote=\"true\"><i class=\"notranslate material-icons\">edit</i> edit</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"board-link slotter\" title=\"Advanced\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal-replace\" href=\"/Matchprobe_Punct/board\" data-remote=\"true\"><i class=\"notranslate material-icons\">space_dashboard</i> advanced</a>\n</div>\n</div>\n</div>\n</div>\n\n</div>\n</div></div>\n<div class=\"search-result-item item-bar\"><div id=\"matchprobe_search-bar-view\" class=\"card-slot bar-view ALL TYPE-search SELF-matchprobe_search\" data-card-id=\"RANDOMIZED\" data-card-name=\"Matchprobe Search\" data-card-type-id=\"98\" data-card-type-name=\"Search\" data-card-link-name=\"Matchprobe_Search\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;Matchprobe Search&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;one_line_content&quot;,&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;size&quot;:null}\"><div class='bar ALL TYPE-search SELF-matchprobe_search with-bar-menu nodblclick d-flex _card-link' data-card-id=\"RANDOMIZED\" data-card-link-name='Matchprobe_Search' data-card-name='Matchprobe Search' data-card-type-id='98' data-card-type-name='Search' data-slot-id=\"RANDOMIZED\">\n<div class='bar-body row g-0'>\n<div class='bar-left col-9'>\n<span class=\"card-title\" title=\"Matchprobe Search\">Matchprobe Search</span>\n</div>\n<div class='bar-right col-3'>\n\n</div>\n</div>\n\n<div class='bar-menu _over-card-link _card-link-clickable'>\n<div class='bar-menu-dropdown dropdown'>\n<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>\n<i class=\"notranslate material-icons\">more_horiz</i>\n</div>\n<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>\n<div class='dropdown-item'>\n<a class=\"full-page-link known-card\" href=\"/Matchprobe_Search\"><i class=\"notranslate material-icons\">open_in_full</i> page</a>\n</div>\n<div class='dropdown-item'>\n<a data-slotter-mode=\"modal\" data-modal-class=\"modal-dialog modal-dialog-centered modal-xl\" size=\"xl\" class=\"_modal-page-link slotter\" href=\"/Matchprobe_Search?layout=modal\" data-remote=\"true\"><i class=\"notranslate material-icons\">fullscreen</i> modal</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"edit-link slotter\" title=\"Edit\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal\" data-modal-class=\"modal-lg\" href=\"/Matchprobe_Search/edit\" data-remote=\"true\"><i class=\"notranslate material-icons\">edit</i> edit</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"board-link slotter\" title=\"Advanced\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal-replace\" href=\"/Matchprobe_Search/board\" data-remote=\"true\"><i class=\"notranslate material-icons\">space_dashboard</i> advanced</a>\n</div>\n</div>\n</div>\n</div>\n\n</div>\n</div></div>\n<div class=\"search-result-item item-bar\"><div id=\"matchprobe_unicode-bar-view\" class=\"card-slot bar-view ALL TYPE-rich_text SELF-matchprobe_unicode\" data-card-id=\"RANDOMIZED\" data-card-name=\"Matchprobe Unicode\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"Matchprobe_Unicode\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;Matchprobe Unicode&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;size&quot;:null}\"><div class='bar ALL TYPE-rich_text SELF-matchprobe_unicode with-bar-menu nodblclick d-flex _card-link' data-card-id=\"RANDOMIZED\" data-card-link-name='Matchprobe_Unicode' data-card-name='Matchprobe Unicode' data-card-type-id='2' data-card-type-name='RichText' data-slot-id=\"RANDOMIZED\">\n<div class='bar-body row g-0'>\n<div class='bar-left col-9'>\n<span class=\"card-title\" title=\"Matchprobe Unicode\">Matchprobe Unicode</span>\n</div>\n<div class='bar-right col-3'>\n\n</div>\n</div>\n\n<div class='bar-menu _over-card-link _card-link-clickable'>\n<div class='bar-menu-dropdown dropdown'>\n<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>\n<i class=\"notranslate material-icons\">more_horiz</i>\n</div>\n<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>\n<div class='dropdown-item'>\n<a class=\"full-page-link known-card\" href=\"/Matchprobe_Unicode\"><i class=\"notranslate material-icons\">open_in_full</i> page</a>\n</div>\n<div class='dropdown-item'>\n<a data-slotter-mode=\"modal\" data-modal-class=\"modal-dialog modal-dialog-centered modal-xl\" size=\"xl\" class=\"_modal-page-link slotter\" href=\"/Matchprobe_Unicode?layout=modal\" data-remote=\"true\"><i class=\"notranslate material-icons\">fullscreen</i> modal</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"edit-link slotter\" title=\"Edit\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal\" data-modal-class=\"modal-lg\" href=\"/Matchprobe_Unicode/edit\" data-remote=\"true\"><i class=\"notranslate material-icons\">edit</i> edit</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"board-link slotter\" title=\"Advanced\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal-replace\" href=\"/Matchprobe_Unicode/board\" data-remote=\"true\"><i class=\"notranslate material-icons\">space_dashboard</i> advanced</a>\n</div>\n</div>\n</div>\n</div>\n\n</div>\n</div></div>\n<div class=\"search-result-item item-bar\"><div id=\"matchprobe_upper-bar-view\" class=\"card-slot bar-view ALL TYPE-rich_text SELF-matchprobe_upper\" data-card-id=\"RANDOMIZED\" data-card-name=\"Matchprobe UPPER\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"Matchprobe_UPPER\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;Matchprobe UPPER&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;size&quot;:null}\"><div class='bar ALL TYPE-rich_text SELF-matchprobe_upper with-bar-menu nodblclick d-flex _card-link' data-card-id=\"RANDOMIZED\" data-card-link-name='Matchprobe_UPPER' data-card-name='Matchprobe UPPER' data-card-type-id='2' data-card-type-name='RichText' data-slot-id=\"RANDOMIZED\">\n<div class='bar-body row g-0'>\n<div class='bar-left col-9'>\n<span class=\"card-title\" title=\"Matchprobe UPPER\">Matchprobe UPPER</span>\n</div>\n<div class='bar-right col-3'>\n\n</div>\n</div>\n\n<div class='bar-menu _over-card-link _card-link-clickable'>\n<div class='bar-menu-dropdown dropdown'>\n<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>\n<i class=\"notranslate material-icons\">more_horiz</i>\n</div>\n<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>\n<div class='dropdown-item'>\n<a class=\"full-page-link known-card\" href=\"/Matchprobe_UPPER\"><i class=\"notranslate material-icons\">open_in_full</i> page</a>\n</div>\n<div class='dropdown-item'>\n<a data-slotter-mode=\"modal\" data-modal-class=\"modal-dialog modal-dialog-centered modal-xl\" size=\"xl\" class=\"_modal-page-link slotter\" href=\"/Matchprobe_UPPER?layout=modal\" data-remote=\"true\"><i class=\"notranslate material-icons\">fullscreen</i> modal</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"edit-link slotter\" title=\"Edit\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal\" data-modal-class=\"modal-lg\" href=\"/Matchprobe_UPPER/edit\" data-remote=\"true\"><i class=\"notranslate material-icons\">edit</i> edit</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"board-link slotter\" title=\"Advanced\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal-replace\" href=\"/Matchprobe_UPPER/board\" data-remote=\"true\"><i class=\"notranslate material-icons\">space_dashboard</i> advanced</a>\n</div>\n</div>\n</div>\n</div>\n\n</div>\n</div></div></div>\n</div>\n</div>\n</div>\n</div>\n</div>"
+  },
+  "seed_log_digest": [
+    "Matchprobe Alpha",
+    "Matchprobe Beta",
+    "Matchprobe Compound",
+    "Matchprobe Compound+zeta",
+    "Matchprobe Dots",
+    "Matchprobe Punct",
+    "Matchprobe Search",
+    "Matchprobe UPPER",
+    "Matchprobe Unicode",
+    "matchprobe lower"
+  ]
+}

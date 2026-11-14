@@ -1,0 +1,140 @@
+"""Run an owned Rack reference on an existing Linux Ruby bundle; no service control."""
+import base64
+import binascii
+import hashlib
+import json
+import os
+import pathlib
+import shutil
+import sqlite3
+import subprocess
+import sys
+import tempfile
+
+payload = json.load(sys.stdin)
+run_id = payload["runId"]
+if not isinstance(run_id, str) or len(run_id) != 36 or any(c not in "0123456789abcdef-" for c in run_id):
+    raise ValueError("Invalid owned result identity")
+result_file = pathlib.Path(tempfile.gettempdir()) / ("decko-comparison-result-" + run_id + ".json")
+root = pathlib.Path(tempfile.mkdtemp(prefix="decko-public-rack-comparison-" + run_id + "-"))
+record = {"schema": "decko-ruby-rack-platform/1", "runId": run_id, "root": str(root), "originalEvidenceComplete": False}
+
+def process_output(path):
+    raw = path.read_bytes()
+    result = {"bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}
+    try:
+        result.update({"text": raw.decode("utf-8", errors="strict"), "losslessText": True})
+    except UnicodeDecodeError:
+        result.update({"text": raw.decode("utf-8", errors="replace"), "losslessText": False,
+                       "rawBase64": base64.b64encode(raw).decode("ascii")})
+    return result
+
+def complete_response_evidence(row):
+    if type(row) is not dict or "error" in row or row.get("bodyComplete") is not True:
+        return False
+    status, size = row.get("status"), row.get("bodyBytes")
+    if type(status) is not int or not 200 <= status <= 599 or type(size) is not int or size < 0:
+        return False
+    if not isinstance(row.get("bodyBase64"), str):
+        return False
+    try:
+        body = base64.b64decode(row["bodyBase64"], validate=True)
+    except (ValueError, TypeError, binascii.Error):
+        return False
+    return len(body) == size and hashlib.sha256(body).hexdigest() == row.get("bodySha256")
+
+def state(database):
+    with sqlite3.connect(database) as db:
+        db.row_factory = sqlite3.Row
+        result = {}
+        tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        for table in payload["cardTables"]:
+            rows = list(db.execute('SELECT * FROM "' + table.replace('"', '""') + '"')) if table in tables else []
+            result[table] = sorted([["id:" + str(row["id"]), dict(row)] for row in rows], key=lambda row: row[0])
+        return result
+
+try:
+    for name, value in payload["files"].items():
+        relative = pathlib.PurePosixPath(name)
+        if relative.is_absolute() or ".." in relative.parts:
+            raise ValueError("Uncontained comparison file")
+        target = root / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(base64.b64decode(value, validate=True))
+    app = root / "app"
+    database = root / "deck.sqlite3"
+    assert hashlib.sha256(database.read_bytes()).hexdigest() == payload["databaseSha256"]
+    bundle = pathlib.Path(payload["runtime"]["bundleApp"])
+    for name in ["Gemfile", "Gemfile.lock"]:
+        shutil.copyfile(bundle / name, app / name)
+    (app / "config/database.yml").write_text("shared:\n  adapter: sqlite3\n  pool: 5\n  timeout: 5000\nproduction:\n  database: " + str(database) + "\n")
+    for name in ["cache", "log", "tmp", "files"]:
+        (root / name).mkdir(exist_ok=True)
+    (root / "plan.json").write_text(json.dumps(payload["plan"]))
+    env = {"PATH": "/usr/local/bin:/usr/bin:/bin", "HOME": str(root), "RAILS_ENV": "production",
+           "BUNDLE_GEMFILE": str(app / "Gemfile"), "BUNDLE_PATH": str(bundle / "gems"), "BUNDLE_FROZEN": "true",
+           "DATABASE_URL": "sqlite3:" + str(database), "DECKO_FILES_DIR": str(root / "files"),
+           "DECKO_CACHE_DIR": str(root / "cache"), "SECRET_KEY_BASE": os.urandom(48).hex(),
+           "COMPARISON_ROOT": str(root), "RUBY_THREAD_VM_STACK_SIZE": "67108864"}
+    record["startingCardState"] = state(database)
+    command = [payload["runtime"]["ruby"], str(root / "capture.rb")]
+    with (root / "stdout").open("wb") as stdout, (root / "stderr").open("wb") as stderr:
+        result = subprocess.run(command, cwd=app, env=env, stdout=stdout, stderr=stderr, check=False)
+    stdout_record, stderr_record = process_output(root / "stdout"), process_output(root / "stderr")
+    stdout_text, stderr_text = stdout_record.pop("text"), stderr_record.pop("text")
+    record.update({"exit": result.returncode, "command": command, "stdout": stdout_text,
+                   "stderr": stderr_text, "rawProcessOutput": {"stdout": stdout_record, "stderr": stderr_record}, "endingCardState": state(database),
+                   "processEnded": True})
+    if (root / "result.json").exists():
+        record["capture"] = json.loads((root / "result.json").read_text(encoding="utf-8", errors="strict"))
+        actual_ids = [row["id"] for row in record["capture"]["responses"]]
+        expected_ids = [row["id"] for row in payload["plan"]["requests"]]
+        record["originalEvidenceComplete"] = (result.returncode == 0 and actual_ids == expected_ids
+                                              and all(complete_response_evidence(row) for row in record["capture"]["responses"]))
+except Exception as error:
+    record["error"] = type(error).__name__ + ": " + str(error)
+finally:
+    # Preserve the original on every serialization/storage failure below.
+    record["scratchBytes"] = sum(p.stat().st_size for p in root.rglob("*") if p.is_file())
+    record["scratchRemoved"] = False
+    record["originalCustody"] = "retained-until-durable-spool"
+# Retain complete evidence before returning a small control receipt. A failed
+# SSH stdout transfer must never require replaying the application requests.
+class DigestingResultWriter:
+    def __init__(self, output):
+        self.output = output
+        self.digest = hashlib.sha256()
+        self.bytes = 0
+
+    def write(self, value):
+        encoded = value.encode("utf-8")
+        self.digest.update(encoded)
+        self.bytes += len(encoded)
+        return self.output.write(value)
+
+with result_file.open("x", encoding="utf-8") as output:
+    expected = DigestingResultWriter(output)
+    json.dump(record, expected)
+    output.flush()
+    os.fsync(output.fileno())
+# Sync the newly created directory entry as well as the file's content.
+parent_fd = os.open(result_file.parent, os.O_RDONLY | os.O_DIRECTORY)
+try:
+    os.fsync(parent_fd)
+finally:
+    os.close(parent_fd)
+result_bytes = result_file.read_bytes()
+if len(result_bytes) != expected.bytes or hashlib.sha256(result_bytes).hexdigest() != expected.digest.hexdigest():
+    raise ValueError("Durable comparison spool does not reproduce the original record")
+result_sha256 = hashlib.sha256(result_bytes).hexdigest()
+# This is the first destructive step: complete results are now synced and
+# independently read back. A crash here leaves their durable spool intact.
+cleanup_error = None
+if record.get("originalEvidenceComplete") is True and record.get("processEnded") is True:
+    try:
+        shutil.rmtree(root)
+    except OSError as error:
+        cleanup_error = type(error).__name__ + ": " + str(error)
+print(json.dumps({"runId": run_id, "resultFile": str(result_file), "bytes": len(result_bytes),
+                  "sha256": result_sha256, "originalScratchRemoved": not root.exists(),
+                  "cleanupError": cleanup_error}))

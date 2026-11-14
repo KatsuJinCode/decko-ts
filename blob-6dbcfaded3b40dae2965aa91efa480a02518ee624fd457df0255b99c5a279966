@@ -1,0 +1,15 @@
+{
+  "scope": "Native Ruby Proc and TypeScript function event conditions over the same synthetic Card inputs and actual pinned event/callback implementations; no Rails or database boot",
+  "patterns": [{"code":"all","anchorPartsCount":0}],
+  "cases": [
+    {"id":"proc-true","card":{"name":"Probe","typeId":1},"visits":[{"path":"all/function_conditions","events":[{"event":"conditional","at":"validate","whenProc":{"result":true},"label":"condition"}]}]},
+    {"id":"proc-false","card":{"name":"Probe","typeId":1},"visits":[{"path":"all/function_conditions","events":[{"event":"conditional","at":"validate","whenProc":{"result":false},"label":"condition"}]}]},
+    {"id":"proc-nil","card":{"name":"Probe","typeId":1},"visits":[{"path":"all/function_conditions","events":[{"event":"conditional","at":"validate","whenProc":{"result":null},"label":"condition"}]}]},
+    {"id":"proc-zero","card":{"name":"Probe","typeId":1},"visits":[{"path":"all/function_conditions","events":[{"event":"conditional","at":"validate","whenProc":{"result":0},"label":"condition"}]}]},
+    {"id":"proc-empty-string","card":{"name":"Probe","typeId":1},"visits":[{"path":"all/function_conditions","events":[{"event":"conditional","at":"validate","whenProc":{"result":""},"label":"condition"}]}]},
+    {"id":"proc-empty-array","card":{"name":"Probe","typeId":1},"visits":[{"path":"all/function_conditions","events":[{"event":"conditional","at":"validate","whenProc":{"result":[]},"label":"condition"}]}]},
+    {"id":"proc-empty-object","card":{"name":"Probe","typeId":1},"visits":[{"path":"all/function_conditions","events":[{"event":"conditional","at":"validate","whenProc":{"result":{}},"label":"condition"}]}]},
+    {"id":"proc-assigned-name","card":{"name":"Assigned","oldName":"Previous","typeId":1,"dirty":["name"],"refreshAssigned":true},"visits":[{"path":"all/function_conditions","events":[{"event":"conditional","at":"validate","whenProc":{"nameEquals":"Assigned"},"label":"condition"}]}]},
+    {"id":"proc-previous-name-is-not-current","card":{"name":"Assigned","oldName":"Previous","typeId":1,"dirty":["name"],"refreshAssigned":true},"visits":[{"path":"all/function_conditions","events":[{"event":"conditional","at":"validate","whenProc":{"nameEquals":"Previous"},"label":"condition"}]}]}
+  ]
+}

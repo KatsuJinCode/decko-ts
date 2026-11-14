@@ -1,0 +1,20 @@
+---
+- :name: Anyone
+  :type: :role
+  :codename: :anyone
+- :name: PersistProbe Typed2
+  :content: PersistProbe B
+- :name: Unrelated Pod Card
+  :content: kept as it is
+- :name:
+  - PersistProbe Typed2
+  - PersistProbe Field
+  :content: f
+- :name: Decko Bot
+  :codename: :decko_bot
+  :content: |-
+    <p>
+      This is the account that makes any automated updates &mdash; cards
+      created when someone signs up, link updates when renaming cards, etc.
+    </p>
+- :name: PersistProbe Loose

@@ -1,0 +1,167 @@
+# Source-hashed Ruby permission/error methods and captured real view blocks.
+# The card, view registration and translation lookup backing are synthetic.
+require "json"
+require "yaml"
+require "set"
+require "digest"
+gems = File.expand_path(ARGV.fetch(0))
+$LOAD_PATH.unshift File.join(gems, "activesupport-7.2.4/lib")
+require "active_support/core_ext/array/wrap"
+require "active_support/core_ext/object/inclusion"
+class Card; class Format; end; class View; end; end
+sources = {
+  array_wrap: File.join(gems, "activesupport-7.2.4/lib/active_support/core_ext/array/wrap.rb"),
+  object_inclusion: File.join(gems, "activesupport-7.2.4/lib/active_support/core_ext/object/inclusion.rb"),
+  permission: File.join(gems, "card-1.110.0/lib/card/view/permission.rb"),
+  error: File.join(gems, "card-1.110.0/lib/card/format/error.rb"),
+  format_definition: File.join(gems, "card-1.110.0/lib/card/format.rb"),
+  subformat: File.join(gems, "card-1.110.0/lib/card/format/nesting/subformat.rb"),
+  views: File.join(gems, "card-mod-format-0.20.0/set/all/error.rb")
+}
+[:permission, :error, :subformat].each {|key| load sources.fetch(key)}
+def capture_format(source, requested)
+  mod = Module.new do
+    define_singleton_method(:format) do |*names, &block|
+      module_eval(&block) if (names.empty? ? :base : names.first) == requested
+    end
+    define_singleton_method(:view) do |name, *aliases, **_options, &body|
+      if body
+        define_method("probe_view_#{name}", &body)
+      elsif aliases.first
+        alias_method "probe_view_#{name}", "probe_view_#{aliases.first}"
+      end
+    end
+  end
+  mod.module_eval(File.read(source), source)
+  mod
+end
+base = capture_format(sources.fetch(:views), :base)
+json = capture_format(sources.fetch(:views), :json)
+jsonld = capture_format(sources.fetch(:views), :jsonld)
+ProbeError = Struct.new(:attribute, :message)
+class ProbeErrors < Array
+  def add(attribute, message)
+    self << ProbeError.new(attribute, message)
+  end
+end
+class ProbeCard
+  attr_reader :checks, :errors
+  def initialize(errors=[])
+    @checks, @errors = [], ProbeErrors.new(errors)
+  end
+  def known? = true
+  def new_card? = false
+  def ok?(task)
+    @checks << task
+    false
+  end
+end
+class ProbeFormat
+  include Card::Format::Nesting::Subformat
+  include Card::Format::Error
+  attr_reader :parent, :card
+  attr_accessor :voo
+  def initialize(translations, parent: nil, errors: [])
+    @translations, @parent, @card = translations, parent, ProbeCard.new(errors)
+  end
+  def t(key) = @translations.fetch(key.to_s)
+  def render_errors = probe_view_errors
+  def view_setting(name, view) = name == :perms && view == :protected_probe ? :update : nil
+end
+accessor_lines = File.readlines(sources.fetch(:format_definition))
+accessor_index = accessor_lines.index {|line| line.strip == "attr_accessor :form, :error_status, :rendered"}
+raise "Pinned Card::Format accessor declaration changed" unless accessor_index
+accessor_declaration = accessor_lines.fetch(accessor_index)
+ProbeFormat.class_eval(accessor_declaration, sources.fetch(:format_definition), accessor_index + 1)
+ProbeFormat.include base
+json_format = Class.new(ProbeFormat) {include json}
+jsonld_format = Class.new(ProbeFormat) {include jsonld}
+class ProbeView
+  include Card::View::Permission
+  attr_reader :card, :format, :requested_view, :normalized_options
+  def initialize(format)
+    @format, @card = format, format.card
+    @requested_view, @normalized_options = :protected_probe, {}
+    format.voo = self
+  end
+  def root? = true
+  def unknown = nil
+end
+def render_denial(format)
+  view = ProbeView.new(format)
+  selected = view.send(:altered_view)
+  {depth: format.depth, focal: format.focal?, selected: selected,
+   checked: format.card.checks.dup, status: format.error_status, transport_status: format.root.error_status,
+   body: format.send("probe_view_#{selected}")}
+end
+cases = []
+["en", "de"].each do |locale|
+  file = File.join(gems, "card-mod-format-0.20.0/config/locales/#{locale}.yml")
+  sources[locale] = file
+  translations = YAML.load_file(file).fetch(locale)
+  root = ProbeFormat.new(translations)
+  cases << {format: "base", locale: locale, posture: "root", **render_denial(root)}
+  cases << {format: "base", locale: locale, posture: "nested_after_root", **render_denial(ProbeFormat.new(translations, parent: root))}
+end
+translations = {}
+root = json_format.new(translations)
+cases << {format: "json", posture: "nested_before_root", **render_denial(json_format.new(translations, parent: root))}
+cases << {format: "json", posture: "root", **render_denial(root)}
+cases << {format: "json", posture: "nested_after_root", **render_denial(json_format.new(translations, parent: root))}
+errors = [ProbeError.new(:name, "first"), ProbeError.new(:name, "last"), ProbeError.new(:type, "invalid")]
+cases << {format: "json", posture: "root_with_errors", **render_denial(json_format.new(translations, errors: errors))}
+root = jsonld_format.new(translations)
+cases << {format: "jsonld", posture: "nested_before_root", **render_denial(jsonld_format.new(translations, parent: root))}
+cases << {format: "jsonld", posture: "root", **render_denial(root)}
+cases << {format: "jsonld", posture: "nested_after_root", **render_denial(jsonld_format.new(translations, parent: root))}
+# Execute the captured base writer on real local accessors before reading
+# the captured JSON errors body. The JSON bad_address override (error bag
+# mutation and super dispatch) is a separate, still-unaccepted contract.
+translations = YAML.load_file(sources.fetch("en")).fetch("en")
+root = json_format.new(translations)
+child = json_format.new(translations, parent: root)
+child.error_status = 409
+[root, child].each do |format|
+  root.error_status = 422
+  body = base.instance_method(:probe_view_bad_address).bind_call(format)
+  cases << {format: "json", posture: format.equal?(root) ? "base_bad_address_root" : "base_bad_address_child",
+            body: body, status: format.error_status, transport_status: root.error_status,
+            errors_body: format.probe_view_errors}
+end
+root = json_format.new(translations)
+child = json_format.new(translations, parent: root)
+[child, root, child].each_with_index do |format, index|
+  ProbeView.new(format)
+  selected = format.view_for_unknown(nil)
+  cases << {format: "json", posture: "unknown_#{index}", selected: selected,
+            depth: format.depth, status: format.error_status, transport_status: root.error_status}
+end
+structured_cases = []
+root = json_format.new(translations, errors: [ProbeError.new(:name, "first"), ProbeError.new(:name, "last")])
+child = json_format.new(translations, parent: root)
+# Ruby subformat over the same card shares its error bag; the probe's
+# initializer normally creates a fresh card, so bind this explicitly.
+child.instance_variable_set(:@card, root.card)
+child.error_status = 409
+[root, child].each do |format|
+  [:errors, :server_error, :denial, :not_found, :bad_address, :errors].each_with_index do |view, index|
+    body = format.send("probe_view_#{view}")
+    structured_cases << {format: "json", posture: format.equal?(root) ? "root" : "child", view: view, index: index,
+                        body: body, status: format.error_status, transport_status: root.error_status,
+                        errors: root.card.errors.map {|error| {attribute: error.attribute, message: error.message}}}
+  end
+end
+root = jsonld_format.new(translations)
+child = jsonld_format.new(translations, parent: root)
+child.error_status = 409
+[root, child].each do |format|
+  root.error_status = 422
+  structured_cases << {format: "jsonld", posture: format.equal?(root) ? "root" : "child", view: "format_unsupported",
+                      body: format.probe_view_format_unsupported, status: format.error_status,
+                      transport_status: root.error_status}
+end
+puts JSON.pretty_generate({scope: "Actual pinned Ruby permission/error/focal/accessor methods and captured real base/JSON/JSON-LD view blocks; synthetic card/registration/translation backing, no Rails/HTTP/DB boot",
+                          runtime: RUBY_DESCRIPTION,
+                          checker_sha256: Digest::SHA256.file(__FILE__).hexdigest,
+                          accessor: {declaration: accessor_declaration.strip, source_location: ProbeFormat.instance_method(:error_status).source_location},
+                          sources: sources.values.to_h {|file| [file, Digest::SHA256.file(file).hexdigest]}, cases: cases, structured_cases: structured_cases})

@@ -1,0 +1,21 @@
+{
+  "format": "decko-browser-journeys/1",
+  "about": "Journey list for the two-local-engines proof of the walk comparison (reference-harness/live-walk/prove/two-local-engines-proof.mjs). One journey over the synthetic-v1 deck: home, sign-in through the form (member), then the card whose content the proof seeds differently on side B (Note 001). Actor credentials come from the fixture's deck.json.",
+  "journeys": [
+    {
+      "id": "home-signin-note",
+      "covers": ["home page", "sign in through the form", "the seeded-difference card page"],
+      "steps": [
+        {"visit": "/"},
+        {"observe": "home, signed out"},
+        {"click": {"link": "Sign in"}},
+        {"fill": {"field": "*email"}, "value": "mira.member@example.test"},
+        {"fill": {"field": "*password"}, "value": "Fixture member pass 1#"},
+        {"click": {"button": "Sign in"}},
+        {"observe": "after sign-in"},
+        {"visit": "/Note_001"},
+        {"observe": "note 001 page"}
+      ]
+    }
+  ]
+}

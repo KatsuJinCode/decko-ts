@@ -1,0 +1,29 @@
+import {afterEach, describe, expect, it} from "vitest";
+import {bunnyEdgeWriteFlags, type BunnyEdgeEnv} from "../../deploy/bunny-worker-src/bunny-edge-signin-session-surface.js";
+import {applySecuritySettings} from "../../src/server/cloudflare-write-routes.js";
+import {configurePasswordHashing} from "../../src/card/auth/password-hash.js";
+import {configureSigninSecurity} from "../../src/card/auth/signin-security.js";
+import {configureStrictParity, STRICT_PARITY_ENV_NAMES, strictParityFlags} from "../../src/card/parity/strict-parity-flags.js";
+
+afterEach(() => {
+  configureStrictParity(undefined);
+  configurePasswordHashing(undefined);
+  configureSigninSecurity(undefined);
+});
+
+describe("Bunny strict settings through its actual shared-security bridge", () => {
+  for (const [property, name] of Object.entries(STRICT_PARITY_ENV_NAMES)) {
+    it(`${name} keeps on, off and absence distinct`, () => {
+      for (const value of ["on", "off", undefined]) {
+        applySecuritySettings(bunnyEdgeWriteFlags({[name]: value}));
+        expect(strictParityFlags()[property as keyof ReturnType<typeof strictParityFlags>]).toBe(value === "on");
+      }
+    });
+    it(`${name} reaches named malformed-value rejection`, () => {
+      for (const value of ["maybe", null, true, false, 1, {}, []]) {
+        const env = {[name]: value} as unknown as BunnyEdgeEnv;
+        expect(() => applySecuritySettings(bunnyEdgeWriteFlags(env))).toThrow(new RegExp(`${name} must be`));
+      }
+    });
+  }
+});

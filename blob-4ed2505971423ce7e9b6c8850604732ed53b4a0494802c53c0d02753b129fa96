@@ -1,0 +1,256 @@
+import { afterEach, beforeEach, expect, it } from "vitest";
+import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
+import { CommittedSaveCleanupError } from "../../../src/card/actions/save-outcome.js";
+import type { AttachmentStore, AttachmentStoreInput } from "../../../src/card/attachments/attachment-store.js";
+import { WasmAssetLoadError } from "../../../src/server/verified-wasm-asset.js";
+import { configureStrictParity, strictParityFlags } from "../../../src/card/parity/strict-parity-flags.js";
+import { createActionsTestStorage, seedCard, seedStandardDeck, JOE, SET_TYPE_ID, fakeClock, type ActionsTestStorage } from "./actions-test-storage.js";
+
+let storage: ActionsTestStorage;
+const ids = { pointer: 400, file: 401, skinType: 402, style: 410, assetInput: 411, assetOutput: 412, skin: 420, rule: 430, output: 431 };
+class OutputStore implements AttachmentStore {
+  files = new Map<string, Uint8Array>();
+  failNextStore: Error | undefined;
+  storeCalls = 0;
+  failStoreAt = new Map<number, Error>();
+  key(cardId: number, actionId: number, ext: string) { return `${cardId}/${actionId}${ext}`; }
+  async read(cardId: number, actionId: number, ext: string) { return this.files.get(this.key(cardId, actionId, ext))?.slice(); }
+  async store(input: AttachmentStoreInput) {
+    this.storeCalls++;
+    const key = this.key(input.cardId, input.actionId, input.ext);
+    const owned = new Uint8Array(input.bytes);
+    this.files.set(key, owned);
+    const discardIfOwned = async () => {
+      if (this.files.get(key) !== owned) return false;
+      return this.files.delete(key);
+    };
+    const failure = this.failNextStore ?? this.failStoreAt.get(this.storeCalls);
+    if (failure !== undefined) {
+      const error = failure;
+      this.failNextStore = undefined;
+      Object.assign(error, { discardIfOwned });
+      throw error;
+    }
+    return { identifier: `~${key}`, size: input.bytes.length, discardIfOwned };
+  }
+  async restoreIfUnchanged(input: AttachmentStoreInput, expected: Uint8Array) {
+    const current = this.files.get(this.key(input.cardId, input.actionId, input.ext));
+    if (current === undefined || current.length !== expected.length || current.some((byte, i) => byte !== expected[i])) return false;
+    // This fixture's store mutates its actual Map before its first yield.
+    await this.store(input);
+    return true;
+  }
+  async discard(input: AttachmentStoreInput) { this.files.delete(this.key(input.cardId, input.actionId, input.ext)); }
+}
+beforeEach(async () => {
+  storage = await createActionsTestStorage();
+  await seedStandardDeck(storage);
+  for (const row of [
+    { id: ids.pointer, name: "Pointer", codename: "pointer" },
+    { id: ids.file, name: "File", codename: "file" },
+    { id: ids.skinType, name: "Bootswatch skin", codename: "bootswatch_skin" },
+    { id: ids.style, name: "*style", codename: "style" },
+    { id: ids.assetInput, name: "*asset input", codename: "asset_input" },
+    { id: ids.assetOutput, name: "*asset output", codename: "asset_output" },
+    { id: ids.skin, name: "Recovery Skin", typeId: ids.skinType },
+    { id: ids.rule, name: "*all+*style", leftId: 7, rightId: ids.style, typeId: ids.pointer, dbContent: "Other Skin" },
+    { id: ids.output, name: "*all+*style+*asset output", leftId: ids.rule, rightId: ids.assetOutput, typeId: ids.file, dbContent: "previous.css" },
+  ]) await seedCard(storage, row);
+});
+afterEach(() => { configureStrictParity(undefined); storage.close(); });
+async function snapshot() {
+  const tables = ["cards", "card_acts", "card_actions", "card_changes", "card_references", "card_revisions", "card_virtuals", "sqlite_sequence"];
+  return Promise.all(tables.map(table => storage.selectAll(`SELECT * FROM ${table} ORDER BY rowid`)));
+}
+
+it.each(["update", "use skin"])("retries the same %s after compiler transport failure with no partial database save or integration", async (entry) => {
+  const store = new OutputStore();
+  const failure = new WasmAssetLoadError("response", "synthetic first load failure");
+  let broken = true, calls = 0, integrations = 0;
+  const engine = new CardActionEngine(storage.engine, { actor: JOE, now: fakeClock(), attachmentStore: store,
+    scssCompiler: async () => { calls++; if (broken) throw failure; return ".recovery{color:red}"; },
+    integrationHooks: [{ stage: "integrate", event: "observe_save", notable: () => true, fire: async () => { integrations++; } }],
+  });
+  const save = () => entry === "update" ? engine.updateCard({ cardId: ids.rule, content: "Recovery Skin" }) : engine.useAsCurrentSkin(ids.skin);
+  const before = await snapshot();
+  await expect(save()).rejects.toBe(failure);
+  expect(await snapshot()).toEqual(before);
+  expect(store.files.size).toBe(0);
+  expect(integrations).toBe(0);
+  const failedCalls = calls;
+  broken = false;
+  expect(await save()).not.toBeNull();
+  expect(calls).toBeGreaterThan(failedCalls);
+  expect(integrations).toBeGreaterThan(0);
+  expect((await storage.selectOne<{ db_content: string }>("SELECT db_content FROM cards WHERE id=?", [ids.rule]))?.db_content).toBe("Recovery Skin");
+  expect([...store.files.values()].map(bytes => new TextDecoder().decode(bytes))).toEqual([".recovery{color:red}"]);
+});
+
+it("rolls back virtual inputs and removes a partially stored new output before an exact retry", async () => {
+  const store = new OutputStore();
+  const failure = new Error("synthetic partial output store failure");
+  store.failNextStore = failure;
+  const engine = new CardActionEngine(storage.engine, { actor: JOE, now: fakeClock(), attachmentStore: store, scssCompiler: async () => ".recovery{color:red}" });
+  const save = () => engine.updateCard({ cardId: ids.rule, content: "Recovery Skin" });
+  const before = await snapshot();
+  await expect(save()).rejects.toBe(failure);
+  expect(await snapshot()).toEqual(before);
+  expect(store.files.size).toBe(0);
+  expect(await save()).not.toBeNull();
+  expect(store.files.size).toBe(1);
+});
+
+it("refuses a new style rule on compiler failure without retaining the rule or derived rows", async () => {
+  await seedCard(storage, { id: 460, name: "Additional Set", typeId: SET_TYPE_ID });
+  const failure = new WasmAssetLoadError("response", "synthetic create compiler failure");
+  const store = new OutputStore();
+  let broken = true;
+  const engine = new CardActionEngine(storage.engine, { actor: JOE, now: fakeClock(), attachmentStore: store,
+    scssCompiler: async () => { if (broken) throw failure; return ".recovery{color:red}"; } });
+  const save = () => engine.createCard({ name: "Additional Set+*style", typeId: ids.pointer, content: "Recovery Skin" });
+  const before = await snapshot();
+  await expect(save()).rejects.toBe(failure);
+  expect(await snapshot()).toEqual(before);
+  expect(store.files.size).toBe(0);
+  broken = false;
+  expect(await save()).not.toBeNull();
+  expect(store.files.size).toBe(1);
+});
+
+it("restores previous file bytes when a strict clock identifier is reused and its store fails part way", async () => {
+  configureStrictParity({ ...strictParityFlags(), scriptBundleClockNames: true });
+  const date = new Date("2026-10-29T12:00:00Z");
+  const stamp = Math.floor(date.getTime() / 1000);
+  const store = new OutputStore();
+  const key = store.key(ids.output, stamp, ".css");
+  const old = new TextEncoder().encode(".previous{color:blue}");
+  store.files.set(key, old);
+  await storage.driver.query("UPDATE cards SET db_content=? WHERE id=?", [`~${key}`, ids.output]);
+  const failure = new Error("synthetic partial replacement failure");
+  store.failNextStore = failure;
+  const engine = new CardActionEngine(storage.engine, { actor: JOE, now: () => date, attachmentStore: store, scssCompiler: async () => ".recovery{color:red}" });
+  const before = await snapshot();
+  const save = () => engine.updateCard({ cardId: ids.rule, content: "Recovery Skin" });
+  await expect(save()).rejects.toBe(failure);
+  expect(await snapshot()).toEqual(before);
+  expect([...store.files.entries()]).toEqual([[key, old]]);
+  expect(await save()).not.toBeNull();
+  expect(new TextDecoder().decode(store.files.get(key))).toBe(".recovery{color:red}");
+});
+
+it("compensates the first successful output when another output in the same act fails", async () => {
+  await seedCard(storage, { id: 460, name: "Additional Set", typeId: SET_TYPE_ID });
+  await seedCard(storage, { id: 461, name: "Additional Set+*style", leftId: 460, rightId: ids.style, typeId: ids.pointer, dbContent: "Other Skin" });
+  await seedCard(storage, { id: 462, name: "Additional Set+*style+*asset output", leftId: 461, rightId: ids.assetOutput, typeId: ids.file, dbContent: "additional-previous.css" });
+  const store = new OutputStore();
+  const failure = new Error("synthetic second output failure");
+  store.failStoreAt.set(2, failure);
+  const engine = new CardActionEngine(storage.engine, { actor: JOE, now: fakeClock(), attachmentStore: store, scssCompiler: async () => ".recovery{color:red}" });
+  const save = () => engine.updateCard({ cardId: ids.rule, content: "Recovery Skin", subcards: { "Additional Set+*style": { content: "Recovery Skin" } } });
+  const before = await snapshot();
+  await expect(save()).rejects.toBe(failure);
+  expect(store.storeCalls).toBe(2);
+  expect(await snapshot()).toEqual(before);
+  expect(store.files.size).toBe(0);
+  expect(await save()).not.toBeNull();
+  expect(store.files.size).toBe(2);
+});
+
+it("exposes a file-restoration failure with the original save error while still rolling back database state", async () => {
+  configureStrictParity({ ...strictParityFlags(), scriptBundleClockNames: true });
+  const date = new Date("2026-10-29T12:00:00Z");
+  const store = new OutputStore();
+  const key = store.key(ids.output, Math.floor(date.getTime() / 1000), ".css");
+  store.files.set(key, new TextEncoder().encode("previous"));
+  const failure = new Error("synthetic failed store");
+  const restoreFailure = new Error("synthetic failed restoration");
+  store.failStoreAt.set(1, failure);
+  store.failStoreAt.set(2, restoreFailure);
+  const engine = new CardActionEngine(storage.engine, { actor: JOE, now: () => date, attachmentStore: store, scssCompiler: async () => ".recovery{color:red}" });
+  const before = await snapshot();
+  let observed: unknown;
+  try { await engine.updateCard({ cardId: ids.rule, content: "Recovery Skin" }); } catch (error) { observed = error; }
+  expect(observed).toBeInstanceOf(AggregateError);
+  const errors = (observed as AggregateError).errors;
+  expect(errors[0]).toBe(failure);
+  expect(errors[1]).toBeInstanceOf(AggregateError);
+  expect(errors[1].errors).toContain(restoreFailure);
+  expect(await snapshot()).toEqual(before);
+});
+
+it("compiles inside the real transaction and runs integration only after that transaction returns", async () => {
+  const transaction = storage.driver.transaction!.bind(storage.driver);
+  let active = false;
+  storage.driver.transaction = async <R>(work: () => Promise<R>): Promise<R> => {
+    active = true;
+    try { return await transaction(work); } finally { active = false; }
+  };
+  const compilerPhases: boolean[] = [], integrationPhases: boolean[] = [];
+  const engine = new CardActionEngine(storage.engine, { actor: JOE, now: fakeClock(), attachmentStore: new OutputStore(),
+    scssCompiler: async () => { compilerPhases.push(active); return ".recovery{color:red}"; },
+    integrationHooks: [{ stage: "integrate", event: "observe_commit_phase", notable: () => true, fire: async () => { integrationPhases.push(active); } }],
+  });
+  await engine.updateCard({ cardId: ids.rule, content: "Recovery Skin" });
+  expect(compilerPhases.length).toBeGreaterThan(0);
+  expect(compilerPhases.every(value => value)).toBe(true);
+  expect(integrationPhases.length).toBeGreaterThan(0);
+  expect(integrationPhases.every(value => !value)).toBe(true);
+});
+
+it("reports a committed save if removing a recovery copy fails, without reverting its output", async () => {
+  configureStrictParity({ ...strictParityFlags(), scriptBundleClockNames: true });
+  const date = new Date("2026-10-29T12:00:00Z");
+  const store = new OutputStore();
+  const key = store.key(ids.output, Math.floor(date.getTime() / 1000), ".css");
+  store.files.set(key, new TextEncoder().encode("previous"));
+  store.discard = async () => { throw new Error("injected recovery cleanup failure"); };
+  const engine = new CardActionEngine(storage.engine, { actor: JOE, now: () => date, attachmentStore: store,
+    scssCompiler: async () => ".replacement{color:red}" });
+  const failure = await engine.updateCard({ cardId: ids.rule, content: "Recovery Skin" })
+    .then(() => undefined, (error: unknown) => error);
+  expect(failure).toBeInstanceOf(CommittedSaveCleanupError);
+  expect(failure).toMatchObject({ outcome: "committed", retrySafe: false });
+  expect((failure as CommittedSaveCleanupError).reconciliation.recoveries).toHaveLength(1);
+  expect(new TextDecoder().decode(store.files.get(key))).toBe(".replacement{color:red}");
+  expect((await storage.selectOne<{ db_content: string }>("SELECT db_content FROM cards WHERE id=?", [ids.rule]))?.db_content).toBe("Recovery Skin");
+  expect([...store.files.values()].some((bytes) => new TextDecoder().decode(bytes) === "previous")).toBe(true);
+});
+
+it("owns the action-engine rollback preimage when a custom store returns a reused Buffer", async () => {
+  configureStrictParity({ ...strictParityFlags(), scriptBundleClockNames: true });
+  const date = new Date("2026-10-29T12:00:00Z");
+  const key = `${ids.output}/${Math.floor(date.getTime() / 1000)}.css`;
+  const borrowed = Buffer.from(".old{}");
+  const files = new Map<string, Uint8Array>([[key, borrowed]]);
+  let failed = false;
+  const failure = new Error("partial custom-store replacement");
+  const store: AttachmentStore = {
+    read: async (cardId, actionId, ext) => files.get(`${cardId}/${actionId}${ext}`),
+    store: async (input) => {
+      const name = `${input.cardId}/${input.actionId}${input.ext}`;
+      if (name === key && !failed) {
+        failed = true;
+        // A valid store may reuse a buffer returned by a prior read.
+        borrowed.set(input.bytes);
+        throw failure;
+      }
+      files.set(name, new Uint8Array(input.bytes));
+      return { identifier: `~${name}`, size: input.bytes.length };
+    },
+    discard: async (input) => { files.delete(`${input.cardId}/${input.actionId}${input.ext}`); },
+    restoreIfUnchanged: async (input, expected) => {
+      const name = `${input.cardId}/${input.actionId}${input.ext}`;
+      const current = files.get(name);
+      if (current === undefined || current.length !== expected.length || current.some((byte, i) => byte !== expected[i])) return false;
+      files.set(name, new Uint8Array(input.bytes));
+      return true;
+    },
+  };
+  const engine = new CardActionEngine(storage.engine, { actor: JOE, now: () => date,
+    attachmentStore: store, scssCompiler: async () => ".new{}" });
+  const before = await snapshot();
+  await expect(engine.updateCard({ cardId: ids.rule, content: "Recovery Skin" })).rejects.toBe(failure);
+  expect(await snapshot()).toEqual(before);
+  expect(files.get(key)).toEqual(new TextEncoder().encode(".old{}"));
+  expect(files.size).toBe(1);
+});

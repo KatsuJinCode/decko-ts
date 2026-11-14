@@ -1,0 +1,58 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import path from "node:path";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+
+const root = fileURLToPath(new URL("../../", import.meta.url));
+const fixture = fileURLToPath(new URL("./fixtures/handover-export-inert.mjs", import.meta.url));
+const child = spawnSync(process.execPath, ["--experimental-vm-modules", fixture], {
+  cwd: root, windowsHide: true, encoding: "utf8", maxBuffer: Infinity,
+});
+assert.equal(child.status, 0, child.stderr || child.stdout);
+const observed = JSON.parse(child.stdout);
+const cases = new Map(observed.cases.map(result => [result.name, result]));
+
+test("handover allocation controls run in correctness with Node", async () => {
+  const file = "tests/tools/handover-export-allocation.test.mjs";
+  const { classify } = await import("../../tools/test-gates.mjs");
+  const { testRunner } = await import("../../tools/node-test-runners.mjs");
+  assert.equal(classify(file), "correctness");
+  assert.equal(testRunner(root, file), "node");
+});
+
+test("a privacy-blocked snapshot allocates no output", () => {
+  const { attempt } = cases.get("blocked");
+  assert.equal(attempt.exitCode, 1);
+  assert.equal(attempt.report.privacy.status, "BLOCKED");
+  assert.deepEqual(attempt.writes, []);
+});
+
+test("an unchanged complete snapshot is verified and reused without writes", () => {
+  const { seed, attempt, outputUnchanged } = cases.get("identical");
+  assert.equal(seed.exitCode, 0, seed.error);
+  assert.ok(seed.writes.length > 0, "positive control actually materializes the virtual snapshot");
+  assert.equal(attempt.exitCode, 0, attempt.error);
+  assert.equal(attempt.report.status, "reused");
+  assert.equal(attempt.report.payloadBytesWritten, 0);
+  assert.deepEqual(attempt.writes, []);
+  assert.equal(outputUnchanged, true);
+});
+
+for (const name of ["changed-input", "changed-output", "extra-output", "output-link", "parent-link", "linux-mode", "incomplete-output"]) {
+  test(`${name} refuses reuse and preserves existing output`, () => {
+    const { seed, attempt, outputUnchanged } = cases.get(name);
+    assert.equal(seed.exitCode, 0, seed.error);
+    assert.notEqual(attempt.exitCode, 0);
+    assert.deepEqual(attempt.writes, []);
+    assert.equal(outputUnchanged, true);
+  });
+}
+
+for (const name of ["custody-refusal", "unsupported-platform"]) {
+  test(`${name} allocates no snapshot`, () => {
+    const { attempt } = cases.get(name);
+    assert.notEqual(attempt.exitCode, 0);
+    assert.deepEqual(attempt.writes, []);
+  });
+}

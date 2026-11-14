@@ -1,0 +1,69 @@
+// Native source: card-mod-email-0.20.0 set/abstract/test_context.rb:1-25.
+// HTML contextualizes a message field; email_html processes its raw content
+// directly. EmailHtmlFormat inherits HtmlFormat. Test actual including fields,
+// complete nest preparation and both formats without a global view override.
+
+import {afterAll, beforeAll, describe, expect, it} from "vitest";
+import {ModLoader} from "../../../src/card/mod-loader.js";
+import cardModEmail from "../../../src/card/mod-loader/mods/card-mod-email.js";
+import {RenderFormat} from "../../../src/card/render/format.js";
+import {bindModLoaderToEngine, createRenderTestStorage, seedCard, type RenderTestStorage} from "../render/render-test-storage.js";
+
+const target = "Oracle Nest Target";
+const field = "Oracle Message+*html message";
+const contextualField = "Context Message+*html message";
+let storage: RenderTestStorage;
+let loader: ModLoader;
+let report: ReturnType<ModLoader["load"]>;
+
+beforeAll(async () => {
+  storage = await createRenderTestStorage();
+  await seedCard(storage, {id: 2, name: "RichText", codename: "rich_text", typeId: 2});
+  await seedCard(storage, {id: 210, name: target, typeId: 2, dbContent: "target body"});
+  await seedCard(storage, {id: 220, name: "Oracle Message", typeId: 2});
+  await seedCard(storage, {id: 221, name: "*html message", codename: "html_message", typeId: 2});
+  await seedCard(storage, {id: 222, leftId: 220, rightId: 221, typeId: 2, dbContent: "before {{Oracle Nest Target|name}} after"});
+  await seedCard(storage, {id: 224, name: "*test context", codename: "test_context", typeId: 2});
+  await seedCard(storage, {id: 225, leftId: 220, rightId: 224, typeId: 2, dbContent: target});
+  await seedCard(storage, {id: 230, name: "Context Message", typeId: 2});
+  await seedCard(storage, {id: 231, leftId: 230, rightId: 221, typeId: 2, dbContent: "context {{_|name}}"});
+  await seedCard(storage, {id: 232, leftId: 230, rightId: 224, typeId: 2, dbContent: target});
+  await seedCard(storage, {id: 233, name: "Unanchored Email Probe", typeId: 2, dbContent: "unanchored body"});
+  await seedCard(storage, {id: 240, name: "Plain Message", typeId: 2});
+  await seedCard(storage, {id: 241, leftId: 240, rightId: 221, typeId: 2, dbContent: "plain message body"});
+  storage.fetcher.installNameEnvironment();
+  loader = new ModLoader([{manifest: cardModEmail}]);
+  report = loader.load();
+  bindModLoaderToEngine(storage, loader);
+});
+afterAll(() => {loader?.reset(); storage?.close();});
+
+describe("email HTML core on an actual included message field", () => {
+  it("selects the declared abstract email_html body through the real right set", async () => {
+    await storage.engine.render(field, "core", {format: "email_html"});
+    const card = storage.engine.fetchRenderCard(field);
+    if (card === undefined) throw Error("Prepared message field missing");
+    expect(card.setKeys).toContain("RIGHT-Xhtml_message");
+    expect(report.registeredSetModules).toContain("Abstract::TestContext");
+    expect(loader.viewChain(card.setKeys, "core", "email_html")[0]?.setModule).toBe("Abstract::TestContext");
+  });
+  it("processes a prepared target nest and retains plain stored content", async () => {
+    expect(await storage.engine.render("Plain Message+*html message", "core", {format: "email_html"})).toBe("plain message body");
+    const bytes = await storage.engine.render(field, "core", {format: "email_html"});
+    expect(bytes).toBe("before Oracle Nest Target after");
+    expect(bytes).not.toContain("{{");
+    const card = storage.engine.fetchRenderCard(field);
+    if (card === undefined) throw Error("Prepared message field missing");
+    expect(new RenderFormat(card, storage.engine, {formatName: "email_html"}).renderView("core")).toBe(bytes);
+  });
+  it("keeps HTML test context distinct from email_html's field context", async () => {
+    expect(await storage.engine.render(contextualField, "core", {format: "html"})).toBe("context Oracle Nest Target");
+    expect(await storage.engine.render(contextualField, "core", {format: "email_html"})).toBe("context Context Message+*html message");
+  });
+  it("does not apply the abstract registration to an unanchored card", async () => {
+    expect(await storage.engine.render("Unanchored Email Probe", "core", {format: "email_html"})).toBe("unanchored body");
+    const card = storage.engine.fetchRenderCard("Unanchored Email Probe");
+    if (card === undefined) throw Error("Prepared unanchored card missing");
+    expect(loader.viewChain(card.setKeys, "core", "email_html").map(entry => entry.setModule)).not.toContain("Abstract::TestContext");
+  });
+});

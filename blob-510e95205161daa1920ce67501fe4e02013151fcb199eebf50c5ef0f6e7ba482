@@ -1,0 +1,34 @@
+Description:
+    Generates new mod
+
+Example:
+    <%= banner_command %> generate mod clothing
+
+    This will create:
+
+        mod/
+          clothing/
+            assets/
+              javascript/
+              stylesheets/
+            config/
+              initializers/
+            public/
+              assets/
+            set/
+              abstract/
+              all/
+              type/
+              type_plus_right/
+              right/
+              self/
+            spec/
+              set/
+                abstract/
+                all/
+                type/
+                type_plus_right/
+                right/
+                self/
+            README.md
+

@@ -1,0 +1,3 @@
+# reg-dsl-A22: closed on the safe-surface byte parity, with the safety exception named
+- The port: src/card/actions/content-clean.ts. `rubyHtmlAttribs` is that
+  tests/withheld/content-clean-reference.ts, the line-faithful composition of

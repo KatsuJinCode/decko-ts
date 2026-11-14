@@ -1,0 +1,63 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtempSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { stripTypeScriptTypes } from 'node:module';
+import { init, parse } from 'es-module-lexer';
+await init;
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { createHash } from 'node:crypto';
+import { sourceProvenance } from '../../tools/dist/source-provenance.mjs';
+import { scan, selected } from '../../tools/handover/package.mjs';
+const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
+test('snapshot provenance works without Git and records modified files',()=>{
+ const root=mkdtempSync(path.join(tmpdir(),'decko-source-manifest-'));
+ try {
+  writeFileSync(path.join(root,'source.ts'),'export const value=1;');
+  writeFileSync(path.join(root,'HANDOVER-MANIFEST.json'),JSON.stringify({sourceCommit:'a'.repeat(40),files:[{path:'source.ts',sha256:sha('export const value=1;')}]}));
+  assert.equal(sourceProvenance(root).changedSnapshotFiles,0);
+  writeFileSync(path.join(root,'source.ts'),'export const value=2;');
+  assert.equal(sourceProvenance(root).changedSnapshotFiles,1);
+ }finally{rmSync(root,{recursive:true});}
+});
+test('source snapshot refuses traversal in its provenance manifest',()=>{
+ const root=mkdtempSync(path.join(tmpdir(),'decko-source-manifest-'));
+ try {
+  writeFileSync(path.join(root,'HANDOVER-MANIFEST.json'),JSON.stringify({sourceCommit:'a'.repeat(40),files:[{path:'../outside',sha256:'x'}]}));
+  assert.throws(()=>sourceProvenance(root),/unsafe snapshot manifest path/);
+ }finally{rmSync(root,{recursive:true});}
+});
+test('export surface excludes history, private state, workflow and development records',()=>{
+ for(const file of ['.git/config','.github/workflows/ci.yml','state/private.json','fixtures/test-corpus/test-corpus.sqlite3','docs/runs/internal.md'])assert.equal(selected(file),false,file);
+ assert.equal(selected('src/card/render.ts'),true);
+ assert.equal(selected('vendor/coderay-1.1.3/LICENSE'),true);
+ assert.equal(selected('reference-harness/fixtures/write-battery-v1/withheld/steps.json'),false);
+});
+test('privacy tripwires inspect filenames and binary bytes without echoing content',()=>{
+ const match=scan(Buffer.from('prefix\0ghp_'+'a'.repeat(30)),'src/ok.bin');
+ assert.equal(match[0].rule,'service-token');
+ assert.ok(!JSON.stringify(match).includes('a'.repeat(30)));
+ assert.equal(scan(Buffer.from('safe'),'src/brandon-private.bin')[0].rule,'private-identity');
+ assert.ok(scan(Buffer.from('Julian','utf16le'),'fixture.bin').some(hit=>hit.rule==='private-identity'));
+});
+test('the export retains the relative import graph of its documented runtime commands',()=>{
+ const repo=fileURLToPath(new URL('../..',import.meta.url));
+ const paths=new Set(execFileSync('git',['ls-files','-z'],{cwd:repo,encoding:'utf8',windowsHide:true,maxBuffer:Infinity}).split('\0').filter(Boolean));
+ const pending=['tools/dist/build-engine.mjs','tools/vendor/import-tinymce-source.mjs','tools/oracle/typescript-source-loader.mjs','vm-staging-server.mjs','tools/handover/smoke.mjs','tools/handover/prepare-demo.mjs','tools/handover/verify-local-host.mjs','reference-harness/runner/run.mjs','reference-harness/runner/grade.mjs','reference-harness/adapters/ts/adapter.mjs','reference-harness/adapters/ts/adapter.ts','tools/migrate/import-deck.mjs','tools/migrate/migrate-generalized.mjs','tools/migrate/recover-deck.mjs','tools/migrate/prove-deck-migration.mjs'];
+ const visited=new Set(),missing=[];
+ while(pending.length){
+  const file=pending.pop();if(visited.has(file))continue;visited.add(file);
+  const original=readFileSync(path.join(repo,file),'utf8');
+  const text=file.endsWith('.ts')?stripTypeScriptTypes(original,{mode:'transform'}):original;
+  for(const specifier of parse(text)[0]){
+   if(!specifier.n?.startsWith('.'))continue;
+   let target=path.posix.normalize(path.posix.join(path.posix.dirname(file),specifier.n));
+   if(target.startsWith('dist/src/'))target=target.slice(5);
+   if(!paths.has(target)&&target.endsWith('.js')&&paths.has(target.slice(0,-3)+'.ts'))target=target.slice(0,-3)+'.ts';
+   if(!paths.has(target)||!selected(target))missing.push({file,target});else if(/\.(?:[cm]?js|ts)$/.test(target))pending.push(target);
+  }
+ }
+ assert.deepEqual(missing,[]);
+});

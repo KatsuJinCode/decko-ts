@@ -1,0 +1,21 @@
+{
+  "row": "delete-virtual-content",
+  "event_file": "card-mod-virtual-0.20.0/set/abstract/virtual_cache.rb",
+  "event": "delete_virtual_content",
+  "scenarios": [
+    {
+      "name": "a delete of a real card: the body deletes the card's content from the virtual cache and goes on",
+      "attributes": { "real?": true },
+      "pinned_methods": [
+        { "name": "abort", "file": "card-1.110.0/mod/core/set/all/result.rb" }
+      ]
+    },
+    {
+      "name": "a delete of a card that is not real: the body deletes the content and aborts with the success status",
+      "attributes": { "real?": false },
+      "pinned_methods": [
+        { "name": "abort", "file": "card-1.110.0/mod/core/set/all/result.rb" }
+      ]
+    }
+  ]
+}

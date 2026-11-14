@@ -1,0 +1,96 @@
+import * as nativeFilesystem from 'node:fs';
+import path from 'node:path';
+import { createHash } from 'node:crypto';
+import { sourceExportModeEvidence, sourceExportPermissions, verifySourceExportFile, writeSourceExportFile } from '../platform/source-export-file.mjs';
+
+const sha = bytes => createHash('sha256').update(bytes).digest('hex');
+const manifestName = 'HANDOVER-MANIFEST.json';
+
+function snapshotPath(name) {
+  if (typeof name !== 'string' || !name || name.includes('\\') || /^[A-Za-z]:/.test(name)
+      || name.split('/').some(part => !part || part === '.' || part === '..') || name === manifestName) {
+    throw Error('Unsafe or reserved snapshot path: ' + name);
+  }
+  return name;
+}
+
+function existingOutputDirectory(output, filesystem) {
+  const root = path.parse(output).root;
+  let current = root;
+  for (const part of ['', ...path.relative(root, output).split(path.sep).filter(Boolean)]) {
+    if (part) current = path.join(current, part);
+    let details;
+    try { details = filesystem.lstatSync(current); }
+    catch (error) { if (error.code === 'ENOENT') return false; throw error; }
+    if (details.isSymbolicLink() || !details.isDirectory()) throw Error('Snapshot output traverses a linked or non-directory path: ' + current);
+  }
+  return true;
+}
+
+function verifyExistingSnapshot(output, entries, manifestBytes, filesystem, platform) {
+  const expected = new Map(entries.map(entry => [entry.path, entry]));
+  expected.set(manifestName, { bytes: manifestBytes, mode: '100644' });
+  const directories = new Set();
+  for (const name of expected.keys()) {
+    const parts = name.split('/');
+    for (let length = 1; length < parts.length; length++) directories.add(parts.slice(0, length).join('/'));
+  }
+  const found = new Set();
+  function visit(directory, prefix = '') {
+    for (const entry of filesystem.readdirSync(directory, { withFileTypes: true })) {
+      const name = prefix ? prefix + '/' + entry.name : entry.name;
+      const full = path.join(directory, entry.name);
+      const details = filesystem.lstatSync(full);
+      if (details.isSymbolicLink()) throw Error('Linked snapshot entry: ' + name);
+      if (details.isDirectory()) {
+        if (!directories.has(name)) throw Error('Unexpected snapshot directory: ' + name);
+        visit(full, name);
+      } else if (details.isFile()) {
+        const wanted = expected.get(name);
+        if (!wanted) throw Error('Unexpected snapshot file: ' + name);
+        verifySourceExportFile(full, wanted.bytes, wanted.mode, { filesystem, platform });
+        found.add(name);
+      } else throw Error('Unsupported snapshot entry: ' + name);
+    }
+  }
+  visit(output);
+  if (found.size !== expected.size) throw Error('Existing source snapshot is incomplete');
+}
+
+export function materializeSourceSnapshot({ output, content, modes, metadata, scanContent }, options = {}) {
+  const filesystem = options.filesystem ?? nativeFilesystem;
+  const platform = options.platform ?? process.platform;
+  sourceExportModeEvidence(platform);
+  if (typeof scanContent !== 'function') throw Error('Source snapshot requires its privacy scan');
+  output = path.resolve(output);
+  const entries = [...content].map(([name, bytes]) => {
+    const mode = modes.get(name);
+    sourceExportPermissions(mode);
+    return { path: snapshotPath(name), bytes: Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes), mode };
+  });
+  const findings = entries.flatMap(entry => scanContent(entry.bytes, entry.path));
+  const manifest = {
+    ...metadata,
+    files: entries.map(entry => ({ path: entry.path, mode: entry.mode, bytes: entry.bytes.length, sha256: sha(entry.bytes) })).sort((a, b) => a.path.localeCompare(b.path)),
+    privacy: { status: findings.length ? 'BLOCKED' : 'pattern-scan-passed; independent review required', findings },
+  };
+  const manifestBytes = Buffer.from(JSON.stringify(manifest, null, 2) + '\n');
+  const payloadBytes = entries.reduce((total, entry) => total + entry.bytes.length, 0);
+  const summary = { output, files: entries.length, bytes: payloadBytes, manifestSha256: sha(manifestBytes), privacy: manifest.privacy };
+  if (findings.length) return { ...summary, status: 'blocked', payloadBytesWritten: 0 };
+
+  if (existingOutputDirectory(output, filesystem)) {
+    verifyExistingSnapshot(output, entries, manifestBytes, filesystem, platform);
+    return { ...summary, status: 'reused', payloadBytesWritten: 0 };
+  }
+  filesystem.mkdirSync(path.dirname(output), { recursive: true });
+  if (existingOutputDirectory(output, filesystem)) throw Error('Snapshot output appeared during allocation');
+  filesystem.mkdirSync(output);
+  for (const entry of entries) {
+    const destination = path.join(output, ...entry.path.split('/'));
+    filesystem.mkdirSync(path.dirname(destination), { recursive: true });
+    writeSourceExportFile(destination, entry.bytes, entry.mode, { filesystem, platform });
+  }
+  writeSourceExportFile(path.join(output, manifestName), manifestBytes, '100644', { filesystem, platform });
+  return { ...summary, status: 'created', payloadBytesWritten: payloadBytes };
+}

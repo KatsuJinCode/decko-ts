@@ -1,0 +1,45 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {formatSuperScenarios,formatSuperSourceSuffixes,validateFormatSuperReference,formatSuperMismatches,validateFormatSuperRows} from "./format-super-reference-contract.mjs";
+
+function reference(){return{scope:"Synthetic contract input",runtime:"synthetic",checker_sha256:"1".repeat(64),sources:Object.fromEntries(formatSuperSourceSuffixes.map(suffix=>[`/synthetic/card-1.110.0/${suffix}`,"1".repeat(64)])),cases:structuredClone(formatSuperScenarios).map(row=>({...row,body:[...row.owners],ancestry_depth:row.format==="css"?3:4}))};}
+function rows(value){return value.cases.map(row=>({name:row.name,format:row.format,expected:{body:[...row.body],owners:[...row.owners]},actual:{body:[...row.body],calls:[...row.owners]},mismatches:[]}));}
+test("admits exact declared native descriptors and complete typed outcomes",()=>{const value=reference();validateFormatSuperReference(value);validateFormatSuperRows(rows(value),value);});
+for(const [name,mutate]of[
+  ["missing native body",v=>{v.cases.forEach(row=>{delete row.body;});}],
+  ["missing owners",v=>{delete v.cases[0].owners;}],
+  ["empty registrations with terminal-only answers",v=>{v.cases.forEach(row=>{row.all={};row.scoped={};row.body=["compiled-terminal"];row.owners=["compiled-terminal"];});}],
+  ["changed all-set descriptor",v=>{v.cases[0].all.rss=["All::Other/rss"];}],
+  ["changed scoped descriptor",v=>{v.cases[4].scoped={};}],
+  ["changed format",v=>{v.cases[0].format="css";}],
+  ["duplicate scenario",v=>{v.cases[1]=structuredClone(v.cases[0]);}],
+  ["unknown scenario",v=>{v.cases[0].name="other";}],
+  ["reordered scenarios",v=>{v.cases.reverse();}],
+  ["reordered scoped precedence",v=>{v.cases[6].scoped=Object.fromEntries(Object.entries(v.cases[6].scoped).reverse());}],
+  ["missing case",v=>{v.cases.pop();}],
+  ["empty body",v=>{v.cases[0].body=[];}],
+  ["wrong body type",v=>{v.cases[0].body="compiled-terminal";}],
+  ["wrong owner walk",v=>{v.cases[0].owners.reverse();v.cases[0].body=[...v.cases[0].owners];}],
+  ["extra case field",v=>{v.cases[0].extra="ignored";}],
+  ["changed hierarchy depth",v=>{v.cases[0].ancestry_depth=100;}],
+  ["empty source set",v=>{v.sources={};}],
+  ["unknown native source",v=>{delete v.sources[Object.keys(v.sources)[0]];v.sources["/synthetic/card-1.110.0/other.rb"]="1".repeat(64);}],
+  ["mixed source roots",v=>{const file=Object.keys(v.sources)[0];delete v.sources[file];v.sources[file.replace("/synthetic/","/other/")]="1".repeat(64);}],
+])test(`rejects ${name} before subject execution`,()=>{const value=reference();mutate(value);assert.throws(()=>validateFormatSuperReference(value));});
+test("an unexpected error fails independently of body comparisons",()=>{
+  const actual={body:["compiled-terminal"],calls:["compiled-terminal"],error:null};
+  assert.deepEqual(formatSuperMismatches(actual,{body:["compiled-terminal"],owners:["compiled-terminal"]}),["unexpected_error"]);
+});
+test("recorded errors must retain the mandatory error mismatch",()=>{
+  const value=reference(),output=rows(value);
+  output[0].actual={error:{name:"SubjectError",message:"failure"},calls:["All::Probe/rss"]};
+  output[0].mismatches=formatSuperMismatches(output[0].actual,output[0].expected);
+  validateFormatSuperRows(output,value);
+  assert.ok(output[0].mismatches.includes("unexpected_error"));
+  output[0].mismatches=[];assert.throws(()=>validateFormatSuperRows(output,value));
+});
+test("saved output requires every declared identity and complete actual fields",()=>{
+  const value=reference(),output=rows(value);
+  output[0].actual={};assert.throws(()=>validateFormatSuperRows(output,value));
+  output[0]=structuredClone(output[1]);assert.throws(()=>validateFormatSuperRows(output,value));
+});

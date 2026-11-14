@@ -1,0 +1,65 @@
+{
+  "probe_format_configs": {
+    "_view_pills__cache": false,
+    "_view_pills_static__cache": false,
+    "_view_tabs__cache": false,
+    "_view_tabs_static__cache": false
+  },
+  "registered_views": {
+    "abstract_html_view_tabs": {
+      "defined": true,
+      "source_location": [
+        "C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/card-mod-tabs-0.20.0/set/abstract/tabs.rb",
+        4
+      ]
+    },
+    "abstract_html_view_tabs_cache_setting": {
+      "defined": true,
+      "source_location": [
+        "C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/card-1.110.0/lib/card/set/format/abstract_format/view_opts.rb",
+        63
+      ]
+    },
+    "all_html_view_pills": {
+      "defined": true,
+      "source_location": [
+        "C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/card-mod-tabs-0.20.0/set/all/tabs.rb",
+        72
+      ]
+    },
+    "all_html_view_pills_static": {
+      "defined": true,
+      "source_location": [
+        "C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/card-mod-tabs-0.20.0/set/all/tabs.rb",
+        80
+      ]
+    },
+    "all_html_view_tabs": {
+      "defined": true,
+      "source_location": [
+        "C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/card-mod-tabs-0.20.0/set/all/tabs.rb",
+        41
+      ]
+    },
+    "all_html_view_tabs_static": {
+      "defined": true,
+      "source_location": [
+        "C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/card-mod-tabs-0.20.0/set/all/tabs.rb",
+        76
+      ]
+    }
+  },
+  "rendered": {
+    "Oracle Tabs Empty Probe#pills": "<div class='tabbable tab-panel' role='tabpanel'>\n<ul class='nav nav-pills' role='tablist'>\n</ul>\n<div class='tab-content'>\n</div>\n</div>\n",
+    "Oracle Tabs Empty Probe#tabs": "<div class='tabbable tab-panel' role='tabpanel'>\n<ul class='nav nav-tabs' role='tablist'>\n</ul>\n<div class='tab-content'>\n</div>\n</div>\n",
+    "Oracle Tabs Plain Probe#pills": "<div class='tabbable tab-panel' role='tabpanel'>\n<ul class='nav nav-pills' role='tablist'>\n<li role=\"presentation\" class=\"nav-item tab-li-oracle_probe_child\"><a data-url=\"/Oracle_Probe_Child/content?slot%5Bnest_name%5D=Oracle+Probe+Child&slot%5Bnest_syntax%5D=Oracle+Probe+Child\" class=\"active nav-link\" role=\"tab\" data-bs-toggle=\"tab\" data-tab-name=\"Oracle Probe Child\" href=\"#tab-oracle_tab_plain_probe-3-oracle_probe_child\"><span class=\"card-title\" title=\"Oracle Probe Child\">Oracle Probe Child</span></a></li>\n<li role=\"presentation\" class=\"nav-item tab-li-second_item\"><a data-url=\"/Second_Item/content?slot%5Bnest_name%5D=Second+Item&slot%5Bnest_syntax%5D=Second+Item\" class=\"load nav-link\" role=\"tab\" data-bs-toggle=\"tab\" data-tab-name=\"Second Item\" href=\"#tab-oracle_tab_plain_probe-4-second_item\"><span class=\"card-title\" title=\"Second Item\">Second Item</span></a></li>\n</ul>\n<div class='tab-content'>\n<div role=\"tabpanel\" id=\"tab-oracle_tab_plain_probe-3-oracle_probe_child\" class=\"tab-pane tab-pane-Oracle Probe Child active\"><div id=\"oracle_probe_child-content-view\" class=\"card-slot content-view ALL TYPE-rich_text SELF-oracle_probe_child d0-card-content\" data-card-id=\"RANDOMIZED\" data-card-name=\"Oracle Probe Child\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"Oracle_Probe_Child\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;content&quot;,&quot;nest_name&quot;:&quot;Oracle Probe Child&quot;,&quot;nest_syntax&quot;:&quot;Oracle Probe Child&quot;,&quot;show&quot;:[&quot;content&quot;],&quot;home_view&quot;:&quot;content&quot;}\">probe item body</div></div>\n<div role=\"tabpanel\" id=\"tab-oracle_tab_plain_probe-4-second_item\" class=\"tab-pane tab-pane-Second Item\"></div>\n</div>\n</div>\n",
+    "Oracle Tabs Plain Probe#tabs": "<div class='tabbable tab-panel' role='tabpanel'>\n<ul class='nav nav-tabs' role='tablist'>\n<li role=\"presentation\" class=\"nav-item tab-li-oracle_probe_child\"><a data-url=\"/Oracle_Probe_Child/content?slot%5Bnest_name%5D=Oracle+Probe+Child&slot%5Bnest_syntax%5D=Oracle+Probe+Child\" class=\"active nav-link\" role=\"tab\" data-bs-toggle=\"tab\" data-tab-name=\"Oracle Probe Child\" href=\"#tab-oracle_tab_plain_probe-1-oracle_probe_child\"><span class=\"card-title\" title=\"Oracle Probe Child\">Oracle Probe Child</span></a></li>\n<li role=\"presentation\" class=\"nav-item tab-li-second_item\"><a data-url=\"/Second_Item/content?slot%5Bnest_name%5D=Second+Item&slot%5Bnest_syntax%5D=Second+Item\" class=\"load nav-link\" role=\"tab\" data-bs-toggle=\"tab\" data-tab-name=\"Second Item\" href=\"#tab-oracle_tab_plain_probe-2-second_item\"><span class=\"card-title\" title=\"Second Item\">Second Item</span></a></li>\n</ul>\n<div class='tab-content'>\n<div role=\"tabpanel\" id=\"tab-oracle_tab_plain_probe-1-oracle_probe_child\" class=\"tab-pane tab-pane-Oracle Probe Child active\"><div id=\"oracle_probe_child-content-view\" class=\"card-slot content-view ALL TYPE-rich_text SELF-oracle_probe_child d0-card-content\" data-card-id=\"RANDOMIZED\" data-card-name=\"Oracle Probe Child\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"Oracle_Probe_Child\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;content&quot;,&quot;nest_name&quot;:&quot;Oracle Probe Child&quot;,&quot;nest_syntax&quot;:&quot;Oracle Probe Child&quot;,&quot;show&quot;:[&quot;content&quot;],&quot;home_view&quot;:&quot;content&quot;}\">probe item body</div></div>\n<div role=\"tabpanel\" id=\"tab-oracle_tab_plain_probe-2-second_item\" class=\"tab-pane tab-pane-Second Item\"></div>\n</div>\n</div>\n",
+    "Oracle Tabs Pointer Probe#pills_static": "CAPTURE_ERROR: NoMethodError: undefined method `args' for #<Card::Format::CardActionView:0x00000207c8ad53c8>",
+    "Oracle Tabs Pointer Probe#tabs": "<div class='tabbable tab-panel' role='tabpanel'>\n<ul class='nav nav-tabs' role='tablist'>\n<li role=\"presentation\" class=\"nav-item tab-li-oracle_probe_child\"><a data-url=\"/Oracle_Probe_Child/content?\" class=\"active nav-link\" role=\"tab\" data-bs-toggle=\"tab\" data-tab-name=\"Oracle Probe Child\" href=\"#tab-oracle_tab_pointer_probe-1-oracle_probe_child\"><span class=\"card-title\" title=\"Oracle Probe Child\">Oracle Probe Child</span></a></li>\n<li role=\"presentation\" class=\"nav-item tab-li-second_item\"><a data-url=\"/Second_Item/content?\" class=\"load nav-link\" role=\"tab\" data-bs-toggle=\"tab\" data-tab-name=\"Second Item\" href=\"#tab-oracle_tab_pointer_probe-2-second_item\"><span class=\"card-title\" title=\"Second Item\">Second Item</span></a></li>\n</ul>\n<div class='tab-content'>\n<div role=\"tabpanel\" id=\"tab-oracle_tab_pointer_probe-1-oracle_probe_child\" class=\"tab-pane tab-pane-Oracle Probe Child active\"><div id=\"oracle_probe_child-content-view\" class=\"card-slot content-view ALL TYPE-rich_text SELF-oracle_probe_child d0-card-content\" data-card-id=\"RANDOMIZED\" data-card-name=\"Oracle Probe Child\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"Oracle_Probe_Child\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;content&quot;,&quot;nest_name&quot;:&quot;Oracle Probe Child&quot;,&quot;show&quot;:[&quot;content&quot;],&quot;home_view&quot;:&quot;content&quot;}\">probe item body</div></div>\n<div role=\"tabpanel\" id=\"tab-oracle_tab_pointer_probe-2-second_item\" class=\"tab-pane tab-pane-Second Item\"></div>\n</div>\n</div>\n",
+    "Oracle Tabs Pointer Probe#tabs_static": "CAPTURE_ERROR: NoMethodError: undefined method `args' for #<Card::Format::CardActionView:0x00000207c8ad53c8>",
+    "Oracle Tabs Probe#pills": "<div class='tabbable tab-panel' role='tabpanel'>\n<ul class='nav nav-pills' role='tablist'>\n<li role=\"presentation\" class=\"nav-item tab-li-oracle_probe_child\"><a data-url=\"/Oracle_Probe_Child/content?slot%5Bnest_name%5D=Oracle+Probe+Child&slot%5Bnest_syntax%5D=Oracle+Probe+Child%7Ctitle%3AFirst&slot%5Btitle%5D=First\" class=\"active nav-link\" role=\"tab\" data-bs-toggle=\"tab\" data-tab-name=\"Oracle Probe Child\" href=\"#tab-oracle_tab_probe-3-oracle_probe_child\"><span class=\"card-title\" title=\"First\">First</span></a></li>\n<li role=\"presentation\" class=\"nav-item tab-li-second_item\"><a data-url=\"/Second_Item/open?slot%5Bnest_name%5D=Second+Item&slot%5Bnest_syntax%5D=Second+Item%7Copen\" class=\"load nav-link\" role=\"tab\" data-bs-toggle=\"tab\" data-tab-name=\"Second Item\" href=\"#tab-oracle_tab_probe-4-second_item\"><span class=\"card-title\" title=\"Second Item\">Second Item</span></a></li>\n</ul>\n<div class='tab-content'>\n<div role=\"tabpanel\" id=\"tab-oracle_tab_probe-3-oracle_probe_child\" class=\"tab-pane tab-pane-Oracle Probe Child active\"><div id=\"oracle_probe_child-content-view\" class=\"card-slot content-view ALL TYPE-rich_text SELF-oracle_probe_child d0-card-content\" data-card-id=\"RANDOMIZED\" data-card-name=\"Oracle Probe Child\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"Oracle_Probe_Child\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;content&quot;,&quot;nest_name&quot;:&quot;Oracle Probe Child&quot;,&quot;nest_syntax&quot;:&quot;Oracle Probe Child|title:First&quot;,&quot;show&quot;:[&quot;content&quot;],&quot;home_view&quot;:&quot;content&quot;,&quot;title&quot;:&quot;First&quot;}\">probe item body</div></div>\n<div role=\"tabpanel\" id=\"tab-oracle_tab_probe-4-second_item\" class=\"tab-pane tab-pane-Second Item\"></div>\n</div>\n</div>\n",
+    "Oracle Tabs Probe#pills_static": "CAPTURE_ERROR: NoMethodError: undefined method `args' for #<Card::Format::CardActionView:0x00000207c5a217e0>",
+    "Oracle Tabs Probe#tabs": "<div class='tabbable tab-panel' role='tabpanel'>\n<ul class='nav nav-tabs' role='tablist'>\n<li role=\"presentation\" class=\"nav-item tab-li-oracle_probe_child\"><a data-url=\"/Oracle_Probe_Child/content?slot%5Bnest_name%5D=Oracle+Probe+Child&slot%5Bnest_syntax%5D=Oracle+Probe+Child%7Ctitle%3AFirst&slot%5Btitle%5D=First\" class=\"active nav-link\" role=\"tab\" data-bs-toggle=\"tab\" data-tab-name=\"Oracle Probe Child\" href=\"#tab-oracle_tab_probe-1-oracle_probe_child\"><span class=\"card-title\" title=\"First\">First</span></a></li>\n<li role=\"presentation\" class=\"nav-item tab-li-second_item\"><a data-url=\"/Second_Item/open?slot%5Bnest_name%5D=Second+Item&slot%5Bnest_syntax%5D=Second+Item%7Copen\" class=\"load nav-link\" role=\"tab\" data-bs-toggle=\"tab\" data-tab-name=\"Second Item\" href=\"#tab-oracle_tab_probe-2-second_item\"><span class=\"card-title\" title=\"Second Item\">Second Item</span></a></li>\n</ul>\n<div class='tab-content'>\n<div role=\"tabpanel\" id=\"tab-oracle_tab_probe-1-oracle_probe_child\" class=\"tab-pane tab-pane-Oracle Probe Child active\"><div id=\"oracle_probe_child-content-view\" class=\"card-slot content-view ALL TYPE-rich_text SELF-oracle_probe_child d0-card-content\" data-card-id=\"RANDOMIZED\" data-card-name=\"Oracle Probe Child\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"Oracle_Probe_Child\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;content&quot;,&quot;nest_name&quot;:&quot;Oracle Probe Child&quot;,&quot;nest_syntax&quot;:&quot;Oracle Probe Child|title:First&quot;,&quot;show&quot;:[&quot;content&quot;],&quot;home_view&quot;:&quot;content&quot;,&quot;title&quot;:&quot;First&quot;}\">probe item body</div></div>\n<div role=\"tabpanel\" id=\"tab-oracle_tab_probe-2-second_item\" class=\"tab-pane tab-pane-Second Item\"></div>\n</div>\n</div>\n",
+    "Oracle Tabs Probe#tabs_static": "CAPTURE_ERROR: NoMethodError: undefined method `args' for #<Card::Format::CardActionView:0x00000207c5a217e0>"
+  }
+}

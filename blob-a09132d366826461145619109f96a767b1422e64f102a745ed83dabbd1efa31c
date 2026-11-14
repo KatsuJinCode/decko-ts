@@ -1,0 +1,50 @@
+import { expect, it } from "vitest";
+import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
+import { FetchEngine } from "../../../src/card/fetch.js";
+import type { AttachmentStore, AttachmentStoreInput } from "../../../src/card/attachments/attachment-store.js";
+import { createActionsTestStorage, seedCard, seedStandardDeck, CARDTYPE_ID, JOE, fakeClock } from "./actions-test-storage.js";
+
+it("rollback cleanup does not delete the next committed upload when SQLite reuses the rolled-back identity", async () => {
+  const storage = await createActionsTestStorage();
+  try {
+    await seedStandardDeck(storage);
+    await seedCard(storage, { id: 400, name: "File", codename: "file", typeId: CARDTYPE_ID });
+    const files = new Map<string, Uint8Array>();
+    const key = (input: Pick<AttachmentStoreInput, "cardId" | "actionId" | "ext">) => `~${input.cardId}/${input.actionId}${input.ext}`;
+    const store: AttachmentStore = {
+      read: async (cardId, actionId, ext) => files.get(key({ cardId, actionId, ext }))?.slice(),
+      store: async input => { files.set(key(input), input.bytes.slice()); return { identifier: key(input), size: input.bytes.length }; },
+      discard: async input => { files.delete(key(input)); },
+    };
+    const engine = () => new CardActionEngine(new FetchEngine(storage.driver), { actor: JOE, now: fakeClock(), attachmentStore: store });
+    const transaction = storage.driver.transaction!.bind(storage.driver);
+    const failure = new Error("injected first upload transaction rollback");
+    let firstIdentity: string | undefined, secondIdentity: string | undefined;
+    storage.driver.transaction = async work => {
+      try {
+        return await transaction(async () => {
+          await work();
+          firstIdentity = [...files.keys()][0];
+          throw failure;
+        });
+      } catch (error) {
+        if (error !== failure) throw error;
+        // The real SQLite transaction and gate ended. A separate real save
+        // completes before the failed engine begins its external cleanup.
+        storage.driver.transaction = transaction;
+        await engine().createCard({ name: "Committed Upload", typeId: 400,
+          attachment: { bytes: new TextEncoder().encode("committed upload bytes"), originalFilename: "second.txt" } });
+        secondIdentity = (await storage.selectOne<{ db_content: string }>("SELECT db_content FROM cards WHERE name=?", ["Committed Upload"]))?.db_content;
+        expect(files.has(secondIdentity!)).toBe(true);
+        throw error;
+      }
+    };
+    await expect(engine().createCard({ name: "Rolled Back Upload", typeId: 400,
+      attachment: { bytes: new TextEncoder().encode("rolled back upload bytes"), originalFilename: "first.txt" } })).rejects.toBe(failure);
+    expect(firstIdentity).toBeDefined();
+    expect(secondIdentity).toBe(firstIdentity);
+    expect(await storage.count("cards")).toBeGreaterThan(0);
+    expect((await storage.selectOne<{ db_content: string }>("SELECT db_content FROM cards WHERE name=?", ["Committed Upload"]))?.db_content).toBe(secondIdentity);
+    expect(files.has(secondIdentity!), "committed upload bytes were deleted by an earlier failed save's cleanup").toBe(true);
+  } finally { storage.close(); }
+});

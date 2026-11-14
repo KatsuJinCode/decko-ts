@@ -1,0 +1,42 @@
+{
+  "contract": "A cardtype whose structure rule names its subcards offers those subcards on its new form.",
+  "facts": {
+    "form_content_region": "def content_field",
+    "form_renders_content": "_render_input",
+    "structure_branch": "if structure",
+    "structure_content_rule": "do not override db_content with content from structure"
+  },
+  "gem_home": "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
+  "oracle": {
+    "content_field": {
+      "file_sha256": "1155081246d763f39810536b8149398b58fbd89f4931d9d1f3973aa03bf36882",
+      "first_line": 45,
+      "gem": "card-mod-edit-0.20.0",
+      "last_line": 59,
+      "marker": "def content_field",
+      "marker_line": 47,
+      "path": "set/all/form.rb",
+      "source": "  end\n\n  def content_field\n    with_nest_mode :normal do\n      # by changing nest mode to normal, we ensure that editors (eg image\n      # previews) can render core views.\n      output [_render_conflict_tracker, _render_input]\n    end\n  end\n\n  # SAMPLE editor view for override\n  # view :input do\n  #   text_area :content, rows: 5, class: \"d0-card-content\"\n  # end\n"
+    },
+    "standard_db_content": {
+      "file_sha256": "44b78da993b5e4b8e3bb34c2b652ccf1888a319450d3052d564a37cc40a464dc",
+      "first_line": 47,
+      "gem": "card-1.110.0",
+      "last_line": 58,
+      "marker": "def standard_db_content",
+      "marker_line": 49,
+      "path": "mod/core/set/all/content.rb",
+      "source": "end\n\ndef standard_db_content\n  if structure\n    # do not override db_content with content from structure\n    db_content\n  else\n    standard_content\n  end\nend\n\n# seems like this should be moved to format so we can fall back on title"
+    },
+    "subcards_surface": {
+      "file_sha256": "99cc7d4add343812f7284b0180ff134c5710dccd37811a55433a90cbea3c1451",
+      "first_line": 5,
+      "gem": "card-1.110.0",
+      "last_line": 15,
+      "marker": "event :reject_empty_subcards",
+      "marker_line": 5,
+      "path": "mod/core/set/all/subcards.rb",
+      "source": "event :reject_empty_subcards, :prepare_to_validate do\n  subcards.each_with_key do |subcard, key|\n    next unless subcard.new? && subcard.unfilled? && !trigger.present?\n\n    drop_subcard(key)\n    director.subdirectors.delete(subcard)\n  end\nend\n\n# check when deleting field that left has not also been deleted\ndef trashed_left?"
+    }
+  }
+}

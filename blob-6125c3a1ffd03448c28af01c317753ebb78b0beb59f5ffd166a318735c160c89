@@ -1,0 +1,34 @@
+import { afterEach, expect, it } from "vitest";
+import { configureDeploymentReferenceStorage } from "../../src/card/render/deployment-reference-storage.js";
+import { derivedCloudAttachmentSource } from "../../src/card/render/views.js";
+import { prepareDeploymentMigration } from "../../src/server/deployment-migration-config.js";
+
+const referenceStorage = { archive: { origin: "https://files.example", filenamePolicy: "stored-leaf", readOnly: true } };
+const identifier = "(archive)/12/34.abr.1.doc";
+const selected = { DECKO_MIGRATION_CONFIG: JSON.stringify({ version: 1, referenceStorage }) };
+afterEach(() => configureDeploymentReferenceStorage(undefined));
+
+it("resets the previous deployment policy on a subsequent default preparation", () => {
+  prepareDeploymentMigration(selected);
+  expect(derivedCloudAttachmentSource(identifier, "https://files.example")).toBe("https://files.example/files/12/34.abr.1.doc");
+  const defaults = Object.freeze({ OTHER: "unchanged" });
+  expect(prepareDeploymentMigration(defaults).environment).toBe(defaults);
+  expect(derivedCloudAttachmentSource(identifier, "https://files.example")).toBe("https://files.example/files/12/1.doc");
+});
+
+it.each(["https://files.example/prefix", "https://user:synthetic@files.example", "https://files.example/?query", "https://files.example/#fragment"])("does not extend selected policy to a non-origin caller %s", origin => {
+  prepareDeploymentMigration(selected);
+  expect(derivedCloudAttachmentSource(identifier, origin)).toBe(`${origin}/files/12/1.doc`);
+});
+
+it("refuses invalid canonical anti-spam values atomically without retaining a diagnostic cause", () => {
+  prepareDeploymentMigration(selected);
+  let failure: unknown;
+  try {
+    prepareDeploymentMigration({ DECKO_MIGRATION_CONFIG: JSON.stringify({ version: 1 }), DECKO_RECAPTCHA_SITE_KEY: "synthetic-site", DECKO_RECAPTCHA_MINIMUM_SCORE: "SYNTHETIC_PRIVATE_VALUE" });
+  } catch (error) { failure = error; }
+  expect(failure).toBeInstanceOf(Error);
+  expect(failure).not.toHaveProperty("cause");
+  expect(String(failure)).not.toContain("SYNTHETIC_PRIVATE_VALUE");
+  expect(derivedCloudAttachmentSource(identifier, "https://files.example")).toBe("https://files.example/files/12/34.abr.1.doc");
+});

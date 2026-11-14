@@ -1,0 +1,177 @@
+# The N9 round: a cardtype card's content view renders the type's structure, and the leg that said otherwise is corrected
+
+Branch `port/n9-cardtype-body-20261026` (lane checkout
+`C:/localProjects/decko-ts-n9-cardtype-body-20261026`, a linked worktree of
+`C:/localProjects/decko-ts-release-lead` created by the lane-copy tool, shared
+git objects and a shared node_modules junction), from the newest pushed tip of
+`deploy/full-candidate-20261103`, `5131d2ac4` (the v24 candidate).
+
+The brief asked for the N9 residual the anchor-regression receipt named
+(`docs/reports/row-full-signed-in-exercise-anchor-regression-2026-10-26.md`,
+section 7 item 1): the N9 leg's body write answers 303, the card's stored row
+carries the body, the layout's header and footer render around the card's main
+slot, and the main slot renders the card's content view with the body marker
+absent - "the port does not render a cardtype card's stored body in its
+content view. The mechanism behind that is not established in this round."
+
+## 1. The mechanism, established: Ruby does not render a cardtype card's stored body either
+
+The engine's render is correct as it stands. What the leg measured is the
+wrong arm of Ruby's own content read path:
+
+- `card-1.110.0 lib/card/content/all.rb:5-7` -
+  `def content; structured_content || standard_content; end`
+- `content/all.rb:25-28` - `structured_content = structure && default_content`
+- `content/all.rb:18-20` - `standard_content = db_content || (new_card? ?
+  default_content : "")`
+- `card-1.110.0 mod/core/set/all/content.rb:26-28` -
+  `def default_content; template&.db_content; end`
+- `card-mod-content-0.20.0 set/all/templating.rb:40-48` - `structure` is the
+  applicable `*structure` rule card (`structure_rule_card`, nil-ed on
+  `"_self"`); `default_content` is THAT rule's db_content.
+
+The card's TYPE carries a type-scoped structure rule - the deck's
+`User+*type+*structure` (card 17691 in the signed-in deck, set card 2694 =
+`User+*type`, 326 bytes of field template) - so `structured_content` is that
+rule's db_content and it WINS over `standard_content`, the card's own
+db_content. Ruby's `""` is truthy, so even an empty template wins; only a nil
+template content falls through. A cardtype card's body is therefore the type's
+structure rendered FOR the card, and the structure's own field slots carry the
+card's name in their titles (`<card name>+image`): that is the card-specific
+body text. The stored body is the standard_content arm, which the structure
+does not reach.
+
+The port reads the same shape through the same composition:
+`src/card/rules/structure.ts:318-333` (`resolveStructuredContent`) and
+`:354-364` (`structuredCardContent`, whose own doc reads "template wins over
+the card's own db_content"); the candidate walk is
+`src/card/set-patterns/rule-names.ts:52-65`, and the TYPE pattern's set name
+is the type card's NAME (`card-1.110.0 mod/core/set_pattern/03_type.rb:23-27`
+- `anchor_name` is `card.type_name`, `anchor_id` is `card.type_id`), so the
+candidates for a User-typed card are `["<card>+*self+*structure",
+"User+*type+*structure", "*all+*structure"]` and the type-scoped rule hits.
+
+Corroboration on the same deck, read in this round:
+
+- The sibling leg (`tools/edge-signed-in-exercise/checks-content-flows.mjs:1087`)
+  grades exactly this shape with the marker
+  `${userCard}+${field}` taken from the page's own structure listing, and its
+  recorded run passes all five named checks
+  (`docs/runs/edge-signed-in-exercise-round8-n9-2026-10-24.json`: the page's
+  main text reads "add_box Harness_CF_User_...+image Contact Information
+  add_box ...+how to contact me Background ...").
+- The deck itself: the `User+*type+*structure` rule row exists (query over
+  `C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/
+  deck.sqlite3`: 138 `*structure` rules, among them `user+*type+*structure`,
+  base 2693, 326 bytes), so the shape is not hypothetical.
+- The engine-level pin below renders both arms: the structure for a card
+  under the type rule, the stored body for a rule-less card.
+
+NOT RUN, stated plainly: the live Ruby oracle probe
+(`tools/persistence/n9-cardtype-body-probe.rb`, committed with this round) was
+written to settle the reading against a booted decko runner, but the oracle
+app's bundler cannot see the gemset in this environment
+(`bundle exec ruby script/decko runner` answers `Bundler::GemNotFound` for the
+whole lockfile against `C:/localProjects/decko-ruby-oracle-gems`). The Ruby
+claims here rest on reading the vendored gem sources - the same files the
+repo sha256-pins as its oracle - and on the repo's recorded oracle captures,
+not on a fresh oracle run.
+
+## 2. The fix: the leg grades the cardtype body the structure renders
+
+`tools/edge-signed-in-exercise/checks-capability-legs.mjs` (the caps-legs N9
+group). The old predicate required the stored body string on the page:
+
+    rendered.markers[body] === true
+
+which is the standard_content arm of a shape whose rendered arm is the
+structure template - a finding about the fixture, not about the layout. The
+leg now records the stored body as a diagnostic (`bodyStored`,
+`storedBodyRenders`) and grades the cardtype body marker, the same marker the
+sibling leg grades:
+
+    const cardBodyMarker = `${userCard}+`;
+    const cardBodyRendered = rendered.mainText.includes(cardBodyMarker);
+
+with the mechanism named in the leg's own text. No engine source changed:
+`git diff 5131d2ac4..c48b49047 -- src/` is empty. The commit is `c48b49047`.
+
+## 3. The render bytes, before and after
+
+Both captures are the leg's own `caps-legs-n9-user-layout` page capture; the
+main slot opens identically (the layout's `<div id="main">` wrapping the
+card's content view, whose first bytes are the empty paragraph the template's
+own `{{+image|float:right}}` nest renders as the unknown-image add box):
+
+- BEFORE (anchor-regression tip, capture
+  `decko-ts-anchor-regression-20261026/.runtime/anchor-regression/
+  whole-family-final/report.md.raw/109-caps-legs-n9-user-layout.html`,
+  8069 bytes): `<div id="main"><div id="harness_leg_user_mvozc46k-content-view"
+  class="card-slot content-view ALL TYPE-user SELF-...">` followed by the
+  `+image` unknown-view slot and "Contact Information". The leg graded
+  `rendered.markers[body]` false and FAILED.
+- AFTER (this lane, capture
+  `.runtime/n9-caps-legs/run1/report.md.raw/033-caps-legs-n9-user-layout.html`,
+  same shape, card `mvpnj222`): byte shape identical, marker `<card>+`
+  present in the main slot's own text. The leg records
+  `bodyStored: true, storedBodyRenders: false, cardBodyRendered: true,
+  layoutAroundMain: true, mainCarriesCard: true` and PASSES.
+
+The page bytes did not change; the measured arm did.
+
+## 4. The pins
+
+- `tests/card/render/n9-cardtype-body-content-view.test.ts` (new, vitest):
+  the engine-level shape against a seeded deck copy - a User-typed card with
+  a stored body under a type-scoped `*structure` rule renders the template
+  ("Contact Information", "Background") and NOT the stored body, with the
+  card's own `TYPE-user` slot keys; the control (same body, type without a
+  structure rule) renders the stored body and not the template.
+  `npx vitest run tests/card/render/n9-cardtype-body-content-view.test.ts`:
+  2 tests, 2 pass (run in this lane).
+- `tools/edge-signed-in-exercise/test/n9-cardtype-body.test.mjs` (new,
+  node:test): the harness leg's contract - it grades the cardtype body
+  marker, records the stored body as a diagnostic, no longer requires the
+  stored body on the page, names the mechanism, and the sibling leg grades
+  the same marker.
+  `node --test tools/edge-signed-in-exercise/test/n9-cardtype-body.test.mjs`:
+  3 tests, 3 pass (run in this lane).
+
+## 5. The whole-family exercise at this lane's tip
+
+    node tools/edge-signed-in-exercise.mjs --out .runtime/n9-whole-family/report.md
+
+**330 / 332 checks passed**, 2 failed, run recorded source commit `c48b49047`
+(this branch's tip). Capability coverage 95 covered, 1 partial, 0 not covered,
+1 out of scope (of 98). The check count grew from the anchor receipt's 324 to
+332 at this tip (the harness's own modules at the v24 candidate); both counts
+name their own run.
+
+- **N9 is resolved.** Both N9 legs pass: the caps-legs leg ("the applied
+  layout renders header, body, and footer around the User card") with the
+  record above, and the content-flows leg ("a User card renders through the
+  user layout") as before.
+- **The P5 `*type_plus_right` set leg stays named** (the anchor receipt's
+  residual 2, unchanged in mechanism: the rule card stores, the port does not
+  apply a `*type_plus_right` structure rule to the member's render; the two
+  sibling legs stay green).
+- **The server-time budget leg stays named** (the anchor receipt's residual
+  3, same shape: the slow pages are the `/new/Pointer?card[name]=<compound>`
+  create forms and the compound edit pages; this run's slowest reads 3747 ms
+  with 866 statements on one form).
+
+The known residuals the brief named are exactly the two that remain; the
+residual N9 itself resolves is resolved.
+
+## 6. Scope
+
+- No `src/` change, no deploy, nothing reached a live site: every measurement
+  is the local stack over a copy of the source deck (the exercise stages its
+  own throwaway deck copy).
+- The oracle probe script (`tools/persistence/n9-cardtype-body-probe.rb`) is
+  committed as the record of the attempted live settling and the exact
+  command to re-run it when the oracle app's bundler resolves.
+- Lane checkout bytes: the lane-copy receipt reports 302,191,050 bytes added
+  (tracked tree + overhead), under its 400 MB budget with shared git objects
+  and a shared node_modules junction; `.tools-tmp/` holds the probe's
+  throwaway deck copy (regenerable, gitignored).

@@ -1,0 +1,28 @@
+{
+  "_provenance": "POST /accounts/{account_id}/d1/database/{database_id}/query with a statement that fails — the shape parseD1QueryResponse() treats as ok:false rather than throwing, so the migrations probe degrades instead of aborting a listing. Cloudflare returns the outer envelope with success:true and the PER-STATEMENT success:false. Identifiers are synthetic; see fixtures/deploy-teardown/README.md.",
+  "success": true,
+  "errors": [],
+  "messages": [],
+  "result": [
+    {
+      "success": false,
+      "results": [],
+      "errors": [
+        {
+          "code": 1701,
+          "message": "no such table: sqlite_master"
+        }
+      ],
+      "meta": {
+        "duration": 0.1,
+        "changes": 0,
+        "last_row_id": 0,
+        "changed_db": false,
+        "size_after": 0,
+        "rows_read": 0,
+        "rows_written": 0,
+        "timings": { "sql_duration_ms": 0.1 }
+      }
+    }
+  ]
+}

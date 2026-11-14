@@ -1,0 +1,224 @@
+{
+  "row": "comment-add-comment",
+  "event": "add_comment",
+  "pinned_file": "card-mod-comment-0.20.0/set/all/comment.rb",
+  "pinned_declaration": "event :add_comment, :prepare_to_store, on: :save, when: :comment do",
+  "pinned_declaration_line": 5,
+  "pinned_body": "  Env.session[:comment_author] = comment_author if Env.session\n  return unless comment.present?\n\n  self.content =\n    [content, format.comment_with_signature].compact.join \"\\n<hr>\\n\"\n  self.comment = nil",
+  "pinned_body_lines": [
+    {
+      "line": 6,
+      "text": "  Env.session[:comment_author] = comment_author if Env.session"
+    },
+    {
+      "line": 7,
+      "text": "  return unless comment.present?"
+    },
+    {
+      "line": 8,
+      "text": ""
+    },
+    {
+      "line": 9,
+      "text": "  self.content ="
+    },
+    {
+      "line": 10,
+      "text": "    [content, format.comment_with_signature].compact.join \"\\n<hr>\\n\""
+    },
+    {
+      "line": 11,
+      "text": "  self.comment = nil"
+    }
+  ],
+  "executed": true,
+  "notes": [
+    "The format's own bytes (comment.rb:27-37, the `format do ... end` block) are not executed by this rig: the rig answers `format.comment_with_signature` from the spec. The answer this spec supplies is the PINNED surface capture's own bytes (fixtures/oracle-surfaces/comment.jsonl, the after_signed_in_comment and comment_signature_anonymous rows), so the joined content the capture writes is the pinned Ruby's own bytes and not a transcription.",
+    "The comment is the pinned surface capture's own comment (\"first comment\") and the author is the pinned surface capture's own author (\"Anonymous (Not signed in)\", the card-level resolution of comment.rb:16-19 with no signed-in reader), so the signature the spec supplies is the one Ruby's own format block would build for that comment and author."
+  ],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a save with a comment and a content: the body joins the content and the signature with the separator",
+      "supplied_answers": {
+        "attributes": [
+          "comment",
+          "content"
+        ],
+        "returns": [
+          "format"
+        ],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "comment_author",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "Env.params",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "comment",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "content",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "content=",
+          "arguments": [
+            "body before comment\n<hr>\n<p>first comment</p>\n<div class=\"w-comment-author\">Anonymous (Not signed in).....2026-09-29 12:00:00 UTC</div>"
+          ],
+          "under": ""
+        },
+        {
+          "call": "comment=",
+          "arguments": [
+            null
+          ],
+          "under": ""
+        }
+      ],
+      "writes": [
+        {
+          "attribute": "content",
+          "value": "body before comment\n<hr>\n<p>first comment</p>\n<div class=\"w-comment-author\">Anonymous (Not signed in).....2026-09-29 12:00:00 UTC</div>"
+        },
+        {
+          "attribute": "comment",
+          "value": null
+        }
+      ],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    },
+    {
+      "scenario": "a save with a comment and NO content: the body writes the signature alone, with no separator",
+      "supplied_answers": {
+        "attributes": [
+          "comment",
+          "content"
+        ],
+        "returns": [
+          "format"
+        ],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "comment_author",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "Env.params",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "comment",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "content",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "content=",
+          "arguments": [
+            "<p>first comment</p>\n<div class=\"w-comment-author\">Anonymous (Not signed in).....2026-09-29 12:00:00 UTC</div>"
+          ],
+          "under": ""
+        },
+        {
+          "call": "comment=",
+          "arguments": [
+            null
+          ],
+          "under": ""
+        }
+      ],
+      "writes": [
+        {
+          "attribute": "content",
+          "value": "<p>first comment</p>\n<div class=\"w-comment-author\">Anonymous (Not signed in).....2026-09-29 12:00:00 UTC</div>"
+        },
+        {
+          "attribute": "comment",
+          "value": null
+        }
+      ],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    },
+    {
+      "scenario": "a save with NO comment: the body sticks the author and then returns, touching neither the content nor the comment",
+      "supplied_answers": {
+        "attributes": [
+          "comment",
+          "content"
+        ],
+        "returns": [
+          "format"
+        ],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "comment_author",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "Env.params",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "comment",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    }
+  ]
+}

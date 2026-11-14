@@ -1,0 +1,52 @@
+import type {ChildProcess} from "node:child_process";
+
+export interface MysqlParentReady {
+  pid:number;
+  serverPid:number;
+  pidFile:string;
+  port:number;
+  datadir:string;
+}
+
+/** Attach immediately after spawn. Exit precedes final stream drain;
+ * failed startup is complete only when the child emits close. */
+export function waitForMysqlParentReady(parent:ChildProcess,backstopMs=120_000):Promise<MysqlParentReady>{
+ if(!parent.stdout||!parent.stderr)throw Error("MySQL parent readiness requires piped stdout and stderr");
+ return new Promise((resolve,reject)=>{
+  let stdout="",stderr="",launchError:Error|undefined,protocolError:Error|undefined,settled=false,exited=false;
+  let backstop:ReturnType<typeof setTimeout>|undefined;
+  const cleanup=()=>{
+   if(backstop!==undefined)clearTimeout(backstop);
+   parent.stdout!.off("data",onStdout);parent.stderr!.off("data",onStderr);
+   parent.off("error",onError);parent.off("exit",onExit);parent.off("close",onClose);
+  };
+  const failure=(reason:string)=>new Error(
+   "helper did not start a server: "+reason+"\nstdout:\n"+stdout+"\nstderr:\n"+stderr+
+   (launchError?"\nlaunch error: "+launchError.name+": "+launchError.message:"")+
+   (protocolError?"\nreadiness error: "+protocolError.message:""),
+  );
+  const finish=(error:Error|undefined,ready?:MysqlParentReady)=>{
+   if(settled)return;settled=true;cleanup();
+   if(error)reject(error);else resolve(ready!);
+  };
+  function onStdout(chunk:Buffer|string){
+   stdout+=chunk.toString();
+   // Buffered output can arrive after exit. Keep draining it for the close
+   // diagnostic, but it cannot establish readiness for an ended helper.
+   if(exited||launchError||parent.exitCode!=null||parent.signalCode!=null)return;
+   const match=/READY (\{[^\n]+\})/.exec(stdout);if(!match)return;
+   try{
+    const ready=JSON.parse(match[1]!) as MysqlParentReady;
+    if(!Number.isInteger(ready.pid)||ready.pid<=0||!Number.isInteger(ready.serverPid)||ready.serverPid<=0||!Number.isInteger(ready.port)||ready.port<=0||ready.port>65535||typeof ready.pidFile!=="string"||!ready.pidFile||typeof ready.datadir!=="string"||!ready.datadir)throw Error("Malformed MySQL parent readiness record");
+    finish(undefined,ready);
+   }catch(error){protocolError=error instanceof Error?error:Error(String(error));}
+  }
+  function onStderr(chunk:Buffer|string){stderr+=chunk.toString();}
+  function onError(error:Error){launchError=error;}
+  function onExit(){exited=true;}
+  function onClose(code:number|null,signal:NodeJS.Signals|null){finish(failure("code="+code+" signal="+(signal??"none")));}
+  parent.stdout!.on("data",onStdout);parent.stderr!.on("data",onStderr);
+  parent.on("error",onError);parent.once("exit",onExit);parent.once("close",onClose);
+  backstop=setTimeout(()=>finish(failure("readiness backstop expired")),backstopMs);
+ });
+}
