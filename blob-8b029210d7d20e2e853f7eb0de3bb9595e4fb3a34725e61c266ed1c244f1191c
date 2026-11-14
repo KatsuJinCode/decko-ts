@@ -1,0 +1,41 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { localPythonInvocation } from '../../tools/platform/python-runtime.mjs';
+
+// Each fake runner answers for one command line; anything else does not run.
+const runnerThat = (runnable) => (command, prefix) => runnable.some(([c, ...p]) => c === command && p.join(' ') === prefix.join(' '));
+
+test('Linux uses python3 when it runs as Python 3', () => {
+  assert.deepEqual(localPythonInvocation('linux', {}, runnerThat([['python3']])), { command: 'python3', prefix: [] });
+});
+
+test('Windows uses python when it runs', () => {
+  assert.deepEqual(localPythonInvocation('win32', {}, runnerThat([['python'], ['py', '-3']])), { command: 'python', prefix: [] });
+});
+
+test('Windows falls back to the py -3 launcher when python does not run', () => {
+  assert.deepEqual(localPythonInvocation('win32', {}, runnerThat([['py', '-3']])), { command: 'py', prefix: ['-3'] });
+});
+
+test('DECKO_PYTHON is used verbatim when it runs, ahead of every platform candidate', () => {
+  const configured = 'C:\\Python312\\python.exe';
+  assert.deepEqual(localPythonInvocation('win32', { DECKO_PYTHON: configured }, runnerThat([[configured], ['python']])), { command: configured, prefix: [] });
+});
+
+test('a configured DECKO_PYTHON that does not run is refused by name, never silently replaced', () => {
+  assert.throws(
+    () => localPythonInvocation('win32', { DECKO_PYTHON: 'C:\\missing\\python.exe' }, runnerThat([['python']])),
+    (error) => error.code === 'PythonInterpreterUnavailable' && /DECKO_PYTHON=C:\\missing\\python\.exe/.test(error.message),
+  );
+});
+
+test('when no candidate runs, the call throws PythonInterpreterUnavailable naming DECKO_PYTHON', () => {
+  assert.throws(
+    () => localPythonInvocation('win32', {}, runnerThat([])),
+    (error) => error.code === 'PythonInterpreterUnavailable' && /set DECKO_PYTHON/.test(error.message),
+  );
+});
+
+test('an unsupported platform is refused by name', () => {
+  assert.throws(() => localPythonInvocation('darwin', {}, runnerThat([])), /UnsupportedPythonControlPlatform:darwin/);
+});

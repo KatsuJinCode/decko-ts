@@ -1,0 +1,334 @@
+# Captured adapter source identity (issue 131)
+
+Implementation base: `5033124b5d6d4c566a8967e6c7369a5d01672246`.
+The unchanged independent test from `c9f611b96` has Git blob
+`f7f130bcb5a4506e471136ca8cd45aba81032543`. Both controls fail before
+this repair: hidden default-index source edits and an external executed entry
+receive a qualified candidate pass. The retained binary stderr proves the changed
+adapter code ran. Raw baseline: `.runtime/adapter123/source131-before.tap`.
+
+## Cause and correction
+
+`run.mjs` previously treated `git status` in the manifest's working directory as
+source identity. Index visibility flags hide bytes from that observation; the
+working directory can also differ from the executed source entry. The grader
+trusted that commit/dirty pair without executed-source evidence.
+
+The new observer extracts the raw-byte Git blob comparison from root repair
+`95b1e9571da82ac41a2f840e7ed066b53c1b8480` into an independent runner
+module. Root release-checker files and `source-git-environment.mjs` are unchanged.
+The complete committed inventory is combined with index/untracked inventory, and
+each regular file is read directly and compared to its committed Git blob. A
+second observation follows owned process closure. Evidence includes the raw
+commit object, file modes, paths, byte counts, SHA-256 and actual/expected blob
+identities. The grader reconstructs the complete Git tree and checks its binding
+to the externally pinned commit, rather than trusting a stored qualification flag.
+
+A direct Node file recipe receives an explicit `--import` module witness. The
+effective command uses the runner's Node executable and records its hash/version,
+the observer hash, requested/effective commands, entry identity and owned PID.
+Synchronous module hooks return the original module source unchanged and record
+loaded file bytes, including dynamic file imports. The grader correlates the
+witness PID with the owned process and compares the actual entry and every
+witnessed file module to the committed inventory. Temporarily changing a loaded
+dependency and restoring it before the final source observation does not pass.
+
+Captures still run when source is dirty, missing or unsupported. Existing raw
+stdout/stderr retention, exit/interruption provenance, protocol, result inventory,
+normalization, explicit candidate pins and diagnostic comparisons remain in
+place. Unqualified captures cannot produce a candidate CLI success.
+
+## Supported limits
+
+The initial `374f99d2b` witness supports direct Node file entries. Shell, eval/preload
+recipes, inherited `NODE_OPTIONS`, non-file or transformed module sources,
+external/untracked dependencies and incomplete witnesses do not qualify.
+Loading child-process, worker, VM or custom-module-loader interfaces is
+conservatively unqualified because their secondary execution is not witnessed.
+Ruby and other unsupported recipes still capture observations; they need their
+own executed-source proof before candidate qualification. At that phase the
+TypeScript adapter's custom loader was not accepted by the limited witness.
+The subsequent canonical-loader work is recorded below; neither phase
+establishes every backend or the complete port.
+
+This observer is not a sandbox or a hostile-engine attestation. It observes
+Node's module-loading path, not every possible use of dynamically generated
+code or external data. Capture evidence still needs normal custody and review;
+a malicious program able to rewrite its evidence is outside this proof. Module
+hooks were checked against the official Node module API and exercised with the
+installed Node runtime: https://nodejs.org/api/module.html#customization-hooks.
+
+## Verification and fixture scope
+
+The unchanged two independent assertions are retained. Additional controls cover
+a genuinely clean committed entry and internal dependency through the real
+runner/API/CLI; an external dependency; transient changed/restored dependency;
+both index visibility flags; unsupported command recipes; and malformed tree,
+module, command and PID evidence. Existing diagnostic and grader guards run
+alongside them. No model, native Ruby capture, provider or hosted service is used.
+
+`test/helpers.mjs` retains its explicitly synthetic checker identities. Its fixture
+now has a valid synthetic commit/tree and module-proof schema so the checker tests
+exercise the new validation, rather than bypassing it. This is fixture metadata,
+never evidence about an engine. Its actual fake adapter is copied byte-for-byte
+into a small owned, locally committed test repository once per test process. The
+fixture source is checked unchanged on reuse and its registered scratch directory
+is removed on exit. This avoids repeatedly inventorying the unrelated development
+checkout for each tiny checker test (the repeated fixture cost is tracked in
+issue 130). No production source inventory is cached or skipped.
+
+Owned paths: the new `adapter-source-identity.mjs` and
+`adapter-source-witness.mjs`; `run.mjs`, `grade-lib.mjs`,
+`byte-checker-identity.mjs`; new source tests; existing
+`test/helpers.mjs` and `test/candidate-source-binding.test.mjs`;
+`reference-harness/SPEC.md`; this report. Only the checker-file count assertion
+changes in the existing source-binding test, to include the new validation code.
+
+The first combined run passed 84 of 85 controls. The remaining published-fixture
+read-write control copied a historical status-only identity into its synthetic
+temporary result and therefore correctly became invalid before reaching its
+write assertion. Its test setup now supplies the same explicit synthetic source
+proof as other checker fixtures; its original read-write, rendering-count and
+failure assertions remain unchanged. The saved historical fixture is untouched.
+`test/grade.test.mjs` is also an owned path for that fixture-only update.
+
+The corrected read-write control passes separately, with its original refusal
+assertions intact. Thus the 84 unaffected controls and the corrected remaining
+control each have passing evidence; this is not a claim that the first combined
+run was green. Production code was unchanged after that combined run. Commands:
+
+```text
+node --test --test-reporter=tap reference-harness/runner/test/adversarial-captured-source-index.test.mjs reference-harness/runner/test/adapter-source-identity.test.mjs reference-harness/runner/test/adapter-diagnostics.test.mjs reference-harness/runner/test/adversarial-adapter-diagnostic-finalization.test.mjs reference-harness/runner/test/grade.test.mjs reference-harness/runner/test/candidate-source-binding.test.mjs reference-harness/runner/test/withheld.test.mjs
+node --test --test-reporter=tap --test-name-pattern="complete record plus one read write" reference-harness/runner/test/grade.test.mjs
+```
+
+Raw logs and SHA-256:
+
+- Baseline two failures: `.runtime/adapter123/source131-before.tap`,
+  `76d38b6abced90b5ac385222d97752db00b3c777c20414282cdbd3e3f8c44565`.
+- Combined 84 passed, one old fixture setup failed:
+  `.runtime/adapter123/source131-final-regression.tap`,
+  `eb2b633ae41ab3eeb1a5ffddd44346177099dc7271be61005abba2d27d7f694b`.
+- Corrected remaining control passed:
+  `.runtime/adapter123/source131-write-control.tap`,
+  `1468c8e9b2a14a9bb1c3aad8bbd2d46c6f7aab7f00698c8fd0d774887c44235a`.
+
+There were no skipped or cancelled assertions in these runs. Dependency/runtime
+module caches may be reused naturally within a process; owned fake source fixture
+reuse is explicit above. No model or automatic retry supplied results. TypeScript
+checking, whitespace checks and the changed-file platform scan passed. All test
+scratch and child processes are owned by the tests; registered fixture cleanup
+removes the new tiny repositories. Raw receipts are intentionally retained.
+
+## Followup: builtin child lookup and nested working directories
+
+Independent review of `374f99d2b` confirmed the original eight controls but
+found that `process.getBuiltinModule("child_process")` obtains a child-engine
+interface without invoking resolve/load hooks. A clean committed wrapper then
+received qualification for an unwitnessed external engine. The unchanged test
+from review `342a381cc` has blob `c46667747a74d884f338379490729c4cf6d18b9b`.
+It fails before repair; full raw output `.runtime/adapter123/builtin131-before.tap`
+has SHA-256 `731b0e68906e03312ffa59d17ae742f9a80d1264f49c0629229be683fa9f1295`.
+
+The observer now records execution-interface lookups through that supported Node
+API while returning its original result and preserving thrown errors. Programs
+still execute, but the observed unsupported child/worker/VM/module interface
+leaves their capture unqualified. No child engine is silently promoted into the
+wrapper's source identity.
+
+Canonical-adapter inspection also found a false refusal: `ls-files` ran from
+the nested manifest directory and emitted relative paths while the committed
+tree used root-relative paths. Source inventory now runs from the resolved Git
+root. A new nested-cwd positive covers that actual invocation shape.
+
+All ten focused controls pass after these corrections: the three independent
+source controls plus seven owner controls, including direct-Node positive,
+external/transient dependency negatives and nested cwd. No assertions skipped,
+cancelled or failed. Raw output: `.runtime/adapter123/builtin131-after.tap`.
+The canonical TypeScript loader still needs its separately assigned execution
+and transformation-input proof. Its real-entry/real-loader synthetic positive
+currently fails, retained at `.runtime/adapter123/canonical131-before.tap`,
+SHA-256 `28cd2315a1e6249f24fc4417c78791730128984340a5c9488065a744e0b7f60e`.
+No canonical qualification is claimed by this narrow correction.
+
+## Canonical loader and generated-source followup
+
+Followup base: `ba47ae86b9fba32a5b2c51fedad008e8692f35b6`.
+The supported additional recipe is the unchanged canonical
+`reference-harness/adapters/ts/adapter.mjs` registering the exact recognized
+`tools/oracle/typescript-source-loader.mjs`. No arbitrary loader is admitted by
+its filename. The entry/loader/helper must match known instrument bytes in the
+candidate tree, and the actual registration must be the expected call. An
+observer installed before it records loader/toolchain module source actually
+consumed in its worker. Node's asynchronous CommonJS bridge can expose null
+source; the worker also observes the actual content argument delivered to
+`Module.prototype._compile`, rather than substituting a later disk hash.
+
+The real loader emits opt-in receipts at the `transformWithOxc` call/result seam.
+They identify its exact input string, URL, input Git object/SHA-256, actual
+returned JavaScript and transformer-function identity. The main module witness
+then identifies the output Node consumed. A cache hit still executes the
+existing cached program; a fresh transform separately checks its bytes. A
+poisoned cache or temporarily changed input stays unqualified while the program
+runs. Shared counters record observed/retained worker events, transform receipts
+and errors. A lost receipt cannot become acceptable when its journal is later
+restored. Main-audit publication is atomic; failed publication retains real
+errors and an incomplete primary checkpoint.
+
+Installed runtime/toolchain dependencies are separate from candidate Git source.
+Actual module content and installed manifests are recorded, with name/version
+admission against the committed dependency lock. This identifies the installed
+artifacts used; it does not authenticate registry publishers or prove a local
+installation equals a registry archive. Unknown external entries, undeclared
+dependencies, extra loaders and unwitnessed secondary execution stay unqualified.
+Builtin lookup and the child-process prototype path are observed; this recipe
+does not simply exempt an import of `node:module` from scrutiny.
+
+Review `ca4186994` found that ordinary `new Function` and direct `eval` could
+execute external code without those interfaces. Its two valid original controls
+remain unchanged (blob `bb95e596965f542032b3041773fb911ce1b9becb`). Both fail
+before this followup, with valid completed captures; invalid-script attempts
+are not refusal evidence. Baseline `.runtime/adapter123/generated131-before.tap`
+has SHA-256 `26fca2f8896e0c868d2c93602f066407fd0d12be5f1f3723abc90b720055e34e`.
+
+The main adapter now observes V8 compilation through an in-process Inspector
+Session. It replaces neither eval nor Function, changes no caller scope and
+opens no listener. Unknown generated scripts, including a claimed file sourceURL,
+are retained as full source strings plus compiler metadata and cause refusal.
+The unchanged eval control verifies its caller lexical scope; a CommonJS
+positive also verifies eval/Function retain their original data-property values.
+The local Node probe verified source retrieval and sourceURL marking through the
+installed API. Official reference: https://nodejs.org/api/inspector.html.
+These are compiler observations, not Runtime.evaluate commands or an external
+harness-control channel.
+
+Runtime executable hashing is reused only within one runner process while its
+resolved path, device/inode, size, mtime and ctime identities remain unchanged;
+fresh/reused mode is explicit in each record. Candidate source and transformation
+inputs remain directly checked. Module audit accumulation avoids rewriting its
+history on every load; final publication is atomic. No model result or behavioral
+capture is reused by either optimization.
+
+All 39 focused controls passed on the final source, zero failed, skipped,
+cancelled or todo: eight canonical loader/cache/I/O cases, ten owner source
+cases, five unchanged independent source controls, twelve diagnostic controls
+and four candidate-binding/normalization controls. Raw output
+`.runtime/adapter123/source131-complete-controls.tap` has SHA-256
+`54f572ba392db683798814e495338487940bb9389b994e13a62d7266c6651ded`.
+TypeScript, whitespace and the fifteen-module platform scan passed. Tests use
+owned isolated programs and SQLite fixtures; no model, Ruby capture, provider,
+hosted site, installation or global setting change is involved. Cold/warm
+transform caches are explicit cases; ordinary module caches and runtime-hash
+reuse are scoped above.
+
+The canonical fixture uses the real unchanged entry and real loader with a
+finite typed stand-in protocol payload. Qualification of the unchanged actual
+`adapter.ts` engine graph still needs a clean committed source run; it is not
+claimed by that fixture. A source-only self-comparison probe is prepared under
+`.runtime`; its receipt must state that it is not a Ruby parity comparison.
+
+A retained review handoff was refused by Relay's usage-pace forecast despite
+being existing assigned work. No replay or Relay source edit was made; the
+infrastructure failure is filed as
+`rel-5091b4a7-d8bd-4459-9db8-1f176ca5c537`. Controller notification reached the
+native app, with hook-confirmed receipt still unobserved. Raw source evidence
+under `.runtime/adapter123` is registered with disk custody.
+
+Next: clean committed actual-engine source qualification, independent reattack,
+then controller integration. The numeric-ID repair and legacy-switch documents
+remain assigned and separate from this source-proof result.
+
+## Actual engine graph: two concrete runtime producers
+
+The actual unchanged adapter graph was captured against clean committed source
+`0ba42e67059aaf38544f6b684837dd74bbbadf0b`. It booted `decko-ts` and answered
+the three isolated name queries successfully, but correctly remained unqualified:
+each invocation observed 529 file-module inputs, 254 TypeScript transforms and
+14 additional generated-program events. These are counts from the saved render,
+semantics and scenario invocation records, not whole-port coverage figures.
+The actual capture and refusal remain under
+`.runtime/adapter123/actual-canonical-source-4eaRFs/actual` and
+`.runtime/adapter123/canonical-actual-source-positive.log`.
+
+Inspection of the compiler records found two producers, not arbitrary loader
+code: the row factory in better-sqlite3 and long.js's fixed integer Wasm helper.
+The new rules bind only these exact consumed implementations:
+
+- better-sqlite3 13.0.3 `lib/database.js`, SHA-256
+  `539315c97591561394d2a0f257632305c3af1e32915a123aa8cc9032056d8ae2`.
+  Its generated code must exactly reconstruct a data-only row projection from
+  JSON-quoted column names to sequential parameters. Extra expressions/calls and
+  the producer's excluded `__proto__` case are not admitted.
+- long 5.3.2 `umd/index.js`, SHA-256
+  `ea6da8d5fff04abc358b94488dbbb7eeb46e5027cc05303b1761cea94bef7821`.
+  The actual V8 Wasm binary must equal every byte of the static literal parsed
+  from the consumed source. The observed binary is 286 bytes, SHA-256
+  `ed97339a3c2cdcd30fe7903ecad11562b7b9bfcfde24e0e584346f54c9247148`.
+
+The observer retains each actual V8 producer source and script identity; the
+grader matches that source to the exact implementation and its already-observed
+module input/package, then independently reconstructs the entire generated
+program. Filename, package version and caller stack are insufficient on their
+own. This does not admit arbitrary Function/eval bodies or new custom loaders.
+The external generated-code negatives remain unchanged. A dedicated positive
+exercises the same native SQLite projection and CJS long recipe as the real
+adapter, with separate mutation/grammar controls.
+
+The CommonJS compatibility bridge can defer a module in the loader worker but
+compile it in the main isolate. Its null source now requires a matching actual
+compiler-input observation in one of those two realms; a later disk hash is not
+accepted as execution evidence.
+
+The first source probe kept all actual capture records but removed its
+self-reference capture during failure cleanup. That one prior baseline has no
+retained copy; it is not reconstructed or claimed as evidence. The original
+fixture database is unchanged. The probe now copies all inputs and both capture
+runs on every outcome, checks file-by-file hashes and writes a custody map
+before removing its scratch. If archiving or verification fails, scratch stays
+retained instead of being removed by the generic exit hook.
+
+All 43 final source/diagnostic controls pass, zero failed/skipped/cancelled/todo.
+This is the previous 39-case scope plus the concrete runtime-producer positive
+and three independent reconstruction/mutation cases. Raw output
+`.runtime/adapter123/source131-runtime-complete-controls.tap`, SHA-256
+`8382235825644e783b3e43de664e63dd5ef3c02fc3e0b3fd4b902c1759e7a970`.
+TypeScript, whitespace and the eight-module changed-file platform scan pass.
+The code is saved next so the actual-engine run observes a clean pinned tree.
+
+## Clean actual-adapter receipt
+
+Clean candidate `4f39824ff60e5ea4ca5284b862d2664e5e38d324` passed the actual
+unchanged `reference-harness/adapters/ts/adapter.ts` graph through its canonical
+entry and real loader. API qualification is true, source problems are empty and
+the real grader CLI exits zero. Each of the render/semantics/scenario sessions
+observed 529 file-module inputs, 254 TypeScript transforms, 14 bound generated
+programs from two consumed producers and zero unbound generated programs.
+All three owned sessions exited zero with drained diagnostic streams.
+
+This is a deliberately named `source-identity-self-comparison` baseline: one
+successful `Home` name query in each runner kind against an isolated copy of the
+existing synthetic database. The result's name and key were asserted. It proves
+source qualification of the real adapter graph, not Ruby equality, full
+rendering/persistence/side-effect acceptance, a backend matrix or a deployment.
+
+Raw receipt directory: `.runtime/adapter123/actual-canonical-source-zACAyi`.
+The custody map's 30 files were independently re-read and hash-verified after
+the run; both captures and all fixture inputs are retained. The original scratch
+directory is gone only after that verified copy. Relative archive mapping is
+explicit; original embedded capture paths and metadata are not rewritten.
+
+- Run log `.runtime/adapter123/canonical-actual-source-bound-runtime.log`, SHA-256
+  `9dcda3a9c5782566ad2eada4bdbf6f159cb1f4cf69769388765221349effe752`.
+- `source-grade.json`, SHA-256
+  `f73bd2dd5dd49abe3acd3c9e65c63ab2c7aa4d66c4f85827ae56247c930cf371`.
+- `fixture-custody.json`, SHA-256
+  `09849870fb508b7066a98726bf4d57e4425d2e04dc5363756e57c4e826602c03`.
+
+Reproduction method remains in
+`.runtime/adapter123/canonical-actual-source-positive.mjs`, with the registered
+raw evidence. No installation, live provider, Ruby process or user database was
+used. Native/module and explicit test-cache behavior is recorded in the saved
+inputs. The production modules are unchanged by this receipt-only report update.
+
+Next: independent exact-source reattack and controller integration; continue
+the assigned numeric-ID repair and the legacy-switch documentation correction.

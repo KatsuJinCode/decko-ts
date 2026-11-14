@@ -1,0 +1,114 @@
+# Complete adapter diagnostics (issue 123)
+
+The adapter runner now retains original stdout and stderr bytes in persistent,
+run-owned files. Each session records paths, byte counts, SHA-256 hashes, command,
+source binding, native exit status, capture failures and controlled interruption.
+The final record is written after the child closes and its streams drain. An
+unfinished record explicitly identifies a checkpoint; it does not claim complete
+capture. Console text is labelled as a decoded display of the authoritative raw
+files. Nonprotocol stdout is no longer clipped, and native failure messages no
+longer discard middle stderr lines.
+
+Implementation base: `4f06a71180e90bc90b5fb754b3d7f3d902a94e45`.
+The original adapter and runner files matched reference
+`420ce6869677b9b7a94a02f4d5c79ccc8dcbdf86` exactly. No Area 6 release instrument
+was imported or replaced.
+
+## Owned paths
+
+- `reference-harness/runner/adapter-diagnostics.mjs`
+- `reference-harness/runner/adapter-process.mjs`
+- `reference-harness/runner/run.mjs`
+- `reference-harness/runner/test/adapter-diagnostics.test.mjs`
+- `reference-harness/runner/test/fake-adapter/diagnostic-adapter.mjs`
+- `reference-harness/runner/test/fake-adapter/diagnostic-payload.mjs`
+- `reference-harness/SPEC.md`
+- This report.
+
+## Verification
+
+Two selected negative controls failed against the unchanged original adapter:
+the sole useful error in the middle of stderr disappeared, and stdout after the
+old clipping boundary disappeared. The baseline module SHA-256 was
+`4b4a55487e35e79c58ea56836e1d7d85fe00789eb086f5f6bf7ada87f8e2369a`.
+The raw baseline log is `.runtime/adapter123/before.log`, SHA-256
+`d25d59a23634b1a43b24d62a86da5e349f09f572d480a206c26b07787e837d65`.
+
+All 11 new controls passed. They compare exact binary bytes, counts and hashes,
+including invalid UTF-8, NUL, CRLF, split Unicode and an unterminated line. They
+cover startup failure, request failure, success, native error answers, timeout,
+spawn failure, capture failure, controlled interruption and real runner cleanup.
+The raw targeted log is `.runtime/adapter123/after-final.tap`, SHA-256
+`1fa29611d9121bdfbbe1029539eee34ccb20de39331a53b148b5fa713b65c4e5`.
+
+The combined adapter, grading, candidate-source-binding and withheld tests passed
+76 tests in 13 suites, with no failures, cancellations or skips. Command:
+
+```text
+node --test --test-reporter=tap reference-harness/runner/test/adapter-diagnostics.test.mjs reference-harness/runner/test/grade.test.mjs reference-harness/runner/test/candidate-source-binding.test.mjs reference-harness/runner/test/withheld.test.mjs
+```
+
+Raw combined output: `.runtime/adapter123/final-regression.tap`, SHA-256
+`5e05d6625cb18530fefc7fe9b18686c59e1135f6c1032e3058efc32273f4b329`.
+TypeScript checking and `git diff --check` passed. The platform scanner checked
+the six changed JavaScript modules: zero unguarded hits, one guarded existing
+Windows taskkill branch. No native provider or paid model was invoked. These
+checks establish the diagnostics behavior, not whole-port or deployed acceptance.
+
+The JSON-line protocol, inventory, source identities and grading format remain
+unchanged. Local signal handlers drain only this runner's owned adapter children;
+no global hook, setting or schedule was changed. Forced runner termination can
+leave a checkpoint, explicitly marked incomplete, with the raw files retained.
+
+## Fixture correction and cleanup
+
+An initial controlled fixture left stdin open after ending its protocol loop.
+Its verified owned Node child, PID 50044, was terminated after checking its full
+command and parent. That failed run is excluded from the passing evidence. The
+fixture now destroys its stdin after the loop; the passing tests independently
+check that their owned children are gone. No unrelated process was stopped.
+
+Tests remove their own temporary session directories after checking persistence
+and shutdown. Run-owned evidence under `.runtime/adapter123` is retained. Before
+this report, the seven payload paths contained 89,640 bytes versus 68,019 tracked
+bytes before the patch: 21,621 net source bytes added, zero existing source bytes
+deleted as cleanup. These are file-content counts, not allocated disk usage.
+
+Next: independent exact-commit reattack and controller integration.
+
+## Independent review correction: final manifest publication
+
+Review commit `fdf5a602e8cc6b42a0d70e80e46c68ae3b9eaefa` exposed a
+remaining failure in the first repair, `ed1f2e1899562b60920c994eaa439d59e9fd672d`.
+An existing owned `diagnostics.json.next` file causes the final publication to
+throw EEXIST. Previously, `update` had already changed the live state to complete,
+so the runner could copy that claim while the disk manifest remained an older
+checkpoint. This required another review cycle and is corrected here.
+
+`update` now publishes a candidate before accepting its successful state. If
+publication fails, its getter exposes `capture-failed`, `streams_complete:false`,
+the real capture error and structured `manifest_publication_error`. The existing
+checkpoint and raw bytes remain intact; close still rejects. Only the diagnostic
+journal, the independent regression test and this report change in this followup.
+
+The independent test is included unchanged: Git blob
+`2bf958806e69b62e97f6266cab0a29390dca974c`. It fails against the original
+`ed1f2e189` journal and adapter with the expected `true !== false` assertion.
+The same test and all 11 owner controls pass after repair. Raw outputs:
+
+- `.runtime/adapter123/finalization-before.tap`, SHA-256
+  `6b610b0f896c37ca1c1150e5a220796d5efc8c5c9d6827f83cff7a3781f37d39`.
+- `.runtime/adapter123/finalization-after.tap`, SHA-256
+  `ba08d281ef296ac7b198abfdc6153458665efe0d3c4a72e156a5a8f57bbbbbd0c`.
+
+The tests confirm owned-child shutdown even when final publication fails. The
+baseline comparison uses small explicitly named source copies under `.runtime`,
+retained with its evidence; it is not a second checkout or runnable release.
+
+The final combined run passed 77 tests in 13 suites, zero failures,
+cancellations or skips. It adds the independent test to the original combined
+command above. Raw output `.runtime/adapter123/finalization-regression.tap` has
+SHA-256 `496ec2622c746eb72cd08c084f4f4a4706355091da67fd503553942393993fb7`.
+TypeScript, whitespace and the two-file platform scan passed. A read-only
+process diagnostic exited on its own; a subsequent in-memory liveness check
+returned ESRCH, so no termination signal was sent to it.

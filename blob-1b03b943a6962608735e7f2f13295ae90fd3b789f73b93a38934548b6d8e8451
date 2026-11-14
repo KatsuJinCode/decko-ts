@@ -1,0 +1,545 @@
+// The finite supported matrix: the databases the engine is qualified against,
+// the runtime that serves each one, and how this checkout reaches it.
+//
+// One table, shared by the atomicity suite (tests/card/actions/atomic-saves)
+// and the qualification suite (tests/deploy/runtime-db-matrix), so "a
+// supported backend" means one thing in both places.
+//
+// Each entry names the runtime that serves the database and how the database
+// is reached from this checkout:
+//
+//   id         runtime   database                     reached by
+//   ---------  --------  ---------------------------  --------------------------
+//   sqlite     node      SQLite                       better-sqlite3, scratch file
+//   postgres   node      PostgreSQL                   PGlite: the real engine
+//   mysql      node      MySQL 8.4                    the vendor server binaries
+//   d1         workerd   Cloudflare D1                miniflare's local D1 binding
+//   libsql     node      libSQL (Turso)               the Hrana v2 mock server
+//   bunny      node      Bunny Database               the Hrana server, Bunny's driver
+//
+// The emulated rows (D1 under miniflare, libSQL and Bunny over the mock Hrana
+// server) are not the hosted services. Hosted D1, Turso and Bunny Database are
+// reached by tools/hosted-conformance/run.mjs, which needs credentials this
+// checkout does not carry, and native MySQL needs the vendor binaries, which
+// tools/mysql/fetch-mysql.mjs downloads. A cell whose prerequisite is absent is
+// a skip with its reason attached, never a pass.
+//
+// The engine speaks one dialect (SQLite) to every adapter (src/server/
+// driver.ts), so the matrix varies the database, not the SQL. The MySQL
+// adapter translates that dialect at the edge; the PostgreSQL adapter
+// translates it too.
+
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { Miniflare, convertV4MiniflareOptions } from "miniflare";
+import { PGlite } from "@electric-sql/pglite";
+import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
+import { CloudflareD1Adapter, type D1DatabaseLike } from "../../../src/server/drivers/d1.js";
+import { LibSqlHttpAdapter } from "../../../src/server/drivers/libsql-http.js";
+import { BunnyDbDriver } from "../../../src/card/drivers/bunny-db.js";
+import { PostgresDriver } from "../../../src/server/drivers/postgres.js";
+import { MysqlDriver } from "../../../src/server/drivers/mysql.js";
+import { startMysqlServer, mysqlBaseDir, MYSQL_VERSION, type MysqlServer } from "../../server/drivers/mysql-server.js";
+import { startMockHranaServer } from "../../server/drivers/mock-hrana-server.js";
+import { driverDialect } from "../../../src/server/same-database.js";
+import type {
+  SQLDatabaseDriver,
+  SQLQueryResult,
+  SQLStatement,
+  SQLTransactionGuarantee,
+} from "../../../src/server/driver.js";
+import { splitSqlStatements } from "../fetch/fetch-test-storage.js";
+import {
+  CARDTYPE_ID,
+  IP,
+  JOE,
+  fakeClock,
+  seedCard,
+  seedStandardDeck,
+  type ActionsTestStorage,
+} from "./actions-test-storage.js";
+import { FetchEngine } from "../../../src/card/fetch.js";
+import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
+
+// ---------------------------------------------------------------------------
+// Failure injection
+// ---------------------------------------------------------------------------
+
+export class InjectedFailure extends Error {
+  constructor(sql: string) {
+    super(`injected failure at: ${sql.replace(/\s+/g, " ").slice(0, 80)}`);
+    this.name = "InjectedFailure";
+  }
+}
+
+/** A gate that holds a statement until the test lets it through. */
+export class StatementGate {
+  private open: () => void = () => undefined;
+  private signal: () => void = () => undefined;
+  /** Resolves once the gated statement has been reached. */
+  readonly reached: Promise<void>;
+  private readonly passed: Promise<void>;
+
+  constructor() {
+    this.reached = new Promise<void>((resolve) => {
+      this.signal = resolve;
+    });
+    this.passed = new Promise<void>((resolve) => {
+      this.open = resolve;
+    });
+  }
+
+  /** Let the gated statement run. */
+  release(): void {
+    this.open();
+  }
+
+  /** Called by the injector when the gated statement is reached. */
+  arrive(): void {
+    this.signal();
+  }
+
+  /** Wait for the gate to be released. */
+  wait(): Promise<void> {
+    return this.passed;
+  }
+}
+
+/** Passes every statement through, except that once armed it throws on the
+ *  `nth` statement matching `pattern` (in query or in batch, before it
+ *  reaches the database), or holds it at a gate. transaction() is the wrapped
+ *  driver's. */
+export class FailureInjectingDriver implements SQLDatabaseDriver {
+  private pattern: RegExp | undefined;
+  private remaining = 0;
+  private gate: { pattern: RegExp; nth: number; remaining: number; gate: StatementGate } | undefined;
+  readonly transactionGuarantee: SQLTransactionGuarantee | undefined;
+  /** The dialect of the wrapped driver, so a wrapper still reads as the
+   *  backend it wraps (src/server/same-database.ts). */
+  readonly dialect: string | undefined;
+
+  constructor(private readonly inner: SQLDatabaseDriver) {
+    this.transactionGuarantee = inner.transactionGuarantee;
+    this.dialect = (inner as { dialect?: string }).dialect;
+  }
+
+  failOn(pattern: RegExp, nth = 1): void {
+    this.pattern = pattern;
+    this.remaining = nth;
+  }
+
+  /** Hold the `nth` statement matching `pattern` until the gate is released. */
+  blockOn(pattern: RegExp, nth = 1): StatementGate {
+    const gate = new StatementGate();
+    this.gate = { pattern, nth, remaining: nth, gate };
+    return gate;
+  }
+
+  disarm(): void {
+    this.pattern = undefined;
+    this.gate = undefined;
+  }
+
+  private check(sql: string): void {
+    if (this.pattern === undefined || !this.pattern.test(sql)) return;
+    this.remaining -= 1;
+    if (this.remaining === 0) {
+      this.pattern = undefined;
+      throw new InjectedFailure(sql);
+    }
+  }
+
+  async query<T>(sql: string, params: unknown[]): Promise<SQLQueryResult<T>> {
+    this.check(sql);
+    await this.hold(sql);
+    return this.inner.query<T>(sql, params);
+  }
+
+  async batch(statements: SQLStatement[]): Promise<SQLQueryResult[]> {
+    for (const s of statements) this.check(s.sql);
+    for (const s of statements) await this.hold(s.sql);
+    return this.inner.batch(statements);
+  }
+
+  transaction<R>(work: () => Promise<R>): Promise<R> {
+    return this.inner.transaction!(work);
+  }
+
+  /** Holds the statement at the armed gate, if this is the one. */
+  private async hold(sql: string): Promise<void> {
+    const armed = this.gate;
+    if (armed === undefined || !armed.pattern.test(sql)) return;
+    armed.remaining -= 1;
+    if (armed.remaining > 0) return;
+    this.gate = undefined;
+    armed.gate.arrive();
+    await armed.gate.wait();
+  }
+}
+
+export interface MatrixBackend {
+  /** The driver the engine writes through. */
+  driver: SQLDatabaseDriver;
+  /** A second handle on the same database, where the backend has one, so a
+   *  read can see what is committed and not what is in flight. */
+  observer?: SQLDatabaseDriver;
+  /** What the second handle is: "independent" is a second connection or
+   *  stream to the same database, "same-session" is the same connection (a
+   *  second writer would interleave with the first), "none" is no second
+   *  handle at all. */
+  secondHandle: "independent" | "same-session" | "none";
+  dispose(): Promise<void>;
+}
+
+export interface MatrixEntry {
+  /** The runtime that serves this database. */
+  runtime: string;
+  /** The human label used in test names. */
+  label: string;
+  /** Why this cell cannot run here, when it cannot. Empty when it can. */
+  unavailable: string;
+  open(): Promise<MatrixBackend>;
+}
+
+// ---------------------------------------------------------------------------
+// Schema
+// ---------------------------------------------------------------------------
+
+const SCHEMA = readFileSync(fileURLToPath(new URL("../../../db/schema.sqlite.sql", import.meta.url)), "utf8");
+const SCHEMA_MYSQL = readFileSync(fileURLToPath(new URL("../../../db/schema.mysql-port.sql", import.meta.url)), "utf8");
+
+export async function loadSchema(driver: SQLDatabaseDriver): Promise<void> {
+  // The SQLite DDL carries untyped-length TEXT columns, which MySQL refuses to
+  // index without a key length, so a MySQL backend loads the port's schema in
+  // MySQL dialect (db/schema.mysql-port.sql, built by
+  // tools/mysql/build-port-schema.mjs).
+  const ddl = driverDialect(driver) === "mysql" ? SCHEMA_MYSQL : SCHEMA;
+  for (const statement of splitSqlStatements(ddl)) {
+    // D1 manages foreign-key enforcement itself; the schema declares none.
+    if (/^\s*PRAGMA\b/i.test(statement)) {
+      await driver.query(statement, []).catch(() => undefined);
+      continue;
+    }
+    await driver.query(statement, []);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Scratch space
+// ---------------------------------------------------------------------------
+
+const scratchDirs: string[] = [];
+
+export function scratchDir(): string {
+  const dir = mkdtempSync(join(tmpdir(), "decko-matrix-"));
+  scratchDirs.push(dir);
+  return dir;
+}
+
+export function removeScratchDirs(): void {
+  for (const dir of scratchDirs) rmSync(dir, { recursive: true, force: true });
+}
+
+// ---------------------------------------------------------------------------
+// Miniflare (the workerd runtime that serves D1)
+// ---------------------------------------------------------------------------
+
+let mf: Miniflare | undefined;
+let d1Counter = 0;
+const D1_DATABASES = 16;
+
+async function miniflare(): Promise<Miniflare> {
+  if (mf === undefined) {
+    const d1Databases: Record<string, string> = {};
+    for (let i = 1; i <= D1_DATABASES; i++) d1Databases[`DB${i}`] = `decko-matrix-${i}`;
+    mf = new Miniflare(
+      convertV4MiniflareOptions({
+        modules: true,
+        script: `export default { fetch() { return new Response("ok"); } }`,
+        d1Databases,
+      }),
+    );
+  }
+  return mf;
+}
+
+export async function disposeMatrixResources(): Promise<void> {
+  const cleanup = await Promise.allSettled([
+    mf?.dispose(),
+    mysqlStart?.then((server) => server.stop()),
+  ]);
+  mf = undefined;
+  mysqlStart = undefined;
+  const failed = cleanup.filter((r): r is PromiseRejectedResult => r.status === "rejected");
+  if (failed.length > 0) throw new AggregateError(failed.map((r) => r.reason), "matrix resource cleanup failed");
+}
+
+// ---------------------------------------------------------------------------
+// MySQL
+// ---------------------------------------------------------------------------
+
+let mysqlStart: Promise<MysqlServer> | undefined;
+let mysqlDatabaseCounter = 0;
+
+/** The reason native MySQL cannot run here, or "" when it can. The pinned
+ *  server binaries are not in this checkout, and downloading them is not part
+ *  of this area. */
+export function mysqlUnavailableReason(): string {
+  let base: string;
+  try {
+    base = mysqlBaseDir();
+  } catch (error) {
+    return String(error instanceof Error ? error.message : error);
+  }
+  const exe = join(base, "bin", process.platform === "win32" ? "mysqld.exe" : "mysqld");
+  if (existsSync(exe)) return "";
+  return `MySQL ${MYSQL_VERSION} server binary not found at ${exe}; restoring vendor binaries requires software-pull approval`;
+}
+
+function mysqlServer(): Promise<MysqlServer> {
+  mysqlStart ??= startMysqlServer();
+  return mysqlStart;
+}
+
+// ---------------------------------------------------------------------------
+// The matrix
+// ---------------------------------------------------------------------------
+
+export const MATRIX_BACKENDS: Record<string, MatrixEntry> = {
+  sqlite: {
+    runtime: "node",
+    label: "local SQLite (native)",
+    unavailable: "",
+    open: async () => {
+      const path = join(scratchDir(), "deck.sqlite");
+      const driver = new LocalSqliteDriver({ path });
+      const observer = new LocalSqliteDriver({ path });
+      return {
+        driver,
+        observer,
+        secondHandle: "independent",
+        dispose: async () => {
+          driver.close();
+          observer.close();
+        },
+      };
+    },
+  },
+  postgres: {
+    runtime: "node",
+    label: "PostgreSQL (PGlite WASM, one session)",
+    unavailable: "",
+    open: async () => {
+      // PGlite is one PostgreSQL session, so there is no second connection.
+      // The observer shares the session and first proves no writing
+      // transaction is open (one that has written holds a transaction id), so
+      // what it reads is committed.
+      const client = await PGlite.create();
+      const driver = new PostgresDriver({ client });
+      const shared = new PostgresDriver({ client, ownsClient: false });
+      const observer: SQLDatabaseDriver = {
+        query: async <T,>(sql: string, params: unknown[]) => {
+          const probe = await client.query<{ outside: boolean }>("SELECT pg_current_xact_id_if_assigned() IS NULL AS outside");
+          if (!probe.rows[0]?.outside) throw new Error("observer read inside an open transaction");
+          return shared.query<T>(sql, params);
+        },
+        batch: (statements) => shared.batch(statements),
+      };
+      return { driver, observer, secondHandle: "same-session", dispose: () => driver.close() };
+    },
+  },
+  mysql: {
+    runtime: "node",
+    label: "MySQL 8.4 (native)",
+    unavailable: mysqlUnavailableReason(),
+    open: async () => {
+      // A real MySQL server (official binaries; tests/server/drivers/mysql-server.ts).
+      // The observer is a second connection to the same database, so it sees
+      // only what the engine has committed.
+      const server = await mysqlServer();
+      mysqlDatabaseCounter += 1;
+      const database = `matrix_${mysqlDatabaseCounter}`;
+      const admin = await server.connect();
+      try {
+        await admin.query(`CREATE DATABASE \`${database}\` CHARACTER SET utf8mb3 COLLATE utf8mb3_unicode_ci`);
+      } finally {
+        await admin.end();
+      }
+      const driver = await MysqlDriver.connect({ port: server.port, database });
+      const observer = await MysqlDriver.connect({ port: server.port, database });
+      return { driver, observer, secondHandle: "independent", dispose: async () => { await driver.close(); await observer.close(); } };
+    },
+  },
+  d1: {
+    runtime: "workerd",
+    label: "Cloudflare D1 (miniflare, compensating)",
+    unavailable: "",
+    open: async () => {
+      d1Counter += 1;
+      if (d1Counter > D1_DATABASES) throw new Error("raise D1_DATABASES: more D1 scenarios than bindings");
+      const binding = (await (await miniflare()).getD1Database(`DB${d1Counter}`)) as unknown as D1DatabaseLike;
+      return {
+        driver: new CloudflareD1Adapter(binding),
+        observer: new CloudflareD1Adapter(binding),
+        secondHandle: "independent",
+        dispose: async () => undefined,
+      };
+    },
+  },
+  libsql: {
+    runtime: "node",
+    label: "libSQL over HTTP (Hrana stream, mock server)",
+    unavailable: "",
+    open: async () => {
+      const server = await startMockHranaServer({ path: join(scratchDir(), "deck.sqlite") });
+      return {
+        driver: new LibSqlHttpAdapter({ url: server.url }),
+        observer: new LibSqlHttpAdapter({ url: server.url }),
+        secondHandle: "independent",
+        dispose: () => server.close(),
+      };
+    },
+  },
+  bunny: {
+    runtime: "node",
+    label: "Bunny Database driver (Hrana stream, mock server)",
+    unavailable: "",
+    open: async () => {
+      const server = await startMockHranaServer({ path: join(scratchDir(), "deck.sqlite") });
+      return {
+        driver: new BunnyDbDriver({ url: server.url, timeoutMs: 0 }),
+        observer: new BunnyDbDriver({ url: server.url, timeoutMs: 0 }),
+        secondHandle: "independent",
+        dispose: () => server.close(),
+      };
+    },
+  },
+};
+
+// ---------------------------------------------------------------------------
+// The deck under test
+// ---------------------------------------------------------------------------
+
+export const FILE_TYPE_ID = 400;
+
+export interface MatrixDeck {
+  backend: MatrixBackend;
+  /** The driver the engine writes through: the backend's driver, with absent
+   *  parameters made NULL for the remote adapters, wrapped in the failure
+   *  injector. */
+  driver: SQLDatabaseDriver;
+  /** Arms a failure or a hold on the next statement matching a pattern. */
+  injector: FailureInjectingDriver;
+  storage: ActionsTestStorage;
+  fetch: FetchEngine;
+  engine(opts?: { actor?: { id: number; name: string } | null }): CardActionEngine;
+  /** An engine over another handle on the same database, for a second writer
+   *  or a second reader. */
+  engineOn(driver: SQLDatabaseDriver, opts?: { actor?: { id: number; name: string } | null }): CardActionEngine;
+  /** Every row of every table, for a before/after comparison. */
+  snapshot(): Promise<Snapshot>;
+}
+
+export interface Snapshot {
+  tables: Record<string, unknown[]>;
+  version: number;
+  bookkeepingRows: number;
+}
+
+/** Opens a backend, loads the schema, seeds the standard deck, and hands back
+ *  the engine plus a whole-database snapshot. */
+export async function openMatrixDeck(entry: MatrixEntry): Promise<MatrixDeck> {
+  const backend = await entry.open();
+  // The seed helpers pass undefined for absent columns, which only
+  // better-sqlite3 accepts (as NULL); the remote adapters reject it.
+  const nulls = (params: unknown[]) => params.map((p) => (p === undefined ? null : p));
+  const raw = backend.driver;
+  const driver: SQLDatabaseDriver & { dialect?: string } = {
+    // The dialect travels with the wrapper, so loadSchema picks the DDL of the
+    // backend under test (a wrapper without it reads as SQLite).
+    dialect: (raw as { dialect?: string }).dialect,
+    transactionGuarantee: raw.transactionGuarantee,
+    transaction: raw.transaction === undefined ? undefined : (work) => raw.transaction!(work),
+    query: (sql, params) => raw.query(sql, nulls(params)),
+    batch: (statements) => raw.batch(statements.map((s) => ({ sql: s.sql, params: nulls(s.params) }))),
+  };
+  const storage: ActionsTestStorage = {
+    driver,
+    engine: undefined as unknown as FetchEngine,
+    close: () => undefined,
+    selectAll: async <T,>(sql: string, params: unknown[] = []) => (await driver.query<T>(sql, params)).rows,
+    selectOne: async <T,>(sql: string, params: unknown[] = []) => (await driver.query<T>(sql, params)).rows[0],
+    count: async (table) => Number((await driver.query<{ n: number }>(`SELECT COUNT(*) AS n FROM ${table}`, [])).rows[0].n),
+  };
+  // The engine writes through the injector, so a test can arm a failure or a
+  // hold on one statement of a real save.
+  const injector = new FailureInjectingDriver(driver);
+  try {
+    await loadSchema(injector);
+    await seedStandardDeck(storage);
+    await seedCard(storage, { id: FILE_TYPE_ID, name: "File", codename: "file", typeId: CARDTYPE_ID });
+    await seedCard(storage, { id: 60, name: "Parent Card", dbContent: "parent" });
+    await seedCard(storage, { id: 62, name: "kid", dbContent: "" });
+    await seedCard(storage, { id: 61, leftId: 60, rightId: 62, dbContent: "kid" });
+  } catch (error) {
+    await backend.dispose();
+    throw error;
+  }
+  const fetch = new FetchEngine(injector);
+  storage.driver = injector;
+  storage.engine = fetch;
+  const clock = fakeClock();
+  const reusesIds = backend.driver.transactionGuarantee?.idsReusedAfterRollback === true;
+  const buildEngine = (engineDriver: SQLDatabaseDriver, opts: { actor?: { id: number; name: string } | null } = {}) =>
+    new CardActionEngine(new FetchEngine(engineDriver), {
+      actor: opts.actor === undefined ? JOE : opts.actor,
+      now: clock,
+      ipAddress: IP,
+      integrationHooks: [],
+    });
+  return {
+    backend,
+    driver: injector,
+    injector,
+    storage,
+    fetch,
+    engine: (opts = {}) => buildEngine(injector, opts),
+    engineOn: (engineDriver, opts = {}) => buildEngine(engineDriver, opts),
+    snapshot: async () => {
+      const mysql = driverDialect(backend.driver) === "mysql";
+      // SQLite lists its tables in sqlite_master and reads each in rowid order.
+      // MySQL lists them in information_schema; a MySQL table has no rowid, so
+      // its rows are sorted here by their full text, which gives the same
+      // stable order on both snapshots that a before/after comparison needs.
+      const names = (
+        await backend.driver.query<{ name: string }>(
+          mysql
+            ? "SELECT TABLE_NAME AS name FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE' AND TABLE_NAME NOT LIKE '\\_cf\\_%' ORDER BY TABLE_NAME"
+            : "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE '\\_cf\\_%' ESCAPE '\\' ORDER BY name",
+          [],
+        )
+      ).rows.map((r) => String(r.name));
+      const tables: Record<string, unknown[]> = {};
+      let bookkeepingRows = 0;
+      for (const name of names) {
+        const rows = mysql
+          ? (await backend.driver.query(`SELECT * FROM "${name}"`, [])).rows
+              .map((r) => ({ r, key: JSON.stringify(r, (_k, v) => (typeof v === "bigint" ? v.toString() : v)) }))
+              .sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0))
+              .map((x) => x.r)
+          : (await backend.driver.query(`SELECT * FROM "${name}" ORDER BY rowid`, [])).rows;
+        if (name.startsWith("decko_tx_") || name.startsWith("decko_undo_")) {
+          if (name !== "decko_tx_state") bookkeepingRows += rows.length;
+          continue;
+        }
+        if (name === "deck_data_version") continue;
+        if (name === "sqlite_sequence" && !reusesIds) continue;
+        tables[name] = rows;
+      }
+      const v = await backend.driver.query<{ version: number }>("SELECT version FROM deck_data_version WHERE id = 1", []);
+      return { tables, version: Number(v.rows[0]?.version ?? 0), bookkeepingRows };
+    },
+  };
+}

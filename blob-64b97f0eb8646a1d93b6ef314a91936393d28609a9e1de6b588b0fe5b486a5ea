@@ -1,0 +1,61 @@
+{
+  "row": "validate-storage-type",
+  "event": "validate_storage_type",
+  "pinned_file": "card-mod-carrierwave-0.20.0/set/abstract/attachment/01_storage_type.rb",
+  "pinned_declaration": "event :validate_storage_type, :validate, on: :save do",
+  "pinned_declaration_line": 8,
+  "pinned_body": "  errors.add :storage_type, unknown_storage_type unless known_storage_type?",
+  "pinned_body_lines": [
+    {
+      "line": 9,
+      "text": "  errors.add :storage_type, unknown_storage_type unless known_storage_type?"
+    }
+  ],
+  "pinned_message_method": "  t :carrierwave_unknown_storage_type, new_storage_type: storage_type",
+  "locale_file": "card-mod-carrierwave-0.20.0/config/locales/en.yml",
+  "not_executed": {
+    "method": "known_storage_type?",
+    "why": "the pinned body asks CarrierWave::FileCardUploader::STORAGE_TYPES and the carrierwave library is not in the pinned gemset, so the predicate is answered by the scenario"
+  },
+  "scenarios": [
+    {
+      "scenario": "a known storage type",
+      "storage_type": "local",
+      "known_storage_type": true,
+      "errors_added": [],
+      "calls": [
+        {
+          "call": "known_storage_type?",
+          "arguments": [
+            true
+          ]
+        }
+      ],
+      "outcome": {
+        "raised": null
+      }
+    },
+    {
+      "scenario": "a storage type outside the known set",
+      "storage_type": "bogus",
+      "known_storage_type": false,
+      "errors_added": [
+        {
+          "attribute": "storage_type",
+          "message": "unknown storage type bogus"
+        }
+      ],
+      "calls": [
+        {
+          "call": "known_storage_type?",
+          "arguments": [
+            false
+          ]
+        }
+      ],
+      "outcome": {
+        "raised": null
+      }
+    }
+  ]
+}

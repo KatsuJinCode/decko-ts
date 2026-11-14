@@ -1,0 +1,445 @@
+# Independent release-checker review and addenda
+
+These are the complete GitHub comment bodies from the independent reviewer of the first correction. Their frozen subject is 7c24b1dfa4f5b5c17b4e942b8dfbddd96a06872c, not the later follow-up. Original source/probes remain in the registered reviewer output. Subsequent lead corrections do not alter these original findings.
+
+Source: https://github.com/KatsuJinCode/decko-ts/issues/91#issuecomment-6533390393
+
+Body SHA-256: 14d0a40047d6361b7f4469002235be67f05f6555a5ea24d576ebf57a0bd32a9d
+
+# Independent adversarial review — Decko TS local release checker repair (issue 91)
+
+Reviewer: MiniMax Code in `C:\localProjects\decko-ts-port-integration` (Relay 1212), session `mvs_bff34fa838044ac897ec1ec72ebaa096`.
+Read-only reviewer. Not the author of the repair.
+
+Subject package under review (hashes confirmed, not assumed):
+
+| file | SHA-256 |
+|---|---|
+| `scripts/release-check.mjs` | `c1d16122c16b655c42cb48f349ebe6dbb29bd0c427e8660162e02f12c6f5eef7` |
+| `scripts/release-check-evidence.mjs` | `a1da88026d70671102bd863baef64cac4e345ecd5e615127ce113d33ca47cc14` |
+
+Dependency closure read and hashed: `tools/run-node-tests.mjs` (`28a78822…`), `tools/node-test-runners.mjs` (`747ae627…`), `tools/test-gates.mjs` (`c9e64d63…`), `tools/oracle/validate-api-key-view-capture.mjs` (`e2a90e1e…`), `vitest.config.ts` (`846fbb48…`), `package.json`, `KNOWN_FAILURES.md`, and the installed machine reporter schema (`vitest` 5.0.1, `node_modules/vitest/dist/chunks/index.DzobfTyw.js`).
+
+Environment actually installed: node `v24.22.1`, vitest `5.0.1`, rolldown `1.2.9`.
+
+Repository state: `KatsuJinCode/decko-ts`, confirmed `isPrivate: true` before anything was written here.
+
+## Scope and constraints held
+
+No implementation edits (the checkout is byte-clean: `git status --porcelain -uall` is empty at the end of the review). No settings changed, no dependencies installed, no sessions killed, no whole release battery run. No native/reference/cloud/browser test, no paid API probe, no production database access. Only focused Node tests and small local synthetic child runners over existing dependencies, all processes hidden and silent, with only my own fixtures removed after their children exited. No contact with Ethan. Nothing published publicly.
+
+The author's own 56 assertions and typecheck are treated as claims. Full parity remains open; **this review does not call the port complete**.
+
+---
+
+## Verdict
+
+The repair is real and the three documented defects are genuinely fixed — I reproduced the old failure modes from `before.json` and confirmed the new classifier refuses all of them (21 adversarial scenarios, 0 violations), and I exercised the checker against the **real** installed Vitest 5.0.1 reporter and the **real** `node:test` runner rather than against synthetic reports.
+
+Six findings remain. None of them is a false pass of a clean battery; they are evidence-completeness, provenance and honesty gaps in a checker whose purpose is to be trustworthy about what it proves. Three are Medium, three are Low.
+
+**One process note first, because it bears on how this comment should be read:** the review checkout advanced one commit *during* the review — HEAD moved from `7c24b1dfa4f5b5c17b4e942b8dfbddd96a06872c` to `b4f31236c6e88549741d85b477dbf68d850650c0` ("Retain edit and board permission status countercontrols", 2026-10-30 13:45:20 -0700). That commit touched 3 files (two doc artifacts and one test file) and did **not** touch the subject package or its closure. I re-verified at the new HEAD: both subject hashes still match the table above, the closure hashes are unchanged, and the inventory counts are identical (127 node / 1174 vitest / 15 excluded). The findings below therefore apply to the frozen package. Total tracked+unignored files moved 6414 → 6415.
+
+---
+
+## Findings
+
+### F-1 — Medium — `tools/test-gates.mjs` decides the battery's inventory but is not source-qualified in any retained evidence
+
+**Where:** `scripts/release-check.mjs:8` (import), `scripts/release-check.mjs:64-74` (`testPlan`), `scripts/release-check.mjs:168` (the hash list that omits it).
+
+`testPlan()` excludes a file from the battery when `classify(file) === 'benchmarks'`, and `classify` comes from `tools/test-gates.mjs`. That file therefore materially changes *which tests run* — on this tree it excludes 15 files. But its SHA-256 appears in neither the runtime evidence (`report.checkerSources`, `scripts/release-check.mjs:168`) nor the published artifact (`docs/reports/release-battery-evidence-2026-10-30.checks.json`, whose `sourceHashes` cover 6 files and do not include it).
+
+**Reproduction** — `r-b-inventory.mjs` section B5, against the frozen checker:
+
+```
+imported by the checker    : tools/node-test-runners.mjs, tools/test-gates.mjs, tools/oracle/validate-api-key-view-capture.mjs
+   NOT HASHED: tools/test-gates.mjs
+```
+
+and the checker's own `summary.json` from a live default CLI run:
+
+```
+checkerSources={
+  "scripts/release-check.mjs": "c1d16122c16b655c42cb48f349ebe6dbb29bd0c427e8660162e02f12c6f5eef7",
+  "scripts/release-check-evidence.mjs": "a1da88026d70671102bd863baef64cac4e345ecd5e615127ce113d33ca47cc14",
+  "tools/run-node-tests.mjs": "28a78822c05cbcf4d1412b52c0ba4b169b65fa2b449000a8ff80fef2f0684d78",
+  "tools/node-test-runners.mjs": "747ae6271d04086d043c58ce2e85574aaff805901c4fdf98f16e6907702c4cb3",
+  "tools/oracle/validate-api-key-view-capture.mjs": "e2a90e1e9efb06c681451e49a869c1825951975b38557ee29f6e83b4d4c0c539"
+}
+```
+
+**Why it matters:** a change to the gate classifier silently changes the battery's membership, and nothing in the retained evidence says which version of that classifier made the decision. `docs/core/governance.md` requires every count and claim to be re-measurable from the published tree; this decision is not.
+
+### F-2 — Medium — `tools/test-gates.mjs check` can never fail; the guard its own header advertises is inert
+
+**Where:** `tools/test-gates.mjs:102-105` (`classify` falls back to `DEFAULT_GATE`), `tools/test-gates.mjs:129-144` (the `check` command), advertised at `tools/test-gates.mjs:18-19`.
+
+`classify()` returns one of the five known gate ids or `'correctness'`. The check's condition is `!known.has(gate) && gate !== DEFAULT_GATE`, which is therefore never true for any input. The file's header states: *"check is wired into the correctness gate, so adding an unclassified test fails the suite instead of silently joining the constant path."* It does not — an unclassified test silently joins `correctness`.
+
+**Reproduction** — `r-b-inventory.mjs` section B4:
+
+```
+   classify("src/whatever.test.ts") = "correctness" -> check would NOT FLAG
+   classify("tests/unclassified.test.ts") = "correctness" -> check would NOT FLAG
+   classify("zzz/never-seen.test.ts") = "correctness" -> check would NOT FLAG
+   classify("benchmarks/x.test.ts") = "benchmarks" -> check would NOT FLAG
+"check" can only flag a file whose gate id is neither a known gate nor 'correctness': UNREACHABLE - the check can never fail
+```
+
+**Why it matters:** this is a documented guard in the checker's own dependency closure, and `npm test` is `node tools/test-gates.mjs run correctness` — the constant path is what CI actually runs.
+
+### F-3 — Medium — the recorded working-tree state never gates the verdict, and the retained evidence was produced on a dirty tree
+
+**Where:** `scripts/release-check.mjs:175-176` writes `report.sourceCommit` and `report.sourceStatus`; neither is read anywhere else (`sourceStatus` occurs exactly once in the file — the write). The battery runs regardless at `scripts/release-check.mjs:188`.
+
+The checker records the commit and the dirty-tree state, then never consults them. A battery can report *"Local battery passed"* on a tree whose committed source differs from the executed source.
+
+This is not hypothetical — the author's own retained artifact shows it happened. `docs/reports/release-battery-evidence-2026-10-30.admission.json` records:
+
+```
+sourceCommit: 0b393d84ae1bdb14b1d5ee8d6e22a8cf64f86b8b
+sourceStatus: " M scripts/release-check.mjs\n M vitest.config.ts\n?? docs/decisions/0015-release-battery-evidence.md\n?? scripts/release-check-evidence.mjs\n?? tests/tools/release-check-evidence.test.mjs\n?? tests/tools/release-check-runner.test.mjs\n"
+```
+
+That run happened with **the checker itself modified** and **`scripts/release-check-evidence.mjs` untracked**, and with `vitest.config.ts` modified — the very base config the generated Vitest config merges. The natural explanation is that the repair was still in progress; the defect is that the checker recorded this and did not act on it, and the evidence report `docs/reports/release-battery-evidence-2026-10-30.md` does not mention it. A reader of that report cannot tell the run happened on a modified tree.
+
+**Reproduction** — `r-b-inventory.mjs` section B6:
+
+```
+occurrences of "sourceStatus" in scripts/release-check.mjs: 1
+   report.sourceStatus=execFileSync('git',['-C',root,'status','--porcelain'],{encoding:'utf8',windowsHide:true});
+```
+
+**Why it matters:** "Local battery passed" currently does not mean "this commit passed". Given `AGENTS.md`'s publication gate, a dirty tree should be an explicit admission failure rather than an unremarked field.
+
+### F-4 — Low/Medium — three machine-report guards and one file-status branch are inert against the installed reporter (vitest 5.0.1)
+
+**Where:** `scripts/release-check-evidence.mjs:36-48` (`numRuntimeErrorTestSuites`, `wasInterrupted`, `openHandles`) and `scripts/release-check-evidence.mjs:56` (`file.status === 'pending' || file.status === 'skipped'`).
+
+The installed reporter emits exactly these keys (`node_modules/vitest/dist/chunks/index.DzobfTyw.js:17864-17879`): `numTotalTestSuites, numPassedTestSuites, numFailedTestSuites, numPendingTestSuites, numTotalTests, numPassedTests, numFailedTests, numPendingTests, numTodoTests, snapshot, startTime, success, testResults, coverageMap`. It never emits `wasInterrupted`, `numRuntimeErrorTestSuites` or `openHandles`, and `testResults[].status` is only ever `'failed'` or `'passed'` (line 17859).
+
+**Reproduction** — every one of the seven real-reporter cases in `r-d-runner-reality.mjs` printed:
+
+```
+REAL reporter has fields  : wasInterrupted=false numRuntimeErrorTestSuites=false openHandles=false
+```
+
+(Positive control: `numTotalTests` *is* present in the same file — the grep was re-run with a narrow path after a first broad grep returned a false negative caused by dependency-directory ignore rules.)
+
+**Why it matters:** the evidence report claims *"Failed, skipped, pending, interrupted or incomplete required evidence cannot pass."* Interruption is in practice caught only by the non-zero process exit, and runtime-error suites only by the suite counters — the three named machine checks never execute. **No false pass results** (skips are still caught by the assertion counters, verified below), but the documented evidence model overstates the machine checks that exist.
+
+### F-5 — Low — `executePlan` requires the caller to pre-create its output directory
+
+**Where:** `scripts/release-check.mjs:102` (`jsonFile` with `flag:'wx'`), `:126`, `:137`.
+
+The exported `executePlan` writes `node-files.json` / `vitest.config.mjs` into `out` without creating it and throws `ENOENT` if `out` is absent. The CLI path is safe — `runReleaseCheck` does `mkdirSync(out,{recursive:true})` at `scripts/release-check.mjs:164` — but the exported API's contract is not self-sufficient. My harness hit this twice with raw `ENOENT` before creating the directory. Latent, not a CLI defect.
+
+### F-6 — Low — the three inventory sources use three different file-name grammars
+
+**Where:** `scripts/release-check.mjs:67` accepts `.cts`/`.jsx`; `tools/node-test-runners.mjs:20` and `tools/test-gates.mjs:81` do not.
+
+`testPlan` accepts `(?:ts|mts|cts|tsx|js|mjs|cjs|jsx)`; both gate-side inventory functions accept `(?:ts|mts|js|mjs|cjs)`. On this tree the three agree exactly — the only difference is the 15 intentional benchmark exclusions (B2: 0 files selected by the checker but absent from `listTestFiles`; 0 node files selected by the checker but absent from `nodeTestFiles`). A future `.test.cts` file would be selected by the checker and invisible to both gate tools, so it would escape the gate accounting entirely.
+
+---
+
+## What I verified positively (independently, not accepted on trust)
+
+**1. The three documented defects are genuinely fixed.** `before.json` records the old classifier (`ca98301d98fe7cf6763a3909d656ecdca2952bc25663760a1aaa67f83cd5ca65`) returning `PASS` for `{passed:1, failed:0, skipped:3}` and for an exit-1 process with passing counters, and the aggregate accepting `BASELINE`. Against the frozen classifier, my 21-scenario matrix produced **0 violations**:
+
+```
+ok | exit 1, counters look clean        -> INCOMPLETE | Runner exit: 1
+ok | killed by signal                   -> INCOMPLETE | Runner terminated by signal: SIGKILL; Runner exit: null
+ok | spawn failure (ENOENT)             -> INCOMPLETE | Runner error: spawn ENOENT; Runner exit: null
+ok | missing machine report             -> INCOMPLETE | Machine evidence missing or malformed
+ok | malformed report JSON              -> INCOMPLETE | Machine evidence missing or malformed
+ok | partial skip: 1 pass + 3 skip      -> INCOMPLETE | 3 required assertions skipped or pending
+ok | todo only                          -> INCOMPLETE | 1 required assertions skipped or pending; No passing assertions observed
+ok | zero passing assertions            -> INCOMPLETE | No passing assertions observed
+ok | reporter did not record success    -> INCOMPLETE | Reporter did not record success
+ok | termination facts missing          -> INCOMPLETE | Runner termination facts missing
+ok | clean pass (control)               -> PASS
+ok | failure in a known file            -> BASELINE   | failed=[] known=["tests/known.test.ts"]
+ok | failure in an unknown file         -> FAIL       | failed=["tests/known.test.ts"] known=[]
+ok | known file + new file              -> FAIL       | failed=["tests/new.test.ts"] known=["tests/known.test.ts"]
+ok | later stage omitted after earlier failure -> batteryPassed=false | Stage inventory mismatch; A required stage failed or is incomplete
+ok | extra unexpected stage             -> batteryPassed=false | Stage inventory mismatch
+ok | duplicate stage name               -> batteryPassed=false | Stage inventory mismatch
+ok | BASELINE stage                     -> batteryPassed=false | A required stage failed or is incomplete
+ok | empty expected inventory           -> batteryPassed=false | Invalid expected stage inventory; Stage inventory mismatch
+A-VERDICT violations=0
+```
+
+**2. The checker reconciles correctly against the REAL Vitest 5.0.1 reporter.** I drove the frozen `executePlan` over synthetic fixtures and fed the real machine report back through `vitestEvidence`:
+
+| case | real reporter | checker verdict |
+|---|---|---|
+| D1 pass only | `numTotalTests=1 numPassedTests=1` | **PASS** |
+| D2 pass + skip | `numPendingTests=1` | **INCOMPLETE** — "1 required assertions skipped or pending" |
+| D3 pass + todo | `numPendingTests=0 numTodoTests=1` | **INCOMPLETE** — todo arithmetic correct, no double-count |
+| D4 with failure | `numFailedTests=1 success=false` | **FAIL** — "Runner exit: 1; Reporter did not record success; 1 failed assertions" |
+| D5 collection error | file `status=failed`, `assertionResults=[]` | **FAIL** — flagged via `failedFiles` even with 0 failed assertions |
+| D6 file with no tests | `numTotalTests=0`, file `status=failed` | **FAIL** — a zero-assertion file cannot pass vacuously |
+| D7 node:test stage | real `node:test` runner | **PASS** — `{passed:1, failed:0, skipped:0}`, exit 0 |
+
+D5 and D6 matter most: the "0 failed assertions" reason string is correct *and* the file is still failed, and an empty file is a failure rather than a silent zero.
+
+**3. The `NODE_TEST_CONTEXT` boundary correction works, and the hazard is real.** Same child, two launch paths:
+
+```
+===== E1: direct spawn WITH inherited NODE_TEST_CONTEXT=child-v8 =====
+exit=1
+{"runner":"node:test","files":1,"filesExecuted":0,"summary":{"success":true,"counts":{"tests":0,...}},"failures":0,"pass":false}
+(node:71476) Warning: node:test run() is being called recursively within a test file. skipping running files.
+
+===== E2: same child through the frozen runCommand (strips NODE_TEST_CONTEXT) =====
+exit=0
+{"runner":"node:test","files":1,"filesExecuted":1,"summary":{"success":true,"counts":{"tests":1,"passed":1,...}},"failures":0,"pass":true}
+
+===== E3: does the frozen runCommand strip NODE_TEST_CONTEXT? =====
+child saw: {"NODE_TEST_CONTEXT":null}
+```
+
+**4. Raw output bytes are preserved.** `runCommand` returns the child's bytes unmodified: `hex: 00fffe410a80 (expected 00fffe410a80) — byte-identical: true`.
+
+**5. The admission gate refuses what it must.** Using my own synthetic pair (not the author's fixture) in `--admission-only` so no framework stage could start:
+
+| case | result |
+|---|---|
+| G1 well-formed matching pair | `api-key-capture: PASS`, exit 0, "Preflight only; the test battery did not run." |
+| G2 expectation pin disagrees | `INCOMPLETE — producer_sha256 mismatch`, exit 3 |
+| G3 `CAPTURE_ERROR:` body | `INCOMPLETE — failed or missing rendered body`, exit 3 |
+| G4 effective actor ≠ bot | `INCOMPLETE — current/effective actor mismatch after render`, exit 3 |
+| G5 capture file absent | `INCOMPLETE — ENOENT`, exit 3 |
+
+**6. No preflight mode ever claims the battery ran, and the default refuses before starting expensive stages.**
+
+```
+F1 default, no capture   -> exit 3, "Local battery NOT complete.", batteryPassed=false, notRun=["vitest","node"]
+F2 --markers-only         -> exit 0, "Preflight only; the test battery did not run.", batteryPassed=false
+F3 --admission-only       -> exit 3, "Preflight only; the test battery did not run.", batteryPassed=false
+F4 --not-an-option        -> exit 3, "Release battery refused: Unknown option: --not-an-option"
+F5 both preflights        -> exit 3, "Release battery refused: Select only one preflight scope"
+```
+
+**7. The base Vitest config cannot silently widen or suppress the inventory.** `vitest/config` re-exports vite's `mergeConfig`, and vite concatenates arrays (`node_modules/vite/dist/node/chunks/node.js:2847-2849`), so the base `reporters`/`outputFile`/`exclude` survive the merge — but the base config sets **no** `test.include`, so the selected inventory is exactly the checker's list, and **0 of the 1174 selected Vitest files** are matched by the base `exclude` list (41 patterns). 106 selected *node* files match exclude patterns, which is harmless because the node runner ignores Vitest's exclude.
+
+**8. Three inventory sources agree exactly** (B2) — the only difference is the 15 intentional benchmark exclusions.
+
+**9. The author's retained TAP is real:** `1..56`, `# pass 56`, `# fail 0`, `# cancelled 0`, `# skipped 0`, `# todo 0`, and `checks.json` records `runtime v24.22.1` / `vitest 5.0.1`, matching this machine exactly.
+
+---
+
+## What remains unverified
+
+- **The full battery was never run** (out of scope for this brief). The interaction of 1174 Vitest + 127 node files, the base config's `junit` and `skip-summary-reporter` reporters, `setupFiles`, and a real capture admission under one run are untested. In particular the base config's `junit` reporter writes `.test-results/vitest.xml` inside the checkout — I confirmed that path is ignored by `.test-results/.gitignore` so it does *not* pollute the checker's source inventory, but its behaviour under a real full run is untested.
+- `sourceUnchanged` across a full run (`scripts/release-check.mjs:192-195`) and the capture-mutation check `inputsUnchanged` (`scripts/release-check.mjs:196-201`) are **code-verified only** — both execute only after a full battery, which I did not run.
+- The capture's *provenance* (that it came from a real Ruby reference) is out of scope. The repo's own `fixtures/captured/api-key-views.json` is already known to be unverified — `tests/tools/api-key-view-capture-evidence.test.mjs:48-51` asserts it must fail with "observed actor evidence missing".
+- Whether the 15 excluded benchmark files *should* be excluded is a policy question I did not adjudicate.
+- I ran no native/reference/cloud/browser test, no paid API probe, and touched no production database.
+
+**Full parity remains open. This review does not call the port complete, and the retained evidence does not yet support a release verdict.**
+
+---
+
+## Raw evidence
+
+Retained under this reviewer's own registered scratch output (gitignored, inside the read-only checkout):
+
+`C:\localProjects\decko-ts-port-integration\.runtime\review-1212\`
+
+- `EVIDENCE-MANIFEST.json` — every retained artifact with size and SHA-256, plus the subject-package, dependency-closure and environment hashes named above.
+- `preserved/` — 38 raw run artifacts, including the real Vitest 5.0.1 JSON reports per case (`D1`…`D7`) with their raw stdout/stderr, and the CLI `summary.json` files.
+- `raw-r-a-verdict-matrix.txt` — the 21-scenario verdict matrix (Area 1).
+- `raw-r-b-inventory.txt` — inventory, exclude-overlap, gate-vacuity, checkerSources-coverage and sourceStatus-gating analysis (Area 2).
+- `raw-r-d-runner-reality.txt`, `raw-r-d-summary.json` — the real Vitest 5 / `node:test` runs and their reconciliation (Area 3).
+- `raw-r-e-nested-runner.txt` — `NODE_TEST_CONTEXT` hazard and fix, and the raw-byte check (Area 3).
+- `raw-r-f-claim-scope.txt` — the five CLI mode/exit-code runs (Area 4).
+- `raw-r-g-capture-admission.txt` — the five admission-gate runs (Area 4).
+- `r-*.mjs` — the exact scripts that produced the above, so every number above is re-derivable.
+
+All synthetic fixtures this review created were removed after their child processes exited; the checkout is byte-clean (`git status --porcelain -uall` empty).
+
+
+Source: https://github.com/KatsuJinCode/decko-ts/issues/91#issuecomment-6533432118
+
+Body SHA-256: 9817501228227b4b2cb04697c6b57b7c96f2eb3c7e3485726b49a26aad59a7d2
+
+## Correction to the commit state recorded above (reviewer follow-up)
+
+My main comment recorded the review against commit `7c24b1dfa4f5b5c17b4e942b8dfbddd96a06872c` and noted that the checkout had advanced to `b4f31236c6e88549741d85b477dbf68d850650c0` mid-review. The checkout has since advanced **twice more**, so let me state the final position precisely rather than leave a stale commit reference in the record.
+
+Final commit chain observed during this review:
+
+```
+7c24b1dfa4f5b5c17b4e942b8dfbddd96a06872c  (review start — the frozen package in the brief)
+b4f31236c6e88549741d85b477dbf68d850650c0  Retain edit and board permission status countercontrols
+bf0aee16b                               Record checker review ownership and request status evidence
+4a5327a8c1b000927feec30f821263061634f793 Describe package compatibility as pending release acceptance   (current HEAD)
+```
+
+**The findings are unaffected.** Re-verified at current HEAD `4a5327a8c1b000927feec30f821263061634f793` — every subject-package and dependency-closure hash still matches the table in my main comment:
+
+```
+MATCH   scripts/release-check.mjs                     c1d16122c16b655c42cb48f349ebe6dbb29bd0c427e8660162e02f12c6f5eef7
+MATCH   scripts/release-check-evidence.mjs            a1da88026d70671102bd863baef64cac4e345ecd5e615127ce113d33ca47cc14
+MATCH   tools/run-node-tests.mjs                      28a78822c05cbcf4d1412b52c0ba4b169b65fa2b449000a8ff80fef2f0684d78
+MATCH   tools/node-test-runners.mjs                   747ae6271d04086d043c58ce2e85574aaff805901c4fdf98f16e6907702c4cb3
+MATCH   tools/test-gates.mjs                          c9e64d638b08e72e492d72c52c85aa8d37196a78737b495cd66f28a4081dd7aa
+MATCH   tools/oracle/validate-api-key-view-capture.mjs e2a90e1e9efb06c681451e49a869c1825951975b38557ee29f6e83b4d4c0c539
+MATCH   vitest.config.ts                              846fbb4825151d711a0ceec0edbc2bac327e443780bdc1c049223c6067d77e52
+MATCH   KNOWN_FAILURES.md                             1cd776b037fb60e21ad30c6ff064ebcbb7e73c5be42de846d73c4439ba520461
+ALL SUBJECT + CLOSURE HASHES STILL MATCH
+```
+
+`package.json` did change in `4a5327a8c`, and I checked what that change actually is rather than assuming it was inert:
+
+- **Only the `description` string changed** — from *"Parity against the Ruby engine is byte-for-byte and is re-measured per release — see README…"* to *"Compatibility is evaluated with source-pinned behavioral checks; release acceptance remains pending…"*.
+- `devDependencies.vitest` is still `^5.0.1`, `devDependencies.rolldown` is still `1.2.9`, `engines.node` is still `>=22.5`, and `scripts.test` is still `node tools/test-gates.mjs run correctness`.
+- The **installed** reporter is still `vitest 5.0.1`, which is the version whose JSON schema I read and against which I ran every real-reporter case.
+
+So the closure is functionally identical and the `vitest.config.ts` I merged and the reporter I exercised are the same bytes. Nothing in my findings depends on the changed text. (The new description is in any case a more accurate statement than the one it replaced — `AGENTS.md` asks that pending parity/performance claims not be repeated as measured facts, and the old wording asserted byte-for-byte parity as a standing property.)
+
+The retained `EVIDENCE-MANIFEST.json` under my scratch path has been updated with the full commit chain, both `package.json` hashes with the delta explained, and this final verification.
+
+One consequence worth recording for whoever quotes this review: because the tree advanced during the review, the evidence in `docs/reports/release-battery-evidence-2026-10-30.admission.json` was produced at `sourceCommit 0b393d84ae1bdb14b1d5ee8d6e22a8cf64f86b8b` on a **dirty** tree (see F-3 in my main comment), while the subject package I reviewed is the one now at `4a5327a8c`. Anyone relying on that admission artifact should re-run the default CLI on the tree they intend to quote, and should treat the dirty-tree gap in F-3 as the reason it needs re-running rather than re-reading.
+
+The review is complete and unchanged in substance: 6 findings (3 Medium, 3 Low), the three documented defects independently confirmed fixed, and full parity still open.
+
+
+Source: https://github.com/KatsuJinCode/decko-ts/issues/91#issuecomment-6533593094
+
+Body SHA-256: 5434b0a36ac7579b49e764c4431d6905f8c57695225d97a2396ac3314e1acd72
+
+## Additional frozen-pin verification, and an upgrade to F-3
+
+This comment is a continuation of my review, still pinned to **`7c24b1dfa4f5b5c17b4e942b8dfbddd96a06872c`** as instructed. It adds three things: the end-to-end results I could not previously produce, an upgrade of F-3 from a code-reading observation to an empirically reproduced one, and an explicit note on later working-tree state.
+
+### Method: the frozen checker, run without touching the shared checkout
+
+To keep the review frozen while the shared branch advanced, I extracted the pinned closure out of git into my own scratch tree (`git show 7c24b1df:<path>`), preserving the `scripts/` + `tools/` layout so the checker's own relative imports resolve to the frozen closure rather than the live working tree. The pinned hashes were verified on extraction:
+
+```
+MATCH   scripts/release-check.mjs                c1d16122c16b655c42cb48f349ebe6dbb29bd0c427e8660162e02f12c6f5eef7
+MATCH   scripts/release-check-evidence.mjs       a1da88026d70671102bd863baef64cac4e345ecd5e615127ce113d33ca47cc14
+        tools/run-node-tests.mjs                 28a78822c05cbcf4d1412b52c0ba4b169b65fa2b449000a8ff80fef2f0684d78
+        tools/node-test-runners.mjs              747ae6271d04086d043c58ce2e85574aaff805901c4fdf98f16e6907702c4cb3
+        tools/test-gates.mjs                     c9e64d638b08e72e492d72c52c85aa8d37196a78737b495cd66f28a4081dd7aa
+        tools/oracle/validate-api-key-view-capture.mjs e2a90e1e9efb06c681451e49a869c1825951975b38557ee29f6e83b4d4c0c539
+loaded frozen module from: .../.runtime/review-1212/frozen/scripts/release-check.mjs
+```
+
+I drove the frozen `runReleaseCheck` with an **injected `execute`**, so the machine reports were fabricated and **no child process was spawned and no test suite ran**. This is not a whole-battery run; it exercises the checker's own decision logic only. The `root` argument was the real checkout, so the source inventory was the real tree — which is what makes the result below meaningful.
+
+### Result 1 — the frozen checker CAN produce a passing battery
+
+This was the one question my earlier work had not answered: every scenario I had tested could only show a battery *failing*. With a well-formed synthetic capture/expectation pair and fabricated passing machine reports for both stages:
+
+```
+===== R-J1-happy-path (frozen 7c24b1d) =====
+exitCode              : 0
+batteryPassed         : true
+problems              : []
+sourceUnchanged       : true
+rows                  : [{"stage":"source","result":"PASS",...},{"stage":"api-key-capture","result":"PASS",...},
+                         {"stage":"vitest","result":"PASS","reason":""},{"stage":"node","result":"PASS","reason":""}]
+capture inputsUnchanged: true
+```
+
+The checker is not vacuously incapable of passing, and the four-stage inventory lines up exactly (`expectedStages` = source, api-key-capture, vitest, node). The success path is real.
+
+### Result 2 — F-3 is now empirically reproduced, not just read
+
+In the same run the frozen checker recorded this and still returned `batteryPassed: true`, `exitCode: 0`, `problems: []`:
+
+```
+sourceStatus (recorded): " M docs/decisions/0015-release-battery-evidence.md
+ M docs/reports/release-battery-evidence-2026-10-30.md
+ M scripts/release-check-evidence.mjs
+ M scripts/release-check.mjs
+ M tests/tools/release-check-evidence.test.mjs
+ M tests/tools/release-check-runner.test.mjs
+ M tools/node-test-runners.mjs
+ M tools/test-gates.mjs
+ M vitest.config.ts
+?? tests/tools/test-file-inventory.test.mjs
+?? tools/test-file-inventory.mjs
+"
+```
+
+So the frozen checker produced a **passing release battery on a working tree with eleven modified or untracked paths** — and among them `M scripts/release-check.mjs` and `M scripts/release-check-evidence.mjs`, i.e. the very files that produced the verdict were themselves different bytes from the ones executing. The checker recorded the state, ignored it, and reported success.
+
+That is F-3 as a reproduced behaviour rather than an inference from source lines, and it is the finding I would fix first: a "Local battery passed" that says nothing about which source was tested is not a release verdict.
+
+### Result 3 — the two guards I had marked "code-verified only" are now verified
+
+Both of these only execute after the stages run, which is why my earlier report could only reason about them from source.
+
+**Capture/expectation bytes change mid-run** → correctly refused:
+
+```
+===== R-J2-capture-changed-mid-run (frozen 7c24b1d) =====
+exitCode              : 3
+batteryPassed         : false
+rows: [{"stage":"api-key-capture","result":"INCOMPLETE","reason":"Capture or expectation bytes changed during the battery"},
+       {"stage":"vitest","result":"PASS"},{"stage":"node","result":"PASS"}]
+capture inputsUnchanged: false
+```
+
+Note the shape of it: both framework stages still PASS, and the capture invalidation alone is enough to stop the battery. Correct.
+
+**A selected test source changes during a stage** → correctly refused, on a private fixture so the checkout is untouched:
+
+```
+===== R-J3: a selected test source changes during a stage (fixture root) =====
+stage result        : INCOMPLETE
+invalidEvidence     : Selected test sources changed during the stage
+sourceUnchanged     : false
+counts              : null
+reason              : Machine evidence missing or malformed
+```
+
+So of everything I set out to qualify, only two items remain unverified: the **full** battery itself (out of scope by instruction) and the **provenance** of a real actor capture (out of scope — the repo's own `fixtures/captured/api-key-views.json` is already known to be unverified).
+
+---
+
+## Later working-tree state (explicitly NOT part of the frozen review)
+
+Recorded because the instruction was to note it where relevant, and because it bears directly on F-1, F-3 and F-6. **Nothing below changes any finding above, which stand against `7c24b1df`.**
+
+While this review was running, the shared working tree began carrying an **uncommitted** in-progress revision of the checker itself. At the time of writing:
+
+```
+ M docs/decisions/0015-release-battery-evidence.md
+ M docs/reports/release-battery-evidence-2026-10-30.md
+ M scripts/release-check-evidence.mjs          6f70df82c2fc8dc118fb17a68123611a8f9c5bfdbce93f54a5cee994b7ea989c
+ M scripts/release-check.mjs                   ad514950bf1973baf5b5019307911bacef1494cd800c0a62e07c3757f86531c6
+ M tests/tools/release-check-evidence.test.mjs
+ M tests/tools/release-check-runner.test.mjs
+ M tools/node-test-runners.mjs
+ M tools/test-gates.mjs
+ M vitest.config.ts
+?? tests/tools/test-file-inventory.test.mjs
+?? tools/test-file-inventory.mjs
+```
+
+HEAD is still `4a5327a8c1b000927feec30f821263061634f793`, so these are uncommitted working-tree edits, not committed history. (My previous follow-up comment recorded a clean tree at that moment; that was accurate when written and is superseded by this observation.)
+
+Reading the diff — purely as an observation about work in progress, not as a review of it — the in-progress revision appears to target three of my findings:
+
+- **F-3**: a new `qualifyRevision(before, after)` in `scripts/release-check-evidence.mjs` refuses a non-empty `git status --porcelain --untracked-files=all` ("Uncommitted source before/after the battery") and refuses a commit change during the run. When I exercised this revision it **did** refuse my dirty tree with exactly those problems.
+- **F-1**: an expanded `CHECKER_SOURCE_FILES` now covers `tools/test-gates.mjs`, `tools/test-file-inventory.mjs`, `vitest.config.ts`, `package.json`, `package-lock.json` and `KNOWN_FAILURES.md` — i.e. the gate classifier that decides the inventory becomes source-qualified. (`package-lock.json` exists and is tracked, so the hash list will not fault.)
+- **F-6**: a new shared `tools/test-file-inventory.mjs` exports `isTestFile` with the checker's own grammar `(?:ts|mts|cts|tsx|js|mjs|cjs|jsx)`, which appears to unify the three inventories that previously disagreed.
+
+Two notes for whoever lands it, offered as observations rather than findings: the new module is currently **untracked**, so a clone that does not receive it cannot import the checker at all; and a clean-tree requirement means a passing battery will require a pristine checkout with no untracked files, which is stricter than the frozen behaviour but is the correct direction.
+
+---
+
+## Status
+
+Unchanged from my main comment: **6 findings (3 Medium, 3 Low)**, the three documented defects independently confirmed fixed against the real Vitest 5.0.1 reporter and the real `node:test` runner, the passing path now confirmed reachable end to end against the frozen pin, and **full parity still open**. This review does not call the port complete.
+
+Raw evidence for this addition: `.runtime/review-1212/raw-r-j-frozen-end-to-end.txt` (frozen extraction with hash verification, happy path, capture mutation, source mutation), `.runtime/review-1212/r-j-frozen-end-to-end.mjs` (the script that produced it), and the frozen closure itself under `.runtime/review-1212/frozen/` — all inside my registered scratch output, with `EVIDENCE-MANIFEST.json` updated to name their hashes. The shared checkout was not modified to produce any of it.
+
+
+End of preserved independent comments.

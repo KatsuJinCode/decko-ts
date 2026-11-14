@@ -1,0 +1,19 @@
+{
+  "source": "card-1.110.0/lib/generators/deck/templates/config/routes.rb.erb",
+  "guardLine": "    if !Rails.env.production? && Object.const_defined?( :JasmineRails )",
+  "mountBlock": [
+    "    if !Rails.env.production? && Object.const_defined?( :JasmineRails )",
+    "      engine = Object.const_get(:JasmineRails).const_get :Engine",
+    "      mount engine => \"#{rel_root}/specs\"",
+    "    end"
+  ],
+  "routeLines": [
+    "Decko.application.routes.draw do",
+    "      mount engine => \"#{rel_root}/specs\"",
+    "  mount Decko::Engine => \"/\""
+  ],
+  "gemCount": 68,
+  "jasmineNamedGems": [],
+  "jasmineDefiningGems": [],
+  "mountCanFire": false
+}

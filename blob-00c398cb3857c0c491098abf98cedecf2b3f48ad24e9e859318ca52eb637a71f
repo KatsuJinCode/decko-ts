@@ -1,0 +1,306 @@
+// The one seam every storage provider plugs into. The adapter contract
+// follows the provider-adapter requirement in docs/README.md:
+// declare transaction/isolation, rollback, search, collation, generated-ID,
+// time and resource-limit behavior, and reject unsupported operations
+// explicitly rather than silently weakening semantics.
+//
+// Rules: the engine never imports vendor SDKs. Adapters implement this
+// interface per provider (D1, libSQL-over-HTTP, ...). Every adapter passes
+// the same conformance suite.
+
+export interface SQLQueryResult<T = unknown> {
+  rows: T[];
+  rowsAffected: number;
+  lastInsertRowId?: number | bigint;
+  /** Provider-reported rows read by the engine (D1 meta.rows_read). UNDEFINED
+   *  means the runtime did not surface it (local-sqlite has no equivalent;
+   *  D1 in production reports a number, workerd's local D1 emulation may
+   *  also be undefined). The deploy/worker-metrics wrapper never silently
+   *  invents a value — see worker-metrics.ts for the ESTIMATE fallback. */
+  rowsRead?: number;
+  /** Provider-reported rows written by the engine (D1 meta.rows_written).
+   *  Same undefined semantics as rowsRead. */
+  rowsWritten?: number;
+}
+
+export interface SQLStatement {
+  sql: string;
+  params: unknown[];
+  /** Reject the entire batch before executing a statement if it would join
+   *  a caller-owned transaction. Requires the adapter's positive
+   *  standaloneBatchAdmission guarantee; ordinary batches are unchanged. */
+  requireStandaloneTransaction?: true;
+}
+
+/** A lost acknowledgement does not establish whether a mutation committed.
+ * Callers must reconcile persisted state, never blindly replay the write or
+ * destroy external files on the assumption that rollback was confirmed. */
+export class DatabaseOutcomeUnknownError extends Error {
+  readonly code = "database-outcome-unknown";
+  readonly outcome = "unknown";
+  readonly retrySafe = false;
+
+  constructor(readonly operation: "statement" | "commit" | "rollback", cause: unknown) {
+    const detail = cause instanceof Error ? cause.message : String(cause);
+    super(`Database ${operation} outcome is unknown after a transport reset or unconfirmed acknowledgement; reconcile persisted state before retrying: ${detail}`, { cause });
+    this.name = "DatabaseOutcomeUnknownError";
+  }
+}
+
+export interface SQLDatabaseDriver {
+  query<T = unknown>(sql: string, params: unknown[]): Promise<SQLQueryResult<T>>;
+  /** Runs the statements in order and returns their results in order.
+   *  Whether a batch is atomic on its own (outside transaction()) is the
+   *  adapter's `transactionGuarantee.atomicBatch`. */
+  batch(statements: SQLStatement[]): Promise<SQLQueryResult[]>;
+  /**
+   * Runs `work` as one atomic unit. A confirmed rollback undoes every write;
+   * a confirmed commit persists them together. An acknowledgement failure at
+   * COMMIT or ROLLBACK throws DatabaseOutcomeUnknownError: rejection alone is
+   * not evidence of rollback. Do not replay that unit of work or remove its
+   * external files until its persisted state has been reconciled.
+   *
+   * Every statement issued through THIS driver object inside `work`'s call
+   * tree belongs to the transaction — attribution is by call tree
+   * (AsyncLocalStorage, src/server/transaction-statement-scope.ts), not by
+   * timing. A statement issued by an UNRELATED caller while a transaction
+   * is open does not join it: a standalone read runs beside the open
+   * transaction, a standalone write queues behind it as its own unit — the
+   * coupling that let an unrelated request's acknowledged write be rolled
+   * back by a save it never belonged to is closed. Where the runtime has no
+   * AsyncLocalStorage, attribution is impossible and a statement from an
+   * unrelated caller that lands mid-transaction keeps the historical
+   * shared-connection coupling. Transactions on one driver object never
+   * overlap: a second call waits until the first has committed or rolled
+   * back. Do not call transaction() from inside `work`; the nested call
+   * waits for the outer one and fails with TransactionLockTimeoutError.
+   *
+   * Absent on drivers that cannot make a unit of work atomic (read-only
+   * drivers). The write path refuses to save through such a driver rather
+   * than save non-atomically.
+   */
+  transaction?<R>(work: () => Promise<R>): Promise<R>;
+  /** What transaction() actually guarantees on this adapter. Present
+   *  exactly when transaction() is. */
+  readonly transactionGuarantee?: SQLTransactionGuarantee;
+  /**
+   * Speculatively fetch a set of reads and remember the answers, so the
+   * caller's own reads of them cost no round trip.
+   *
+   * The transport packing (docs/reports/live-save-transport-design-2026-10-18.md
+   * sections 3 and 5): the save's ladder is hundreds of pipeline POSTs that
+   * carry ONE statement each, because the engine awaits every answer before
+   * it issues the next statement. A card block's constant-id reads cannot be
+   * coalesced — no two are ever in flight together — so the only way to put
+   * them on one round trip is to fetch them BEFORE the engine asks.
+   *
+   * THE ADMISSION RULE. A statement joins the open run iff it binds no value
+   * produced inside that run, and the run is within the cap. A statement
+   * the run cannot vouch for is reported as `unverified`, and the caller's
+   * own read of it takes the blocking path.
+   *
+   * OPTIONAL: an adapter that does not implement it simply leaves the
+   * caller's reads on the ordinary path, and the caller's code must treat
+   * its absence as "no speculation happened" rather than as an error.
+   */
+  prefetchReads?(statements: SQLStatement[]): Promise<PrefetchOutcome[]>;
+  /**
+   * Runs `work` inside a READ PHASE: a scope in which a repeated read of the
+   * same (sql, args) is answered from the scope's first read instead of the
+   * wire.
+   *
+   * WHY IT EXISTS. A save's transaction ends with its COMMIT, and a read
+   * memo that lives only as long as the transaction dies with it. The save's
+   * notification phase runs AFTER the commit (Ruby's after_commit
+   * :integration_phase, director/phases.rb:4), so every read the phase made
+   * went to the wire on its own: the phase's own first read of a row could
+   * have answered the phase's later reads of the same row.
+   *
+   * WHAT THE SCOPE PROMISES. Only reads the scope itself made are answered
+   * from the scope's memo: an answer read before the scope opened answers a
+   * different question. A write inside the scope drops the memoized reads
+   * that depend on the table it writes, exactly as it does inside a
+   * transaction, and the scope's memo is gone when the scope closes, so a
+   * reader that comes after it never sees a stale answer.
+   *
+   * OPTIONAL: an adapter that does not implement it simply runs `work`, and
+   * the caller's code must treat its absence as "no read phase" rather than
+   * as an error.
+   */
+  readPhase?<R>(work: () => Promise<R>): Promise<R>;
+}
+
+/** One statement's outcome from a speculative prefetch. */
+export interface PrefetchOutcome {
+  /** The statement's answer, when the run vouched for it. */
+  result: SQLQueryResult | undefined;
+  /** True when the answer must not be used: the statement bound a value
+   *  produced inside its own run, so the run could not have answered it
+   *  correctly and the caller's own read must take the blocking path. */
+  unverified: boolean;
+}
+
+/**
+ * The guarantee an adapter's transaction() gives, stated per property so a
+ * host can see what differs between backends instead of assuming the
+ * strongest one. Every adapter with transaction() is atomic on failure;
+ * the other properties vary.
+ */
+export interface SQLTransactionGuarantee {
+  /** "native": the database's own BEGIN/COMMIT on one connection or
+   *  stream. "compensating": each statement commits as it runs and a
+   *  failure is undone by restoring the row images a journal recorded
+   *  before each write (used where the database offers no interactive
+   *  transaction, such as Cloudflare D1). */
+  readonly mechanism: "native" | "compensating";
+  /** A failure inside the unit of work leaves the database's rows as they
+   *  were before it started when rollback is confirmed. An unknown commit
+   *  acknowledgement is reported separately, not as a rollback. */
+  readonly atomicOnFailure: true;
+  /** Where an interrupted transaction (process killed mid-way) is undone:
+   *  "database" — by the database itself; "next-transaction" — the journal
+   *  survives and the next transaction to start restores it;
+   *  "next-transaction-or-read" — as "next-transaction", and the serving
+   *  read path restores it too the moment the lease is known expired, so
+   *  interrupted rows are never served. */
+  readonly crashRecovery: "database" | "next-transaction" | "next-transaction-or-read";
+  /** Whether a reader that does NOT share this driver object sees the
+   *  transaction's uncommitted writes: false for compensating adapters,
+   *  where each statement commits as it runs. On adapters that attribute by
+   *  call tree, a reader that shares the driver object but issues its
+   *  statement OUTSIDE the transaction's call tree does not see them either
+   *  (it reads beside the transaction); only statements issued inside the
+   *  transaction's own call tree see them. */
+  readonly readersIsolated: boolean;
+  /** Which writers are serialized against each other: "driver-object" —
+   *  transactions through the same driver object; "database" — every
+   *  transaction against the same database, through any driver object or
+   *  process. */
+  readonly serializedWriters: "driver-object" | "database";
+  /** Whether batch() is atomic on its own, outside transaction(). Inside
+   *  transaction() a batch is part of the transaction on every adapter. */
+  readonly atomicBatch: boolean;
+  /** batch() checks requireStandaloneTransaction on every input before any
+   *  execution, at its native admission boundary, and refuses an enclosing
+   *  transaction. Absent means this admission rule is unsupported. */
+  readonly standaloneBatchAdmission?: true;
+  /** Whether a rolled-back transaction gives back the AUTOINCREMENT ids it
+   *  consumed. false means ids skip after a rollback, as PostgreSQL
+   *  sequences do. */
+  readonly idsReusedAfterRollback: boolean;
+}
+
+/** A driver whose transaction() is available. */
+export type TransactionalSQLDatabaseDriver = SQLDatabaseDriver &
+  Required<Pick<SQLDatabaseDriver, "transaction" | "transactionGuarantee">>;
+
+export function supportsTransactions(driver: SQLDatabaseDriver): driver is TransactionalSQLDatabaseDriver {
+  return typeof driver.transaction === "function" && driver.transactionGuarantee !== undefined;
+}
+
+/** Thrown when a transaction waited longer than its lock timeout for an
+ *  earlier transaction on the same driver object (or, on adapters that
+ *  serialize database-wide, the same database) to finish. */
+export class TransactionLockTimeoutError extends Error {
+  constructor(waitedMs: number) {
+    super(`timed out after ${waitedMs} ms waiting for an earlier transaction to finish`);
+    this.name = "TransactionLockTimeoutError";
+  }
+}
+
+/** True when a database reported its write lock held by another connection
+ *  (SQLite's SQLITE_BUSY, "database is locked"). */
+export function isDatabaseBusyError(error: unknown): boolean {
+  const message = error instanceof Error ? `${error.message} ${String((error as { cause?: unknown }).cause ?? "")}` : String(error);
+  return /database is locked|SQLITE_BUSY/i.test(message);
+}
+
+/**
+ * Runs `open` until it does not fail with a busy error: a native adapter's
+ * BEGIN IMMEDIATE fails at once when another connection holds the write
+ * lock, and the transaction must wait for it, as transactions through one
+ * driver object wait for each other (TransactionGate). Waits with backoff
+ * up to `timeoutMs`, then fails with TransactionLockTimeoutError. Any other
+ * error is rethrown at once. An adapter whose database reports a held lock
+ * some other way passes its own `isBusy`.
+ */
+export async function retryWhileBusy<R>(
+  open: () => Promise<R>,
+  timeoutMs: number = DEFAULT_TRANSACTION_LOCK_TIMEOUT_MS,
+  sleep: (ms: number) => Promise<void> = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  isBusy: (error: unknown) => boolean = isDatabaseBusyError,
+): Promise<R> {
+  const started = Date.now();
+  let delay = 5;
+  for (;;) {
+    try {
+      return await open();
+    } catch (error) {
+      if (!isBusy(error)) throw error;
+      if (Date.now() - started >= timeoutMs) throw new TransactionLockTimeoutError(timeoutMs);
+    }
+    await sleep(delay);
+    delay = Math.min(delay * 2, 250);
+  }
+}
+
+/** Default wait for a transaction lock. A save holds it for well under a
+ *  second; a wait this long means a stuck or nested transaction. */
+export const DEFAULT_TRANSACTION_LOCK_TIMEOUT_MS = 30_000;
+
+/**
+ * A first-in-first-out async lock: one holder at a time per instance.
+ * Adapters use one per driver object to keep transactions from
+ * interleaving on a shared connection or stream.
+ */
+export class TransactionGate {
+  private tail: Promise<void> = Promise.resolve();
+  private readonly timeoutMs: number;
+
+  constructor(timeoutMs: number = DEFAULT_TRANSACTION_LOCK_TIMEOUT_MS) {
+    this.timeoutMs = timeoutMs;
+  }
+
+  /** Waits for every earlier holder, runs `work`, then lets the next
+   *  holder in, whether `work` succeeded or threw. */
+  async run<R>(work: () => Promise<R>): Promise<R> {
+    const previous = this.tail;
+    let release!: () => void;
+    const mine = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    this.tail = previous.then(() => mine);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        previous,
+        new Promise<void>((_, reject) => {
+          timer = setTimeout(() => reject(new TransactionLockTimeoutError(this.timeoutMs)), this.timeoutMs);
+        }),
+      ]);
+    } catch (error) {
+      // Give up our place without blocking the holders queued behind us:
+      // they wait for `previous` through our link in the chain.
+      void previous.then(release);
+      throw error;
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+    }
+    try {
+      return await work();
+    } finally {
+      release();
+    }
+  }
+}
+
+/** SQL providers report the last inserted row id as 0 when the statement
+ *  inserted nothing. The driver contract treats lastInsertRowId as
+ *  optional, so 0 becomes "omitted" (undefined). Shared by the driver
+ *  adapters. */
+export function rowIdOrOmit(lastRowId: number | bigint | undefined): number | bigint | undefined {
+  if (lastRowId === undefined) return undefined;
+  return BigInt(lastRowId) > 0n ? lastRowId : undefined;
+}
+
+// Blob storage (files and images) has its own seam: src/blob/driver.ts.

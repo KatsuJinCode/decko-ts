@@ -1,0 +1,74 @@
+{
+  "row": "write-final-a253-manifest",
+  "instrument": "recovery/release/private-probes/private-tool-repairs-20261018/write-final-a253-manifest.mjs",
+  "measuredAt": "2026-10-25T04:56:47.729Z",
+  "source": "a25329a805202bf4ee5879f084fd028c90058215",
+  "clauses": [
+    {
+      "name": "the checkout's HEAD is the exact source commit",
+      "holds": false,
+      "detail": {
+        "path": "C:/localProjects/decko-edge-verification-53c86269",
+        "present": false,
+        "head": null,
+        "expected": "a25329a805202bf4ee5879f084fd028c90058215"
+      }
+    },
+    {
+      "name": "the checkout is clean",
+      "holds": false,
+      "detail": {
+        "path": "C:/localProjects/decko-edge-verification-53c86269",
+        "present": false,
+        "statusPorcelain": null
+      }
+    },
+    {
+      "name": "the capture's terminal source is the same commit",
+      "holds": true,
+      "detail": {
+        "terminalSource": "a25329a805202bf4ee5879f084fd028c90058215",
+        "expected": "a25329a805202bf4ee5879f084fd028c90058215"
+      }
+    },
+    {
+      "name": "the pinned bundle hashes to the capture's bundle hash",
+      "holds": false,
+      "detail": {
+        "path": "C:/localProjects/decko-edge-verification-53c86269/.runtime/private-final-f044d5af-bundle/bunny-edge-engine.bundle.js",
+        "present": false,
+        "sha256": null,
+        "expected": "a498c1606240007268e8201ad31886439500e6de6649355285d2d443efc84b1e"
+      }
+    },
+    {
+      "name": "the restored deck hashes to the receipt's target hash",
+      "holds": false,
+      "detail": {
+        "path": "C:\\localProjects\\decko-edge-verification-53c86269\\.runtime\\authorized-widget-content-20261018-r2\\deck.sqlite3",
+        "present": false,
+        "sha256": null,
+        "expected": "c19c4d561ebbd4bee3dab3667af52400a6fa32affc151fd17adf1c5007640dfc"
+      }
+    },
+    {
+      "name": "the baseline deck hashes to the receipt's baseline hash",
+      "holds": false,
+      "detail": {
+        "path": "C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3",
+        "present": true,
+        "sha256": "6aebb6546a0620f3c61efad28cd01023e104d47ffd583272ce18036038f73b78",
+        "expected": "15545aa78c6d8cc99427a400f31c36ca137d407be6c6f951d8df11e84b2ddf01"
+      }
+    }
+  ],
+  "clausesHolding": 1,
+  "clausesCheckableHere": 2,
+  "clausesFailing": [
+    "the checkout's HEAD is the exact source commit",
+    "the checkout is clean",
+    "the pinned bundle hashes to the capture's bundle hash",
+    "the restored deck hashes to the receipt's target hash",
+    "the baseline deck hashes to the receipt's baseline hash"
+  ]
+}

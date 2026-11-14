@@ -1,0 +1,54 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {assertApiKeyViewCapture,ApiKeyCaptureEvidenceError} from '../../tools/oracle/validate-api-key-view-capture.mjs';
+
+const digest='1'.repeat(64),other='2'.repeat(64);
+function fixture(){
+  const runtime={ruby:'3.4.11',platform:'synthetic',decko:'0.20.0',card:'1.110.0'};
+  const actor={current_id:1,effective_id:1,bot_id:1,always_ok:true};
+  const expected={producer_sha256:digest,helper_sha256:digest,database_identity_sha256:digest,bot_id:1,runtime,
+    auth_sources:{current_id:digest,as_id:digest,'always_ok?':digest},
+    renders:Object.fromEntries(['content','titled','titled_content'].map(view=>[view,{target_sha256:digest}]))};
+  const capture={rendered:Object.fromEntries(Object.keys(expected.renders).map(view=>[view,'<p>Synthetic body</p>'])),capture_evidence:{
+    schema:'decko-api-key-view-capture/1',runtime:structuredClone(runtime),producer_sha256:digest,helper_sha256:digest,database_identity_sha256:digest,
+    auth_sources:Object.fromEntries(Object.keys(expected.auth_sources).map(key=>[key,{path:'/synthetic/'+key+'.rb',sha256:digest}])),
+    initial_auth:{current_id:{defined:false,value:null},as_id:{defined:true,value:21}},
+    renders:Object.fromEntries(Object.keys(expected.renders).map(view=>[view,{before:{...actor},after:{...actor},permissions:{read:true,update:true},target_sha256:digest}]))}};
+  return {capture,expected};
+}
+test('admits complete observed actor evidence against explicit independent expectations',()=>{
+  const {capture,expected}=fixture();assert.equal(assertApiKeyViewCapture(capture,expected).renders,3);
+});
+for(const [name,change] of [
+  ['missing observed evidence',({capture})=>{delete capture.capture_evidence;}],
+  ['array observed evidence',({capture})=>{capture.capture_evidence=[];}],
+  ['different producer',({capture})=>{capture.capture_evidence.producer_sha256=other;}],
+  ['different helper',({capture})=>{capture.capture_evidence.helper_sha256=other;}],
+  ['different database connection identity',({capture})=>{capture.capture_evidence.database_identity_sha256=other;}],
+  ['different Ruby',({capture})=>{capture.capture_evidence.runtime.ruby='3.3.0';}],
+  ['different Decko',({capture})=>{capture.capture_evidence.runtime.decko='0.19.1';}],
+  ['different auth source',({capture})=>{capture.capture_evidence.auth_sources.as_id.sha256=other;}],
+  ['missing pre-seed initialization',({capture})=>{delete capture.capture_evidence.initial_auth;}],
+  ['false undefined state with an actor value',({capture})=>{capture.capture_evidence.initial_auth.current_id.value=1;}],
+  ['missing current actor',({capture})=>{delete capture.capture_evidence.renders.content.before.current_id;}],
+  ['effective bot with another current actor',({capture})=>{capture.capture_evidence.renders.content.before.current_id=21;}],
+  ['post-render actor change',({capture})=>{capture.capture_evidence.renders.content.after.effective_id=21;}],
+  ['coercible actor array',({capture})=>{capture.capture_evidence.renders.content.before.current_id=[1];}],
+  ['coercible boolean',({capture})=>{capture.capture_evidence.renders.content.permissions.update='true';}],
+  ['missing update permission',({capture})=>{delete capture.capture_evidence.renders.content.permissions.update;}],
+  ['changed target',({capture})=>{capture.capture_evidence.renders.content.target_sha256=other;}],
+  ['unrecorded body',({capture})=>{capture.rendered.extra='<p>Extra</p>';}],
+  ['missing per-view actor',({capture})=>{delete capture.capture_evidence.renders.titled;}],
+  ['capture error string',({capture})=>{capture.rendered.content='CAPTURE_ERROR: failure';}],
+  ['missing external runtime pin',({expected})=>{delete expected.runtime.card;}],
+  ['missing external source pin',({expected})=>{delete expected.auth_sources.as_id;}],
+  ['missing external target inventory',({expected})=>{expected.renders={};}],
+])test('rejects '+name,()=>{const data=fixture();change(data);assert.throws(()=>assertApiKeyViewCapture(data.capture,data.expected),ApiKeyCaptureEvidenceError);});
+test('the existing API-key capture remains unverified rather than being relabelled',()=>{
+  const capture=JSON.parse(readFileSync(new URL('../../fixtures/captured/api-key-views.json',import.meta.url),'utf8'));
+  assert.throws(()=>assertApiKeyViewCapture(capture,fixture().expected),/observed actor evidence missing/);
+});
+test('an absent external expectation is never inferred from the capture itself',()=>{
+  assert.throws(()=>assertApiKeyViewCapture(fixture().capture),/external expectation object missing/);
+});

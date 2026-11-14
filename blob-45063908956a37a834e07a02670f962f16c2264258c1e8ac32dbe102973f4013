@@ -1,0 +1,116 @@
+{
+  "contract": "The account email can be changed and the new one signs in, and the new email address shows on the account page.",
+  "facts": {
+    "account_core_fields": "[account_field_nest(:email, \"email\"),\n     account_field_nest(:password, \"password\")]",
+    "account_core_view": "view :core do",
+    "account_field_nest": "field_nest field, title: title, view: :labeled",
+    "account_field_ok_to_update": "(own_account? && !name_changed? && !type_id_changed?) || super",
+    "authenticate": "def authenticate email, password",
+    "authenticate_account": "account = Auth.find_account_by_email email",
+    "downcase_email_body": "self.content = content.downcase",
+    "downcase_email_event": "event :downcase_email, :prepare_to_validate, on: :save do",
+    "email_assign_type": "assign_type :phrase",
+    "find_account_by_email": "def find_account_by_email email",
+    "find_account_by_email_body": "find_account_by :email, email.strip.downcase",
+    "validate_email_error": "errors.add :content, t(:account_error_invalid_address)",
+    "validate_email_event": "event :validate_email, :validate, on: :save do",
+    "validate_email_grammar": "return if content.match?(/^([^@\\s]+)@((?:[-a-z0-9]+\\.)+[a-z]{2,})$/i)",
+    "validate_email_strip": "self.content = content.strip",
+    "validate_unique_email_cql": "cql = { right_id: EmailID, eq: content, return: :id }",
+    "validate_unique_email_error": "errors.add :content, t(:account_error_not_unique)",
+    "validate_unique_email_event": "event :validate_unique_email, after: :validate_email, on: :save do"
+  },
+  "gem_home": "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
+  "oracle": {
+    "account_core_view": {
+      "file_sha256": "c3a79e250aabedd0a8ef7c2e93d75c674252820a727e920a074ac8144769fbd3",
+      "first_line": 49,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 53,
+      "marker": "view :core do",
+      "marker_line": 50,
+      "path": "set/right/account/views.rb",
+      "source": "format :html do\n  view :core do\n    [account_field_nest(:email, \"email\"),\n     account_field_nest(:password, \"password\")]\n  end"
+    },
+    "account_field_nest": {
+      "file_sha256": "c3a79e250aabedd0a8ef7c2e93d75c674252820a727e920a074ac8144769fbd3",
+      "first_line": 55,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 58,
+      "marker": "def account_field_nest field, title",
+      "marker_line": 55,
+      "path": "set/right/account/views.rb",
+      "source": "  def account_field_nest field, title\n    field_nest field, title: title, view: :labeled\n    # edit: :inline, hide: [:help_link, :board_link]\n  end"
+    },
+    "account_field_ok_to_update": {
+      "file_sha256": "689ab30c7107def108fc9f3b2498b9a010b9f5e83f1a6f01b77b3cfad950e68d",
+      "first_line": 15,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 18,
+      "marker": "def ok_to_update?",
+      "marker_line": 16,
+      "path": "set/abstract/account_field.rb",
+      "source": "# allow account owner to update account field content\ndef ok_to_update?\n  (own_account? && !name_changed? && !type_id_changed?) || super\nend"
+    },
+    "authenticate": {
+      "file_sha256": "c332878d63091fe7f6baa2a536d58b981fbcf14455fb621c853f1b2658435dcb",
+      "first_line": 19,
+      "gem": "card-1.110.0",
+      "last_line": 25,
+      "marker": "def authenticate email, password",
+      "marker_line": 20,
+      "path": "lib/card/auth.rb",
+      "source": "      # @return [+*account card, nil]\n      def authenticate email, password\n        account = Auth.find_account_by_email email\n        return nil unless account&.active?\n\n        account if not_required? || password_valid?(account, password.strip)\n      end"
+    },
+    "downcase_email_event": {
+      "file_sha256": "c9f728d1f0fc8e1e11b9237ce62a4e87988f18d3689c478ef3a7a9a4577b408a",
+      "first_line": 29,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 33,
+      "marker": "event :downcase_email, :prepare_to_validate, on: :save do",
+      "marker_line": 29,
+      "path": "set/right/email.rb",
+      "source": "event :downcase_email, :prepare_to_validate, on: :save do\n  return if !content || content == content.downcase\n\n  self.content = content.downcase\nend"
+    },
+    "email_assign_type": {
+      "file_sha256": "c9f728d1f0fc8e1e11b9237ce62a4e87988f18d3689c478ef3a7a9a4577b408a",
+      "first_line": 4,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 6,
+      "marker": "assign_type :phrase",
+      "marker_line": 5,
+      "path": "set/right/email.rb",
+      "source": "\nassign_type :phrase\n"
+    },
+    "find_account_by_email": {
+      "file_sha256": "8bdcb6557f96981a547736705cbee3d52fe20438267de4bc06a96e33fda76bc5",
+      "first_line": 73,
+      "gem": "card-1.110.0",
+      "last_line": 77,
+      "marker": "def find_account_by_email email",
+      "marker_line": 74,
+      "path": "lib/card/auth/current.rb",
+      "source": "      # @return [+*account card, nil]\n      def find_account_by_email email\n        find_account_by :email, email.strip.downcase\n      end\n"
+    },
+    "validate_email_event": {
+      "file_sha256": "c9f728d1f0fc8e1e11b9237ce62a4e87988f18d3689c478ef3a7a9a4577b408a",
+      "first_line": 6,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 14,
+      "marker": "event :validate_email, :validate, on: :save do",
+      "marker_line": 7,
+      "path": "set/right/email.rb",
+      "source": "\nevent :validate_email, :validate, on: :save do\n  return unless content?\n\n  self.content = content.strip\n  return if content.match?(/^([^@\\s]+)@((?:[-a-z0-9]+\\.)+[a-z]{2,})$/i)\n\n  errors.add :content, t(:account_error_invalid_address)\nend"
+    },
+    "validate_unique_email_event": {
+      "file_sha256": "c9f728d1f0fc8e1e11b9237ce62a4e87988f18d3689c478ef3a7a9a4577b408a",
+      "first_line": 16,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 27,
+      "marker": "event :validate_unique_email, after: :validate_email, on: :save do",
+      "marker_line": 16,
+      "path": "set/right/email.rb",
+      "source": "event :validate_unique_email, after: :validate_email, on: :save do\n  if content.present?\n    Auth.as_bot do\n      cql = { right_id: EmailID, eq: content, return: :id }\n      cql[:not] = { id: id } if id\n      cql_comment = t(:account_search_email_duplicate, content: content)\n      if Card.search(cql, cql_comment).first\n        errors.add :content, t(:account_error_not_unique)\n      end\n    end\n  end\nend"
+    }
+  }
+}

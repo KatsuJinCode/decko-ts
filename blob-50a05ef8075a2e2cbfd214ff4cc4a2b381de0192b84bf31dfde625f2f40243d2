@@ -1,0 +1,49 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync,writeFileSync,mkdirSync,readdirSync} from 'node:fs';
+import {join} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {scratchDir,removeScratchDir} from '../support/scratch-dir.mjs';
+import {runCommand} from '../../scripts/release-check.mjs';
+
+const tool=fileURLToPath(new URL('../../tools/perf/measure-bunny-bundle-process-startup.mjs',import.meta.url));
+const source='import * as SDK from "@bunny.net/edgescript-sdk"; SDK.net.http.serve(()=>{throw Error("handler must not run")});';
+async function fixture(body){const dir=scratchDir('bundle-startup-');try{return await body(dir);}finally{removeScratchDir(dir);}}
+
+test('fresh process samples keep equal-basename bundles separate and clean their evaluation copies',()=>fixture(async dir=>{
+  const bundles=['a','b'].map(name=>{mkdirSync(join(dir,name));const file=join(dir,name,'bundle.js');writeFileSync(file,source);return file;});
+  const report=join(dir,'report.json');
+  const outcome=await runCommand(process.execPath,[tool,report,...bundles],{cwd:dir});
+  assert.equal(outcome.code,0,outcome.stderr.toString());
+  const evidence=JSON.parse(readFileSync(report));assert.equal(evidence.complete,true);
+  assert.equal(evidence.samples.length,2);assert.equal(evidence.published,false);
+  const processes=[];
+  for(const bundle of evidence.samples) {
+    assert.equal(bundle.sha256,bundle.sha256After);
+    for(const phase of ['parse','import']) {
+      assert.equal(bundle[phase].length,3);
+      for(const sample of bundle[phase]){processes.push(sample.pid);assert.equal(sample.phase,phase);assert.ok(sample.elapsedMs>=0);}
+    }
+  }
+  assert.equal(new Set(processes).size,12);
+  assert.equal(readdirSync(dir).some(name=>name.startsWith('startup-owned-')),false);
+  const previous=readFileSync(report);
+  const repeated=await runCommand(process.execPath,[tool,report,...bundles],{cwd:dir});
+  assert.notEqual(repeated.code,0);assert.deepEqual(readFileSync(report),previous);
+}));
+
+test('failed import remains nonzero with raw child failure and no complete measurement',()=>fixture(async dir=>{
+  const bundle=join(dir,'bad.js'),report=join(dir,'failed.json');
+  writeFileSync(bundle,source+' throw Error("deliberate import failure");');
+  const result=await runCommand(process.execPath,[tool,report,bundle],{cwd:dir});
+  assert.notEqual(result.code,0);
+  const evidence=JSON.parse(readFileSync(report));assert.equal(evidence.complete,false);
+  assert.match(evidence.samples[0].import[0].stderr,/deliberate import failure/);
+  assert.equal(readdirSync(dir).some(name=>name.startsWith('startup-owned-')),false);
+}));
+
+test('legacy diagnostic reports a nonzero exit when its bundle is absent',()=>fixture(async dir=>{
+  const legacy=fileURLToPath(new URL('../../tools/perf/measure-bunny-edge-engine-boot-cost.mjs',import.meta.url));
+  const outcome=await runCommand(process.execPath,['--experimental-vm-modules',legacy,join(dir,'missing.js'),'--runs','1'],{cwd:dir});
+  assert.notEqual(outcome.code,0);assert.match(outcome.stderr.toString(),/unreadable/);
+}));

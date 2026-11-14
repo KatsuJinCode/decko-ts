@@ -1,0 +1,122 @@
+# Provider grammar repair: issues 144 and 145
+
+Assignment: repair the five independently reproduced provider cases on retained
+Area 4 source `78d51eb84f90e484ae6cff50ee0a291621111529`, preserving the independent
+controls from review `c02fe262ac88b79e1f1a350f4d89eff2b4cb88d5`. Area 4 owns this
+repair under the release owner's explicit assignment; the operations reviewer
+owns the later independent reattack. Both existing issues remain open pending
+that review. No issue closure or assembled release acceptance is claimed here.
+
+## Reproduction and cause
+
+Copied the original two test files byte-identically from the review commit.
+Their five cases all failed on the retained source before production edits:
+`.runtime/provider-144-145-original-five-red.xml`, five failures, zero skips.
+The original reproduction files are committed separately at
+`6817502c7` before any repair source change.
+
+The PostgreSQL qualifier treated SQL value syntax as ordinary column names.
+It rewrote scalar SELECT and CURRENT_TIMESTAMP into table-qualified words,
+producing actual local PostgreSQL errors. The unchanged tests first execute
+the original statements on actual SQLite and raw PGlite, then compare the
+adapter path. Both runtimes accept the unmodified statements; this was not an
+unsupported PostgreSQL feature being mistaken for a translator bug.
+
+The MySQL translator matched column declarations and contextual KEY words
+against raw text. SQLite comments are whitespace between tokens, so inline
+comments and leading annotations bypassed its keyed-TEXT recognition. The
+unchanged tests prove SQLite accepts all three declarations and stores a
+20-character value despite the nonbinding TEXT(12) annotation. The target
+failure is translation-shape evidence; native MySQL was not executed.
+
+## Repair
+
+PostgreSQL temporal value keywords CURRENT_DATE, CURRENT_TIME and
+CURRENT_TIMESTAMP retain their syntax role. Parenthesized SELECT/WITH/VALUES
+queries retain their own name-resolution scope instead of being rewritten as
+outer target-row references. Qualification resumes for the surrounding
+assignment after the query closes; ordinary stored-row reads, excluded values,
+CASE, casts, predicates, tuple targets and target aliases remain covered.
+
+MySQL comments become offset-preserving whitespace before any regular-expression
+rewrite. Quoted strings and identifiers remain intact. This puts leading and
+inter-token comments on the same lexical footing as spaces, so the existing
+keyed-TEXT recognizer handles them, including one replacement of TEXT(12).
+It also prevents bare KEY quoting from rewriting words inside comments or
+misreading KEY after a comment-separated PRIMARY. The existing keyed column
+capacity policy is unchanged: the throttle scope remains 768, generic inline
+keyed text 255, and unkeyed text remains text.
+
+No transaction-outcome, rollback cleanup, authentication policy, scope sizing,
+provider fixture, battery output, reference answer or approval-policy changes
+are part of this repair.
+
+## Added scope controls and verification
+
+Nine added local cases in `provider-grammar-scope-followup.test.ts` check scalar
+queries reading another table's same-named column, a CTE, a nested query and
+subsequent assignments, CURRENT_DATE/CURRENT_TIME, comment-separated quoted
+identifiers/PRIMARY KEY, TEXT(12), a leading line comment, and nonkey constraint
+words in comments/default literals. The five PostgreSQL additions execute
+actual SQLite, raw PGlite positive controls and the PostgreSQL adapter. They
+compare stored values except temporal text, for which they check the write
+landed without asserting cross-clock equality.
+
+Before repair, the added group had eight failures and one pass, zero skips:
+`.runtime/provider-grammar-scope-red.xml`. A first combined candidate had
+56 passes and one failure: its comment-separated PRIMARY KEY exposed an
+earlier keyword-rewrite stage, not just the declaration matcher. That failure
+is retained in `.runtime/provider-144-145-repair-green.xml`; despite that older
+filename, it is a failed candidate, not final green evidence. Comment
+normalization was moved before all rewrites, and the redundant declaration
+special case was removed. No failing assertion was weakened.
+
+Final-source verification:
+
+- Eight-file group: **70 executed passes, zero failures/skips**, raw receipt
+  `.runtime/provider-144-145-final-source.xml`. It includes the five unchanged
+  original attacks, nine new scope controls, prior grammar/DDL tests, actual
+  PostgreSQL/PGlite adapter checks, terminal transaction cleanup and local
+  provider authentication/refusal fixtures.
+- Existing pure MySQL translation/version selection: **12 executed passes**,
+  **18 native-dependent cases excluded by name**, raw receipt
+  `.runtime/provider-144-145-mysql-pure.xml`. Exclusions are not acceptance.
+- TypeScript no-emit, classification check, whitespace and explicit five-file
+  platform scan pass; the scanner reports zero unguarded command hits.
+
+```text
+node node_modules/vitest/vitest.mjs run tests/server/drivers/postgres-upsert-rhs-syntax.attack.test.ts tests/server/drivers/mysql-keyed-text-comment-separators.attack.test.ts tests/server/drivers/provider-grammar-scope-followup.test.ts tests/server/drivers/provider-dialect-grammar-review.test.ts tests/server/drivers/mysql-auth-ddl-translation.test.ts tests/server/drivers/postgres-pglite.test.ts tests/server/drivers/terminal-commit-cleanup.test.ts tests/card/auth/provider-refusals.test.ts --reporter=junit --outputFile=.runtime/provider-144-145-final-source.xml
+node node_modules/vitest/vitest.mjs run tests/server/drivers/mysql-driver.test.ts --testNamePattern='atomic sign-in counter dialect|MySQL version gate|sqliteToMysql dialect translation.*(leaves|turns|drops|quotes|maps|gives an untyped|reads sqlite_sequence|passes unknown)' --reporter=junit --outputFile=.runtime/provider-144-145-mysql-pure.xml
+node node_modules/typescript/bin/tsc --noEmit
+node tools/test-gates.mjs check
+```
+
+The two final invocations cover different selections and are not a whole-suite
+grade. Candidate runs overlap and must not be added as unique coverage. Local
+databases/assertions execute; compiled transforms and OS caches may be warm.
+No cached verdict, model scoring or automatic test retry supplies a result.
+
+The original test blobs remain exactly those in the independent review:
+PostgreSQL `fd2bf2ea955f15c3a9c71dd657368500ee0ff80d`; MySQL
+`ea1d22b44772487a8d5bb75c165ec3d396a72f81`.
+
+## Limits and next acceptance
+
+This is not a complete SQL parser or universal dialect guarantee. Nested
+queries keep PostgreSQL's native resolution, including explicitly qualified
+correlated references; SQLite-specific unqualified outer references in a
+subquery are not separately qualified by this repair and may still fail
+loudly as ambiguous. The tested local query scopes are qualified only as
+listed above. MySQL syntax acceptance, arbitrary capacity and existing-table
+migrations remain unqualified. The prior finite-width/nondefault MySQL format
+limits stand unchanged.
+
+PGlite is local PostgreSQL execution; D1 is a local fixture runtime; Hrana
+backends use local protocol mocks. Native MySQL, Bun and hosted providers were
+not installed or run. No hosted/cloud/VM request, production reload or live
+database write occurred. No new binaries, dependency install, server or
+private data were needed. Test-owned scratch is cleaned by its existing
+fixture teardown; raw run receipts and these deliverables remain retained.
+
+Next: the release owner routes this exact saved source and original five
+controls to the assigned independent reviewer before accepting issues 144/145.

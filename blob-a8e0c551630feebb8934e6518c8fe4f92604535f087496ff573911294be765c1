@@ -1,0 +1,122 @@
+import { expect, it } from "vitest";
+import { MemoryBlobDriver } from "../../src/blob/memory.js";
+import type { BlobDriver, PutResult } from "../../src/blob/driver.js";
+import { BlobAttachmentStore } from "../../src/card/attachments/attachment-store.js";
+
+const bytes = new TextEncoder().encode("fixture");
+const input = { cardId: 1, actionId: 2, ext: ".png", bytes, renditionNames: ["2-original.png", "2-small.png"] };
+function wrap(driver: MemoryBlobDriver, put: BlobDriver["put"]): BlobDriver {
+  return { put, get: key => driver.get(key), getBytes: key => driver.getBytes(key), head: key => driver.head(key),
+    delete: key => driver.delete(key), list: (prefix, options) => driver.list(prefix, options) };
+}
+type WithReceipt = { discardIfOwned?: () => Promise<boolean>; cause?: unknown };
+async function failureOf(store: BlobAttachmentStore): Promise<WithReceipt> {
+  let error: unknown;
+  try { await store.store(input); } catch (cause) { error = cause; }
+  expect(error).toBeDefined();
+  return error as WithReceipt;
+}
+
+for (const descriptor of ["writable", "immutable-accessor"] as const) {
+  it(`preserves the write error and composes its ${descriptor} partial receipt`, async () => {
+    const driver = new MemoryBlobDriver(), original = new Error("second write failed after landing");
+    let writes = 0;
+    const store = new BlobAttachmentStore(wrap(driver, async (...args) => {
+      const result = await driver.put(...args);
+      if (++writes === 2) {
+        Object.defineProperty(original, "discardIfOwned", descriptor === "writable"
+          ? { value: result.discardIfOwned, writable: true, configurable: false }
+          : { get: () => result.discardIfOwned, configurable: false });
+        throw original;
+      }
+      return result;
+    }));
+    const failure = await failureOf(store);
+    if (descriptor === "writable") expect(failure).toBe(original);
+    else expect(failure.cause).toBe(original);
+    expect(await failure.discardIfOwned!()).toBe(true);
+    expect(await driver.list("1/")).toEqual([]);
+  });
+}
+
+it("attempts every acquired receipt even when one cleanup rejects and retains that rejection", async () => {
+  const driver = new MemoryBlobDriver(), writeError = new Error("second write acknowledgement lost"), cleanupError = new Error("first cleanup rejected");
+  const attempts: string[] = [];
+  let writes = 0;
+  const store = new BlobAttachmentStore(wrap(driver, async (...args) => {
+    const result = await driver.put(...args);
+    if (++writes === 1) return { ...result, discardIfOwned: async () => { attempts.push("first"); throw cleanupError; } };
+    Object.defineProperty(writeError, "discardIfOwned", { value: async () => { attempts.push("second"); return result.discardIfOwned!(); } });
+    throw writeError;
+  }));
+  const failure = await failureOf(store);
+  expect(failure.cause).toBe(writeError);
+  let cleanupFailure: unknown;
+  try { await failure.discardIfOwned!(); } catch (error) { cleanupFailure = error; }
+  expect(cleanupFailure).toBeInstanceOf(AggregateError);
+  expect((cleanupFailure as AggregateError).errors).toContain(cleanupError);
+  expect(attempts).toEqual(["second", "first"]);
+  expect((await driver.list("1/")).map(row => row.key)).toEqual(["1/2-original.png"]);
+});
+
+it("does not silently call mixed supported and unsupported writes fully cleaned", async () => {
+  const driver = new MemoryBlobDriver();
+  let writes = 0;
+  const store = new BlobAttachmentStore(wrap(driver, async (...args) => {
+    const result = await driver.put(...args);
+    if (++writes !== 1) return result;
+    const withoutReceipt: PutResult = { key: result.key, size: result.size };
+    return withoutReceipt;
+  }));
+  const result = await store.store(input);
+  await expect(result.discardIfOwned!()).rejects.toThrow(/custody|unresolved/i);
+  expect((await driver.list("1/")).map(row => row.key)).toEqual(["1/2-original.png"]);
+});
+
+it("retains a primitive original failure while reporting the unqualified failed write", async () => {
+  const driver = new MemoryBlobDriver(), original = "backend rejected before returning a receipt";
+  let writes = 0;
+  const store = new BlobAttachmentStore(wrap(driver, async (...args) => {
+    if (++writes === 2) throw original;
+    return driver.put(...args);
+  }));
+  const failure = await failureOf(store);
+  expect(failure.cause).toBe(original);
+  await expect(failure.discardIfOwned!()).rejects.toThrow(/custody|unresolved/i);
+  expect(await driver.list("1/")).toEqual([]);
+});
+
+it("preserves an identical later write that lands between constituent cleanup calls", async () => {
+  const driver = new MemoryBlobDriver();
+  let writes = 0;
+  const store = new BlobAttachmentStore(wrap(driver, async (...args) => {
+    const result = await driver.put(...args);
+    if (++writes !== 2) return result;
+    return { ...result, discardIfOwned: async () => {
+      await driver.put("1/2-original.png", bytes);
+      return result.discardIfOwned!();
+    } };
+  }));
+  const result = await store.store(input);
+  expect(await result.discardIfOwned!()).toBe(false);
+  expect(await driver.getBytes("1/2-original.png")).toEqual(bytes);
+  expect(await driver.getBytes("1/2-small.png")).toBeUndefined();
+});
+
+it("refuses a non-boolean cleanup acknowledgement after attempting its other acquired receipt", async () => {
+  const driver = new MemoryBlobDriver();
+  let writes = 0, otherAttempted = false;
+  const store = new BlobAttachmentStore(wrap(driver, async (...args) => {
+    const result = await driver.put(...args);
+    return ++writes === 1
+      ? { ...result, discardIfOwned: async () => { otherAttempted = true; return result.discardIfOwned!(); } }
+      : { ...result, discardIfOwned: async () => undefined as unknown as boolean };
+  }));
+  const result = await store.store(input);
+  let failure: unknown;
+  try { await result.discardIfOwned!(); } catch (error) { failure = error; }
+  expect(failure).toBeInstanceOf(AggregateError);
+  expect((failure as AggregateError).errors.some(error => /boolean acknowledgement/.test(String(error)))).toBe(true);
+  expect(otherAttempted).toBe(true);
+  expect((await driver.list("1/")).map(row => row.key)).toEqual(["1/2-small.png"]);
+});

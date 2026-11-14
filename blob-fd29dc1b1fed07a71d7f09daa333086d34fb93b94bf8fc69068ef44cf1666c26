@@ -1,0 +1,61 @@
+{
+  "scope": "Pinned native wrapper definition, naming and invocation methods with synthetic format/voo backing; no Rails/DB/full wrapper framework",
+  "runtime": "ruby 3.4.11 (2026-09-23 revision 592f1ffdb3) +PRISM [x64-mingw-ucrt]",
+  "probeSha256": "3d83910748570a5b4cf9f75f8ea14b943ceb2dd807274683a73f24fc8f949334",
+  "sources": {
+    "card-1.110.0/lib/card/set/format/abstract_format/wrapper.rb": "dfae8c5c3697a529982033b5b0a5f7785112f4162f3ebbde2287ca51c654bcd2",
+    "card-1.110.0/lib/card/format/wrapper.rb": "ea551da2147cbce6bb50cad122766e6b4118a7489f39cc031b200c574cef815a",
+    "card-1.110.0/lib/card/set/format.rb": "0602e8d4460aa165cfd6d76bdc98beba35937afb176203d5052bc52a7a4fa079"
+  },
+  "cases": [
+    {
+      "id": "simple-block",
+      "body": "cream_cake_cream"
+    },
+    {
+      "id": "simple-content",
+      "body": "cream_cake_cream"
+    },
+    {
+      "id": "format-method",
+      "body": "vanilla_cake"
+    },
+    {
+      "id": "options",
+      "body": "cherry_cream_cake_cream"
+    },
+    {
+      "id": "option-copy",
+      "body": "cake",
+      "options": {
+        "class": "original"
+      }
+    },
+    {
+      "id": "nested",
+      "body": "cream_inner_cake_inner_cream"
+    },
+    {
+      "id": "view-options",
+      "body": "cherry_cream_cake_cream"
+    },
+    {
+      "id": "unknown",
+      "error": {
+        "class": "ArgumentError",
+        "message": "unknown wrapper: unknown"
+      }
+    },
+    {
+      "id": "nothing",
+      "error": {
+        "class": "ArgumentError",
+        "message": "unknown wrapper: nothing"
+      }
+    },
+    {
+      "id": "reopened",
+      "body": "new_cake"
+    }
+  ]
+}

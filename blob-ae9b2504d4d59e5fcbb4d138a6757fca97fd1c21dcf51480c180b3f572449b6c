@@ -1,0 +1,70 @@
+import { readFileSync } from "node:fs";
+import type { SQLDatabaseDriver, SQLStatement } from "../../../src/server/driver.js";
+import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
+import { FetchEngine } from "../../../src/card/fetch.js";
+import { getNameEnvironment, setNameEnvironment } from "../../../src/card/name/environment.js";
+import { splitSqlStatements } from "../fetch/fetch-test-storage.js";
+import { seedStandardDeck, type ActionsTestStorage } from "./actions-test-storage.js";
+
+interface SeedPlan {
+  readonly pragmas: readonly string[];
+  readonly statements: readonly { readonly sql: string; readonly params: readonly unknown[] }[];
+}
+let seedPlan: Promise<SeedPlan> | undefined;
+const nulls = (params: unknown[]) => params.map(value => value === undefined ? null : value);
+
+/** Record the canonical seed's actual statements/results once in a private
+ *  in-memory database. Explicit and generated IDs come from that same seed;
+ *  each target still receives its own empty schema and rows. */
+async function compileSeedPlan(): Promise<SeedPlan> {
+  const local = new LocalSqliteDriver({path: ":memory:"});
+  const environment = getNameEnvironment();
+  try {
+    const schema = splitSqlStatements(readFileSync(new URL("../../../db/schema.sqlite.sql", import.meta.url), "utf8"));
+    const pragmas: string[] = [], statements: SQLStatement[] = [];
+    for (const sql of schema) {
+      if (/^\s*PRAGMA\b/i.test(sql)) {
+        pragmas.push(sql);
+        await local.query(sql, []).catch(() => undefined);
+      } else {
+        await local.query(sql, []);
+        statements.push({sql,params:[]});
+      }
+    }
+    const recorder: SQLDatabaseDriver = {
+      async query<T>(sql: string, params: unknown[]) {
+        const normalized = nulls(params);
+        statements.push({sql,params:normalized});
+        return local.query<T>(sql, normalized);
+      },
+      async batch(batch: SQLStatement[]) {
+        const normalized = batch.map(statement => ({sql:statement.sql,params:nulls(statement.params)}));
+        statements.push(...normalized);
+        return local.batch(normalized);
+      },
+    };
+    const storage: ActionsTestStorage = {
+      driver: recorder, engine: new FetchEngine(recorder), close() {},
+      selectAll: async <T>(sql: string, params: unknown[] = []) => (await recorder.query<T>(sql,params)).rows,
+      selectOne: async <T>(sql: string, params: unknown[] = []) => (await recorder.query<T>(sql,params)).rows[0],
+      count: async table => Number((await recorder.query<{n:number}>(`SELECT COUNT(*) AS n FROM ${table}`,[])).rows[0].n),
+    };
+    await seedStandardDeck(storage);
+    return Object.freeze({
+      pragmas: Object.freeze(pragmas),
+      statements: Object.freeze(statements.map(statement => Object.freeze({sql:statement.sql,params:Object.freeze([...statement.params])}))),
+    });
+  } finally {
+    local.close();
+    setNameEnvironment(environment);
+  }
+}
+
+/** Batch only deterministic initialization. Race operations continue to use
+ *  the production driver normally, against the caller's isolated database. */
+export async function seedWritePathRaceDeck(driver: SQLDatabaseDriver): Promise<void> {
+  const plan = await (seedPlan ??= compileSeedPlan());
+  // Preserve the original fixture's optional PRAGMA behavior outside a batch.
+  for (const sql of plan.pragmas) await driver.query(sql,[]).catch(() => undefined);
+  await driver.batch(plan.statements.map(statement => ({sql:statement.sql,params:[...statement.params]})));
+}

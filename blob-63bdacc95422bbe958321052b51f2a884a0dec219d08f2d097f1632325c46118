@@ -1,0 +1,46 @@
+{
+  "row": "update-rule-cache",
+  "event": "update_rule_cache",
+  "pinned_file": "card-mod-permissions-0.20.0/set/all/update_read_rules.rb",
+  "pinned_declaration": "event :update_rule_cache, :finalize, when: :rule? do",
+  "pinned_declaration_line": 4,
+  "pinned_body": "  Card::Rule.clear_rule_cache",
+  "pinned_body_lines": [
+    {
+      "line": 5,
+      "text": "  Card::Rule.clear_rule_cache"
+    }
+  ],
+  "executed": true,
+  "notes": [],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a rule that changed: the body clears the rule cache",
+      "supplied_answers": {
+        "attributes": [],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "Card::Rule.clear_rule_cache",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    }
+  ]
+}

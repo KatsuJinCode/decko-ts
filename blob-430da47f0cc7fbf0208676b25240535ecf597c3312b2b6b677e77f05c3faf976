@@ -1,0 +1,26 @@
+{
+  "row": "reset-cache-to-use-new-structure",
+  "event": "reset_cache_to_use_new_structure",
+  "pinned_file": "card-mod-content-0.20.0/set/right/structure.rb",
+  "pinned_declaration": "event :reset_cache_to_use_new_structure,\n      before: :update_structurees_references do",
+  "pinned_declaration_line": 38,
+  "pinned_body": "  Card::Cache.reset_shared\n  Card::Cache.reset_temp",
+  "pinned_body_lines": [
+    {
+      "line": 40,
+      "text": "  Card::Cache.reset_shared"
+    },
+    {
+      "line": 41,
+      "text": "  Card::Cache.reset_temp"
+    }
+  ],
+  "cache_resets": [
+    "reset_shared",
+    "reset_temp"
+  ],
+  "calls": [],
+  "outcome": {
+    "raised": null
+  }
+}

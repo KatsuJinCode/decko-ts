@@ -1,0 +1,39 @@
+# Test and benchmark runs leave their temp directories behind
+
+**Observed 2026-10-06.** `%LOCALAPPDATA%\Temp` held about 27 GB of decko-ts run directories,
+roughly 1,400 of them, grown in under ten hours while lane worktrees ran tests and benchmarks.
+C: dropped below 24 GB free.
+
+| Prefix | Size | Count |
+|---|---|---|
+| `one-trip-stamped-mirror-*` | 5.7 GB | 140 |
+| `renderplan-replay-pin-*` | 3.8 GB | 38 |
+| `warmflood-ceiling-*` | 3.3 GB | 48 |
+| `live-fetch-all-pages-*` | 3.2 GB | 17 |
+| `one-trip-inline-*`, `one-trip-integration-*`, other `one-trip-*` | 4.6 GB | ~190 |
+| `perviewer-seat-*` (three variants) | 5.3 GB | 85 |
+| `r5-*`, `r6-*`, `stamp-as-column-pin-*`, `pin2sec-*`, `fcbatch-*` | 2.9 GB | ~50 |
+
+**Cause, one example:** `tests/card/one-trip/one-trip-fixture.ts:52` creates
+`mkdtempSync(join(tmpdir(), "one-trip-stamped-mirror-"))` and nothing removes it. The
+benchmark scripts under `benchmarks/*/measure-*-trips.mjs` follow the same pattern.
+
+**Required behaviour** (`C:\localProjects\AGENTS.md`, Zero Unmanaged Scratch Policy): every
+temp directory a test, fixture or benchmark creates is removed on exit, success or failure
+(`try ... finally`, or the test framework's after-hook), unless a flag such as
+`DECKO_KEEP_SCRATCH=1` asks to keep it for debugging.
+
+**Done when:** running the full test suite and each benchmark once leaves no new directory
+in `%TEMP%`, checked by listing `%TEMP%` before and after; ideally a test asserts it.
+
+Stale directories are being moved off C: by diskSteward (`C:\localProjects\diskSteward\agent\move_scratch.ps1`)
+until this is fixed.
+
+## Resolution
+
+Branch `scratch-cleanup-2026-10-06` (private origin KatsuJinCode/decko-ts), commit `d66e1415`, cut from `lane-integration-2026-10-06` at `15025a01`.
+
+- All 57 files that created scratch directories now call `scratchDir(prefix)` from `tests/support/scratch-dir.mjs` (with a `.d.mts` for TypeScript). Directories are removed after each vitest file (setup-file `afterAll`, wired in `vitest.config.ts`), at process exit for scripts, and by a hidden detached cleaner when an open SQLite handle blocks removal on Windows. `DECKO_KEEP_SCRATCH=1` keeps them. The two `spot-integrity-*.bundle.mjs` scripts got an exit-time removal.
+- `tests/support/scratch-dir.test.ts` runs a fixture script that succeeds, one that throws, and one with the keep flag, and asserts the `%TEMP%` result.
+- Before/after check: listed `%TEMP%` before and after running tests/migrate, server, deploy, testing, tools, acceptance/freshness, card/gherkin, card/attachments, card/one-trip, the touched tools/ tests and tests/support. No decko, one-trip, aikido, perviewer or other scratch-prefix directory was added. `tsc --noEmit` is clean. Touched tests pass except failures that are not scratch-related (migrate 5, deploy 10, one-trip 9: missing trial-deck mirror or lane data; `verify.test.ts` fails the same way on the integration tip).
+- Not run end to end: the `benchmarks/one-trip-render` measure scripts depend on other lanes' data paths and a TS runner this checkout lacks. They create their directories through the shared fixture, so they are covered by the exit hook.

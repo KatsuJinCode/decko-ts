@@ -1,0 +1,5476 @@
+{
+  "format": "seconds-corpus-coverage-map/1",
+  "fixture": "synthetic-v2",
+  "generatedBy": "reference-harness/corpus/build-coverage-map.mjs",
+  "census": {
+    "viewsServed": 301,
+    "flatRecordViews": 226,
+    "chainServedOnlyViews": 75,
+    "modsComposed": 31,
+    "modLoadOrder": [
+      "core",
+      "collection",
+      "content",
+      "format",
+      "list",
+      "markdown",
+      "permissions",
+      "help",
+      "search",
+      "rules",
+      "edit",
+      "email",
+      "integrate",
+      "account",
+      "history",
+      "carrierwave",
+      "virtual",
+      "assets",
+      "script",
+      "ace_editor",
+      "api_key",
+      "style",
+      "bootstrap",
+      "comment",
+      "date",
+      "follow",
+      "session",
+      "tabs",
+      "layout",
+      "recaptcha",
+      "tinymce_editor"
+    ],
+    "registeredSettings": [
+      "autoname",
+      "default",
+      "structure",
+      "content_option_view",
+      "content_options",
+      "create",
+      "delete",
+      "read",
+      "update",
+      "guide",
+      "help",
+      "input_type",
+      "on_create",
+      "on_delete",
+      "on_update",
+      "thanks",
+      "script",
+      "ace",
+      "style",
+      "follow",
+      "follow_fields",
+      "head",
+      "layout",
+      "captcha",
+      "tiny_mce"
+    ],
+    "registeredPatternCodes": [],
+    "registeredEvents": [
+      "set_autoname",
+      "validate_codename",
+      "reset_codename_cache",
+      "set_content",
+      "save_draft",
+      "set_default_content",
+      "validate_name",
+      "validate_uniqueness_of_name",
+      "validate_legality_of_name",
+      "validate_key",
+      "validate_renaming",
+      "expire_old_name",
+      "rename_in_trash",
+      "prepare_left_and_right",
+      "update_lexicon",
+      "refresh_references_out",
+      "update_referer_content",
+      "update_referer_references_out",
+      "refresh_references_in",
+      "clear_references",
+      "notable_exception_raised",
+      "reject_empty_subcards",
+      "manage_trash",
+      "validate_delete",
+      "delete_children",
+      "validate_type_change",
+      "validate_type",
+      "set_read_rule",
+      "set_field_read_rules",
+      "update_read_rule",
+      "check_permissions",
+      "update_rule_cache",
+      "expire_related",
+      "observer_create",
+      "observer_update",
+      "observer_delete",
+      "cache_delete_card_events",
+      "generate_token",
+      "set_stamper",
+      "update_ancestor_timestamps",
+      "assign_action",
+      "detect_conflict",
+      "finalize_action",
+      "rollback_actions",
+      "finalize_act",
+      "add_comment",
+      "cache_expired_for_type_change",
+      "expire_preferences_cache",
+      "silence_notifications",
+      "notify_followers_after_save",
+      "stash_followers",
+      "notify_followers_after_delete",
+      "recaptcha",
+      "add_and_drop_items",
+      "insert_item_event",
+      "validate_item_type",
+      "validate_item_uniqueness",
+      "delist",
+      "validate_account_holder_name_change",
+      "save_virtual_content",
+      "delete_virtual_content",
+      "update_skin_asset_input",
+      "check_for_cards_of_type",
+      "check_for_cards_of_type_when_type_changed",
+      "validate_cardtype_name",
+      "admin_tasks",
+      "validate_json",
+      "validate_number",
+      "cascade_read_rule",
+      "check_setup",
+      "setup_first_user",
+      "signin_after_setup",
+      "validate_coffeescript_syntax",
+      "validate_javascript_syntax",
+      "validate_css",
+      "validate_scss_syntax",
+      "no_deletion_if_used",
+      "initialize_because_of_type_change",
+      "copy_theme",
+      "validate_theme_template",
+      "cache_expired_for_new_set",
+      "store_in_session"
+    ]
+  },
+  "pageGrid": {
+    "shape": "every deck or seed card x {page: 4 actors, core: admin + anonymous}",
+    "actorLattice": [
+      {
+        "actor": "anonymous",
+        "card": "Anonymous",
+        "shape": "signed out"
+      },
+      {
+        "actor": "member",
+        "card": "Mira Member",
+        "shape": "Member role: denied Briefs and Contractor-only cards, allowed Memos"
+      },
+      {
+        "actor": "contractor",
+        "card": "Quinn Contractor",
+        "shape": "Contractor role (the second role): denied Member-only cards, allowed Contractor-only cards"
+      },
+      {
+        "actor": "admin",
+        "card": "Ada Admin",
+        "shape": "Administrator role: reads and writes everything"
+      }
+    ],
+    "cardTypes": [
+      "Bootswatch skin",
+      "Brief",
+      "Cardtype",
+      "Date",
+      "Email template",
+      "File",
+      "HTML",
+      "JavaScript",
+      "Layout",
+      "Link list",
+      "List",
+      "Markdown",
+      "Memo",
+      "Nest list",
+      "Note",
+      "Number",
+      "Phrase",
+      "PlainText",
+      "Pointer",
+      "RichText",
+      "Role",
+      "SCSS",
+      "Search",
+      "Tag",
+      "Toggle",
+      "Topic",
+      "URI",
+      "User"
+    ],
+    "seedTypesExercised": [
+      "Bootswatch skin",
+      "CSS",
+      "Cardtype",
+      "CoffeeScript",
+      "Date",
+      "Email template",
+      "File",
+      "HTML",
+      "Image",
+      "JSON",
+      "JavaScript",
+      "Layout",
+      "Link list",
+      "List",
+      "Markdown",
+      "Mod",
+      "Nest list",
+      "Number",
+      "Phrase",
+      "PlainText",
+      "Pointer",
+      "RichText",
+      "Role",
+      "SCSS",
+      "Search",
+      "Session",
+      "Set",
+      "Setting",
+      "Sign up",
+      "Toggle",
+      "Topic",
+      "URI",
+      "User",
+      "Notification template"
+    ]
+  },
+  "viewCoverage": [
+    {
+      "view": "name",
+      "corpusOps": [
+        "view:admin:Topic 001:name"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "all/base"
+      ],
+      "why": "all/base"
+    },
+    {
+      "view": "key",
+      "corpusOps": [
+        "view:admin:Topic 001:key"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "all/base"
+      ],
+      "why": "all/base"
+    },
+    {
+      "view": "linkname",
+      "corpusOps": [
+        "view:admin:Topic 001:linkname"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "all/base"
+      ],
+      "why": "all/base"
+    },
+    {
+      "view": "url",
+      "corpusOps": [
+        "view:admin:Topic 001:url"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "all/base"
+      ],
+      "why": "all/base"
+    },
+    {
+      "view": "id_url",
+      "corpusOps": [
+        "view:admin:Topic 001:id_url"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "all/base"
+      ],
+      "why": "all/base"
+    },
+    {
+      "view": "url_link",
+      "corpusOps": [
+        "view:admin:Topic 001:url_link"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "all/base",
+        "type/uri"
+      ],
+      "why": "all/base"
+    },
+    {
+      "view": "link",
+      "corpusOps": [
+        "view:admin:Topic 001:link"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "all/base"
+      ],
+      "why": "all/base"
+    },
+    {
+      "view": "nav_link",
+      "corpusOps": [
+        "view:admin:Topic 001:nav_link"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "all/base"
+      ],
+      "why": "all/base"
+    },
+    {
+      "view": "codename",
+      "corpusOps": [
+        "view:admin:Anonymous:codename"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Anonymous",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "all/base"
+      ],
+      "why": "all/base; codename card"
+    },
+    {
+      "view": "id",
+      "corpusOps": [
+        "view:admin:Topic 001:id"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "all/base"
+      ],
+      "why": "all/base"
+    },
+    {
+      "view": "type",
+      "corpusOps": [
+        "view:admin:Topic 001:type"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "all/base",
+        "all/html",
+        "type/cardtype"
+      ],
+      "why": "all/base + all/html"
+    },
+    {
+      "view": "created_at",
+      "corpusOps": [
+        "view:admin:Topic 001:created_at"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "all/base"
+      ],
+      "why": "all/base"
+    },
+    {
+      "view": "updated_at",
+      "corpusOps": [
+        "view:admin:Topic 001:updated_at"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "all/base"
+      ],
+      "why": "all/base"
+    },
+    {
+      "view": "updated_by",
+      "corpusOps": [
+        "view:admin:Topic 001:updated_by"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [],
+      "setPaths": [],
+      "why": "all/base"
+    },
+    {
+      "view": "title",
+      "corpusOps": [
+        "view:admin:Topic 001:title"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [],
+      "setPaths": [],
+      "why": "all/base"
+    },
+    {
+      "view": "titled",
+      "corpusOps": [
+        "view:admin:Topic 001:titled"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "api_key",
+        "comment"
+      ],
+      "setPaths": [
+        "right/api_key",
+        "right/discussion"
+      ],
+      "why": "all/base"
+    },
+    {
+      "view": "titled_content",
+      "corpusOps": [
+        "view:admin:Topic 001:titled_content"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "api_key",
+        "comment",
+        "format"
+      ],
+      "setPaths": [
+        "all/base",
+        "right/api_key",
+        "right/discussion"
+      ],
+      "why": "all/base"
+    },
+    {
+      "view": "content",
+      "corpusOps": [
+        "view:admin:Topic 001:content"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "api_key",
+        "email"
+      ],
+      "setPaths": [
+        "right/api_key",
+        "right/html_message"
+      ],
+      "why": "all/base"
+    },
+    {
+      "view": "core",
+      "corpusOps": [
+        "view:admin:Topic 001:core"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "account",
+        "api_key",
+        "bootstrap",
+        "carrierwave",
+        "comment",
+        "core",
+        "email",
+        "follow",
+        "format",
+        "layout",
+        "markdown",
+        "recaptcha",
+        "script",
+        "style"
+      ],
+      "setPaths": [
+        "right/account/views",
+        "right/api_key",
+        "right/discussion",
+        "right/followers",
+        "right/head",
+        "right/html_message",
+        "right/password",
+        "right/subject",
+        "right/text_message",
+        "self/admin",
+        "self/recaptcha_settings",
+        "self/signin",
+        "type/bootswatch_skin/html_views",
+        "type/email_template/html",
+        "type/file",
+        "type/image/html_views",
+        "type/markdown",
+        "type/mod",
+        "type/signup/views",
+        "type/uri",
+        "type_plus_right/mod/script",
+        "type_plus_right/mod/style"
+      ],
+      "why": "all/base (page grid also cores every card)"
+    },
+    {
+      "view": "open",
+      "corpusOps": [
+        "view:admin:Topic 001:open"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "comment"
+      ],
+      "setPaths": [
+        "right/discussion"
+      ],
+      "why": "all/base open content"
+    },
+    {
+      "view": "closed",
+      "corpusOps": [
+        "view:admin:Topic 001:closed"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [],
+      "setPaths": [],
+      "why": "all/base closed content"
+    },
+    {
+      "view": "open_content",
+      "corpusOps": [
+        "view:admin:Topic 001:open_content"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "account",
+        "comment"
+      ],
+      "setPaths": [
+        "right/discussion",
+        "self/signin"
+      ],
+      "why": "all/base"
+    },
+    {
+      "view": "closed_content",
+      "corpusOps": [
+        "view:admin:Topic 001:closed_content"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "all/content"
+      ],
+      "why": "all/content"
+    },
+    {
+      "view": "label",
+      "corpusOps": [
+        "view:admin:Topic 001+summary:label"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001+summary",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "all/content"
+      ],
+      "why": "all/content"
+    },
+    {
+      "view": "smart_label",
+      "corpusOps": [
+        "view:admin:Topic 001+summary:smart_label"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001+summary",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "all/content"
+      ],
+      "why": "all/content"
+    },
+    {
+      "view": "hidden_content_field",
+      "corpusOps": [
+        "view:admin:Topic 001+summary:hidden_content_field"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001+summary",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "all/content"
+      ],
+      "why": "all/content"
+    },
+    {
+      "view": "short_content",
+      "corpusOps": [
+        "view:admin:Topic 001+summary:short_content"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001+summary",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "all/html/views"
+      ],
+      "why": "all/html/views"
+    },
+    {
+      "view": "one_line_content",
+      "corpusOps": [
+        "view:admin:Phrase 1:one_line_content"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Phrase 1",
+      "mods": [
+        "account",
+        "bootstrap",
+        "carrierwave",
+        "content",
+        "follow",
+        "format",
+        "layout",
+        "list",
+        "permissions",
+        "rules",
+        "search"
+      ],
+      "setPaths": [
+        "abstract/01_list/html_views",
+        "abstract/permission",
+        "abstract/search_views",
+        "all/html/views",
+        "right/default",
+        "right/following",
+        "right/head",
+        "right/structure",
+        "rule/bar_view",
+        "self/signin",
+        "type/bootswatch_skin/html_views",
+        "type/html",
+        "type/image",
+        "type/set/html_views",
+        "type/setting",
+        "type_plus_right/user/follow"
+      ],
+      "why": "all/html/views + abstract/search_views"
+    },
+    {
+      "view": "raw_one_line_content",
+      "corpusOps": [
+        "view:admin:Phrase 1:raw_one_line_content"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Phrase 1",
+      "mods": [
+        "format",
+        "rules"
+      ],
+      "setPaths": [
+        "all/html/views",
+        "rule/bar_view"
+      ],
+      "why": "all/html/views + rule/bar_view"
+    },
+    {
+      "view": "labeled",
+      "corpusOps": [
+        "view:admin:Report 1:labeled"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Report 1",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "all/base",
+        "all/html/views"
+      ],
+      "why": "all/html/views"
+    },
+    {
+      "view": "title_link",
+      "corpusOps": [
+        "view:admin:Example Site:title_link"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Example Site",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "type/uri"
+      ],
+      "why": "all/base + type/uri"
+    },
+    {
+      "view": "blank",
+      "corpusOps": [
+        "view:admin:Topic 001:blank"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "all/base"
+      ],
+      "why": "all/base"
+    },
+    {
+      "view": "raw",
+      "corpusOps": [
+        "view:admin:Topic 001:raw"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "account",
+        "format"
+      ],
+      "setPaths": [
+        "all/base",
+        "right/password",
+        "type_plus_right/user/email"
+      ],
+      "why": "all/base"
+    },
+    {
+      "view": "count",
+      "corpusOps": [
+        "view:admin:All Topics:count"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "All Topics",
+      "mods": [
+        "collection",
+        "search"
+      ],
+      "setPaths": [
+        "abstract/0_search",
+        "all/item"
+      ],
+      "why": "all/item + abstract/0_search"
+    },
+    {
+      "view": "expanded_bar",
+      "corpusOps": [
+        "view:admin:Topic 001:expanded_bar"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [],
+      "setPaths": [],
+      "why": "bar family"
+    },
+    {
+      "view": "bar",
+      "corpusOps": [
+        "view:admin:Topic 001:bar",
+        "view:anonymous:Topic 001:bar"
+      ],
+      "actors": [
+        "admin",
+        "anonymous"
+      ],
+      "card": "Topic 001",
+      "mods": [],
+      "setPaths": [],
+      "why": "bar family; anonymous pins the denied bar branch"
+    },
+    {
+      "view": "closed_bar",
+      "corpusOps": [
+        "view:admin:Topic 001:closed_bar"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [],
+      "setPaths": [],
+      "why": "bar family"
+    },
+    {
+      "view": "open_bar",
+      "corpusOps": [
+        "view:admin:Topic 001:open_bar"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [],
+      "setPaths": [],
+      "why": "bar family"
+    },
+    {
+      "view": "full_bar",
+      "corpusOps": [
+        "view:admin:Topic 001:full_bar"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [],
+      "setPaths": [],
+      "why": "bar family"
+    },
+    {
+      "view": "mini_bar",
+      "corpusOps": [
+        "view:admin:Topic 001:mini_bar"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [],
+      "setPaths": [],
+      "why": "bar family"
+    },
+    {
+      "view": "bar_body",
+      "corpusOps": [
+        "view:admin:Topic 001:bar_body"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [],
+      "setPaths": [],
+      "why": "bar family"
+    },
+    {
+      "view": "bar_left",
+      "corpusOps": [
+        "view:admin:Topic 001:bar_left"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "bootstrap"
+      ],
+      "setPaths": [
+        "type/bootswatch_skin/html_views"
+      ],
+      "why": "bar family (also type/bootswatch_skin registration)"
+    },
+    {
+      "view": "bar_right",
+      "corpusOps": [
+        "view:admin:Topic 001:bar_right"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "bootstrap",
+        "core",
+        "format"
+      ],
+      "setPaths": [
+        "type/bootswatch_skin/html_views",
+        "type/mod"
+      ],
+      "why": "bar family (also type/mod registration)"
+    },
+    {
+      "view": "bar_middle",
+      "corpusOps": [
+        "view:admin:Corpus Style:bar_middle"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Corpus Style",
+      "mods": [
+        "bootstrap",
+        "content"
+      ],
+      "setPaths": [
+        "abstract/01_code_content",
+        "type_plus_right/bootswatch_skin/colors"
+      ],
+      "why": "bar family + abstract/01_code_content"
+    },
+    {
+      "view": "bar_bottom",
+      "corpusOps": [
+        "view:admin:Corpus Skin:bar_bottom"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Corpus Skin",
+      "mods": [
+        "bootstrap",
+        "layout"
+      ],
+      "setPaths": [
+        "self/head",
+        "type/bootswatch_skin/html_views"
+      ],
+      "why": "bar family (type/bootswatch_skin + self/head)"
+    },
+    {
+      "view": "bar_menu",
+      "corpusOps": [
+        "view:admin:Topic 001:bar_menu"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [],
+      "setPaths": [],
+      "why": "bar family menu"
+    },
+    {
+      "view": "board_link",
+      "corpusOps": [
+        "view:admin:Topic 001:board_link"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [],
+      "setPaths": [],
+      "why": "board family link"
+    },
+    {
+      "view": "accordion_bar",
+      "corpusOps": [
+        "view:admin:Topic+*type:accordion_bar"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic+*type",
+      "mods": [],
+      "setPaths": [],
+      "why": "bar family on a set card"
+    },
+    {
+      "view": "bar_setting_list",
+      "corpusOps": [
+        "view:admin:Topic+*type:bar_setting_list"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic+*type",
+      "mods": [
+        "rules"
+      ],
+      "setPaths": [
+        "type/set/html_views/rule_lists"
+      ],
+      "why": "type/set rule lists"
+    },
+    {
+      "view": "pill_setting_list",
+      "corpusOps": [
+        "view:admin:Topic+*type:pill_setting_list"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic+*type",
+      "mods": [
+        "rules"
+      ],
+      "setPaths": [
+        "type/set/html_views/rule_lists"
+      ],
+      "why": "type/set rule lists"
+    },
+    {
+      "view": "modal_pill_setting_list",
+      "corpusOps": [
+        "view:admin:Topic+*type:modal_pill_setting_list"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic+*type",
+      "mods": [
+        "rules"
+      ],
+      "setPaths": [
+        "type/set/html_views/rule_lists"
+      ],
+      "why": "type/set rule lists"
+    },
+    {
+      "view": "accordion_rule_list",
+      "corpusOps": [
+        "view:admin:Topic+*type:accordion_rule_list"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic+*type",
+      "mods": [
+        "rules"
+      ],
+      "setPaths": [
+        "type/set/html_views/rule_lists"
+      ],
+      "why": "type/set rule lists"
+    },
+    {
+      "view": "accordion_bar_list",
+      "corpusOps": [
+        "view:admin:Topic+*type:accordion_bar_list"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic+*type",
+      "mods": [
+        "rules"
+      ],
+      "setPaths": [
+        "type/set/html_views/rule_lists"
+      ],
+      "why": "type/set rule lists"
+    },
+    {
+      "view": "quick_edit_setting_list",
+      "corpusOps": [
+        "view:admin:Topic+*type:quick_edit_setting_list"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic+*type",
+      "mods": [
+        "rules"
+      ],
+      "setPaths": [
+        "type/set/html_views/rule_lists"
+      ],
+      "why": "type/set rule lists"
+    },
+    {
+      "view": "overlay_rule_list_link",
+      "corpusOps": [
+        "view:admin:Topic+*type:overlay_rule_list_link"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic+*type",
+      "mods": [
+        "rules"
+      ],
+      "setPaths": [
+        "type/set/html_views/rule_lists"
+      ],
+      "why": "type/set rule lists"
+    },
+    {
+      "view": "board_rules_tab",
+      "corpusOps": [
+        "view:admin:Topic+*type:board_rules_tab"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic+*type",
+      "mods": [
+        "rules"
+      ],
+      "setPaths": [
+        "type/set/html_views/filtered_rule_lists"
+      ],
+      "why": "type/set filtered rule lists"
+    },
+    {
+      "view": "filtered_accordion_rule_list",
+      "corpusOps": [
+        "view:admin:Topic+*type:filtered_accordion_rule_list"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic+*type",
+      "mods": [
+        "rules"
+      ],
+      "setPaths": [
+        "type/set/html_views/filtered_rule_lists"
+      ],
+      "why": "type/set filtered rule lists"
+    },
+    {
+      "view": "nest_rules",
+      "corpusOps": [
+        "view:admin:Topic+*type:nest_rules"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic+*type",
+      "mods": [
+        "rules"
+      ],
+      "setPaths": [
+        "type/set/html_views/filtered_rule_lists"
+      ],
+      "why": "type/set filtered rule lists"
+    },
+    {
+      "view": "modal_nest_rules",
+      "corpusOps": [
+        "view:admin:Topic+*type:modal_nest_rules"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic+*type",
+      "mods": [
+        "rules"
+      ],
+      "setPaths": [
+        "type/set/html_views/filtered_rule_lists"
+      ],
+      "why": "type/set filtered rule lists"
+    },
+    {
+      "view": "set_label",
+      "corpusOps": [
+        "view:admin:Topic+*type:set_label"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic+*type",
+      "mods": [
+        "rules"
+      ],
+      "setPaths": [
+        "type/set/html_views"
+      ],
+      "why": "type/set"
+    },
+    {
+      "view": "template_link",
+      "corpusOps": [
+        "view:admin:Topic+*type:template_link"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic+*type",
+      "mods": [
+        "rules"
+      ],
+      "setPaths": [
+        "type/set/html_views/template"
+      ],
+      "why": "type/set template"
+    },
+    {
+      "view": "box",
+      "corpusOps": [
+        "view:admin:Topic 001:box"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [],
+      "setPaths": [],
+      "why": "box family"
+    },
+    {
+      "view": "boxed",
+      "corpusOps": [
+        "view:admin:Topic 001:boxed"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [],
+      "setPaths": [],
+      "why": "box family"
+    },
+    {
+      "view": "boxed_link",
+      "corpusOps": [
+        "view:admin:Topic 001:boxed_link"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [],
+      "setPaths": [],
+      "why": "box family link"
+    },
+    {
+      "view": "box_top",
+      "corpusOps": [
+        "view:admin:Topic 001:box_top"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [],
+      "setPaths": [],
+      "why": "box family"
+    },
+    {
+      "view": "box_middle",
+      "corpusOps": [
+        "view:admin:Topic 001:box_middle"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "style"
+      ],
+      "setPaths": [
+        "abstract/skin_box"
+      ],
+      "why": "box family + abstract/skin_box"
+    },
+    {
+      "view": "box_bottom",
+      "corpusOps": [
+        "view:admin:Corpus Skin:box_bottom"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Corpus Skin",
+      "mods": [
+        "style"
+      ],
+      "setPaths": [
+        "abstract/skin_box"
+      ],
+      "why": "box family + abstract/skin_box"
+    },
+    {
+      "view": "customize_button",
+      "corpusOps": [
+        "view:admin:Corpus Skin:customize_button"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Corpus Skin",
+      "mods": [
+        "bootstrap",
+        "style"
+      ],
+      "setPaths": [
+        "abstract/skin_box",
+        "type/bootswatch_skin/html_views"
+      ],
+      "why": "skin family"
+    },
+    {
+      "view": "tabs",
+      "corpusOps": [
+        "view:admin:Ada Admin:tabs"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Ada Admin",
+      "mods": [
+        "tabs"
+      ],
+      "setPaths": [
+        "all/tabs"
+      ],
+      "why": "tabs mod"
+    },
+    {
+      "view": "pills",
+      "corpusOps": [
+        "view:admin:Ada Admin:pills"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Ada Admin",
+      "mods": [
+        "tabs"
+      ],
+      "setPaths": [
+        "all/tabs"
+      ],
+      "why": "tabs mod"
+    },
+    {
+      "view": "tabs_static",
+      "corpusOps": [
+        "view:admin:Ada Admin:tabs_static"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Ada Admin",
+      "mods": [
+        "tabs"
+      ],
+      "setPaths": [
+        "all/tabs"
+      ],
+      "why": "tabs mod"
+    },
+    {
+      "view": "pills_static",
+      "corpusOps": [
+        "view:admin:Ada Admin:pills_static"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Ada Admin",
+      "mods": [
+        "tabs"
+      ],
+      "setPaths": [
+        "all/tabs"
+      ],
+      "why": "tabs mod"
+    },
+    {
+      "view": "menu",
+      "corpusOps": [
+        "view:admin:Topic 001:menu"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [],
+      "setPaths": [],
+      "why": "menu family"
+    },
+    {
+      "view": "menu_block",
+      "corpusOps": [
+        "view:admin:Topic 001:menu_block"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [],
+      "setPaths": [],
+      "why": "menu family"
+    },
+    {
+      "view": "modal_menu",
+      "corpusOps": [
+        "view:admin:Topic 001:modal_menu"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "layout"
+      ],
+      "setPaths": [
+        "all/modal"
+      ],
+      "why": "modal family"
+    },
+    {
+      "view": "navbar_links",
+      "corpusOps": [
+        "view:admin:*main menu:navbar_links"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "*main menu",
+      "mods": [
+        "layout"
+      ],
+      "setPaths": [
+        "all/navbar_links",
+        "type/html"
+      ],
+      "why": "navbar mod"
+    },
+    {
+      "view": "nav_item",
+      "corpusOps": [
+        "view:admin:*main menu:nav_item"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "*main menu",
+      "mods": [
+        "layout"
+      ],
+      "setPaths": [
+        "abstract/items",
+        "all/navbar_links",
+        "self/dropdown_divider"
+      ],
+      "why": "navbar mod + abstract/items"
+    },
+    {
+      "view": "nav_link_in_dropdown",
+      "corpusOps": [
+        "view:admin:*main menu:nav_link_in_dropdown"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "*main menu",
+      "mods": [
+        "layout"
+      ],
+      "setPaths": [
+        "all/navbar_links",
+        "self/dropdown_divider"
+      ],
+      "why": "navbar mod + self/dropdown_divider"
+    },
+    {
+      "view": "carousel",
+      "corpusOps": [
+        "view:admin:Topic 001+tags:carousel"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001+tags",
+      "mods": [
+        "bootstrap"
+      ],
+      "setPaths": [
+        "all/bootstrap/carousel"
+      ],
+      "why": "bootstrap carousel"
+    },
+    {
+      "view": "icons",
+      "corpusOps": [
+        "view:admin:Home:icons"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Home",
+      "mods": [
+        "bootstrap"
+      ],
+      "setPaths": [
+        "all/bootstrap/icon"
+      ],
+      "why": "bootstrap icons"
+    },
+    {
+      "view": "progress_bar",
+      "corpusOps": [
+        "view:admin:All Topics:progress_bar"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "All Topics",
+      "mods": [
+        "bootstrap"
+      ],
+      "setPaths": [
+        "abstract/progress_bar"
+      ],
+      "why": "abstract/progress_bar probe"
+    },
+    {
+      "view": "modal",
+      "corpusOps": [
+        "view:admin:Topic 001:modal",
+        "view:anonymous:Topic 001:modal"
+      ],
+      "actors": [
+        "admin",
+        "anonymous"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "layout"
+      ],
+      "setPaths": [
+        "all/modal"
+      ],
+      "why": "modal family; anonymous denial shape"
+    },
+    {
+      "view": "modal_title",
+      "corpusOps": [
+        "view:admin:Topic 001:modal_title"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "layout"
+      ],
+      "setPaths": [
+        "all/modal"
+      ],
+      "why": "modal family"
+    },
+    {
+      "view": "modal_footer",
+      "corpusOps": [
+        "view:admin:Topic 001:modal_footer"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "layout"
+      ],
+      "setPaths": [
+        "all/modal"
+      ],
+      "why": "modal family"
+    },
+    {
+      "view": "modal_link",
+      "corpusOps": [
+        "view:admin:Note 001:modal_link",
+        "view:anonymous:Note 001:modal_link"
+      ],
+      "actors": [
+        "admin",
+        "anonymous"
+      ],
+      "card": "Note 001",
+      "mods": [
+        "layout"
+      ],
+      "setPaths": [
+        "all/modal"
+      ],
+      "why": "modal family; anonymous denial"
+    },
+    {
+      "view": "close_modal_link",
+      "corpusOps": [
+        "view:admin:Topic 001:close_modal_link"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "layout"
+      ],
+      "setPaths": [
+        "all/modal"
+      ],
+      "why": "modal family"
+    },
+    {
+      "view": "pop_out_modal_link",
+      "corpusOps": [
+        "view:admin:Topic 001:pop_out_modal_link"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "layout"
+      ],
+      "setPaths": [
+        "all/modal"
+      ],
+      "why": "modal family"
+    },
+    {
+      "view": "overlay_header",
+      "corpusOps": [
+        "view:admin:Topic 001:overlay_header"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "layout"
+      ],
+      "setPaths": [
+        "all/overlay"
+      ],
+      "why": "overlay family"
+    },
+    {
+      "view": "overlay_title",
+      "corpusOps": [
+        "view:admin:Topic 001:overlay_title"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "layout",
+        "rules"
+      ],
+      "setPaths": [
+        "all/overlay",
+        "rule/board_rules_editor"
+      ],
+      "why": "overlay family (also rule/board_rules_editor)"
+    },
+    {
+      "view": "overlay_menu",
+      "corpusOps": [
+        "view:admin:Topic 001:overlay_menu"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "layout"
+      ],
+      "setPaths": [
+        "all/overlay"
+      ],
+      "why": "overlay family"
+    },
+    {
+      "view": "overlay_help_link",
+      "corpusOps": [
+        "view:admin:Topic 001:overlay_help_link"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "layout"
+      ],
+      "setPaths": [
+        "all/overlay"
+      ],
+      "why": "overlay family"
+    },
+    {
+      "view": "overlay_guide",
+      "corpusOps": [
+        "view:admin:Home:overlay_guide"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Home",
+      "mods": [
+        "edit"
+      ],
+      "setPaths": [
+        "all/overlay_guide"
+      ],
+      "why": "overlay guide"
+    },
+    {
+      "view": "board",
+      "corpusOps": [
+        "view:admin:Topic 001:board",
+        "view:anonymous:Topic 001:board"
+      ],
+      "actors": [
+        "admin",
+        "anonymous"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "edit"
+      ],
+      "setPaths": [
+        "all/editing"
+      ],
+      "why": "board family; anonymous denial"
+    },
+    {
+      "view": "cardboard",
+      "corpusOps": [
+        "view:admin:Note 001:cardboard"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Note 001",
+      "mods": [
+        "edit"
+      ],
+      "setPaths": [
+        "all/editing"
+      ],
+      "why": "board family"
+    },
+    {
+      "view": "board_act",
+      "corpusOps": [
+        "view:admin:Topic 001:board_act"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "history"
+      ],
+      "setPaths": [
+        "all/history_board"
+      ],
+      "why": "history board"
+    },
+    {
+      "view": "board_type_formgroup",
+      "corpusOps": [
+        "view:admin:Note 001:board_type_formgroup"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Note 001",
+      "mods": [
+        "edit"
+      ],
+      "setPaths": [
+        "all/edit_type"
+      ],
+      "why": "board edit family"
+    },
+    {
+      "view": "guide_tab",
+      "corpusOps": [
+        "view:admin:Topic 001:guide_tab"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "edit"
+      ],
+      "setPaths": [
+        "all/board/tab_views"
+      ],
+      "why": "board tabs"
+    },
+    {
+      "view": "rules_tab",
+      "corpusOps": [
+        "view:admin:Topic 001:rules_tab"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "edit"
+      ],
+      "setPaths": [
+        "all/board/tab_views"
+      ],
+      "why": "board tabs"
+    },
+    {
+      "view": "related_tab",
+      "corpusOps": [
+        "view:admin:Topic 001:related_tab"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "edit"
+      ],
+      "setPaths": [
+        "all/board/tab_views"
+      ],
+      "why": "board tabs"
+    },
+    {
+      "view": "history_tab",
+      "corpusOps": [
+        "view:admin:Topic 001:history_tab",
+        "view:anonymous:Topic 001:history_tab"
+      ],
+      "actors": [
+        "admin",
+        "anonymous"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "edit"
+      ],
+      "setPaths": [
+        "all/board/tab_views"
+      ],
+      "why": "board tabs; anonymous denial"
+    },
+    {
+      "view": "follow_section",
+      "corpusOps": [
+        "view:admin:Topic 001:follow_section",
+        "view:anonymous:Topic 001:follow_section"
+      ],
+      "actors": [
+        "admin",
+        "anonymous"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "edit"
+      ],
+      "setPaths": [
+        "all/board/tab_views"
+      ],
+      "why": "board tabs; follow state differs per actor"
+    },
+    {
+      "view": "engage_tab",
+      "corpusOps": [
+        "view:admin:Topic 001+discussion:engage_tab"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001+discussion",
+      "mods": [
+        "edit"
+      ],
+      "setPaths": [
+        "all/board/tab_views"
+      ],
+      "why": "board tabs + comment"
+    },
+    {
+      "view": "guide",
+      "corpusOps": [
+        "view:admin:*guide:guide"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "*guide",
+      "mods": [
+        "help"
+      ],
+      "setPaths": [
+        "all/guide"
+      ],
+      "why": "guide"
+    },
+    {
+      "view": "edit",
+      "corpusOps": [
+        "view:admin:Note 001:edit",
+        "view:anonymous:Note 001:edit"
+      ],
+      "actors": [
+        "admin",
+        "anonymous"
+      ],
+      "card": "Note 001",
+      "mods": [
+        "account",
+        "edit",
+        "follow"
+      ],
+      "setPaths": [
+        "all/edit_content",
+        "self/signin",
+        "type_plus_right/user/follow"
+      ],
+      "why": "edit family; anonymous denial"
+    },
+    {
+      "view": "edit_form",
+      "corpusOps": [
+        "view:admin:Note 001:edit_form"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Note 001",
+      "mods": [
+        "edit"
+      ],
+      "setPaths": [
+        "all/edit_content"
+      ],
+      "why": "edit family"
+    },
+    {
+      "view": "edit_buttons",
+      "corpusOps": [
+        "view:admin:Note 001:edit_buttons"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Note 001",
+      "mods": [
+        "account",
+        "edit",
+        "follow"
+      ],
+      "setPaths": [
+        "all/editing",
+        "self/follow_defaults",
+        "self/signin"
+      ],
+      "why": "edit family"
+    },
+    {
+      "view": "edit_nests",
+      "corpusOps": [
+        "view:admin:Search Page:edit_nests"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Search Page",
+      "mods": [
+        "edit"
+      ],
+      "setPaths": [
+        "all/editing"
+      ],
+      "why": "edit family on nested content"
+    },
+    {
+      "view": "edit_structure",
+      "corpusOps": [
+        "view:admin:Topic 001:edit_structure"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "edit"
+      ],
+      "setPaths": [
+        "all/editing"
+      ],
+      "why": "edit family on structured card"
+    },
+    {
+      "view": "edit_rules",
+      "corpusOps": [
+        "view:admin:Topic 001:edit_rules"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "edit"
+      ],
+      "setPaths": [
+        "all/editing"
+      ],
+      "why": "edit family rules accordion"
+    },
+    {
+      "view": "edit_inline",
+      "corpusOps": [
+        "view:admin:Topic 001+summary:edit_inline",
+        "view:anonymous:Topic 001+summary:edit_inline"
+      ],
+      "actors": [
+        "admin",
+        "anonymous"
+      ],
+      "card": "Topic 001+summary",
+      "mods": [
+        "edit",
+        "layout"
+      ],
+      "setPaths": [
+        "all/edit_inline",
+        "right/enabled_roles"
+      ],
+      "why": "edit inline family; anonymous denial"
+    },
+    {
+      "view": "edit_inline_buttons",
+      "corpusOps": [
+        "view:admin:Topic 001+summary:edit_inline_buttons"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001+summary",
+      "mods": [
+        "edit"
+      ],
+      "setPaths": [
+        "all/edit_inline"
+      ],
+      "why": "edit inline family"
+    },
+    {
+      "view": "edit_row",
+      "corpusOps": [
+        "view:admin:Topic 001+summary:edit_row"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001+summary",
+      "mods": [
+        "edit"
+      ],
+      "setPaths": [
+        "all/edit_inline"
+      ],
+      "why": "edit inline family"
+    },
+    {
+      "view": "edit_name_row",
+      "corpusOps": [
+        "view:admin:Topic 001+summary:edit_name_row"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001+summary",
+      "mods": [
+        "edit"
+      ],
+      "setPaths": [
+        "all/edit_inline"
+      ],
+      "why": "edit inline family"
+    },
+    {
+      "view": "edit_name",
+      "corpusOps": [
+        "view:admin:Note 001:edit_name"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Note 001",
+      "mods": [
+        "edit"
+      ],
+      "setPaths": [
+        "all/edit_name"
+      ],
+      "why": "edit name family"
+    },
+    {
+      "view": "name_form",
+      "corpusOps": [
+        "view:admin:Note 001:name_form"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Note 001",
+      "mods": [
+        "edit"
+      ],
+      "setPaths": [
+        "all/edit_name"
+      ],
+      "why": "edit name family"
+    },
+    {
+      "view": "edit_type",
+      "corpusOps": [
+        "view:admin:Note 001:edit_type"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Note 001",
+      "mods": [
+        "edit"
+      ],
+      "setPaths": [
+        "all/edit_type"
+      ],
+      "why": "edit type family"
+    },
+    {
+      "view": "edit_type_row",
+      "corpusOps": [
+        "view:admin:Note 001:edit_type_row"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Note 001",
+      "mods": [
+        "edit"
+      ],
+      "setPaths": [
+        "all/edit_type"
+      ],
+      "why": "edit type family"
+    },
+    {
+      "view": "edit_type_form",
+      "corpusOps": [
+        "view:admin:Note 001:edit_type_form"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Note 001",
+      "mods": [
+        "edit"
+      ],
+      "setPaths": [
+        "all/edit_type"
+      ],
+      "why": "edit type family"
+    },
+    {
+      "view": "type_formgroup",
+      "corpusOps": [
+        "view:admin:Note 001:type_formgroup"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Note 001",
+      "mods": [
+        "edit"
+      ],
+      "setPaths": [
+        "all/edit_type"
+      ],
+      "why": "edit type family"
+    },
+    {
+      "view": "name_formgroup",
+      "corpusOps": [
+        "view:admin:Note 001:name_formgroup"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Note 001",
+      "mods": [
+        "edit"
+      ],
+      "setPaths": [
+        "all/form"
+      ],
+      "why": "all/form"
+    },
+    {
+      "view": "content_formgroup",
+      "corpusOps": [
+        "view:admin:Note 001:content_formgroup"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Note 001",
+      "mods": [
+        "edit"
+      ],
+      "setPaths": [
+        "all/form"
+      ],
+      "why": "all/form"
+    },
+    {
+      "view": "content_formgroups",
+      "corpusOps": [
+        "view:anonymous:Sign up:content_formgroups"
+      ],
+      "actors": [
+        "anonymous"
+      ],
+      "card": "Sign up",
+      "mods": [
+        "account",
+        "edit"
+      ],
+      "setPaths": [
+        "all/form",
+        "right/account/views",
+        "type/signup/views"
+      ],
+      "why": "all/form on the sign-up form"
+    },
+    {
+      "view": "edit_in_form",
+      "corpusOps": [
+        "view:admin:Topic 001:edit_in_form"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "edit"
+      ],
+      "setPaths": [
+        "all/form"
+      ],
+      "why": "all/form"
+    },
+    {
+      "view": "conflict",
+      "corpusOps": [
+        "view:admin:Note 001:conflict"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Note 001",
+      "mods": [],
+      "setPaths": [],
+      "why": "all/form conflict"
+    },
+    {
+      "view": "conflict_tracker",
+      "corpusOps": [
+        "view:admin:Note 001:conflict_tracker"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Note 001",
+      "mods": [
+        "edit"
+      ],
+      "setPaths": [
+        "all/form"
+      ],
+      "why": "all/form conflict probe"
+    },
+    {
+      "view": "content_panel",
+      "corpusOps": [
+        "view:admin:Topic 001:content_panel"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [],
+      "setPaths": [],
+      "why": "content panel"
+    },
+    {
+      "view": "content_with_title",
+      "corpusOps": [
+        "view:admin:Topic 001:content_with_title"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [],
+      "setPaths": [],
+      "why": "content with title"
+    },
+    {
+      "view": "read_form",
+      "corpusOps": [
+        "view:admin:Topic 001+summary:read_form"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001+summary",
+      "mods": [
+        "edit"
+      ],
+      "setPaths": [
+        "all/formgroup"
+      ],
+      "why": "formgroup family"
+    },
+    {
+      "view": "read_formgroup",
+      "corpusOps": [
+        "view:admin:Topic 001+summary:read_formgroup"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001+summary",
+      "mods": [
+        "edit"
+      ],
+      "setPaths": [
+        "all/formgroup"
+      ],
+      "why": "formgroup family"
+    },
+    {
+      "view": "subedit_notice",
+      "corpusOps": [
+        "view:admin:Topic 001:subedit_notice"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "follow"
+      ],
+      "setPaths": [
+        "all/notify/base_views"
+      ],
+      "why": "edit family notice"
+    },
+    {
+      "view": "subedits",
+      "corpusOps": [
+        "view:admin:Topic 001:subedits"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [],
+      "setPaths": [],
+      "why": "edit family notice"
+    },
+    {
+      "view": "just_deleted",
+      "corpusOps": [
+        "view:admin:Note 001:just_deleted"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Note 001",
+      "mods": [
+        "edit"
+      ],
+      "setPaths": [
+        "all/editing"
+      ],
+      "why": "edit family deleted-state probe"
+    },
+    {
+      "view": "new",
+      "corpusOps": [
+        "view:admin:Corpus New Card:new",
+        "view:anonymous:Corpus New Card:new"
+      ],
+      "actors": [
+        "admin",
+        "anonymous"
+      ],
+      "card": "Corpus New Card",
+      "mods": [
+        "account",
+        "edit"
+      ],
+      "setPaths": [
+        "all/new",
+        "type/signup/views"
+      ],
+      "why": "new family on an absent card; anonymous denial"
+    },
+    {
+      "view": "new_buttons",
+      "corpusOps": [
+        "view:admin:Corpus New Card:new_buttons"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Corpus New Card",
+      "mods": [
+        "account",
+        "edit"
+      ],
+      "setPaths": [
+        "all/new",
+        "type/signup/views"
+      ],
+      "why": "new family"
+    },
+    {
+      "view": "new_fields",
+      "corpusOps": [
+        "view:admin:Corpus New Card:new_fields"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Corpus New Card",
+      "mods": [
+        "edit"
+      ],
+      "setPaths": [
+        "all/new"
+      ],
+      "why": "new family"
+    },
+    {
+      "view": "new_in_modal",
+      "corpusOps": [
+        "view:admin:Corpus New Card:new_in_modal"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Corpus New Card",
+      "mods": [
+        "edit"
+      ],
+      "setPaths": [
+        "all/new"
+      ],
+      "why": "new family"
+    },
+    {
+      "view": "new_in_modal_buttons",
+      "corpusOps": [
+        "view:admin:Corpus New Card:new_in_modal_buttons"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Corpus New Card",
+      "mods": [
+        "edit"
+      ],
+      "setPaths": [
+        "all/new"
+      ],
+      "why": "new family"
+    },
+    {
+      "view": "new_type_formgroup",
+      "corpusOps": [
+        "view:admin:Corpus New Card:new_type_formgroup"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Corpus New Card",
+      "mods": [
+        "edit"
+      ],
+      "setPaths": [
+        "all/new"
+      ],
+      "why": "new family"
+    },
+    {
+      "view": "simple_new",
+      "corpusOps": [
+        "view:admin:Corpus New Card:simple_new"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Corpus New Card",
+      "mods": [
+        "edit"
+      ],
+      "setPaths": [
+        "all/new"
+      ],
+      "why": "new family"
+    },
+    {
+      "view": "link_editor",
+      "corpusOps": [
+        "view:admin:Note 001:link_editor"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Note 001",
+      "mods": [
+        "tinymce_editor"
+      ],
+      "setPaths": [
+        "all/reference_editor/link_editor"
+      ],
+      "why": "reference editors"
+    },
+    {
+      "view": "modal_link_editor",
+      "corpusOps": [
+        "view:admin:Note 001:modal_link_editor"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Note 001",
+      "mods": [
+        "tinymce_editor"
+      ],
+      "setPaths": [
+        "all/reference_editor/link_editor"
+      ],
+      "why": "reference editors"
+    },
+    {
+      "view": "nest_editor",
+      "corpusOps": [
+        "view:admin:Search Page:nest_editor"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Search Page",
+      "mods": [
+        "tinymce_editor"
+      ],
+      "setPaths": [
+        "all/reference_editor/nest_editor"
+      ],
+      "why": "reference editors"
+    },
+    {
+      "view": "modal_nest_editor",
+      "corpusOps": [
+        "view:admin:Search Page:modal_nest_editor"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Search Page",
+      "mods": [
+        "tinymce_editor"
+      ],
+      "setPaths": [
+        "all/reference_editor/nest_editor"
+      ],
+      "why": "reference editors"
+    },
+    {
+      "view": "nest_content",
+      "corpusOps": [
+        "view:admin:Topic 001:nest_content"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "tinymce_editor"
+      ],
+      "setPaths": [
+        "all/reference_editor/nest_editor"
+      ],
+      "why": "reference editors"
+    },
+    {
+      "view": "nest_image",
+      "corpusOps": [
+        "view:admin:*favicon:nest_image"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "*favicon",
+      "mods": [
+        "tinymce_editor"
+      ],
+      "setPaths": [
+        "all/reference_editor/nest_image"
+      ],
+      "why": "reference editors"
+    },
+    {
+      "view": "modal_nest_image",
+      "corpusOps": [
+        "view:admin:*favicon:modal_nest_image"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "*favicon",
+      "mods": [
+        "tinymce_editor"
+      ],
+      "setPaths": [
+        "all/reference_editor/nest_image"
+      ],
+      "why": "reference editors"
+    },
+    {
+      "view": "new_image",
+      "corpusOps": [
+        "view:admin:*favicon:new_image"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "*favicon",
+      "mods": [
+        "tinymce_editor"
+      ],
+      "setPaths": [
+        "all/reference_editor/nest_image"
+      ],
+      "why": "reference editors"
+    },
+    {
+      "view": "new_image_buttons",
+      "corpusOps": [
+        "view:admin:*favicon:new_image_buttons"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "*favicon",
+      "mods": [
+        "tinymce_editor"
+      ],
+      "setPaths": [
+        "all/reference_editor/nest_image"
+      ],
+      "why": "reference editors"
+    },
+    {
+      "view": "preview_editor",
+      "corpusOps": [
+        "view:admin:Report 1:preview_editor"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Report 1",
+      "mods": [
+        "carrierwave"
+      ],
+      "setPaths": [
+        "type/file"
+      ],
+      "why": "file type editor preview"
+    },
+    {
+      "view": "card_select",
+      "corpusOps": [
+        "view:admin:Topic 001:card_select"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "rules"
+      ],
+      "setPaths": [
+        "all/set_select"
+      ],
+      "why": "set select"
+    },
+    {
+      "view": "add_link",
+      "corpusOps": [
+        "view:admin:Topic:add_link"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "type/cardtype"
+      ],
+      "why": "cardtype family"
+    },
+    {
+      "view": "add_button",
+      "corpusOps": [
+        "view:admin:Topic:add_button"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "type/cardtype"
+      ],
+      "why": "cardtype family"
+    },
+    {
+      "view": "add_url",
+      "corpusOps": [
+        "view:admin:Topic:add_url"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "type/cardtype"
+      ],
+      "why": "cardtype family"
+    },
+    {
+      "view": "configure_button",
+      "corpusOps": [
+        "view:admin:Topic:configure_button"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "type/cardtype"
+      ],
+      "why": "cardtype family"
+    },
+    {
+      "view": "configure_link",
+      "corpusOps": [
+        "view:admin:Topic:configure_link"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "type/cardtype"
+      ],
+      "why": "cardtype family"
+    },
+    {
+      "view": "grouped_list",
+      "corpusOps": [
+        "view:admin:Topic:grouped_list"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic",
+      "mods": [
+        "rules"
+      ],
+      "setPaths": [
+        "self/cardtype"
+      ],
+      "why": "cardtype family grouped list"
+    },
+    {
+      "view": "denial",
+      "corpusOps": [
+        "view:anonymous:Brief 01:denial"
+      ],
+      "actors": [
+        "anonymous"
+      ],
+      "card": "Brief 01",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "all/error"
+      ],
+      "why": "denial family: read-denied card"
+    },
+    {
+      "view": "mini_unknown",
+      "corpusOps": [
+        "view:admin:Nonexistent Card:mini_unknown"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Nonexistent Card",
+      "mods": [],
+      "setPaths": [],
+      "why": "error family: absent card mini"
+    },
+    {
+      "view": "header",
+      "corpusOps": [
+        "view:admin:Home:header"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Home",
+      "mods": [],
+      "setPaths": [],
+      "why": "page header frame"
+    },
+    {
+      "view": "header_title",
+      "corpusOps": [
+        "view:admin:Home:header_title"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Home",
+      "mods": [],
+      "setPaths": [],
+      "why": "page header title"
+    },
+    {
+      "view": "labeled_content",
+      "corpusOps": [
+        "view:admin:Report 1:labeled_content"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Report 1",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "all/base"
+      ],
+      "why": "labeled content"
+    },
+    {
+      "view": "text_without_nests",
+      "corpusOps": [
+        "view:admin:Search Page:text_without_nests"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Search Page",
+      "mods": [],
+      "setPaths": [],
+      "why": "nest-stripped text"
+    },
+    {
+      "view": "title_no_link",
+      "corpusOps": [
+        "view:admin:Topic 001:title_no_link"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [],
+      "setPaths": [],
+      "why": "title without link"
+    },
+    {
+      "view": "type_info",
+      "corpusOps": [
+        "view:admin:Topic 001:type_info"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [],
+      "setPaths": [],
+      "why": "type info"
+    },
+    {
+      "view": "unknown",
+      "corpusOps": [
+        "view:admin:Nonexistent Card:unknown"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Nonexistent Card",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "all/error"
+      ],
+      "why": "error family: absent card"
+    },
+    {
+      "view": "not_found",
+      "corpusOps": [
+        "view:admin:Nonexistent Card:not_found"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Nonexistent Card",
+      "mods": [
+        "assets",
+        "format"
+      ],
+      "setPaths": [
+        "all/error",
+        "right/asset_output"
+      ],
+      "why": "error family"
+    },
+    {
+      "view": "bad_address",
+      "corpusOps": [
+        "view:admin:Nonexistent Card:bad_address"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Nonexistent Card",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "all/error"
+      ],
+      "why": "error family"
+    },
+    {
+      "view": "compact_missing",
+      "corpusOps": [
+        "view:admin:Nonexistent Card:compact_missing"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Nonexistent Card",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "all/error"
+      ],
+      "why": "error family"
+    },
+    {
+      "view": "errors",
+      "corpusOps": [
+        "view:admin:Nonexistent Card:errors"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Nonexistent Card",
+      "mods": [
+        "follow",
+        "format"
+      ],
+      "setPaths": [
+        "all/error",
+        "type_plus_right/user/follow"
+      ],
+      "why": "error family"
+    },
+    {
+      "view": "server_error",
+      "corpusOps": [
+        "view:admin:Note 001:server_error"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Note 001",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "all/error",
+        "all/html/error"
+      ],
+      "why": "error family (all/error + all/html/error)"
+    },
+    {
+      "view": "debug_server_error",
+      "corpusOps": [
+        "view:admin:Note 001:debug_server_error"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Note 001",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "all/html/error"
+      ],
+      "why": "error family debug branch"
+    },
+    {
+      "view": "flash",
+      "corpusOps": [
+        "view:admin:Home:flash"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Home",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "all/html/frame"
+      ],
+      "why": "html frame"
+    },
+    {
+      "view": "history",
+      "corpusOps": [
+        "view:admin:Topic 001:history",
+        "view:anonymous:Topic 001:history"
+      ],
+      "actors": [
+        "admin",
+        "anonymous"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "history"
+      ],
+      "setPaths": [
+        "all/history/views"
+      ],
+      "why": "history family; anonymous denial"
+    },
+    {
+      "view": "act",
+      "corpusOps": [
+        "view:admin:Topic 001:act"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "history"
+      ],
+      "setPaths": [
+        "all/history/views"
+      ],
+      "why": "history family"
+    },
+    {
+      "view": "act_legend",
+      "corpusOps": [
+        "view:admin:Topic 001:act_legend"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "history"
+      ],
+      "setPaths": [
+        "all/history/views"
+      ],
+      "why": "history family"
+    },
+    {
+      "view": "acted_at",
+      "corpusOps": [
+        "view:admin:Topic 001:acted_at"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "all/base"
+      ],
+      "why": "history family"
+    },
+    {
+      "view": "action_summary",
+      "corpusOps": [
+        "view:admin:Topic 001:action_summary"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "history"
+      ],
+      "setPaths": [
+        "all/history/views"
+      ],
+      "why": "history family"
+    },
+    {
+      "view": "action_expanded",
+      "corpusOps": [
+        "view:admin:Topic 001:action_expanded"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "history"
+      ],
+      "setPaths": [
+        "all/history/views"
+      ],
+      "why": "history family"
+    },
+    {
+      "view": "last_action",
+      "corpusOps": [
+        "view:admin:Topic 001:last_action"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "history"
+      ],
+      "setPaths": [
+        "all/history/views"
+      ],
+      "why": "history family"
+    },
+    {
+      "view": "last_action_verb",
+      "corpusOps": [
+        "view:admin:Topic 001:last_action_verb"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "follow",
+        "history"
+      ],
+      "setPaths": [
+        "all/history/views",
+        "all/notify/base_views"
+      ],
+      "why": "history family"
+    },
+    {
+      "view": "change",
+      "corpusOps": [
+        "view:admin:Topic 001:change"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "history"
+      ],
+      "setPaths": [
+        "all/history/views"
+      ],
+      "why": "history family"
+    },
+    {
+      "view": "draft_legend",
+      "corpusOps": [
+        "view:admin:Topic 001:draft_legend"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "history"
+      ],
+      "setPaths": [
+        "all/history/views"
+      ],
+      "why": "history family"
+    },
+    {
+      "view": "list_of_changes",
+      "corpusOps": [
+        "view:admin:Topic 001:list_of_changes"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [],
+      "setPaths": [],
+      "why": "history family"
+    },
+    {
+      "view": "creator_credit",
+      "corpusOps": [
+        "view:admin:Topic 001:creator_credit"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [],
+      "setPaths": [],
+      "why": "history family credit"
+    },
+    {
+      "view": "follow_button",
+      "corpusOps": [
+        "view:admin:Topic 001:follow_button",
+        "view:anonymous:Topic 001:follow_button"
+      ],
+      "actors": [
+        "admin",
+        "anonymous"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "follow"
+      ],
+      "setPaths": [
+        "all/follow/follow_link_views"
+      ],
+      "why": "follow link views; signed-out branch"
+    },
+    {
+      "view": "unfollow_url",
+      "corpusOps": [
+        "view:admin:Topic 001:unfollow_url"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [],
+      "setPaths": [],
+      "why": "follow link views"
+    },
+    {
+      "view": "followed",
+      "corpusOps": [
+        "view:admin:Topic 001:followed"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [],
+      "setPaths": [],
+      "why": "follow machinery"
+    },
+    {
+      "view": "follower",
+      "corpusOps": [
+        "view:admin:Topic 001:follower"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "follow"
+      ],
+      "setPaths": [
+        "all/notify/base_views"
+      ],
+      "why": "follow machinery"
+    },
+    {
+      "view": "follow_status",
+      "corpusOps": [
+        "view:admin:*all+Mira Member+*follow:follow_status"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "*all+Mira Member+*follow",
+      "mods": [
+        "follow"
+      ],
+      "setPaths": [
+        "right/follow"
+      ],
+      "why": "right/follow"
+    },
+    {
+      "view": "follow_item",
+      "corpusOps": [
+        "view:admin:*all+Mira Member+*follow:follow_item"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "*all+Mira Member+*follow",
+      "mods": [
+        "follow"
+      ],
+      "setPaths": [
+        "right/follow"
+      ],
+      "why": "right/follow"
+    },
+    {
+      "view": "status",
+      "corpusOps": [
+        "view:admin:Mira Member+*following:status"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Mira Member+*following",
+      "mods": [
+        "follow"
+      ],
+      "setPaths": [
+        "right/following"
+      ],
+      "why": "right/following"
+    },
+    {
+      "view": "rule_editor",
+      "corpusOps": [
+        "view:admin:Mira Member+*following:rule_editor"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Mira Member+*following",
+      "mods": [
+        "follow"
+      ],
+      "setPaths": [
+        "right/following"
+      ],
+      "why": "right/following"
+    },
+    {
+      "view": "follow_tab",
+      "corpusOps": [
+        "view:admin:Ada Admin+*follow:follow_tab"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Ada Admin+*follow",
+      "mods": [
+        "follow"
+      ],
+      "setPaths": [
+        "type_plus_right/user/follow"
+      ],
+      "why": "user follow"
+    },
+    {
+      "view": "ignore_tab",
+      "corpusOps": [
+        "view:admin:Ada Admin+*follow:ignore_tab"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Ada Admin+*follow",
+      "mods": [
+        "follow"
+      ],
+      "setPaths": [
+        "type_plus_right/user/follow"
+      ],
+      "why": "user follow"
+    },
+    {
+      "view": "confirm_update_all",
+      "corpusOps": [
+        "view:admin:*follow defaults:confirm_update_all"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "*follow defaults",
+      "mods": [
+        "follow"
+      ],
+      "setPaths": [
+        "self/follow_defaults"
+      ],
+      "why": "follow defaults"
+    },
+    {
+      "view": "help",
+      "corpusOps": [
+        "view:admin:Home:help"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Home",
+      "mods": [
+        "help"
+      ],
+      "setPaths": [
+        "all/help"
+      ],
+      "why": "help mod"
+    },
+    {
+      "view": "help_text",
+      "corpusOps": [
+        "view:admin:Typed Note 01:help_text"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Typed Note 01",
+      "mods": [
+        "help",
+        "rules"
+      ],
+      "setPaths": [
+        "all/help",
+        "rule/board_rules_editor"
+      ],
+      "why": "help mod (type help rule on Note)"
+    },
+    {
+      "view": "lead",
+      "corpusOps": [
+        "view:admin:Home:lead"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Home",
+      "mods": [
+        "help"
+      ],
+      "setPaths": [
+        "all/help"
+      ],
+      "why": "help mod"
+    },
+    {
+      "view": "popover",
+      "corpusOps": [
+        "view:admin:Topic 001+summary+*help:popover"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001+summary+*help",
+      "mods": [
+        "help"
+      ],
+      "setPaths": [
+        "right/help"
+      ],
+      "why": "help popover on a +*help card"
+    },
+    {
+      "view": "account_tab",
+      "corpusOps": [
+        "view:admin:Ada Admin:account_tab"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Ada Admin",
+      "mods": [
+        "account"
+      ],
+      "setPaths": [
+        "abstract/account_holder"
+      ],
+      "why": "account holder"
+    },
+    {
+      "view": "closed_account",
+      "corpusOps": [
+        "view:admin:Ada Admin:closed_account"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Ada Admin",
+      "mods": [
+        "account"
+      ],
+      "setPaths": [
+        "abstract/account_holder"
+      ],
+      "why": "account holder"
+    },
+    {
+      "view": "api_key",
+      "corpusOps": [
+        "view:admin:Ada Admin+*account:api_key"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Ada Admin+*account",
+      "mods": [
+        "api_key"
+      ],
+      "setPaths": [
+        "right/account"
+      ],
+      "why": "right/account"
+    },
+    {
+      "view": "verify_url",
+      "corpusOps": [
+        "view:admin:Ada Admin+*account:verify_url"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Ada Admin+*account",
+      "mods": [
+        "account"
+      ],
+      "setPaths": [
+        "right/account/views"
+      ],
+      "why": "right/account/views"
+    },
+    {
+      "view": "reset_password_url",
+      "corpusOps": [
+        "view:admin:Ada Admin+*account:reset_password_url"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Ada Admin+*account",
+      "mods": [
+        "account"
+      ],
+      "setPaths": [
+        "right/account/views"
+      ],
+      "why": "right/account/views"
+    },
+    {
+      "view": "token_days",
+      "corpusOps": [
+        "view:admin:Ada Admin+*account:token_days"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Ada Admin+*account",
+      "mods": [
+        "account"
+      ],
+      "setPaths": [
+        "right/account/views"
+      ],
+      "why": "right/account/views"
+    },
+    {
+      "view": "verify_days",
+      "corpusOps": [
+        "view:admin:Ada Admin+*account:verify_days"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Ada Admin+*account",
+      "mods": [
+        "account"
+      ],
+      "setPaths": [
+        "right/account/views"
+      ],
+      "why": "right/account/views"
+    },
+    {
+      "view": "reset_password_days",
+      "corpusOps": [
+        "view:admin:Ada Admin+*account:reset_password_days"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Ada Admin+*account",
+      "mods": [
+        "account"
+      ],
+      "setPaths": [
+        "right/account/views"
+      ],
+      "why": "right/account/views"
+    },
+    {
+      "view": "token_expiry",
+      "corpusOps": [
+        "view:admin:Ada Admin+*account:token_expiry"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Ada Admin+*account",
+      "mods": [
+        "account"
+      ],
+      "setPaths": [
+        "right/account/views"
+      ],
+      "why": "right/account/views"
+    },
+    {
+      "view": "closure",
+      "corpusOps": [
+        "view:admin:Ada Admin+*account:closure"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Ada Admin+*account",
+      "mods": [
+        "account"
+      ],
+      "setPaths": [
+        "right/account/views"
+      ],
+      "why": "right/account/views"
+    },
+    {
+      "view": "current",
+      "corpusOps": [
+        "view:admin:Ada Admin+*api_key:current"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Ada Admin+*api_key",
+      "mods": [
+        "api_key"
+      ],
+      "setPaths": [
+        "right/api_key"
+      ],
+      "why": "right/api_key"
+    },
+    {
+      "view": "token_link",
+      "corpusOps": [
+        "view:admin:Ada Admin+*api_key:token_link"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Ada Admin+*api_key",
+      "mods": [
+        "api_key"
+      ],
+      "setPaths": [
+        "right/api_key"
+      ],
+      "why": "right/api_key"
+    },
+    {
+      "view": "buttons",
+      "corpusOps": [
+        "view:admin:Ada Admin+*api_key:buttons"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Ada Admin+*api_key",
+      "mods": [
+        "api_key"
+      ],
+      "setPaths": [
+        "right/api_key"
+      ],
+      "why": "right/api_key"
+    },
+    {
+      "view": "generate_button",
+      "corpusOps": [
+        "view:admin:Ada Admin+*api_key:generate_button"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Ada Admin+*api_key",
+      "mods": [
+        "api_key"
+      ],
+      "setPaths": [
+        "right/api_key"
+      ],
+      "why": "right/api_key"
+    },
+    {
+      "view": "raw",
+      "corpusOps": [
+        "view:admin:Ada Admin+*account+*email:raw"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Ada Admin+*account+*email",
+      "mods": [
+        "account",
+        "format"
+      ],
+      "setPaths": [
+        "all/base",
+        "right/password",
+        "type_plus_right/user/email"
+      ],
+      "why": "raw (also user email, password)"
+    },
+    {
+      "view": "reset_password_success",
+      "corpusOps": [
+        "view:anonymous:*signin:reset_password_success"
+      ],
+      "actors": [
+        "anonymous"
+      ],
+      "card": "*signin",
+      "mods": [
+        "account"
+      ],
+      "setPaths": [
+        "self/signin"
+      ],
+      "why": "sign-in surface"
+    },
+    {
+      "view": "admin",
+      "corpusOps": [
+        "view:admin:*admin:admin"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "*admin",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "type/mod"
+      ],
+      "why": "self/admin admin view"
+    },
+    {
+      "view": "comment_box",
+      "corpusOps": [
+        "view:admin:Topic 001+discussion:comment_box",
+        "view:anonymous:Topic 001+discussion:comment_box"
+      ],
+      "actors": [
+        "admin",
+        "anonymous"
+      ],
+      "card": "Topic 001+discussion",
+      "mods": [
+        "comment"
+      ],
+      "setPaths": [
+        "all/comment"
+      ],
+      "why": "comment mod; anonymous shows the signed-out form"
+    },
+    {
+      "view": "description",
+      "corpusOps": [
+        "view:admin:mod: help:description"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "mod: help",
+      "mods": [
+        "core"
+      ],
+      "setPaths": [
+        "type/mod"
+      ],
+      "why": "mod card surface"
+    },
+    {
+      "view": "settings",
+      "corpusOps": [
+        "view:admin:mod: help:settings"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "mod: help",
+      "mods": [
+        "core"
+      ],
+      "setPaths": [
+        "self/mod",
+        "type/mod"
+      ],
+      "why": "mod card surface"
+    },
+    {
+      "view": "cardtypes",
+      "corpusOps": [
+        "view:admin:mod: help:cardtypes"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "mod: help",
+      "mods": [
+        "core"
+      ],
+      "setPaths": [
+        "self/mod",
+        "type/mod"
+      ],
+      "why": "mod card surface"
+    },
+    {
+      "view": "configurations",
+      "corpusOps": [
+        "view:admin:mod: help:configurations"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "mod: help",
+      "mods": [
+        "core"
+      ],
+      "setPaths": [
+        "self/mod",
+        "type/mod"
+      ],
+      "why": "mod card surface"
+    },
+    {
+      "view": "tasks",
+      "corpusOps": [
+        "view:admin:mod: help:tasks"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "mod: help",
+      "mods": [
+        "core"
+      ],
+      "setPaths": [
+        "self/mod",
+        "type/mod"
+      ],
+      "why": "mod card surface"
+    },
+    {
+      "view": "styles",
+      "corpusOps": [
+        "view:admin:mod: help:styles"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "mod: help",
+      "mods": [
+        "core"
+      ],
+      "setPaths": [
+        "type/mod"
+      ],
+      "why": "mod card surface"
+    },
+    {
+      "view": "scripts",
+      "corpusOps": [
+        "view:admin:mod: help:scripts"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "mod: help",
+      "mods": [
+        "core"
+      ],
+      "setPaths": [
+        "type/mod"
+      ],
+      "why": "mod card surface"
+    },
+    {
+      "view": "gem_info",
+      "corpusOps": [
+        "view:admin:mod: help:gem_info"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "mod: help",
+      "mods": [
+        "core"
+      ],
+      "setPaths": [
+        "type/mod"
+      ],
+      "why": "mod card surface"
+    },
+    {
+      "view": "depends_on",
+      "corpusOps": [
+        "view:admin:mod: help:depends_on"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "mod: help",
+      "mods": [
+        "core"
+      ],
+      "setPaths": [
+        "type/mod"
+      ],
+      "why": "mod card surface"
+    },
+    {
+      "view": "views",
+      "corpusOps": [
+        "view:admin:mod: help:views"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "mod: help",
+      "mods": [
+        "core"
+      ],
+      "setPaths": [
+        "type/mod"
+      ],
+      "why": "mod card surface"
+    },
+    {
+      "view": "roles",
+      "corpusOps": [
+        "view:admin:mod: help:roles"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "mod: help",
+      "mods": [
+        "core"
+      ],
+      "setPaths": [
+        "self/mod"
+      ],
+      "why": "mod card surface"
+    },
+    {
+      "view": "remote_include_tags",
+      "corpusOps": [
+        "view:admin:mod: style+*style:remote_include_tags"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "mod: style+*style",
+      "mods": [
+        "style"
+      ],
+      "setPaths": [
+        "type_plus_right/mod/style"
+      ],
+      "why": "type_plus_right/mod/style"
+    },
+    {
+      "view": "core",
+      "corpusOps": [
+        "view:admin:mod: style+*style:core"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "mod: style+*style",
+      "mods": [
+        "account",
+        "api_key",
+        "bootstrap",
+        "carrierwave",
+        "comment",
+        "core",
+        "email",
+        "follow",
+        "format",
+        "layout",
+        "markdown",
+        "recaptcha",
+        "script",
+        "style"
+      ],
+      "setPaths": [
+        "right/account/views",
+        "right/api_key",
+        "right/discussion",
+        "right/followers",
+        "right/head",
+        "right/html_message",
+        "right/password",
+        "right/subject",
+        "right/text_message",
+        "self/admin",
+        "self/recaptcha_settings",
+        "self/signin",
+        "type/bootswatch_skin/html_views",
+        "type/email_template/html",
+        "type/file",
+        "type/image/html_views",
+        "type/markdown",
+        "type/mod",
+        "type/signup/views",
+        "type/uri",
+        "type_plus_right/mod/script",
+        "type_plus_right/mod/style"
+      ],
+      "why": "type_plus_right/mod/style (second :core registration)"
+    },
+    {
+      "view": "search_box",
+      "corpusOps": [
+        "view:admin:*search:search_box"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "*search",
+      "mods": [],
+      "setPaths": [],
+      "why": "search surface"
+    },
+    {
+      "view": "results_for_keyword",
+      "corpusOps": [
+        "view:admin:*search:results_for_keyword"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "*search",
+      "mods": [
+        "search"
+      ],
+      "setPaths": [
+        "self/search"
+      ],
+      "why": "self/search"
+    },
+    {
+      "view": "search_count",
+      "corpusOps": [
+        "view:admin:All Topics:search_count"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "All Topics",
+      "mods": [
+        "search"
+      ],
+      "setPaths": [
+        "abstract/0_search/views"
+      ],
+      "why": "search family"
+    },
+    {
+      "view": "search_error",
+      "corpusOps": [
+        "view:admin:All Topics:search_error"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "All Topics",
+      "mods": [
+        "search"
+      ],
+      "setPaths": [
+        "abstract/0_search/views"
+      ],
+      "why": "search family"
+    },
+    {
+      "view": "no_search_results",
+      "corpusOps": [
+        "view:admin:All Topics:no_search_results"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "All Topics",
+      "mods": [],
+      "setPaths": [],
+      "why": "search family"
+    },
+    {
+      "view": "paging",
+      "corpusOps": [
+        "view:admin:All Topics:paging"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "All Topics",
+      "mods": [
+        "collection"
+      ],
+      "setPaths": [
+        "abstract/paging/paging_views"
+      ],
+      "why": "abstract paging"
+    },
+    {
+      "view": "card_list",
+      "corpusOps": [
+        "view:admin:All Topics:card_list"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "All Topics",
+      "mods": [],
+      "setPaths": [],
+      "why": "search card list"
+    },
+    {
+      "view": "list",
+      "corpusOps": [
+        "view:admin:Topic 001+tags:list"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001+tags",
+      "mods": [
+        "list"
+      ],
+      "setPaths": [
+        "abstract/01_list/html_views"
+      ],
+      "why": "list family"
+    },
+    {
+      "view": "checkbox",
+      "corpusOps": [
+        "view:admin:Topic 001+tags:checkbox"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001+tags",
+      "mods": [
+        "list"
+      ],
+      "setPaths": [
+        "abstract/01_list/html_views"
+      ],
+      "why": "list editors"
+    },
+    {
+      "view": "checkbox_list",
+      "corpusOps": [
+        "view:admin:Topic 001+tags:checkbox_list"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001+tags",
+      "mods": [
+        "search"
+      ],
+      "setPaths": [
+        "abstract/0_search/views"
+      ],
+      "why": "list editors"
+    },
+    {
+      "view": "radio",
+      "corpusOps": [
+        "view:admin:Topic 001+tags:radio"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001+tags",
+      "mods": [
+        "list"
+      ],
+      "setPaths": [
+        "abstract/01_list/html_views"
+      ],
+      "why": "list editors"
+    },
+    {
+      "view": "select",
+      "corpusOps": [
+        "view:admin:Topic 001+tags:select"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001+tags",
+      "mods": [
+        "list"
+      ],
+      "setPaths": [
+        "abstract/01_list/html_views"
+      ],
+      "why": "list editors"
+    },
+    {
+      "view": "multiselect",
+      "corpusOps": [
+        "view:admin:Topic 001+tags:multiselect"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001+tags",
+      "mods": [
+        "list"
+      ],
+      "setPaths": [
+        "abstract/01_list/html_views"
+      ],
+      "why": "list editors"
+    },
+    {
+      "view": "autocomplete",
+      "corpusOps": [
+        "view:admin:Topic 001+tags:autocomplete"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001+tags",
+      "mods": [
+        "list"
+      ],
+      "setPaths": [
+        "abstract/01_list/html_views"
+      ],
+      "why": "list editors"
+    },
+    {
+      "view": "goto_autocomplete_item",
+      "corpusOps": [
+        "view:admin:Topic 001:goto_autocomplete_item"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "search"
+      ],
+      "setPaths": [
+        "all/autocomplete"
+      ],
+      "why": "autocomplete items"
+    },
+    {
+      "view": "add_autocomplete_item",
+      "corpusOps": [
+        "view:admin:Topic 001:add_autocomplete_item"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "search"
+      ],
+      "setPaths": [
+        "all/autocomplete"
+      ],
+      "why": "autocomplete items"
+    },
+    {
+      "view": "pointer_core",
+      "corpusOps": [
+        "view:admin:Topic 001+tags:pointer_core"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001+tags",
+      "mods": [
+        "permissions"
+      ],
+      "setPaths": [
+        "abstract/permission"
+      ],
+      "why": "abstract/permission pointer render"
+    },
+    {
+      "view": "link_with_checkbox",
+      "corpusOps": [
+        "view:admin:Contractor:link_with_checkbox"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Contractor",
+      "mods": [
+        "account"
+      ],
+      "setPaths": [
+        "type/role"
+      ],
+      "why": "role type"
+    },
+    {
+      "view": "configs",
+      "corpusOps": [
+        "view:admin:Contractor:configs"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Contractor",
+      "mods": [
+        "account"
+      ],
+      "setPaths": [
+        "type/role"
+      ],
+      "why": "role type"
+    },
+    {
+      "view": "view_list",
+      "corpusOps": [
+        "view:admin:Topic 001:view_list"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "format",
+        "list"
+      ],
+      "setPaths": [
+        "abstract/01_list",
+        "all/demo"
+      ],
+      "why": "abstract list + demo"
+    },
+    {
+      "view": "demo",
+      "corpusOps": [
+        "view:admin:Topic 001:demo"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "all/demo"
+      ],
+      "why": "demo surface"
+    },
+    {
+      "view": "javascript_include_tag",
+      "corpusOps": [
+        "view:admin:*script:javascript_include_tag"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "*script",
+      "mods": [
+        "assets",
+        "script"
+      ],
+      "setPaths": [
+        "abstract/00_script",
+        "all/head_javascript",
+        "right/group_remote",
+        "right/script"
+      ],
+      "why": "head javascript + script family"
+    },
+    {
+      "view": "javascript_tags",
+      "corpusOps": [
+        "view:admin:Home:javascript_tags"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Home",
+      "mods": [
+        "script"
+      ],
+      "setPaths": [
+        "all/head_javascript"
+      ],
+      "why": "head javascript"
+    },
+    {
+      "view": "script_calls",
+      "corpusOps": [
+        "view:admin:Home:script_calls"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Home",
+      "mods": [
+        "script"
+      ],
+      "setPaths": [
+        "all/head_javascript"
+      ],
+      "why": "head javascript"
+    },
+    {
+      "view": "script_variables",
+      "corpusOps": [
+        "view:admin:Home:script_variables"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Home",
+      "mods": [
+        "script"
+      ],
+      "setPaths": [
+        "all/head_javascript"
+      ],
+      "why": "head javascript"
+    },
+    {
+      "view": "stylesheet_tags",
+      "corpusOps": [
+        "view:admin:Home:stylesheet_tags"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Home",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "all/head"
+      ],
+      "why": "head"
+    },
+    {
+      "view": "stylesheet_include_tag",
+      "corpusOps": [
+        "view:admin:style: mods:stylesheet_include_tag"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "style: mods",
+      "mods": [
+        "assets",
+        "style"
+      ],
+      "setPaths": [
+        "abstract/style_group",
+        "right/group_remote",
+        "type_plus_right/mod/style"
+      ],
+      "why": "style group (also group_remote)"
+    },
+    {
+      "view": "remote_style_tags",
+      "corpusOps": [
+        "view:admin:style: mods:remote_style_tags"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "style: mods",
+      "mods": [
+        "style"
+      ],
+      "setPaths": [
+        "self/style_mods"
+      ],
+      "why": "self/style_mods"
+    },
+    {
+      "view": "remote_script_tags",
+      "corpusOps": [
+        "view:admin:*all+*script:remote_script_tags"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "*all+*script",
+      "mods": [
+        "script"
+      ],
+      "setPaths": [
+        "type_plus_right/mod/script",
+        "type_plus_right/set/script"
+      ],
+      "why": "set+mod script"
+    },
+    {
+      "view": "asset_output_url",
+      "corpusOps": [
+        "view:admin:*all+*script:asset_output_url"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "*all+*script",
+      "mods": [
+        "assets"
+      ],
+      "setPaths": [
+        "type_plus_right/set/script",
+        "type_plus_right/set/style"
+      ],
+      "why": "set+mod script/style"
+    },
+    {
+      "view": "stylesheet_path",
+      "corpusOps": [
+        "view:admin:*all+*style:stylesheet_path"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "*all+*style",
+      "mods": [
+        "style"
+      ],
+      "setPaths": [
+        "type_plus_right/set/style"
+      ],
+      "why": "set+mod style"
+    },
+    {
+      "view": "source",
+      "corpusOps": [
+        "view:admin:Report 1:source"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Report 1",
+      "mods": [
+        "carrierwave"
+      ],
+      "setPaths": [
+        "self/favicon",
+        "type/file",
+        "type/image"
+      ],
+      "why": "file/image source"
+    },
+    {
+      "view": "file_size",
+      "corpusOps": [
+        "view:admin:Report 1:file_size"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Report 1",
+      "mods": [
+        "content"
+      ],
+      "setPaths": [
+        "abstract/02_code_file"
+      ],
+      "why": "code file size"
+    },
+    {
+      "view": "inline",
+      "corpusOps": [
+        "view:admin:*favicon:inline"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "*favicon",
+      "mods": [
+        "carrierwave"
+      ],
+      "setPaths": [
+        "type/image"
+      ],
+      "why": "image inline"
+    },
+    {
+      "view": "full_width",
+      "corpusOps": [
+        "view:admin:*favicon:full_width"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "*favicon",
+      "mods": [
+        "carrierwave"
+      ],
+      "setPaths": [
+        "type/image/html_views"
+      ],
+      "why": "image html views"
+    },
+    {
+      "view": "content_changes",
+      "corpusOps": [
+        "view:admin:*favicon:content_changes"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "*favicon",
+      "mods": [
+        "carrierwave"
+      ],
+      "setPaths": [
+        "type/image/html_views"
+      ],
+      "why": "image html views"
+    },
+    {
+      "view": "input",
+      "corpusOps": [
+        "view:admin:Plain 1:input"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Plain 1",
+      "mods": [
+        "bootstrap",
+        "carrierwave",
+        "comment",
+        "content",
+        "edit",
+        "format",
+        "layout",
+        "list",
+        "permissions",
+        "rules"
+      ],
+      "setPaths": [
+        "abstract/01_code_content",
+        "abstract/01_list/html_views",
+        "abstract/haml_file",
+        "abstract/permission",
+        "abstract/read_only",
+        "all/editor",
+        "right/create",
+        "right/delete",
+        "right/discussion",
+        "right/read",
+        "right/update",
+        "self/head",
+        "type/bootswatch_skin",
+        "type/file",
+        "type/link_list",
+        "type/nest_list",
+        "type/set/html_views",
+        "type/toggle"
+      ],
+      "why": "editor matrix (PlainText); the full per-type editor matrix is in the EDITOR_MATRIX ops"
+    },
+    {
+      "view": "favicon_tag",
+      "corpusOps": [
+        "view:admin:*favicon:favicon_tag"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "*favicon",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "all/head"
+      ],
+      "why": "favicon"
+    },
+    {
+      "view": "link_tag",
+      "corpusOps": [
+        "view:admin:*favicon:link_tag"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "*favicon",
+      "mods": [
+        "carrierwave"
+      ],
+      "setPaths": [
+        "self/favicon"
+      ],
+      "why": "favicon"
+    },
+    {
+      "view": "head",
+      "corpusOps": [
+        "view:admin:Home:head"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Home",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "all/head"
+      ],
+      "why": "head family"
+    },
+    {
+      "view": "head_content",
+      "corpusOps": [
+        "view:admin:*head:head_content"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "*head",
+      "mods": [
+        "layout"
+      ],
+      "setPaths": [
+        "right/head"
+      ],
+      "why": "right/head"
+    },
+    {
+      "view": "page_title",
+      "corpusOps": [
+        "view:admin:Home:page_title"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Home",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "all/head"
+      ],
+      "why": "head family"
+    },
+    {
+      "view": "page_title_tag",
+      "corpusOps": [
+        "view:admin:Home:page_title_tag"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Home",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "all/head"
+      ],
+      "why": "head family"
+    },
+    {
+      "view": "universal_edit_button",
+      "corpusOps": [
+        "view:admin:Topic 001:universal_edit_button"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [],
+      "setPaths": [],
+      "why": "head family"
+    },
+    {
+      "view": "meta_tags",
+      "corpusOps": [
+        "view:admin:Home:meta_tags"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Home",
+      "mods": [],
+      "setPaths": [],
+      "why": "head family"
+    },
+    {
+      "view": "rss_links",
+      "corpusOps": [
+        "view:admin:Home:rss_links"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Home",
+      "mods": [],
+      "setPaths": [],
+      "why": "head family"
+    },
+    {
+      "view": "home_path",
+      "corpusOps": [
+        "view:admin:Home:home_path"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Home",
+      "mods": [],
+      "setPaths": [],
+      "why": "head family"
+    },
+    {
+      "view": "home_url",
+      "corpusOps": [
+        "view:admin:Home:home_url"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Home",
+      "mods": [],
+      "setPaths": [],
+      "why": "head family"
+    },
+    {
+      "view": "email_page",
+      "corpusOps": [
+        "view:admin:welcome email:email_page"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "welcome email",
+      "mods": [
+        "email"
+      ],
+      "setPaths": [
+        "all/email_html"
+      ],
+      "why": "email html page"
+    },
+    {
+      "view": "rule_edit",
+      "corpusOps": [
+        "view:admin:Topic+*type+*structure:rule_edit"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic+*type+*structure",
+      "mods": [
+        "rules"
+      ],
+      "setPaths": [
+        "rule/editor"
+      ],
+      "why": "rule editor"
+    },
+    {
+      "view": "rule_help",
+      "corpusOps": [
+        "view:admin:*read:rule_help"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "*read",
+      "mods": [
+        "rules"
+      ],
+      "setPaths": [
+        "rule/editor",
+        "type/setting"
+      ],
+      "why": "rule editor (also type/setting)"
+    },
+    {
+      "view": "rule_nest_editor_link",
+      "corpusOps": [
+        "view:admin:Topic+*type+*structure:rule_nest_editor_link"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic+*type+*structure",
+      "mods": [
+        "rules"
+      ],
+      "setPaths": [
+        "rule/editor"
+      ],
+      "why": "rule editor"
+    },
+    {
+      "view": "rule_board_link",
+      "corpusOps": [
+        "view:admin:Topic+*type+*structure:rule_board_link"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic+*type+*structure",
+      "mods": [
+        "rules"
+      ],
+      "setPaths": [
+        "rule/editor"
+      ],
+      "why": "rule editor"
+    },
+    {
+      "view": "rule_form",
+      "corpusOps": [
+        "view:admin:*all+*create:rule_form"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "*all+*create",
+      "mods": [
+        "rules"
+      ],
+      "setPaths": [
+        "rule/rule_form"
+      ],
+      "why": "rule form"
+    },
+    {
+      "view": "rule_form_card_editor",
+      "corpusOps": [
+        "view:admin:*all+*create:rule_form_card_editor"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "*all+*create",
+      "mods": [
+        "rules"
+      ],
+      "setPaths": [
+        "rule/rule_form"
+      ],
+      "why": "rule form"
+    },
+    {
+      "view": "quick_edit",
+      "corpusOps": [
+        "view:admin:*all+*read:quick_edit",
+        "view:anonymous:*all+*read:quick_edit"
+      ],
+      "actors": [
+        "admin",
+        "anonymous"
+      ],
+      "card": "*all+*read",
+      "mods": [
+        "rules"
+      ],
+      "setPaths": [
+        "rule/quick_editor"
+      ],
+      "why": "quick editor; anonymous denial"
+    },
+    {
+      "view": "quick_edit_success",
+      "corpusOps": [
+        "view:admin:*all+*read:quick_edit_success"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "*all+*read",
+      "mods": [
+        "rules"
+      ],
+      "setPaths": [
+        "rule/quick_editor"
+      ],
+      "why": "quick editor"
+    },
+    {
+      "view": "overlay_rule",
+      "corpusOps": [
+        "view:admin:Topic+*type+*structure:overlay_rule"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic+*type+*structure",
+      "mods": [
+        "rules"
+      ],
+      "setPaths": [
+        "rule/board_rules_editor"
+      ],
+      "why": "board rules editor"
+    },
+    {
+      "view": "modal_rule",
+      "corpusOps": [
+        "view:admin:Topic+*type+*structure:modal_rule"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic+*type+*structure",
+      "mods": [
+        "rules"
+      ],
+      "setPaths": [
+        "rule/board_rules_editor"
+      ],
+      "why": "board rules editor"
+    },
+    {
+      "view": "template_nest",
+      "corpusOps": [
+        "view:admin:Topic 001:template_nest"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [
+        "edit"
+      ],
+      "setPaths": [
+        "all/template_nest"
+      ],
+      "why": "template nest"
+    },
+    {
+      "view": "nest_list_input",
+      "corpusOps": [
+        "view:admin:Panel Layout:nest_list_input"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Panel Layout",
+      "mods": [
+        "list"
+      ],
+      "setPaths": [
+        "type/nest_list"
+      ],
+      "why": "nest list type"
+    },
+    {
+      "view": "labeled_editor",
+      "corpusOps": [
+        "view:admin:Toggle 1:labeled_editor"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Toggle 1",
+      "mods": [
+        "format"
+      ],
+      "setPaths": [
+        "type/toggle"
+      ],
+      "why": "toggle labeled editor"
+    },
+    {
+      "view": "setup",
+      "corpusOps": [
+        "view:admin:Quinn Contractor:setup"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Quinn Contractor",
+      "mods": [
+        "account"
+      ],
+      "setPaths": [
+        "type/user"
+      ],
+      "why": "user setup surface"
+    },
+    {
+      "view": "sign_up",
+      "corpusOps": [
+        "view:anonymous:*account links:sign_up"
+      ],
+      "actors": [
+        "anonymous"
+      ],
+      "card": "*account links",
+      "mods": [
+        "layout"
+      ],
+      "setPaths": [
+        "self/account_links"
+      ],
+      "why": "account links"
+    },
+    {
+      "view": "sign_in",
+      "corpusOps": [
+        "view:anonymous:*account links:sign_in"
+      ],
+      "actors": [
+        "anonymous"
+      ],
+      "card": "*account links",
+      "mods": [
+        "layout"
+      ],
+      "setPaths": [
+        "self/account_links"
+      ],
+      "why": "account links"
+    },
+    {
+      "view": "sign_out",
+      "corpusOps": [
+        "view:anonymous:*account links:sign_out"
+      ],
+      "actors": [
+        "anonymous"
+      ],
+      "card": "*account links",
+      "mods": [
+        "layout"
+      ],
+      "setPaths": [
+        "self/account_links"
+      ],
+      "why": "account links"
+    },
+    {
+      "view": "invite",
+      "corpusOps": [
+        "view:admin:*account links:invite"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "*account links",
+      "mods": [
+        "layout"
+      ],
+      "setPaths": [
+        "self/account_links"
+      ],
+      "why": "account links admin branch"
+    },
+    {
+      "view": "my_card",
+      "corpusOps": [
+        "view:admin:*account links:my_card",
+        "view:anonymous:*account links:my_card"
+      ],
+      "actors": [
+        "admin",
+        "anonymous"
+      ],
+      "card": "*account links",
+      "mods": [
+        "layout"
+      ],
+      "setPaths": [
+        "self/account_links"
+      ],
+      "why": "account links signed-out vs in"
+    },
+    {
+      "view": "warning",
+      "corpusOps": [
+        "view:admin:*admin:warning"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "*admin",
+      "mods": [
+        "core"
+      ],
+      "setPaths": [
+        "self/admin"
+      ],
+      "why": "self/admin"
+    },
+    {
+      "view": "help_link",
+      "corpusOps": [
+        "view:admin:Home:help_link"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Home",
+      "mods": [],
+      "setPaths": [],
+      "why": "help link"
+    },
+    {
+      "view": "edit_link",
+      "corpusOps": [
+        "view:admin:Topic 001:edit_link",
+        "view:anonymous:Topic 001:edit_link"
+      ],
+      "actors": [
+        "admin",
+        "anonymous"
+      ],
+      "card": "Topic 001",
+      "mods": [],
+      "setPaths": [],
+      "why": "edit link; anonymous denial"
+    },
+    {
+      "view": "edit_button",
+      "corpusOps": [
+        "view:admin:Topic 001:edit_button",
+        "view:anonymous:Topic 001:edit_button"
+      ],
+      "actors": [
+        "admin",
+        "anonymous"
+      ],
+      "card": "Topic 001",
+      "mods": [],
+      "setPaths": [],
+      "why": "edit button; anonymous denial"
+    },
+    {
+      "view": "full_page_link",
+      "corpusOps": [
+        "view:admin:Topic 001:full_page_link"
+      ],
+      "actors": [
+        "admin"
+      ],
+      "card": "Topic 001",
+      "mods": [],
+      "setPaths": [],
+      "why": "full page link"
+    }
+  ],
+  "unreachableViews": [
+    {
+      "view": "input",
+      "setPath": "abstract/haml_file",
+      "reason": "abstract set included only by Haml file cards; a stock deck has no Haml card type, so no card instantiates the set. The PlainText input above covers the same view NAME."
+    },
+    {
+      "view": "input",
+      "setPath": "abstract/read_only",
+      "reason": "abstract set for read-only asset content; only compiled asset output cards instantiate it and none exist in a synthetic deck. The editor matrix covers the view NAME on ordinary types."
+    },
+    {
+      "view": "core",
+      "setPath": "right/group_remote",
+      "reason": "covered as the view NAME on ordinary cards; the group-remote anchor (a remote group's +*script) has no corpus card."
+    }
+  ],
+  "notes": [
+    "A corpus operation's coverage is its view row here (view ops) or the page-grid shape (page/core ops: the full page frame, the card's type editor and permission verdicts for the actor).",
+    "Op ids: page:<actor>:<card>, core:<actor>:<card>, view:<actor>:<card>:<view> - see fixtures/synthetic-v2/ops/render.jsonl.",
+    "unreachableViews holds the census rows no stock-deck card can instantiate, each with its reason; the generate-ops assertion keeps this list honest."
+  ]
+}

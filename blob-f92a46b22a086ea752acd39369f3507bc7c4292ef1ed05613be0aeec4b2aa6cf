@@ -1,0 +1,174 @@
+{
+  "row": "reg-routes-B12",
+  "gemset": "decko-0.20.0 + card-1.110.0 (pinned)",
+  "beforeActionTable": [
+    {
+      "name": "setup",
+      "only": [],
+      "except": [
+        "asset"
+      ]
+    },
+    {
+      "name": "authenticate",
+      "only": [],
+      "except": [
+        "asset"
+      ]
+    },
+    {
+      "name": "load_mark",
+      "only": [
+        "read"
+      ],
+      "except": []
+    },
+    {
+      "name": "load_card",
+      "only": [],
+      "except": [
+        "asset"
+      ]
+    },
+    {
+      "name": "load_action",
+      "only": [
+        "read"
+      ],
+      "except": []
+    },
+    {
+      "name": "refresh_card",
+      "only": [
+        "create",
+        "update",
+        "delete"
+      ],
+      "except": []
+    }
+  ],
+  "actionChains": [
+    {
+      "action": "create",
+      "chain": [
+        "setup",
+        "authenticate",
+        "load_card",
+        "refresh_card"
+      ]
+    },
+    {
+      "action": "update",
+      "chain": [
+        "setup",
+        "authenticate",
+        "load_card",
+        "refresh_card"
+      ]
+    },
+    {
+      "action": "delete",
+      "chain": [
+        "setup",
+        "authenticate",
+        "load_card",
+        "refresh_card"
+      ]
+    },
+    {
+      "action": "read",
+      "chain": [
+        "setup",
+        "authenticate",
+        "load_mark",
+        "load_card",
+        "load_action"
+      ]
+    },
+    {
+      "action": "asset",
+      "chain": []
+    }
+  ],
+  "refreshAsk": {
+    "label": "the refresh ask: the card object is REPLACED by the refresh's answer",
+    "error": null,
+    "cardCalls": [
+      "refresh"
+    ],
+    "cardBefore": "Front",
+    "cardAfter": "Front (reloaded)",
+    "replaced": true
+  },
+  "rigArtifacts": [
+    "the refresh's own answer is the rig's double: the pinned card gem's refresh is an ActiveRecord reload and the rig has no database. The capture records the ASK (card.refresh) and the REPLACEMENT (a different object took the controller's card), not the reloaded row's bytes."
+  ],
+  "sources": {
+    "refresh": [
+      {
+        "line": 68,
+        "text": "    def refresh_card"
+      },
+      {
+        "line": 69,
+        "text": "      @card = card.refresh"
+      },
+      {
+        "line": 70,
+        "text": "    end"
+      }
+    ],
+    "loadCard": [
+      {
+        "line": 49,
+        "text": "    def load_card"
+      },
+      {
+        "line": 50,
+        "text": "      @card = Card.uri_fetch params"
+      },
+      {
+        "line": 51,
+        "text": "      raise Card::Error::NotFound unless card"
+      },
+      {
+        "line": 52,
+        "text": ""
+      },
+      {
+        "line": 53,
+        "text": "      record_as_main"
+      },
+      {
+        "line": 54,
+        "text": "    end"
+      }
+    ],
+    "beforeActionTable": [
+      {
+        "line": 20,
+        "text": "  before_action :setup, except: [:asset]"
+      },
+      {
+        "line": 21,
+        "text": "  before_action :authenticate, except: [:asset]"
+      },
+      {
+        "line": 22,
+        "text": "  before_action :load_mark, only: [:read]"
+      },
+      {
+        "line": 23,
+        "text": "  before_action :load_card, except: [:asset]"
+      },
+      {
+        "line": 24,
+        "text": "  before_action :load_action, only: [:read]"
+      },
+      {
+        "line": 25,
+        "text": "  before_action :refresh_card, only: %i[create update delete]"
+      }
+    ]
+  }
+}

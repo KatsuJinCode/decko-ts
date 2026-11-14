@@ -1,0 +1,137 @@
+import { describe, expect, it } from "vitest";
+import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
+import { CardActionError } from "../../../src/card/actions/types.js";
+import { ModLoader } from "../../../src/card/mod-loader.js";
+import cardModList from "../../../src/card/mod-loader/mods/card-mod-list.js";
+import { defaultDeckEventPredicates } from "../../../src/card/mod-loader/default-mod-deck.js";
+import { abstractListEventsSetMember } from "../../../src/card/mod-loader/mod-event-set-membership.js";
+import { registerDeckModEventCardStateSources } from "../../../src/card/mod-loader/mod-event-state-sources.js";
+import { CARDTYPE_ID, SET_TYPE_ID, createActionsTestStorage, seedCard, seedStandardDeck } from "../actions/actions-test-storage.js";
+import { libsassWasmCompiler } from "../../../src/server/libsass-wasm.js";
+import { BlobAttachmentStore } from "../../../src/card/attachments/attachment-store.js";
+import { MemoryBlobDriver } from "../../../src/blob/memory.js";
+
+// Complete CardActionEngine saves against an owned SQLite deck, with the real
+// list registry, membership and state population. No mocked predicate/body.
+async function fixture(defaultType?: "css" | "scss") {
+  const storage = await createActionsTestStorage();
+  await seedStandardDeck(storage);
+  for (const [id, name, codename] of [
+    [601, "CSS", "css"], [602, "SCSS", "scss"],
+    [603, "Skin", "skin"], [604, "Bootswatch Skin", "bootswatch_skin"],
+    [608, "Pointer", "pointer"],
+  ] as const) await seedCard(storage, { id, name, codename, typeId: CARDTYPE_ID });
+  await seedCard(storage, { id: 605, name: "*stylesheets", codename: "stylesheets" });
+  // Renamed anchors deliberately prevent a spelling-based membership check.
+  await seedCard(storage, { id: 606, name: "Theme", typeId: 604 });
+  await seedCard(storage, { id: 607, name: "Ordinary", typeId: SET_TYPE_ID });
+  await seedCard(storage, { id: 609, name: "Legacy anchor", codename: "bootswatch_skin_lookalike" });
+  await seedCard(storage, { id: 610, name: "Good CSS", typeId: 601 });
+  await seedCard(storage, { id: 611, name: "Good SCSS", typeId: 602 });
+  await seedCard(storage, { id: 612, name: "Wrong Skin", typeId: 603 });
+  await seedCard(storage, { id: 613, name: "Wrong Basic" });
+  await seedCard(storage, { id: 617, name: "*asset input", codename: "asset_input" });
+  await seedCard(storage, { id: 618, name: "*asset output", codename: "asset_output" });
+  await seedCard(storage, { id: 619, name: "File", codename: "file", typeId: CARDTYPE_ID });
+  if (defaultType !== undefined) {
+    await storage.driver.query("UPDATE cards SET type_id = ? WHERE left_id = 7 AND right_id = 8", [defaultType === "css" ? 601 : 602]);
+  }
+  const loader = new ModLoader([{ manifest: cardModList }]);
+  loader.resolveOrder({ gemMods: ["list"] });
+  loader.load();
+  registerDeckModEventCardStateSources();
+  const reports: Array<{ stage: string; fired: readonly string[] }> = [];
+  const engine = new CardActionEngine(storage.engine, {
+    actor: { id: 1, name: "Joe User" }, ipAddress: "192.0.2.7",
+    scssCompiler: libsassWasmCompiler(), attachmentStore: new BlobAttachmentStore(new MemoryBlobDriver()),
+    modEvents: { registry: loader.eventRegistry(), predicates: defaultDeckEventPredicates(),
+      setMember: abstractListEventsSetMember(storage.driver), onReport: report => reports.push(report) },
+  });
+  return { storage, engine, reports };
+}
+
+describe("issue 61: complete Bootswatch stylesheet saves", () => {
+  for (const item of ["Wrong Skin", "Wrong Basic", "Missing Basic"]) {
+    it(`refuses ${item} and leaves no saved row or history`, async () => {
+      const { storage, engine } = await fixture();
+      try {
+        const before = await Promise.all([storage.count("cards"), storage.count("card_actions"), storage.count("card_acts")]);
+        const error = await engine.createCard({ name: "Theme+*stylesheets", typeCode: "pointer", content: `[[${item}]]` }).catch(error => error);
+        expect(error).toBeInstanceOf(CardActionError);
+        const typeName = item === "Wrong Skin" ? "Skin" : "RichText";
+        expect(error.errorsByAttribute?.content).toBe(`${item} has an invalid type: ${typeName}. Allowed types: CSS and SCSS.`);
+        console.info("ISSUE61_SAVE", JSON.stringify({ id: item === "Wrong Skin" ? "known-skin" : item === "Missing Basic" ? "missing-basic" : "known-basic",
+          errors: [["content", error.errorsByAttribute.content]] }));
+        expect(await Promise.all([storage.count("cards"), storage.count("card_actions"), storage.count("card_acts")])).toEqual(before);
+      } finally { storage.close(); }
+    });
+  }
+  for (const item of ["Good CSS", "Good SCSS"]) {
+    it(`saves ${item} completely and fires the validator`, async () => {
+      const { storage, engine, reports } = await fixture();
+      try {
+        const result = await engine.createCard({ name: "Theme+*stylesheets", typeCode: "pointer", content: `[[${item}]]` });
+        expect(result).toBeDefined();
+        expect((await storage.engine.fetchByName("Theme+*stylesheets"))?.dbContent).toBe(item);
+        expect(await storage.count("card_actions")).toBeGreaterThan(0);
+        expect(reports.some(report => report.stage === "validate" && report.fired.includes("validate_item_type"))).toBe(true);
+        console.info("ISSUE61_SAVE", JSON.stringify({ id: item === "Good CSS" ? "known-css" : "known-scss", errors: [] }));
+      } finally { storage.close(); }
+    });
+  }
+  it("does not constrain the same right anchor on a different left type", async () => {
+    const { storage, engine, reports } = await fixture();
+    try {
+      await engine.createCard({ name: "Ordinary+*stylesheets", typeCode: "pointer", content: "[[Wrong Skin]]" });
+      expect((await storage.engine.fetchByName("Ordinary+*stylesheets"))?.dbContent).toBe("Wrong Skin");
+      expect(reports.some(report => report.fired.includes("validate_item_type"))).toBe(false);
+    } finally { storage.close(); }
+  });
+  it("does not treat the bootswatch_skin type anchor as the stylesheet right anchor", async () => {
+    const { storage, engine, reports } = await fixture();
+    try {
+      await engine.createCard({ name: "Theme+Bootswatch Skin", typeCode: "pointer", content: "[[Wrong Skin]]" });
+      expect(reports.some(report => report.fired.includes("validate_item_type"))).toBe(false);
+    } finally { storage.close(); }
+  });
+  it("resolves a compound left card through its actual sides", async () => {
+    const { storage, engine } = await fixture();
+    try {
+      await seedCard(storage, { id: 620, name: "Field" });
+      await seedCard(storage, { id: 621, leftId: 606, rightId: 620, typeId: 604 });
+      await expect(engine.createCard({ name: "Theme+Field+*stylesheets", typeCode: "pointer", content: "[[Wrong Skin]]" }))
+        .rejects.toMatchObject({ errorsByAttribute: { content: "Wrong Skin has an invalid type: Skin. Allowed types: CSS and SCSS." } });
+    } finally { storage.close(); }
+  });
+  for (const defaultType of ["css", "scss"] as const) {
+    it(`uses ${defaultType} from the new item's default template, rather than hardcoding Basic`, async () => {
+      const { storage, engine, reports } = await fixture(defaultType);
+      try {
+        await engine.createCard({ name: "Theme+*stylesheets", typeCode: "pointer", content: "[[Missing Typed Item]]" });
+        expect((await storage.engine.fetchByName("Theme+*stylesheets"))?.dbContent).toBe("Missing Typed Item");
+        expect(await storage.engine.fetchByName("Missing Typed Item")).toBeUndefined();
+        expect(reports.some(report => report.stage === "validate" && report.fired.includes("validate_item_type"))).toBe(true);
+        console.info("ISSUE61_SAVE", JSON.stringify({ id: `missing-${defaultType}-default`, errors: [] }));
+      } finally { storage.close(); }
+    });
+  }
+  it("refuses an update without changing stored content or history", async () => {
+    const { storage, engine } = await fixture();
+    try {
+      const saved = await engine.createCard({ name: "Theme+*stylesheets", typeCode: "pointer", content: "[[Good CSS]]" });
+      const before = await Promise.all([storage.count("cards"), storage.count("card_actions"), storage.count("card_acts")]);
+      await expect(engine.updateCard({ cardId: saved.cardId, content: "[[Wrong Skin]]" }))
+        .rejects.toMatchObject({ errorsByAttribute: { content: "Wrong Skin has an invalid type: Skin. Allowed types: CSS and SCSS." } });
+      expect((await storage.engine.fetchByName("Theme+*stylesheets"))?.dbContent).toBe("Good CSS");
+      expect(await Promise.all([storage.count("cards"), storage.count("card_actions"), storage.count("card_acts")])).toEqual(before);
+    } finally { storage.close(); }
+  });
+  it("uses the right anchor's codename after its spelling changes", async () => {
+    const { storage, engine } = await fixture();
+    try {
+      await storage.driver.query("UPDATE cards SET name = ?, key = ? WHERE id = 605", ["Renamed Sheets", "renamed_sheet"]);
+      await expect(engine.createCard({ name: "Theme+Renamed Sheets", typeCode: "pointer", content: "[[Wrong Skin]]" }))
+        .rejects.toMatchObject({ errorsByAttribute: { content: "Wrong Skin has an invalid type: Skin. Allowed types: CSS and SCSS." } });
+    } finally { storage.close(); }
+  });
+});

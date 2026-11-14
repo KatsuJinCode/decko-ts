@@ -1,0 +1,121 @@
+// A local, uncompressed source snapshot. Never creates a repository or publishes.
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { lstatSync, readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import {sourceExportModeEvidence,sourceExportPermissions} from '../platform/source-export-file.mjs';
+import {assertTinyMceExportCustody} from './tinymce-export-custody.mjs';
+import {materializeSourceSnapshot} from './source-snapshot.mjs';
+const root = fileURLToPath(new URL('../..', import.meta.url));
+const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', windowsHide: true, maxBuffer: 128 * 1024 * 1024 });
+const sha = bytes => createHash('sha256').update(bytes).digest('hex');
+export const roots = [
+  'src/', 'vendor/', 'fixtures/vendor/', 'deploy/migrations/', 'deploy/seed/', 'db/migrations/',
+  'tools/dist/', 'tools/libsass/libsass/', 'reference-harness/runner/',
+  'tools/migrate/',
+  'third-party-source/tinymce-5.10.7/',
+  'reference-harness/adapters/ts/', 'reference-harness/fixtures/synthetic-v1/',
+  'reference-harness/fixtures/write-battery-v1/', 'tests/schema/',
+];
+const singles = new Set([
+  'LICENSE', 'package.json', 'package-lock.json', 'tsconfig.json', 'tsconfig.dist.json',
+  'db/schema.sqlite.sql', 'vm-staging-server.mjs', 'configured-public-page-shell.mjs',
+  'tools/vendor/build-uglify-harmony-static.mjs', 'tools/oracle/typescript-source-loader.mjs',
+  'reference-harness/browser/lib/journey-provenance.mjs',
+  'reference-harness/SPEC.md', 'reference-harness/NORMALIZATION-EVIDENCE.md',
+  'tools/handover/smoke.mjs',
+  'tools/handover/prepare-demo.mjs', 'tools/handover/verify-local-host.mjs',
+  'docs/handover/MIGRATION.md', 'docs/migration-recovery.md',
+  'tools/vendor/import-tinymce-source.mjs',
+  'tools/oracle/typescript-transform-witness.mjs',
+  'tools/platform/native-typescript-compiler.mjs', 'tools/platform/native-typescript-compiler.d.mts',
+  'tools/typescript/typecheck.mjs',
+  'scripts/demo-scratch-copy/demo-child-lifecycle.mjs',
+]);
+export function scan(bytes, file) {
+  // No binary/size exemption. UTF-16 content receives a separate decoded scan.
+  const text = bytes.toString('utf8'), findings = [];
+  const rules = [
+    ['private-identity', /\b(?:brandon\w*|culturesmith\w*|jpswi|Julian|KatsuJinCode|campletters\w*)\b/gi],
+    ['machine-path', /[A-Z]:[\\/](?:Users|localProjects)[\\/][^\s"'<>]+/g],
+    ['private-key', /-----BEGIN [A-Z ]*PRIVATE KEY-----/g],
+    ['service-token', /\b(?:sk-or-v1-[\w-]{16,}|gh[pousr]_[\w]{20,}|AKIA[A-Z0-9]{16}|xox[baprs]-[\w-]{10,})/g],
+    ['known-secret', /55213f71[\w-]*/g],
+    ['bearer-literal', /\bBearer\s+[A-Za-z0-9_-]{30,}/g],
+    ['operator-quote', /(?:operator|user)\s+(?:said|ordered|demanded)\s*[:"“]/gi],
+  ];
+  for(const [encoding,decoded,prefix] of [['utf8',text,file+'\n'],['utf16le',bytes.toString('utf16le'),'']])for (const [rule, pattern] of rules) {
+    let line=1, previous=0;
+    for (const match of (prefix + decoded).matchAll(pattern)) {
+      const offset = Math.max(0, match.index - prefix.length);
+      for(let cursor=previous;cursor<offset;cursor++)if(decoded.charCodeAt(cursor)===10)line++;
+      previous=offset;
+      findings.push({ path: file, rule, line, encoding });
+    }
+  }
+  return findings;
+}
+export function selected(file) { return file!=='tools/migrate/IMPORT_DECK_RECIPE.md' && !file.split('/').includes('withheld') && (singles.has(file) || roots.some(prefix => file.startsWith(prefix))); }
+function main() {
+  const output = path.resolve(root, process.argv[2] || 'tmp/handover-package');
+  const rel = path.relative(path.resolve(root, 'tmp'), output);
+  if (!rel || rel.startsWith('..') || path.isAbsolute(rel)) throw Error('output must be below this checkout tmp/');
+  const modeEvidence=sourceExportModeEvidence();
+  const trackedEntries=git('ls-files','--stage','-z').split('\0').filter(Boolean).map(record=>{
+    const separator=record.indexOf('\t');if(separator<0)throw Error('invalid source index record');
+    const file=record.slice(separator+1),[mode,oid,stage]=record.slice(0,separator).split(' ');
+    if(stage!=='0'&&selected(file))throw Error('unmerged selected source index entry: '+file);
+    return {file,mode,oid};
+  });
+  const tracked=trackedEntries.map(entry=>entry.file);
+  const modes=new Map(trackedEntries.map(entry=>[entry.file,entry.mode]));
+  const sourceDirty = git('status','--porcelain','--untracked-files=no').trim() !== '';
+  if(sourceDirty && !process.argv.includes('--allow-dirty'))throw Error('commit the intended source first; an exploratory export requires --allow-dirty and is marked dirty');
+  const engineArgument=process.argv.indexOf('--engine-commit');
+  const engineCommit=engineArgument<0?null:process.argv[engineArgument+1];
+  if(engineCommit!==null){if(!/^[a-f0-9]{40}$/.test(engineCommit??''))throw Error('engine pin must be an exact full commit');git('merge-base','--is-ancestor',engineCommit,'HEAD');}
+  const files = tracked.filter(selected).sort();
+  const content = new Map();
+  for (const file of files) {
+    sourceExportPermissions(modes.get(file));
+    if (!lstatSync(path.join(root, file)).isFile()) throw Error('non-regular source: ' + file);
+    content.set(file, readFileSync(path.join(root, file)));
+  }
+  // Package-facing documents replace the private workspace's landing pages.
+  for (const [from, to] of [['README.md','README.md'], ['PORT-SCOPE.md','PORT-SCOPE.md'], ['DIFFERENCES.md','DIFFERENCES.md'], ['NOTICE.md','NOTICE'], ['KNOWN-COMPARISON-FAILURE.md','KNOWN-COMPARISON-FAILURE.md']]) {
+    content.set(to, readFileSync(path.join(root, 'docs/handover', from)));
+    modes.set(to,'100644');
+  }
+  const pkg = JSON.parse(content.get('package.json'));
+  pkg.description = 'TypeScript derivative of Decko card 1.110.0 / decko 0.20.0. See PORT-SCOPE.md for evidence and limitations.';
+  pkg.scripts = { 'build:engine': 'node tools/dist/build-engine.mjs', test: 'node tools/handover/smoke.mjs' };
+  delete pkg.cloudflare;
+  content.set('package.json', Buffer.from(JSON.stringify(pkg, null, 2) + '\n'));
+  content.set('tsconfig.json', Buffer.from(JSON.stringify({compilerOptions:{target:'ES2022',module:'NodeNext',moduleResolution:'NodeNext',strict:true,noUncheckedIndexedAccess:false,esModuleInterop:true,skipLibCheck:true,forceConsistentCasingInFileNames:true,outDir:'dist',types:['node']},include:['src/**/*.ts','tests/schema/better-sqlite3.d.ts']},null,2)+'\n'));
+  const map = ['# Ruby to TypeScript source map', '', 'Generated from the exact source snapshot. A citation identifies provenance, not proof of parity. Files without a Ruby citation are explicitly listed.', '', '| TypeScript module | Ruby references present in source |', '| --- | --- |'];
+  for (const [file, bytes] of content) if (/^src\/.*\.ts$/.test(file)) {
+    const refs = [...new Set(bytes.toString('utf8').match(/[\w./-]+\.rb(?::[\d-]+)?/g) || [])];
+    map.push(`| ${file} | ${refs.length ? refs.map(ref => '`' + ref + '`').join(', ') : 'No Ruby file citation; inspect this module as port-specific or uncited implementation.'} |`);
+  }
+  map.push('', '## Source difference annotation index', '',
+    'The following index includes every source line carrying a divergence, unported, unsupported, or deliberate-difference marker under the stated matching rule. These are review references, not accepted exceptions or evidence that every possible difference is known. Read them with DIFFERENCES.md and the actual source.', '',
+    'Matching rule: divergence word stem; unported word; not supported phrase; or deliberate/intentional followed by differ on the same line.', '',
+    '| Source location | Review marker |', '| --- | --- |');
+  for(const [file,bytes] of content)if(/^src\/.*\.ts$/.test(file)){
+    const lines=bytes.toString('utf8').split('\n');
+    lines.forEach((line,index)=>{if(/\bdivergen|\bunported\b|not supported|(?:deliberate|intentional).*differ/i.test(line))map.push(`| \`${file}:${index+1}\` | Source difference annotation; inspect the shipped module. |`);});
+  }
+  content.set('RUBY-MAP.md', Buffer.from(map.join('\n')+'\n'));
+  modes.set('RUBY-MAP.md','100644');
+  const tinyMceExportCustody=assertTinyMceExportCustody(content,modes);
+  const metadata = { format: 1, sourceCommit: git('rev-parse','HEAD').trim(), engineCommit,
+    historyIncluded: false, description: 'Local source snapshot; development Git history is excluded, not rewritten.',
+    sourceDirty,
+    fileModes:{source:'original Git index modes; generated documents are 100644',evidence:modeEvidence},tinyMceExportCustody,
+  };
+  const result = materializeSourceSnapshot({ output, content, modes, metadata, scanContent: scan });
+  console.log(JSON.stringify(result,null,2));
+  if (result.status === 'blocked') process.exitCode=1;
+}
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();

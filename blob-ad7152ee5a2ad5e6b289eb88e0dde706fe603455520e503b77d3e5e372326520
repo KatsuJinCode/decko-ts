@@ -1,0 +1,38 @@
+# Product scope test type boundary: issue 174
+
+Independent review `aa4e4dc008fc5708e044b0576d0e9cda9aea9b86` correctly
+identified TS7016 in issue 170's new test import. The author's retained
+`hygiene170-typecheck.log` contains the same error. A later successful shell
+command masked the compiler's nonzero status; the previous passing report was
+incorrect. The historical raw failure is preserved and the issue170 report
+now states this failure explicitly.
+
+The correction adds `tools/test-gates.d.mts`, declaring the actual module's
+named exports with specific gate IDs, string paths and inventory results.
+No ambient wildcard declaration, implicit-any allowance, compiler-option
+change, test suppression, runtime change or assertion change is introduced.
+The fail-closed inventory controls and independently accepted machine component
+are unchanged. Issue 175's depth/read-count failure is separate and is not
+claimed resolved here.
+
+Validation executes the compiler in its own native subprocess through Node's
+`spawnSync`, records `status`, `signal` and `error`, and exits with that child
+status. The tool invocation contains no later command that can mask it.
+The exact `tsc --noEmit` subprocess exits zero, with empty diagnostics.
+An inert child exiting seven produces a recorded native status seven and a
+nonzero tool result (PowerShell reports one); this negative control confirms
+failure propagation without equating the shell's status to the child's.
+
+The original two scope controls pass unchanged, and inventory validation
+passes. These are focused local checks with possible compiled-transform cache;
+no model grading or external provider is involved. Raw ignored receipts:
+
+- `.runtime/adapter123/hygiene174-typecheck.log`
+- `.runtime/adapter123/hygiene174-typecheck-receipt.json`
+- `.runtime/adapter123/hygiene174-exit-negative.json`
+- `.runtime/adapter123/hygiene174-controls.log`
+- `.runtime/adapter123/hygiene174-inventory.log`
+
+The source correction is only the declaration; the other changed paths are
+this report and the correction to the earlier report. No generated DB,
+server, install, schedule, root edit or machine-repository change was made.

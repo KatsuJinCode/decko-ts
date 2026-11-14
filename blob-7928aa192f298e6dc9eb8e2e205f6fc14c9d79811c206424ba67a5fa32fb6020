@@ -1,0 +1,209 @@
+# Actual installed Decko event/callback code over a synthetic Card data interface.
+# Explicit invocation only; no Rails/application/database/server boot.
+require "json"
+require "digest"
+require "rbconfig"
+require "set"
+
+gem_root = File.expand_path(ARGV.fetch(0))
+Dir.glob(File.join(gem_root, "*", "lib")).sort.reverse_each { |path| $LOAD_PATH.unshift path }
+require "active_support/callbacks"
+require "active_support/core_ext/array/wrap"
+require "active_support/core_ext/object/inclusion"
+require "active_support/core_ext/module/delegation"
+require "active_support/inflector"
+
+input_bytes = STDIN.read
+input = JSON.parse(input_bytes)
+loaded_sources = []
+load_source = lambda do |relative|
+  path = File.join(gem_root, "card-1.110.0", relative)
+  load path
+  loaded_sources << path
+end
+
+module Rails
+  def self.logger
+    @logger ||= Object.new.tap { |logger| def logger.debug(*) = nil }
+  end
+end
+module Cardio
+  class Job; end # Only the superclass constant is used at delayed_event.rb load.
+end
+
+outputs = input.fetch("cases").map do |scenario|
+  Object.send(:remove_const, :Card) if Object.const_defined?(:Card, false)
+  class Card
+    include ActiveSupport::Callbacks
+    class << self
+      attr_accessor :action_specific_attributes, :scenario, :module_paths
+    end
+    self.action_specific_attributes = []
+    module Dirty
+      module MethodFactory; end
+    end
+    module Subcards
+      module Args; end # Unused inclusion in the assignment data interface.
+    end
+    module Set
+      class << self
+        attr_accessor :modules
+      end
+      self.modules = {base: [], base_format: {}, nonbase: {}, nonbase_format: {}, abstract: {}, abstract_format: {}}
+      class Event
+        module DelayedEvent; end
+        module Options; end
+        module Callbacks; end
+        module SkipAndTrigger; end
+      end
+    end
+  end
+  Card.scenario = scenario
+  Card.module_paths = {}
+
+  %w[lib/card/dirty/method_factory.rb lib/card/dirty.rb
+     lib/card/set/event/delayed_event.rb lib/card/set/event/options.rb
+     lib/card/set/event/callbacks.rb lib/card/set/event/skip_and_trigger.rb
+     lib/card/set/event/all.rb lib/card/set/event.rb
+     lib/card/set/helpers.rb lib/card/set/registrar.rb
+     lib/card/set/pattern.rb lib/card/set/pattern/class_methods.rb
+     lib/card/set/pattern/base.rb lib/card/set/pattern/all.rb].each { |path| load_source.call path }
+  load_source.call "config/initializers/01_core_extensions/module.rb"
+  Module.include CoreExtensions::Module unless Module.include? CoreExtensions::Module
+  Card::Set.include Card::Set::Helpers
+  Card::Set.include Card::Set::Event::Api
+  Card::Set.extend Card::Set::Registrar
+  Card.include Card::Dirty
+  Card.include Card::Set::Event::All
+  Card.include Card::Set::Pattern::All
+  %w[validate store].each { |stage| Card.define_callbacks "#{stage}_stage" }
+
+  # Run the real module-attachment and reset/reinclude methods. ActiveRecord-
+  # facing constructors and data methods are supplied below and never boot AR.
+  %w[mod/core/set/all/initialize.rb mod/core/set/all/assign_attributes.rb].each do |relative|
+    path = File.join(gem_root, "card-1.110.0", relative)
+    Card.class_eval File.read(path), path, 1
+    loaded_sources << path
+  end
+
+  Card.class_eval do
+    attr_accessor :name, :type_id
+    attr_reader :calls
+    def initialize
+      data = self.class.scenario.fetch("card")
+      @name = data.fetch("oldName", data.fetch("name"))
+      @type_id = data.fetch("oldTypeId", data.fetch("typeId"))
+      @dirty = data.fetch("dirty", []).map(&:to_s)
+      @dirty_marker = Object.new
+      @current_action = Object.new unless data["currentAction"] == false
+      @calls = []
+    end
+    def self.find(_id) = new
+    def id = 101
+    def real? = true
+    def action = self.class.scenario.fetch("card").fetch("action", "update").to_sym
+    def act_card = self
+    def mutations_before_last_save = @dirty_marker
+    def mutations_from_database = @dirty_marker
+    def attribute_changed?(attribute) = @dirty.include?(attribute.to_s)
+    def capture(label) = @calls << {"label" => label, "name" => name, "typeId" => type_id}
+    def synthetic_module_key(code)
+      return "All" if code == "all"
+      membership = self.class.scenario.fetch("memberships", []).find do |entry|
+        entry.fetch("path").split("/").first == code &&
+          (!entry.key?("typeId") || entry["typeId"] == type_id) &&
+          (!entry.key?("name") || entry["name"] == name)
+      end
+      membership && membership.fetch("path").split("/").map(&:camelize).join("::")
+    end
+  end
+
+  # Fixture membership is synthetic data. Pattern insertion, registered lists,
+  # singleton include order, event conditions and callbacks are installed code.
+  input.fetch("patterns").reverse_each do |pattern|
+    code = pattern.fetch("code")
+    klass = Class.new(Card::Set::Pattern::Base)
+    Card::Set.const_set code.camelize, klass
+    klass.anchor_parts_count = pattern.fetch("anchorPartsCount")
+    klass.define_singleton_method(:pattern_applies?) { |card| !card.synthetic_module_key(code).nil? }
+    klass.define_method(:initialize) { |card| @module_key = card.synthetic_module_key(code) }
+    klass.register code.to_sym
+  end
+
+  scenario.fetch("predicates", {}).each { |name, value| Card.define_method(name) { value } }
+  scenario.fetch("visits").each do |visit|
+    parts = visit.fetch("path").split("/").map { |part| part.sub(/^\d+_/, "").camelize }
+    mod = parts.inject(Card::Set) { |owner, part| owner.const_get_or_set(part) { Module.new } }
+    mod.extend Card::Set
+    Card.module_paths[mod] ||= visit.fetch("path").split("/").map { |part| part.sub(/^\d+_/, "") }.join("/")
+    visit.fetch("events", []).each do |declaration|
+      opts = {}
+      %w[changed changing].each { |key| opts[key.to_sym] = declaration[key].map(&:to_sym) if declaration.key? key }
+      %w[when before after skip trigger].each { |key| opts[key.to_sym] = declaration[key].to_sym if declaration.key? key }
+      if declaration.key? "whenProc"
+        raise "A fixture cannot carry both a named condition and Proc" if opts.key? :when
+        spec = declaration.fetch "whenProc"
+        opts[:when] = case spec.keys
+                      when ["result"]
+                        ->(value) { ->(_card) { value } }.call(spec.fetch("result"))
+                      when ["nameEquals"]
+                        ->(name) { ->(current) { current.name == name } }.call(spec.fetch("nameEquals"))
+                      else
+                        raise "Unknown finite Proc fixture declaration"
+                      end
+      end
+      if declaration.key? "on"
+        values = declaration.fetch("on").map(&:to_sym)
+        opts[:on] = values == [:save] ? :save : values
+      end
+      body = ->(label) { proc { capture(label) } }.call(declaration.fetch("label"))
+      if declaration["at"]
+        mod.event declaration.fetch("event").to_sym, declaration.fetch("at").to_sym, opts, &body
+      else
+        mod.event declaration.fetch("event").to_sym, opts, &body
+      end
+    end
+  end
+  Card::Set.process_base_modules
+  Card::Set.finalize_load
+
+  card = Card.new
+  card.include_set_modules
+  data = scenario.fetch("card")
+  assign = proc { card.name = data.fetch("name"); card.type_id = data.fetch("typeId") }
+  if data.fetch("refreshAssigned", false)
+    card.send(:refresh_set_modules, &assign)
+  else
+    assign.call
+  end
+  ancestry = card.singleton_class.ancestors.filter_map { |mod| Card.module_paths[mod] }
+  stages = []
+  scenario.fetch("stages", ["validate"]).each do |stage|
+    begin
+      card.run_callbacks "#{stage}_stage"
+      stages << {"stage" => stage, "error" => nil}
+    rescue StandardError => error
+      stages << {"stage" => stage, "error" => {"class" => error.class.name, "message" => error.message}}
+      break
+    end
+  end
+  {"id" => scenario.fetch("id"), "calls" => card.calls, "stages" => stages, "methodModules" => ancestry}
+end
+
+source_paths = (loaded_sources + $LOADED_FEATURES.select { |path| path.tr("\\", "/").start_with? gem_root.tr("\\", "/") }).uniq.sort
+runtime_library = [File.dirname(RbConfig.ruby), RbConfig::CONFIG["libdir"], RbConfig::CONFIG["archlibdir"]]
+                  .compact.map { |dir| File.join(dir, RbConfig::CONFIG.fetch("LIBRUBY_SO")) }
+                  .find { |candidate| File.file? candidate }
+raise "Named Ruby shared runtime library not found" unless runtime_library
+metadata = {
+  "runtime" => RUBY_DESCRIPTION,
+  "executable" => RbConfig.ruby,
+  "executableSha256" => Digest::SHA256.file(RbConfig.ruby).hexdigest,
+  "runtimeLibrary" => runtime_library,
+  "runtimeLibrarySha256" => Digest::SHA256.file(runtime_library).hexdigest,
+  "sources" => source_paths.to_h { |path| [path, Digest::SHA256.file(path).hexdigest] },
+  "fixtureSha256" => Digest::SHA256.hexdigest(input_bytes),
+  "harnessSha256" => Digest::SHA256.hexdigest(defined?(DIFFERENTIAL_HARNESS_SOURCE) ? DIFFERENTIAL_HARNESS_SOURCE : File.binread(__FILE__)),
+  "scope" => "Actual pinned event/dirty/callback/module code over synthetic Card data; not Rails/database/full-release or canonical Ruby 3.3 acceptance"
+}
+puts JSON.generate({"metadata" => metadata, "cases" => outputs})

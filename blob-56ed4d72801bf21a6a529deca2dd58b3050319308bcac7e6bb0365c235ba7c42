@@ -1,0 +1,11 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+    body { margin:0; background:#1b1d20; color:#e8e9eb; font:13px/1.4 sans-serif; }
+    .row { display:flex; align-items:flex-start; }
+    .cell { width:730px; margin:0 4px 8px; }
+    .cell img { display:block; width:730px; height:auto; border:1px solid #000; }
+    .cell .cap { padding:5px 10px; background:#000; }
+  </style></head><body><div class="row">
+    <div class="cell"><div class="cap">VARIANT A - the same site, sharper (127.0.0.1:3118/Culturesmith+Home_Variant_A, full page)</div><img src="variant-a-1440x900-fullpage.png"></div>
+    <div class="cell"><div class="cap">VARIANT B - the decko-native home (127.0.0.1:3118/Culturesmith+Home_Variant_B, full page)</div><img src="variant-b-1440x900-fullpage.png"></div>
+    <div class="cell"><div class="cap">REFERENCE - the live Home page (culturesmith.com, signed in, captured 2026-10-25)</div><img src="reference-live-home-signed-in.png"></div>
+  </div></body></html>

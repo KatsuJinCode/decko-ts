@@ -1,0 +1,41 @@
+import {afterEach,beforeEach,expect,it} from 'vitest';
+import {copyFileSync,mkdirSync,mkdtempSync,rmSync,writeFileSync} from 'node:fs';
+import {resolve} from 'node:path';
+import {spawnSync} from 'node:child_process';
+import {LocalSqliteDriver} from '../../../src/server/drivers/local-sqlite.js';
+import {openSameDatabase} from '../../../src/server/same-database.js';
+import {FetchEngine} from '../../../src/card/fetch.js';
+import {CardActionEngine} from '../../../src/card/actions/card-action-engine.js';
+import {actorBot} from '../../../src/card/auth/actor.js';
+import {defaultDeckLoader} from '../../../src/card/mod-loader/default-mod-deck.js';
+import {observedModEventRuntime} from '../../../src/server/write-routes.js';
+import {findRule} from '../../../src/card/rules/lookup.js';
+
+let driver:LocalSqliteDriver,fetcher:FetchEngine,engine:CardActionEngine,dir:string,database:string,book:number;
+const observations:unknown[]=[];
+beforeEach(async()=>{
+  mkdirSync(resolve('tmp'),{recursive:true});dir=mkdtempSync(resolve('tmp/attack-rule-key-'));
+  database=resolve(dir,'deck.sqlite3');copyFileSync(resolve('reference-harness/fixtures/synthetic-v1/deck/deck.sqlite3'),database);
+  driver=new LocalSqliteDriver({path:database});await openSameDatabase(driver);defaultDeckLoader();
+  fetcher=new FetchEngine(driver);fetcher.installNameEnvironment();
+  engine=new CardActionEngine(fetcher,{actor:await actorBot(driver),modEvents:await observedModEventRuntime({driver,fetcher})});
+  book=(await engine.createCard({name:'Key Book',typeName:'Cardtype'})).cardId;
+  await engine.createCard({name:'Key Book+*type+*help',content:'specific'});
+});
+afterEach(()=>{driver?.close();if(dir)rmSync(dir,{recursive:true});writeFileSync(resolve('tmp/attack-rule-key-native.json'),JSON.stringify(observations,null,2));});
+for(const mutation of ['setting-code-changed','pattern-code-changed'])for(const fallback of [false,true])
+it(`matches the original requested cache key: ${mutation}, fallback=${fallback}`,async()=>{
+  if(fallback)await engine.createCard({name:'*all+*help',content:'general'});
+  // Warm before changing a codename. This isolates cache-key identity from
+  // cache population; the original supplied rule-pattern keys stay fixed.
+  expect((await findRule(fetcher,{name:'',isNew:true,typeId:book,typeName:'Key Book'},'*help'))?.rule.dbContent).toBe('specific');
+  const code=mutation==='setting-code-changed'?'help':'type';
+  await driver.query('UPDATE cards SET codename=? WHERE codename=?',[`other_${code}`,code]);
+  fetcher.resetCaches();
+  const native=spawnSync('ruby',[resolve('tests/card/rules/original-rule-storage-probe.rb'),'C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems',database,
+    JSON.stringify({mode:'rule',keys:[`${book}+type`,'all'],setting:'help'})],{windowsHide:true,encoding:'utf8',maxBuffer:Infinity});
+  expect(native.status,native.stderr).toBe(0);const reference=JSON.parse(native.stdout);observations.push({mutation,fallback,...reference});
+  expect(reference.result.value).toBe(mutation==='pattern-code-changed'&&fallback?'general':null);
+  const actual=(await findRule(fetcher,{name:'',isNew:true,typeId:book,typeName:'Key Book'},'*help'))?.rule.dbContent??null;
+  expect(actual).toBe(reference.result.value);
+});

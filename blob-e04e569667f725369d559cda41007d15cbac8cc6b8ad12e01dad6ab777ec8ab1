@@ -1,0 +1,89 @@
+{
+  "renderedAt": "2026-10-26T04:22:55.456Z",
+  "baseUrl": "http://127.0.0.1:3118",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "fullPage": true,
+  "headless": true,
+  "executablePath": "C:/Program Files/Google/Chrome/Application/chrome.exe",
+  "motionFreezeMs": 550,
+  "assetHostMapped": "production-storage.r1.cdn.objectstore.example",
+  "failedRequests": [
+    {
+      "url": "https://kit.fontawesome.com/1366963381.js",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://kit.fontawesome.com/1366963381.js",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://kit.fontawesome.com/1366963381.js",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://kit.fontawesome.com/1366963381.js",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://kit.fontawesome.com/1366963381.js",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://kit.fontawesome.com/1366963381.js",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://kit.fontawesome.com/1366963381.js",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://kit.fontawesome.com/1366963381.js",
+      "error": "net::ERR_ABORTED"
+    }
+  ],
+  "steps": [
+    {
+      "label": "Library-first",
+      "url": "http://127.0.0.1:3118/Culturesmith%2BFront%20Door%20Library",
+      "status": 200,
+      "status2": 200,
+      "skinLive": true,
+      "frozen": 19,
+      "fullPageOut": "C:\\localProjects\\decko-ts-demo-scratch-20261025\\tmp\\frontdoor-design-pass-20261026\\library-first-1440x900-fullpage.png",
+      "motionOut": "C:\\localProjects\\decko-ts-demo-scratch-20261025\\tmp\\frontdoor-design-pass-20261026\\library-first-motion-state.png"
+    },
+    {
+      "label": "Editorial",
+      "url": "http://127.0.0.1:3118/Culturesmith%2BFront%20Door%20Editorial",
+      "status": 200,
+      "status2": 200,
+      "skinLive": true,
+      "frozen": 12,
+      "fullPageOut": "C:\\localProjects\\decko-ts-demo-scratch-20261025\\tmp\\frontdoor-design-pass-20261026\\editorial-1440x900-fullpage.png",
+      "motionOut": "C:\\localProjects\\decko-ts-demo-scratch-20261025\\tmp\\frontdoor-design-pass-20261026\\editorial-motion-state.png"
+    },
+    {
+      "label": "Product grid",
+      "url": "http://127.0.0.1:3118/Culturesmith%2BProduct%20Grid%20Door",
+      "status": 200,
+      "status2": 200,
+      "skinLive": true,
+      "frozen": 7,
+      "fullPageOut": "C:\\localProjects\\decko-ts-demo-scratch-20261025\\tmp\\frontdoor-design-pass-20261026\\product-grid-1440x900-fullpage.png",
+      "motionOut": "C:\\localProjects\\decko-ts-demo-scratch-20261025\\tmp\\frontdoor-design-pass-20261026\\product-grid-motion-state.png"
+    },
+    {
+      "label": "Three doors",
+      "url": "http://127.0.0.1:3118/Culturesmith%2BThree%20Doors",
+      "status": 200,
+      "status2": 200,
+      "skinLive": true,
+      "frozen": 6,
+      "fullPageOut": "C:\\localProjects\\decko-ts-demo-scratch-20261025\\tmp\\frontdoor-design-pass-20261026\\three-doors-1440x900-fullpage.png",
+      "motionOut": "C:\\localProjects\\decko-ts-demo-scratch-20261025\\tmp\\frontdoor-design-pass-20261026\\three-doors-motion-state.png"
+    }
+  ]
+}

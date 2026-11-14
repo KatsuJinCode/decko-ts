@@ -1,0 +1,65 @@
+# Legacy-switch documentation correction
+
+Base: `9d4e1738149123688fd4f2d2a9cbd74da549eb5a`.
+Only `docs/STRICT-PARITY-FLAGS.md` and this receipt change. No runtime,
+fixture, comparator exemption, host, security setting or issue 111 treatment
+was changed.
+
+## Checked against source
+
+The existing document already listed five switches and their defaults. The
+correction distinguishes the named tools/parity-side-effects battery from
+synthetic-v1 mail comparisons; records the latter's exact seven affected
+steps and diagnostic-only status; specifies configured-object precedence;
+names card 1.110.0 / Decko 0.20.0 as the finite reference scope; explains exact
+Node profile and serializer admission; and separates adapter overrides from
+default-host security policy. The stale #67 review statement is updated to
+its independently accepted finite parser scope, without claiming full HTML,
+host or media acceptance. #68 remains open and separately scoped.
+
+Working references read:
+
+- `src/card/parity/strict-parity-flags.ts`: five names, defaults, trimmed
+  case-insensitive on/off strings, blank/unset off, invalid/non-string throws,
+  configured object before process environment.
+- `src/card/notify/follow-mail-views.ts`: the fifth flag alone selects bare
+  links versus the encoded soft-redirect suffix.
+- `reference-harness/adapters/ts/adapter.ts`: exact password-mode admission,
+  legacy-sha1 default and unconditional uniform-failure/throttle/revocation
+  overrides. These are adapter configuration, not default-host acceptance.
+- `vm-staging-server.mjs` and
+  `src/card/render/deployment-follow-live-config.ts`: exact `stock` profile
+  comparison, trimmed serializer environment input and validated era values.
+- `docs/SECURITY.md`: independently configured public security policies and
+  the shared-engine password compatibility cost. No withheld divergence
+  details were added.
+- Private issue 67's final independent acceptance at
+  `d4eefc8de35fc18376c584ba694198d190f1c812`, and issue 68's open state.
+
+## Checked against retained raw results
+
+Read the release owner's actual absolute directory:
+`C:/localProjects/decko-ts-port-integration/.runtime/storage133-134-byte-20261031`.
+Both `default` and `strict` receipts select all five flags explicitly in their
+respective modes, use the canonical TS adapter and synthetic-v1 fixture, and
+record runner exit 0 / grader exit 2. Both comparison files declare source
+qualification false, dirty-source diagnostic mode and N1/N2/N3 normalization.
+Their side-effect summaries have 19 graded answers: default 12 pass / 7 fail,
+strict 19 pass / 0 fail. This is an inspected stored diagnostic, not a fresh
+capture, qualified candidate, independent checker acceptance or release score.
+
+Independently read each of the seven named steps from the actual raw
+`results/scenarios.jsonl` in both modes and the committed expected
+`reference-harness/fixtures/synthetic-v1/expected/scenarios.jsonl` in that
+checkout. For every step, strict raw `result.mail` JSON equals expected raw
+mail JSON; default mail becomes exactly equal only after removing
+`&success%5Bredirect%5D=soft`. The doc therefore identifies this specific
+mail-link arm without asserting that those steps test dashboard refusal or
+follow-rule creation. Issue 111 reconciliation remains with the release owner.
+
+Local verification used existing dependencies and transform caches:
+17 tests passed across strict flag parsing/configuration, both-mode HTTP
+write routes, asset naming and follow-rule permission controls; zero skipped
+or failed. Full raw output:
+`.runtime/adapter123/legacy-doc-source-controls.log`. No new model, Ruby,
+browser, provider, hosted or native capture ran. Whitespace check passed.
