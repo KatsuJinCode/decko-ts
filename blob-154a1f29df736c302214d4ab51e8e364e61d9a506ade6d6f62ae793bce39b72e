@@ -1,0 +1,99 @@
+require "json"
+require "digest"
+gems = File.expand_path(ARGV.fetch(0))
+root = File.join(gems, "card-1.110.0")
+sources = {
+  registration: File.join(root, "lib/card/format/registration.rb"),
+  format: File.join(root, "lib/card/format.rb"),
+  patterns: File.join(root, "lib/card/set/pattern/all.rb"),
+  module_extensions: File.join(root, "config/initializers/01_core_extensions/module.rb")
+}
+class Card
+  class Format; end
+  module Set
+    module Pattern; end
+  end
+end
+load sources.fetch(:registration)
+load sources.fetch(:patterns)
+load sources.fetch(:module_extensions)
+Module.include CoreExtensions::Module
+def source_method(file, signature)
+  lines = File.readlines(file)
+  first = lines.index {|line| line.strip == signature}
+  raise "Missing exact native method: #{signature}" unless first
+  indentation = lines.fetch(first)[/^ */]
+  last = ((first + 1)...lines.length).find {|index| lines[index] == "#{indentation}end\n" || lines[index] == "#{indentation}end\r\n"}
+  raise "Missing native method boundary: #{signature}" unless last
+  [lines[first..last].join, first + 1]
+end
+include_source, include_line = source_method(sources.fetch(:format), "def include_set_format_modules")
+Card::Format.class_eval(include_source, sources.fetch(:format), include_line)
+Card::Format.extend Card::Format::Registration
+class ProbeCard
+  include Card::Set::Pattern::All
+  attr_reader :concrete_patterns
+  def initialize(patterns)
+    @concrete_patterns = patterns
+  end
+end
+ProbePattern = Struct.new(:registrations) do
+  def format_module_list(klass) = registrations.fetch(klass, [])
+end
+def format_class(parent)
+  Class.new(parent)
+end
+def view_module(label)
+  mod = Module.new
+  mod.define_singleton_method(:probe_label) { label }
+  mod.define_method(:probe_view) { [label, *super()] }
+  mod
+end
+Object.class_eval do
+  def probe_view = ["compiled-terminal"]
+end
+def run_case(name, all:, scoped: {}, format: :rss)
+  base = Class.new(Card::Format)
+  # Registration#format_ancestry terminates at Card::Format. Synthetic
+  # subclasses model the format levels; Object supplies only the terminal.
+  html = format_class(base)
+  rss = format_class(html)
+  css = format_class(base)
+  classes = {base: base, html: html, rss: rss, css: css}
+  all.each do |level, labels|
+    classes.fetch(level).add_set_modules(labels.map {|label| view_module(label)})
+  end
+  patterns = scoped.map do |_set_name, formats|
+    ProbePattern.new(formats.to_h {|level, labels| [classes.fetch(level), labels.map {|label| view_module(label)}]})
+  end
+  # Actual set_format_modules excludes the terminal all pattern; all-set
+  # format modules have already been included on their owning classes.
+  card = ProbeCard.new([*patterns, ProbePattern.new({})])
+  instance = classes.fetch(format).allocate
+  instance.instance_variable_set(:@card, card)
+  instance.define_singleton_method(:card) { @card }
+  instance.include_set_format_modules
+  owners = []
+  method = instance.method(:probe_view)
+  while method
+    owners << (method.owner.respond_to?(:probe_label) ? method.owner.probe_label : "compiled-terminal")
+    method = method.super_method
+  end
+  body = instance.probe_view
+  raise "Synthetic terminal intercepted a registered method: #{name}" unless body == owners
+  {name: name, format: format, all: all, scoped: scoped,
+   body: body, owners: owners,
+   ancestry_depth: classes.fetch(format).format_ancestry.length}
+end
+cases = [
+  run_case("all_child_parent_base", all: {base: ["All::Probe/base"], html: ["All::Probe/html"], rss: ["All::Probe/rss"]}),
+  run_case("all_child_different_parent_module", all: {html: ["All::Parent/html"], rss: ["All::Child/rss"]}),
+  run_case("all_parent_only", all: {base: ["All::Probe/base"], html: ["All::Probe/html"]}),
+  run_case("all_css_excludes_html", all: {base: ["All::Probe/base"], html: ["All::Probe/html"]}, format: :css),
+  run_case("scoped_base_over_all_child", all: {rss: ["All::Child/rss"]}, scoped: {"Type::Probe" => {base: ["Type::Probe/base"]}}),
+  run_case("scoped_child_parent_base", all: {base: ["All::Probe/base"], html: ["All::Probe/html"], rss: ["All::Probe/rss"]}, scoped: {"Type::Probe" => {base: ["Type::Probe/base"], html: ["Type::Probe/html"], rss: ["Type::Probe/rss"]}}),
+  run_case("scoped_two_sets_cross_formats", all: {html: ["All::Probe/html"]}, scoped: {"Self::Probe" => {html: ["Self::Probe/html"]}, "Type::Probe" => {rss: ["Type::Probe/rss"]}})
+]
+puts JSON.pretty_generate({scope: "Actual pinned Ruby ancestry, inclusion, pattern-module selection and class module inclusion methods; synthetic hierarchy, registrations, pattern backing and view bodies; no Rails/DB boot",
+  runtime: RUBY_DESCRIPTION, checker_sha256: Digest::SHA256.file(__FILE__).hexdigest,
+  sources: sources.values.to_h {|file| [file, Digest::SHA256.file(file).hexdigest]}, cases: cases})

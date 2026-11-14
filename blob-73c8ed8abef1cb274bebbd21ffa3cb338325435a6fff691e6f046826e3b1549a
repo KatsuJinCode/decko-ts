@@ -1,0 +1,149 @@
+import {afterEach, describe, expect, it} from "vitest";
+import fs from "node:fs";
+import path from "node:path";
+import {ModLoader, type ModSource} from "../../../src/card/mod-loader.js";
+import cardModFormat from "../../../src/card/mod-loader/mods/card-mod-format.js";
+import {HTML_VIEWS} from "../../../src/card/render/views.js";
+import {RenderFormat} from "../../../src/card/render/format.js";
+import {RenderEngine} from "../../../src/card/render.js";
+import {FetchEngine} from "../../../src/card/fetch.js";
+import {LocalSqliteDriver} from "../../../src/server/drivers/local-sqlite.js";
+import {ensureFreshnessStamp} from "../../../src/server/freshness-stamp.js";
+import {loadLocaleFromString, resetI18n, setDefaultLocale} from "../../../src/card/i18n/i18n.js";
+
+const cleanups: Array<() => void> = [];
+afterEach(() => {while (cleanups.length) cleanups.pop()!(); resetI18n();});
+async function prepared(registeredCore: boolean) {
+  const directory = fs.mkdtempSync(path.resolve(".runtime/error-format-fixture-"));
+  const file = path.join(directory, "deck.sqlite3");
+  fs.copyFileSync("reference-harness/fixtures/synthetic-v1/deck/deck.sqlite3", file);
+  const driver = new LocalSqliteDriver({path: file});
+  const sources: ModSource[] = [{manifest: {name: "error_format_probe", setModules: [{setPath: "all/error_format_probe", formats: {base: {views: [{view: "protected_probe", config: {perms: "update"}, viewFn: () => "PROTECTED"}]}}}]}}];
+  if (registeredCore) sources.unshift({manifest: cardModFormat});
+  const loader = new ModLoader(sources, {...HTML_VIEWS});
+  cleanups.push(() => {loader.reset(); driver.close(); expect(path.dirname(directory)).toBe(path.resolve(".runtime")); fs.rmSync(directory, {recursive: true});});
+  await ensureFreshnessStamp(driver);
+  loader.load();
+  const engine = new RenderEngine(new FetchEngine(driver));
+  engine.modLoader = loader;
+  engine.viewer = {signedIn: false};
+  await engine.render("Topic 001", "name");
+  const card = engine.fetchRenderCard("Topic 001");
+  if (!card) throw Error("Prepared fixture card missing");
+  return {engine, card};
+}
+
+describe("native error format denial contract", () => {
+  for (const registeredCore of [false, true]) {
+    it(`keeps unknown-card root status local to the owning format, core registered=${registeredCore}`, async () => {
+      const {engine, card} = await prepared(registeredCore);
+      const unknown = {...card, unknown: true};
+      engine.taskAllowed = () => false;
+      const resolve = engine.resolveView.bind(engine);
+      const selected: string[] = [];
+      engine.resolveView = (card, view, format) => {
+        if (view === "unknown" || view === "not_found") {
+          selected.push(view);
+          return () => ""; // Isolate selection/status from unported base error bodies.
+        }
+        return resolve(card, view, format);
+      };
+      for (const formatName of ["json", "email_text"]) {
+        engine.pageErrorStatus = undefined;
+        const root = new RenderFormat(unknown, engine, {formatName});
+        const child = new RenderFormat(unknown, engine, {formatName, parent: root});
+        expect(child.renderView("protected_probe")).toBe("");
+        expect(root.errorStatus).toBeUndefined();
+        expect(engine.pageErrorStatus).toBeUndefined();
+        root.renderView("protected_probe");
+        expect(root.errorStatus).toBe(404);
+        expect(engine.pageErrorStatus).toBe(404);
+        expect(root.jsonErrorResult()).toEqual({error_status: 404, errors: {}});
+        expect(child.renderView("protected_probe")).toBe("");
+        expect(child.errorStatus).toBeUndefined();
+        expect(engine.pageErrorStatus).toBe(404);
+        expect(selected.splice(0)).toEqual(["unknown", "not_found", "unknown"]);
+      }
+    });
+    if (registeredCore) it("keeps registered root error writers visible to later local JSON errors", async () => {
+      const {engine, card} = await prepared(registeredCore);
+      for (const formatName of ["html", "email_text"]) {
+        const root = new RenderFormat(card, engine, {formatName});
+        const child = new RenderFormat(card, engine, {formatName, parent: root, errorStatus: 409});
+        expect(root.renderView("bad_address")).toBe("404: Bad Address");
+        expect(root.errorStatus).toBe(404);
+        expect(engine.pageErrorStatus).toBe(404);
+        expect(root.jsonErrorResult()).toEqual({error_status: 404, errors: {}});
+        root.errorStatus = 422;
+        expect(child.renderView("bad_address")).toBe("404: Bad Address");
+        expect(root.errorStatus).toBe(404);
+        expect(engine.pageErrorStatus).toBe(404);
+        expect(child.errorStatus).toBe(409);
+        expect(child.jsonErrorResult()).toEqual({error_status: 409, errors: {}});
+      }
+    });
+    it(`distinguishes root and nested base formats, core registered=${registeredCore}`, async () => {
+      const {engine, card} = await prepared(registeredCore);
+      for (const formatName of ["email_text", "text", "css", "scss", "js", "csv", "xml", "yaml", "data"]) {
+        engine.pageErrorStatus = undefined;
+        const root = new RenderFormat(card, engine, {formatName});
+        const child = new RenderFormat(card, engine, {formatName, parent: root});
+        expect([root.isMain, root.isFocal, child.isMain, child.isFocal]).toEqual([true, true, false, false]);
+        expect(child.renderView("protected_probe")).toBe("");
+        expect(engine.pageErrorStatus).toBeUndefined();
+        expect(root.renderView("protected_probe")).toBe("Permission Denied");
+        expect(engine.pageErrorStatus).toBe(403);
+        expect(child.renderView("protected_probe")).toBe("");
+      }
+    });
+    it(`keeps JSON errors structured with local format state, core registered=${registeredCore}`, async () => {
+      const {engine, card} = await prepared(registeredCore);
+      const root = new RenderFormat(card, engine, {formatName: "json"});
+      const child = new RenderFormat(card, engine, {formatName: "json", parent: root});
+      expect(child.renderView("protected_probe")).toEqual({error_status: null, errors: {}});
+      expect(root.renderView("protected_probe")).toEqual({error_status: 403, errors: {}});
+      expect(child.renderView("protected_probe")).toEqual({error_status: null, errors: {}});
+      expect(root.errorStatus).toBe(403);
+      expect(child.errorStatus).toBeUndefined();
+      expect(engine.pageErrorStatus).toBe(403);
+      engine.attachedErrorsByKey.set(card.key, [{attribute: "name", message: "first"}, {attribute: "name", message: "last"}, {attribute: "type", message: "invalid"}]);
+      expect(root.renderView("protected_probe")).toEqual({error_status: 403, errors: {name: "last", type: "invalid"}});
+    });
+    it(`uses the native JSON-LD denial body, core registered=${registeredCore}`, async () => {
+      const {engine, card} = await prepared(registeredCore);
+      const root = new RenderFormat(card, engine, {formatName: "jsonld"});
+      const child = new RenderFormat(card, engine, {formatName: "jsonld", parent: root});
+      const expected = '{"@context":"https://www.w3.org/ns/hydra/core#","@type":"hydra:Error","hydra:title":"403 | Permission denied"}';
+      expect(child.renderView("protected_probe")).toBe(expected);
+      expect(root.renderView("protected_probe")).toBe(expected);
+      expect(child.renderView("protected_probe")).toBe(expected);
+    });
+    it(`retains HTML denial behavior in descendant formats, core registered=${registeredCore}`, async () => {
+      const {engine, card} = await prepared(registeredCore);
+      for (const formatName of ["html", "rss", "email_html"]) {
+        const ordinary = new RenderFormat(card, engine, {formatName});
+        expect(ordinary.renderView("protected_probe")).toContain("permission (update)");
+        const focal = new RenderFormat(card, engine, {formatName, focal: true});
+        expect(focal.renderView("protected_probe")).toContain("sign up</a> to update this.");
+      }
+    });
+    it(`uses the configured translation for a base root, core registered=${registeredCore}`, async () => {
+      loadLocaleFromString("test", "test:\n  format_denial: Fixture localized refusal\n");
+      setDefaultLocale("test");
+      const {engine, card} = await prepared(registeredCore);
+      expect(new RenderFormat(card, engine, {formatName: "email_text"}).renderView("protected_probe")).toBe("Fixture localized refusal");
+    });
+    it(`retains explicitly local child status without replacing root transport status, core registered=${registeredCore}`, async () => {
+      const {engine, card} = await prepared(registeredCore);
+      const root = new RenderFormat(card, engine, {formatName: "json", errorStatus: 422});
+      const child = new RenderFormat(card, engine, {formatName: "json", parent: root, errorStatus: 409});
+      expect(root.jsonErrorResult()).toEqual({error_status: 422, errors: {}});
+      expect(child.jsonErrorResult()).toEqual({error_status: 409, errors: {}});
+      expect(engine.pageErrorStatus).toBe(422);
+      child.errorStatus = 410;
+      expect(child.jsonErrorResult()).toEqual({error_status: 410, errors: {}});
+      expect(root.errorStatus).toBe(422);
+      expect(engine.pageErrorStatus).toBe(422);
+    });
+  }
+});

@@ -1,0 +1,30 @@
+import { execFileSync } from 'node:child_process';
+
+export class UnsupportedCpuMeasurementPlatformError extends Error {
+  name = 'UnsupportedCpuMeasurementPlatformError';
+}
+
+export function assertCpuMeasurementPlatform(platform = process.platform) {
+  if (platform !== 'win32') {
+    throw new UnsupportedCpuMeasurementPlatformError(
+      `CPU ratio measurement supports Windows process counters only; no counter implementation for ${platform}`,
+    );
+  }
+}
+
+export function treeCpuMs(rootPid) {
+  assertCpuMeasurementPlatform();
+  if (!Number.isSafeInteger(rootPid) || rootPid <= 0) throw new Error('CPU measurement requires a positive process ID');
+  const script = [
+    `$all = Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId`,
+    `$ids = @(${rootPid}); $frontier = @(${rootPid})`,
+    `while ($frontier.Count -gt 0) { $next = @($all | Where-Object { $frontier -contains $_.ParentProcessId } | ForEach-Object { $_.ProcessId }); $ids += $next; $frontier = $next }`,
+    `$t = 0; foreach ($p in $ids) { $g = Get-Process -Id $p -ErrorAction SilentlyContinue; if ($g) { $t += $g.TotalProcessorTime.TotalMilliseconds } }; $t`,
+  ].join('; ');
+  const output = execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {
+    windowsHide: true, encoding: 'utf8',
+  }).trim();
+  const value = Number(output);
+  if (!output || !Number.isFinite(value) || value < 0) throw new Error('Windows CPU counter returned an invalid measurement');
+  return value;
+}

@@ -1,0 +1,31 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.1 [39m[90mC:/localProjects/decko-ts-lane-a1-mods-validation-2026-10-06[39m
+
+ [32m✓[39m tests/card/mod-loader/card-mod-permissions.test.ts [2m([22m[2m33 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m tests/card/mod-loader/card-mod-bootstrap.test.ts [2m([22m[2m32 tests[22m[2m)[22m[32m 43[2mms[22m[39m
+ [32m✓[39m tests/card/mod-loader/card-mod-markdown.test.ts [2m([22m[2m139 tests[22m[2m)[22m[32m 36[2mms[22m[39m
+ [32m✓[39m tests/card/mod-loader/card-mod-search.test.ts [2m([22m[2m28 tests[22m[2m)[22m[32m 93[2mms[22m[39m
+ [32m✓[39m tests/card/mod-loader/card-mod-script.test.ts [2m([22m[2m18 tests[22m[2m)[22m[32m 39[2mms[22m[39m
+ [32m✓[39m tests/card/mod-loader/card-mod-list.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 48[2mms[22m[39m
+[90mstdout[2m | tests/card/mod-loader/card-mod-help.test.ts[2m > [22m[2mcard-mod-help through the mod loader (A/B)[2m > [22m[2mWITH the mod: :guide on a ruled card wraps the guide text in <div class='guide-text'> (set/all/guide.rb:6-16)
+[22m[39mENGINE-NEST {"requested":"core","view":"core","card":"Oracle Help Probe+*self+*guide","nestName":"Oracle Help Probe+*self+*guide"}
+
+ [32m✓[39m tests/card/mod-loader/card-mod-help.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 58[2mms[22m[39m
+ [32m✓[39m tests/card/mod-loader/card-mod-list-select-editor.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 36[2mms[22m[39m
+ [32m✓[39m tests/card/mod-loader/card-mod-search-list-oracle-pinned.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 74[2mms[22m[39m
+ [32m✓[39m tests/card/mod-loader/card-mod-bootstrap-customized-name-existence.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 37[2mms[22m[39m
+ [32m✓[39m tests/card/mod-loader/card-mod-list-checkbox-editor.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 43[2mms[22m[39m
+[90mstdout[2m | tests/card/mod-loader/card-mod-tabs.test.ts[2m > [22m[2mcard-mod-tabs through the mod loader (A/B)[2m > [22m[2mWITH the mod: a card's baseline :content render still works (the mod adds views, it does not alter core)
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"Oracle Probe Child","nestName":"Oracle Probe Child"}
+ENGINE-NEST {"requested":"open","view":"open","card":"Second Item","unknown":true,"nestName":"Second Item"}
+
+ [32m✓[39m tests/card/mod-loader/card-mod-tabs.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 31[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m12 passed[39m[22m[90m (12)[39m
+[2m      Tests [22m [1m[32m326 passed[39m[22m[2m | [22m[36m2 expected fail[39m[90m (328)[39m
+[2m   Start at [22m 21:20:14
+[2m   Duration [22m 8.75s[2m (import 48%, transform 33%, tests 18%, worker 1%)[22m
+
+[2m    Isolate [22m [33m12 workers spawned[39m[2m · ~464ms startup each (spawn + environment, per file)[22m
+[2m            [22m [2mat least ~5.11s faster with [22m[33misolate: false[39m[2m — reuses workers across files instead of one per file[22m
+

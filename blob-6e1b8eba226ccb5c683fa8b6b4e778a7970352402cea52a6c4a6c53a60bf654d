@@ -1,0 +1,32 @@
+import { expect, it } from "vitest";
+import type { AttachmentStore, AttachmentStoreInput } from "../../../src/card/attachments/attachment-store.js";
+import { assetBytesSha256, reconcileAssetRecoveries, type AssetRecoveryReference } from "../../../src/card/actions/save-outcome.js";
+
+it("does not overwrite a later save that lands after the recovery read snapshot",async()=>{
+  const encode=(s:string)=>new TextEncoder().encode(s);
+  const files=new Map<string,Uint8Array>([["1/2.css",encode("replacement")],["1/2.css.recovery",encode("previous")]]);
+  const key=(input:Pick<AttachmentStoreInput,"cardId"|"actionId"|"ext">)=>`${input.cardId}/${input.actionId}${input.ext}`;
+  let laterWriteLanded=false;
+  const store:AttachmentStore={
+    read:async(cardId,actionId,ext)=>{
+      const path=key({cardId,actionId,ext});
+      const snapshot=files.get(path)?.slice();
+      if(path==="1/2.css"&&!laterWriteLanded){
+        // A different save completes after the read takes its snapshot but
+        // before that response reaches the reconciliation caller.
+        laterWriteLanded=true;
+        await store.store({cardId:1,actionId:2,ext:".css",bytes:encode("later committed output")});
+      }
+      return snapshot;
+    },
+    store:async input=>{files.set(key(input),input.bytes.slice());return {identifier:key(input),size:input.bytes.length};},
+    discard:async input=>{files.delete(key(input));},
+  };
+  const recovery:AssetRecoveryReference={target:{cardId:1,actionId:2,ext:".css"},backup:{cardId:1,actionId:2,ext:".css.recovery",area:"files"},
+    originalSha256:await assetBytesSha256(encode("previous")),replacementSha256:await assetBytesSha256(encode("replacement"))};
+  let failure:unknown;
+  try{await reconcileAssetRecoveries(store,[recovery],"rolled-back");}catch(error){failure=error;}
+  expect(laterWriteLanded).toBe(true);
+  expect(new TextDecoder().decode(files.get("1/2.css")),"the newer committed output must not be overwritten by recovery").toBe("later committed output");
+  expect(files.has("1/2.css.recovery"),String(failure)).toBe(true);
+});

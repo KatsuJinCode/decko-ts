@@ -1,0 +1,25 @@
+{
+  "shard": "shard-000000.jsonl",
+  "lines": 1000,
+  "card_engine": {
+    "total": 999,
+    "pass": 734,
+    "fail": 265,
+    "fail_structure_pending": 265,
+    "fail_real": 0,
+    "structure_pending_note": "Card#content = structured_content || standard_content; matching a *structure rule template requires the rules/set-patterns stream (in flight)"
+  },
+  "render_engine": {
+    "total": 3242,
+    "pass": 0,
+    "pending": 3242,
+    "views": [
+      "closed",
+      "content",
+      "open",
+      "title"
+    ],
+    "pending_reason": "render-engine handler not yet landed (renderer stream in flight)"
+  },
+  "real_failures": []
+}

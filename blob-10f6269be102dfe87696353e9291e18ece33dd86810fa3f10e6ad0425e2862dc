@@ -1,0 +1,76 @@
+import {afterEach,beforeEach,expect,it} from 'vitest';
+import {copyFileSync,mkdirSync,mkdtempSync,readFileSync,rmSync,writeFileSync} from 'node:fs';
+import {resolve} from 'node:path';
+import {spawnSync} from 'node:child_process';
+import {LocalSqliteDriver} from '../../../src/server/drivers/local-sqlite.js';
+import {openSameDatabase} from '../../../src/server/same-database.js';
+import {FetchEngine} from '../../../src/card/fetch.js';
+import {CardActionEngine} from '../../../src/card/actions/card-action-engine.js';
+import {actorBot} from '../../../src/card/auth/actor.js';
+import {defaultDeckLoader} from '../../../src/card/mod-loader/default-mod-deck.js';
+import {observedModEventRuntime} from '../../../src/server/write-routes.js';
+import {findRule} from '../../../src/card/rules/lookup.js';
+import {preferenceRows,indexPreferenceRows,followRuleContent,enumeratedUserIds} from '../../../src/card/notify/follower-resolver.js';
+
+// Original rule/all_spec.rb values, exercised through actual saves and reads.
+// Native reference runs actual pinned original SQL/methods over this same
+// owned SQLite database, with explicitly minimal Card/ORM adapters.
+let driver:LocalSqliteDriver,fetcher:FetchEngine,engine:CardActionEngine,dir:string,database:string,book:number,joe:number,admin:number;
+const raw:unknown[]=[];
+beforeEach(async()=>{
+  mkdirSync(resolve('tmp'),{recursive:true});dir=mkdtempSync(resolve('tmp/attack-original-rules-'));
+  database=resolve(dir,'deck.sqlite3');copyFileSync(resolve('reference-harness/fixtures/synthetic-v1/deck/deck.sqlite3'),database);
+  driver=new LocalSqliteDriver({path:database});await openSameDatabase(driver);defaultDeckLoader();
+  fetcher=new FetchEngine(driver);fetcher.installNameEnvironment();
+  engine=new CardActionEngine(fetcher,{actor:await actorBot(driver),modEvents:await observedModEventRuntime({driver,fetcher})});
+  book=(await engine.createCard({name:'Book',typeName:'Cardtype'})).cardId;
+  joe=(await engine.createCard({name:'Joe User',typeName:'User'})).cardId;
+  admin=(await engine.createCard({name:'Joe Admin',typeName:'User'})).cardId;
+});
+afterEach(()=>{driver?.close();if(dir)rmSync(dir,{recursive:true});writeFileSync(resolve('tmp/attack-original-rule-storage-native.json'),JSON.stringify(raw,null,2));});
+function native(request:Record<string,unknown>){
+  const result=spawnSync('ruby',[resolve(import.meta.dirname,'original-rule-storage-probe.rb'),'C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems',database,JSON.stringify(request)],{windowsHide:true,encoding:'utf8'});
+  expect(result.status,result.stderr).toBe(0);const value=JSON.parse(result.stdout);raw.push({request,...value});return value.result;
+}
+const follow=(who:string,content:string)=>engine.createCard({name:`Book+*type+${who}+*follow`,content});
+async function preference(){
+  const index=indexPreferenceRows(await preferenceRows(fetcher));
+  return followRuleContent(fetcher,index,[{lookupKey:`${book}+type`,setName:'Book+*type'},{lookupKey:'all',setName:'*all'}],joe,await fetcher.codenames.id('all'));
+}
+it('original new Book type rule returns authorize',async()=>{
+  await engine.createCard({name:'Book+*type+*help',content:'authorize'});
+  expect((await findRule(fetcher,{name:'',isNew:true,typeId:book,typeName:'Book'},'*help'))?.rule.dbContent).toBe('authorize');
+  expect(native({mode:'rule',keys:[`${book}+type`,'all'],setting:'help'}).value).toBe('authorize');
+});
+it('original banana self rule returns pebbles',async()=>{
+  const banana=(await engine.createCard({name:'banana'})).cardId;
+  await engine.createCard({name:'banana+*self+*help',content:'pebbles'});
+  expect((await findRule(fetcher,{name:'banana',id:banana},'*help'))?.rule.dbContent).toBe('pebbles');
+  expect(native({mode:'rule',keys:[`${banana}+self`,'all'],setting:'help'}).value).toBe('pebbles');
+});
+for(const mode of ['own','all','override'])it(`original user preference value: ${mode}`,async()=>{
+  if(mode!=='own')await follow('*all','*always');
+  if(mode!=='all')await follow('Joe User',mode==='override'?'*never':'*always');
+  const expected=mode==='override'?'*never':'*always';expect(await preference()).toBe(expected);
+  expect(native({mode:'preference',keys:[`${book}+type`,'all'],setting:'follow',user:joe}).value).toBe(expected);
+});
+it('original user-id cache finds both explicit users on the Book set',async()=>{
+  await follow('Joe User','*always');await follow('Joe Admin','*always');
+  const index=indexPreferenceRows(await preferenceRows(fetcher));
+  expect([...(await enumeratedUserIds(fetcher,index,`${book}+type`))].sort()).toEqual([joe,admin].sort());
+  expect(native({mode:'users',keys:[],set_key:`${book}+type`,setting:'follow'}).users.sort()).toEqual([joe,admin].sort());
+});
+for(const mutation of ['trunk-type','setting-type','setting-code','empty-follow'])it(`rule lookup preserves original cache qualification: ${mutation}`,async()=>{
+  const setting=mutation==='empty-follow'?'follow':'help';
+  await engine.createCard({name:`Book+*type+*${setting}`,content:setting==='follow'?'':'authorize'});
+  if(mutation==='trunk-type'){
+    const trunk=await fetcher.fetchByName('Book+*type');
+    await driver.query('UPDATE cards SET type_id=? WHERE id=?',[await fetcher.codenames.id('basic'),trunk!.id]);
+  }
+  if(mutation==='setting-type')await driver.query('UPDATE cards SET type_id=? WHERE codename=?',[await fetcher.codenames.id('basic'),'help']);
+  if(mutation==='setting-code')await driver.query('UPDATE cards SET codename=NULL WHERE codename=?',['help']);
+  fetcher.resetCaches();
+  const reference=native({mode:'rule',keys:[`${book}+type`,'all'],setting});
+  const actual=(await findRule(fetcher,{name:'',isNew:true,typeId:book,typeName:'Book'},`*${setting}`))?.rule.dbContent??null;
+  expect(actual).toBe(reference.value);
+});

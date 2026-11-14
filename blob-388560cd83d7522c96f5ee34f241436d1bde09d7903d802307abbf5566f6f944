@@ -1,0 +1,20 @@
+import type { Plugin } from "esbuild";
+
+export interface RawWasmAsset {
+  url: string;
+  byteLength: number;
+  sha256: string;
+  filename: string;
+  source: string;
+  license: string;
+  licenseSource: string;
+  licensePath: string;
+  bytes: Buffer;
+}
+export function validatedWasmAssetBase(value: unknown): string;
+export function rawWasmAssetsPlugin(options: { repoRoot: string; assetBaseUrl: string }): {
+  plugin: Plugin;
+  assets: Map<string, RawWasmAsset>;
+};
+export function writeRawWasmAssets(options: { assets: Map<string, RawWasmAsset>; outputDirectory: string }):
+  (Omit<RawWasmAsset, "bytes" | "licensePath"> & { licenseFilename: string; licenseSha256: string })[];

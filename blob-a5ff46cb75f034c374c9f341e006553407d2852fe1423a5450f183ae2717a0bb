@@ -1,0 +1,146 @@
+{
+  "cf-cpu-uncached": {
+    "measuredAt": "2026-10-15T21:42:32.663Z",
+    "deck": "cf-scale",
+    "requestsPerPage": 40,
+    "edgeCache": false,
+    "nestIndexPrepared": true,
+    "coldBoot": {
+      "path": "/",
+      "status": 200,
+      "cpuMs": 156.25,
+      "wallMs": 2858,
+      "d1Queries": 28,
+      "d1RowsRead": 2591
+    },
+    "idleCpuMsPerSecond": 0,
+    "platform": "win32 x64, node v24.19.0",
+    "method": "workerd process CPU (user+kernel) delta over N sequential warm requests / N; upper bound (includes local D1 SQLite + HTTP plumbing)",
+    "pages": [
+      {
+        "label": "ordinary card",
+        "path": "/Scale%20Page%201x",
+        "status": 200,
+        "bytes": 3833,
+        "cpuMsPerRequest": 5.86,
+        "cpuMsPerRequestLessIdle": 5.86,
+        "cpuMsP50": 7.81,
+        "cpuMsP95": 7.81,
+        "batches": 2,
+        "requestsPerBatch": 20,
+        "wallMsPerRequest": 75.1,
+        "edgeCacheDecision": null,
+        "d1QueriesPerRequest": 1,
+        "d1RowsReadPerRequest": 1
+      }
+    ]
+  },
+  "cf-cpu-cached-final": {
+    "measuredAt": "2026-10-15T21:49:30.426Z",
+    "deck": "cf-scale",
+    "requestsPerPage": 40,
+    "edgeCache": true,
+    "nestIndexPrepared": true,
+    "coldBoot": {
+      "path": "/",
+      "status": 200,
+      "cpuMs": 187.5,
+      "wallMs": 1813,
+      "d1Queries": 29,
+      "d1RowsRead": 2592
+    },
+    "idleCpuMsPerSecond": 0,
+    "platform": "win32 x64, node v24.19.0",
+    "method": "workerd process CPU (user+kernel) delta over N sequential warm requests / N; upper bound (includes local D1 SQLite + HTTP plumbing)",
+    "pages": [
+      {
+        "label": "ordinary card",
+        "path": "/Scale%20Page%201x",
+        "status": 200,
+        "bytes": 3833,
+        "cpuMsPerRequest": 5.86,
+        "cpuMsPerRequestLessIdle": 5.86,
+        "cpuMsP50": 7.03,
+        "cpuMsP95": 7.03,
+        "batches": 2,
+        "requestsPerBatch": 20,
+        "wallMsPerRequest": 66.08,
+        "edgeCacheDecision": "armed; cache=hit",
+        "d1QueriesPerRequest": 1,
+        "d1RowsReadPerRequest": 1
+      }
+    ]
+  },
+  "cf-cpu-pointer-uncached": {
+    "measuredAt": "2026-10-15T21:53:49.555Z",
+    "deck": "cf-scale",
+    "requestsPerPage": 40,
+    "edgeCache": false,
+    "nestIndexPrepared": true,
+    "coldBoot": {
+      "path": "/",
+      "status": 200,
+      "cpuMs": 156.25,
+      "wallMs": 957,
+      "d1Queries": 28,
+      "d1RowsRead": 2591
+    },
+    "idleCpuMsPerSecond": 0,
+    "platform": "win32 x64, node v24.19.0",
+    "method": "workerd process CPU (user+kernel) delta over N sequential warm requests / N; upper bound (includes local D1 SQLite + HTTP plumbing)",
+    "pages": [
+      {
+        "label": "500-item pointer",
+        "path": "/Big%20Pointer",
+        "status": 200,
+        "bytes": 64392,
+        "cpuMsPerRequest": 16.41,
+        "cpuMsPerRequestLessIdle": 16.41,
+        "cpuMsP50": 17.19,
+        "cpuMsP95": 17.19,
+        "batches": 2,
+        "requestsPerBatch": 20,
+        "wallMsPerRequest": 121.9,
+        "edgeCacheDecision": null,
+        "d1QueriesPerRequest": 1,
+        "d1RowsReadPerRequest": 1
+      }
+    ]
+  },
+  "cf-cpu-pointer-cached": {
+    "measuredAt": "2026-10-15T21:51:08.058Z",
+    "deck": "cf-scale",
+    "requestsPerPage": 40,
+    "edgeCache": true,
+    "nestIndexPrepared": true,
+    "coldBoot": {
+      "path": "/",
+      "status": 200,
+      "cpuMs": 187.5,
+      "wallMs": 3246,
+      "d1Queries": 29,
+      "d1RowsRead": 2592
+    },
+    "idleCpuMsPerSecond": 3.36,
+    "platform": "win32 x64, node v24.19.0",
+    "method": "workerd process CPU (user+kernel) delta over N sequential warm requests / N; upper bound (includes local D1 SQLite + HTTP plumbing)",
+    "pages": [
+      {
+        "label": "500-item pointer",
+        "path": "/Big%20Pointer",
+        "status": 200,
+        "bytes": 64392,
+        "cpuMsPerRequest": 7.03,
+        "cpuMsPerRequestLessIdle": 6.52,
+        "cpuMsP50": 7.81,
+        "cpuMsP95": 7.81,
+        "batches": 2,
+        "requestsPerBatch": 20,
+        "wallMsPerRequest": 152.72,
+        "edgeCacheDecision": "armed; cache=hit",
+        "d1QueriesPerRequest": 1,
+        "d1RowsReadPerRequest": 1
+      }
+    ]
+  }
+}

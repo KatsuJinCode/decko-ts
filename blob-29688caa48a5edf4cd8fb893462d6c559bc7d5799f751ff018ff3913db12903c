@@ -1,0 +1,67 @@
+import {EventEmitter} from "node:events";
+import {PassThrough} from "node:stream";
+import type {ChildProcess} from "node:child_process";
+import {afterEach,beforeEach,expect,it,vi} from "vitest";
+import {waitForMysqlParentReady} from "./mysql-parent-readiness.js";
+
+function child(){
+ const events=new EventEmitter() as EventEmitter&{stdout:PassThrough;stderr:PassThrough;exitCode:number|null;signalCode:NodeJS.Signals|null};
+ events.stdout=new PassThrough();events.stderr=new PassThrough();events.exitCode=null;events.signalCode=null;
+ return events;
+}
+beforeEach(()=>vi.useFakeTimers());
+afterEach(()=>{try{expect(vi.getTimerCount()).toBe(0);}finally{vi.useRealTimers();}});
+
+it("waits for final stderr after exit before reporting failed startup",async()=>{
+ const parent=child();let settled=false;
+ const result=waitForMysqlParentReady(parent as unknown as ChildProcess,1000).then(()=>{throw Error("Unexpected readiness");},error=>{settled=true;return error as Error;});
+ parent.exitCode=1;parent.emit("exit",1,null);await vi.advanceTimersByTimeAsync(200);
+ expect(settled).toBe(false);
+ parent.stdout.write("partial startup\n");parent.stderr.write("missing pinned MySQL binary\n");
+ parent.emit("close",1,null);const error=await result;
+ expect(error.message).toContain("code=1 signal=none");expect(error.message).toContain("partial startup");expect(error.message).toContain("missing pinned MySQL binary");
+});
+it("accepts a complete readiness record split across output chunks",async()=>{
+ const parent=child(),ready={pid:101,serverPid:101,pidFile:"owned.pid",port:12345,datadir:"owned-fixture"};
+ const result=waitForMysqlParentReady(parent as unknown as ChildProcess,1000);
+ parent.stdout.write("REA");parent.stdout.write("DY "+JSON.stringify(ready)+"\n");
+ expect(await result).toEqual(ready);
+});
+it("retains a launch error until close completes the failed attempt",async()=>{
+ const parent=child();const result=waitForMysqlParentReady(parent as unknown as ChildProcess,1000).then(()=>{throw Error("Unexpected readiness");},error=>error as Error);
+ parent.emit("error",Error("synthetic spawn failure"));parent.stderr.write("additional startup detail");
+ parent.emit("close",1,null);const error=await result;
+ expect(error.message).toContain("synthetic spawn failure");expect(error.message).toContain("additional startup detail");
+});
+it("reports a signal-only ending without waiting for the backstop",async()=>{
+ const parent=child();const result=waitForMysqlParentReady(parent as unknown as ChildProcess,1000).then(()=>{throw Error("Unexpected readiness");},error=>error as Error);
+ parent.signalCode="SIGTERM";parent.emit("exit",null,"SIGTERM");parent.emit("close",null,"SIGTERM");
+ expect((await result).message).toContain("code=null signal=SIGTERM");
+});
+it("retains partial output when only the backstop can end startup",async()=>{
+ const parent=child();const result=waitForMysqlParentReady(parent as unknown as ChildProcess,1000).then(()=>{throw Error("Unexpected readiness");},error=>error as Error);
+ parent.stderr.write("unfinished startup");await vi.advanceTimersByTimeAsync(1000);
+ expect((await result).message).toContain("readiness backstop expired");expect((await result).message).toContain("unfinished startup");
+});
+
+it("does not accept buffered readiness after the helper has exited",async()=>{
+ const parent=child(),ready={pid:101,serverPid:101,pidFile:"owned.pid",port:12345,datadir:"owned-fixture"};
+ let settled=false;
+ const result=waitForMysqlParentReady(parent as unknown as ChildProcess,1000).then(()=>{settled=true;return undefined;},error=>{settled=true;return error as Error;});
+ parent.exitCode=1;parent.emit("exit",1,null);
+ parent.stdout.write("READY "+JSON.stringify(ready)+"\n");
+ await Promise.resolve();expect(settled).toBe(false);
+ parent.stderr.write("final startup failure\n");parent.emit("close",1,null);
+ const error=await result;
+ expect(error?.message).toContain("code=1 signal=none");
+ expect(error?.message).toContain("final startup failure");
+ expect(error?.message).toContain("READY ");
+});
+
+it("does not accept readiness after a launch error",async()=>{
+ const parent=child(),ready={pid:101,serverPid:101,pidFile:"owned.pid",port:12345,datadir:"owned-fixture"};
+ const result=waitForMysqlParentReady(parent as unknown as ChildProcess,1000).then(()=>undefined,error=>error as Error);
+ parent.emit("error",Error("synthetic launch failure"));
+ parent.stdout.write("READY "+JSON.stringify(ready)+"\n");parent.emit("close",1,null);
+ expect((await result)?.message).toContain("synthetic launch failure");
+});

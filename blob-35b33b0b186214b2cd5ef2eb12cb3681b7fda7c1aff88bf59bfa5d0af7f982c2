@@ -1,0 +1,149 @@
+# oracle-capture-signin-blank-field-refusal.rb - the pinned Ruby's own bytes
+# for the SIGN-IN FORM VALIDATION (registry row cap-S3, "Sign in requires
+# email and password (form validation)").
+#
+# The row's contract: the sign-in form asks for an email AND a password, and
+# a submission that leaves either one blank is refused, with no session. Four
+# pinned files own it:
+#
+#   1. card-mod-account-0.20.0/set/self/signin.rb - THE VALIDATION EVENT:
+#      `event :signin, :validate, on: :update` is the write route's own
+#      validation hook, and `authenticate_or_abort` refuses the blank
+#      identifier with `abort_unless email, :email_missing` BEFORE the blank
+#      password with `abort_unless pword, :password_missing` - the order the
+#      port's own ladder keeps. `abort_unless` is the refusal itself:
+#      `abort :failure, t("account_#{error_key}") unless value`.
+#   2. card-mod-account-0.20.0/set/self/signin.rb - THE TWO REQUIRED FIELDS:
+#      `before :core` seats `voo.edit_structure = [signin_field(:email),
+#      signin_field(:password)]`, so the form asks for both.
+#   3. card-mod-account-0.20.0/config/locales/en.yml - THE TWO MESSAGES:
+#      account_email_missing is "email can't be blank" and
+#      account_password_missing is "password can't be blank".
+#
+# The capture reads the pinned gemset and writes nothing but its own JSON
+# fixture. It does NOT boot the oracle deck.
+#
+# Run (from the repository root, with the pinned gemset on the gem path):
+#   GEM_PATH="C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0;C:/Ruby34-x64/lib/ruby/gems/3.4.0" \
+#     ruby tests/card/mod-loader/oracle-capture-signin-blank-field-refusal.rb
+#
+# Determinism contract: the output JSON is pretty-printed with deeply sorted
+# keys and a trailing newline, and carries NO timestamp, so a re-run is
+# byte-stable against what is committed.
+
+require "json"
+require "digest"
+
+REPO_ROOT = File.expand_path("../../..", __dir__)
+OUT_PATH  = File.join(REPO_ROOT, "fixtures", "captured", "signin-blank-field-refusal.json")
+
+GEM_HOME_DEFAULT = "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems"
+GEM_HOME = ENV.fetch("DECKO_ORACLE_GEM_HOME", GEM_HOME_DEFAULT)
+
+OWNERS = [
+  { key: "signin_validate_event",
+    gem: "card-mod-account-0.20.0",
+    path: "set/self/signin.rb",
+    marker: "event :signin, :validate, on: :update do", before: 0, after: 2 },
+  { key: "authenticate_or_abort",
+    gem: "card-mod-account-0.20.0",
+    path: "set/self/signin.rb",
+    marker: "def authenticate_or_abort email, pword", before: 0, after: 4 },
+  { key: "abort_unless",
+    gem: "card-mod-account-0.20.0",
+    path: "set/self/signin.rb",
+    marker: "def abort_unless value, error_key", before: 0, after: 2 },
+  { key: "before_core",
+    gem: "card-mod-account-0.20.0",
+    path: "set/self/signin.rb",
+    marker: "before :core do", before: 0, after: 2 },
+  { key: "email_missing_locale",
+    gem: "card-mod-account-0.20.0",
+    path: "config/locales/en.yml",
+    marker: "account_email_missing:", before: 0, after: 0 },
+  { key: "password_missing_locale",
+    gem: "card-mod-account-0.20.0",
+    path: "config/locales/en.yml",
+    marker: "account_password_missing:", before: 0, after: 0 }
+].freeze
+
+def deep_sort(obj)
+  case obj
+  when Hash
+    obj.keys.sort_by(&:to_s).each_with_object({}) { |k, h| h[k.to_s] = deep_sort(obj[k]) }
+  when Array
+    obj.map { |v| deep_sort(v) }
+  else
+    obj
+  end
+end
+
+def capture_owner(owner)
+  file = File.join(GEM_HOME, owner[:gem], owner[:path])
+  raise "oracle gem file not present: #{file}" unless File.file?(file)
+  lines = File.readlines(file, chomp: true)
+  index = lines.index { |line| line.include?(owner[:marker]) }
+  raise "oracle marker not present in #{owner[:gem]}/#{owner[:path]}: #{owner[:marker]}" if index.nil?
+  first = [index - owner[:before], 0].max
+  last = [index + owner[:after], lines.length - 1].min
+  {
+    "gem" => owner[:gem],
+    "path" => owner[:path],
+    "marker" => owner[:marker],
+    "marker_line" => index + 1,
+    "first_line" => first + 1,
+    "last_line" => last + 1,
+    "source" => lines[first..last].join("\n"),
+    "file_sha256" => Digest::SHA256.hexdigest(File.binread(file))
+  }
+end
+
+oracle = OWNERS.each_with_object({}) { |owner, h| h[owner[:key]] = capture_owner(owner) }
+
+event = oracle["signin_validate_event"]["source"]
+auth = oracle["authenticate_or_abort"]["source"]
+abort_unless = oracle["abort_unless"]["source"]
+before_core = oracle["before_core"]["source"]
+email_locale = oracle["email_missing_locale"]["source"]
+password_locale = oracle["password_missing_locale"]["source"]
+
+facts = {
+  # THE VALIDATION EVENT
+  "signin_validate_event" => event[/event :signin, :validate, on: :update do/, 0],
+  "signin_validate_body" => event[/authenticate_or_abort field_content\(:email\), field_content\(:password\)/, 0],
+  # THE REFUSAL, IN RUBY'S OWN ORDER
+  "authenticate_or_abort_method" => auth[/def authenticate_or_abort email, pword/, 0],
+  "authenticate_or_abort_email" => auth[/abort_unless email, :email_missing/, 0],
+  "authenticate_or_abort_password" => auth[/abort_unless pword, :password_missing/, 0],
+  "abort_unless_method" => abort_unless[/def abort_unless value, error_key/, 0],
+  "abort_unless_body" => abort_unless[/abort :failure, t\("account_#\{error_key\}"\) unless value/, 0],
+  # THE TWO REQUIRED FIELDS
+  "before_core" => before_core[/before :core do/, 0],
+  "edit_structure" => before_core[/voo\.edit_structure = \[signin_field\(:email\), signin_field\(:password\)\]/, 0],
+  # THE TWO MESSAGES
+  "email_missing_message" => email_locale[/account_email_missing:\s*(.*)$/, 1],
+  "password_missing_message" => password_locale[/account_password_missing:\s*(.*)$/, 1]
+}
+
+facts.each do |name, value|
+  raise "the pinned fact #{name} was not found in the captured bytes" if value.nil?
+end
+
+raise "the captured validation event does not validate on update" unless event.include?(":validate, on: :update")
+raise "the captured refusal does not name the email key" unless auth.include?("abort_unless email, :email_missing")
+raise "the captured refusal does not name the password key" unless auth.include?("abort_unless pword, :password_missing")
+raise "the captured email refusal does not come first" unless auth.index("abort_unless email, :email_missing") < auth.index("abort_unless pword, :password_missing")
+raise "the captured refusal does not abort with the keyed message" unless abort_unless.include?("abort :failure")
+raise "the captured form does not ask for both fields" unless before_core.include?("signin_field(:email)") && before_core.include?("signin_field(:password)")
+raise "the captured email message is not Ruby's own" unless facts["email_missing_message"] == "email can't be blank"
+raise "the captured password message is not Ruby's own" unless facts["password_missing_message"] == "password can't be blank"
+
+payload = {
+  "contract" => "The sign-in form asks for an email and a password, and a submission that leaves either one blank is refused with no session.",
+  "facts" => facts,
+  "oracle" => oracle,
+  "gem_home" => GEM_HOME.tr("\\", "/")
+}
+
+File.write(OUT_PATH, JSON.pretty_generate(deep_sort(payload)) + "\n")
+puts "wrote #{OUT_PATH}"

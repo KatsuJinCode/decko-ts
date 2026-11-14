@@ -1,0 +1,281 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { privateSigninStage, validateSigninTrace, retainVmSigninTrace } from '../lib/vm-engines.mjs';
+
+const bootstrap = new URL('../engines/signin-trace.rb', import.meta.url);
+const ruby = process.env.HARNESS_TEST_RUBY ?? 'ruby';
+
+test('private stage changes only its session bootstrap and process environment, with strict anchors', () => {
+  const original = readFileSync(new URL('../engines/vm-session.sh', import.meta.url), 'utf8');
+  const script = privateSigninStage('/private/oracle', original, readFileSync(bootstrap, 'utf8'));
+  assert.ok(script.includes("ENGINES='/private/oracle/browser/engines'"));
+  assert.ok(script.includes('cat > "$dir/work/signin-trace.rb"'));
+  assert.ok(script.includes('RUBYOPT="-r$dir/work/signin-trace.rb"'));
+  assert.equal((script.match(/nohup env/g) ?? []).length, 1);
+  assert.throws(() => privateSigninStage('/private/../shared', original, ''), /unsafe/);
+  assert.throws(() => privateSigninStage('/private', original.replace('nohup env', 'missing env'), ''), /anchor/);
+  assert.throws(() => privateSigninStage('/private', original, 'HARNESS_PRIVATE_SIGNIN_BOOTSTRAP'), /collision/);
+});
+
+test('trace reader rejects unexpected fields and secrets rather than saving them', async () => {
+  const safe = { phase: 'request_begin', path: '/', request_digest: 'a'.repeat(64), cookie_digests: ['b'.repeat(64)] };
+  assert.equal(validateSigninTrace(JSON.stringify(safe)).length, 1);
+  for (const change of [{ password: 'sentinel' }, { cookie_digests: ['sentinel'] }, { status: '200' }, { actor_id: [] }, { redirect_path: '/?password=sentinel' }, { path: '/arbitrary' }, { request_digest: 'sentinel' }]) {
+    assert.throws(() => validateSigninTrace(JSON.stringify({ ...safe, ...change })), /unsupported/);
+  }
+  let writes = 0;
+  await assert.rejects(() => retainVmSigninTrace({ config: {}, sessionDir: '/private', destination: path.resolve('synthetic.jsonl') }, {
+    readRemote: async () => JSON.stringify({ ...safe, authorization: 'sentinel' }), write: () => writes++,
+  }), /unsupported/);
+  assert.equal(writes, 0);
+});
+
+test('trace retention never saves duplicate-key plaintext discarded by JSON parsing', async () => {
+  const sentinel = 'private-duplicate-field-sentinel';
+  const raw = `{"phase":"request_begin","path":"/","request_digest":"${sentinel}","request_digest":"${'a'.repeat(64)}"}\n`;
+  let saved;
+  const result = await retainVmSigninTrace({ config: {}, sessionDir: '/private', destination: path.resolve('synthetic.jsonl') }, {
+    readRemote: async () => raw, write: (_path, value) => { saved = value; },
+  });
+  assert.equal(saved.includes(sentinel), false);
+  assert.equal(saved, JSON.stringify(validateSigninTrace(raw)[0]) + '\n');
+  assert.notEqual(result.rawSha256, result.savedSha256);
+  assert.equal(result.eventCount, 1);
+});
+
+test('a trace requires an observed request and final completion marker to be valid', async () => {
+  const begin = { phase: 'request_begin', path: '/' };
+  const finish = { phase: 'trace_finished', path: '/' };
+  const failure = { phase: 'observer_failure', path: '/' };
+  for (const [events, expected] of [[[begin, finish], true], [[begin], false], [[finish], false], [[finish, begin], false], [[begin, failure, finish], false]]) {
+    const result = await retainVmSigninTrace({ config: {}, sessionDir: '/private', destination: path.resolve('synthetic.jsonl') }, {
+      readRemote: async () => events.map(event => JSON.stringify(event)).join('\n'), write() {},
+    });
+    assert.equal(result.diagnosticValid, expected);
+  }
+});
+
+test('Ruby bootstrap observes actual authentication and cookies without changing return values or recording secrets', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'decko-signin-trace-test-'));
+  const work = path.join(root, 'work');
+  mkdirSync(work);
+  const program = `
+module Card
+  module Auth
+    class << self
+      def session = (@session ||= {})
+      def session_user_key = :synthetic_session_key_sentinel
+      def authenticate(email, password)
+        password_valid?(password) ? Struct.new(:left_id).new(1234) : nil
+      end
+      def password_valid?(password) = password == 'password-sentinel'
+      def signin(id)
+        @current_id = id
+        session[session_user_key] = id
+        :original_signin_return
+      end
+      def signin_with_session
+        signin(session[session_user_key] || 0)
+        :original_session_return
+      end
+    end
+  end
+end
+module Thin
+  class Server
+    attr_reader :app
+    def initialize(host, port, app, **kwargs) = (@app = app)
+  end
+end
+body = ['original body']
+app = lambda do |env|
+  raise 'params unexpectedly read' if env.key?('unexpected')
+  Card::Auth.signin_with_session
+  account = Card::Auth.authenticate('email-sentinel', 'password-sentinel')
+  raise 'authenticate return changed' unless account.left_id == 1234
+  raise 'signin return changed' unless Card::Auth.signin(account.left_id) == :original_signin_return
+  raise 'invalid credentials changed' unless Card::Auth.authenticate('email-sentinel', 'invalid-password-sentinel').nil?
+  [302, {'location' => '/?token=token-sentinel', 'set-cookie' => 'session=cookie-sentinel; HttpOnly'}, body]
+end
+server = Thin::Server.new('127.0.0.1', 2990, app, signals: false)
+env = {'PATH_INFO' => '/update/*signin', 'HTTP_COOKIE' => 'session=cookie-sentinel; other=another-cookie-sentinel'}
+result = server.app.call(env)
+raise 'response changed' unless result[0] == 302 && result[1]['set-cookie'].include?('cookie-sentinel') && result[2].equal?(body)
+raise 'context leaked' unless HarnessSigninTrace.context.nil?
+size = File.size(HarnessSigninTrace::FILE)
+Thin::Server.new('127.0.0.1', 2990, ->(env) { [200, {}, []] }).app.call({'PATH_INFO' => '/unrelated', 'HTTP_COOKIE' => 'unrelated-secret'})
+raise 'unrelated path traced' unless File.size(HarnessSigninTrace::FILE) == size
+Thin::Server.new('127.0.0.1', 2990, ->(env) { [200, {}, []] }).app.call({'PATH_INFO' => '/files/:favicon/carrierwave-small.png', 'HTTP_COOKIE' => 'asset-cookie-sentinel'})
+raise 'exact fixture asset omitted' unless File.size(HarnessSigninTrace::FILE) > size
+begin
+  HarnessSigninTrace.emit(phase: 'response', path: '/', password: 'password-sentinel')
+  raise 'unknown field accepted'
+rescue RuntimeError => error
+  raise unless error.message == 'unsupported trace field'
+end
+begin
+  HarnessSigninTrace.emit(phase: 'response', path: '/', status: '200')
+  raise 'invalid type accepted'
+rescue RuntimeError => error
+  raise unless error.message == 'unsupported trace value'
+end
+`;
+  try {
+    const result = spawnSync(ruby, ['-r', fileURLToPath(bootstrap), '-e', program], {
+      windowsHide: true, encoding: 'utf8', env: { ...process.env, HARNESS_WORK: work, HARNESS_DECK: path.join(root, 'deck.sqlite3'), HARNESS_PORT: '2990' },
+    });
+    assert.equal(result.error, undefined);
+    assert.equal(result.status, 0, result.stderr);
+    const raw = readFileSync(path.join(work, 'signin-trace.jsonl'), 'utf8');
+    for (const secret of ['password-sentinel', 'cookie-sentinel', 'token-sentinel', 'email-sentinel', 'synthetic_session_key_sentinel', 'unrelated-secret']) assert.equal(raw.includes(secret), false);
+    const events = validateSigninTrace(raw);
+    for (const phase of ['request_begin', 'session_before', 'session_after', 'credential_valid', 'credential_invalid', 'authenticate_result', 'signin_set', 'response']) assert.ok(events.some(event => event.phase === phase), phase);
+    assert.ok(events.some(event => event.actor_id === 1234));
+    assert.ok(events.some(event => event.session_user_present === true));
+    assert.ok(events.filter(event => event.path === '/update/*signin').every(event => event.request_digest === events[0].request_digest));
+    const assetEvents = events.filter(event => event.path === '/files/:favicon/carrierwave-small.png');
+    assert.deepEqual(assetEvents.map(event => event.phase), ['request_begin', 'response']);
+    assert.notEqual(assetEvents[0].request_digest, events[0].request_digest);
+    assert.equal(events.at(-1).phase, 'trace_finished');
+  } finally {
+    assert.equal(path.dirname(root), path.resolve(tmpdir()));
+    assert.ok(path.basename(root).startsWith('decko-signin-trace-test-'));
+    rmSync(root, { recursive: true });
+  }
+});
+
+test('observer failures preserve authentication, HTTP return identity and original exception, and invalidate evidence', async () => {
+  for (const scenario of ['malformed_location', 'session_read', 'auth_trace_write', 'exception_trace_write']) {
+    const root = mkdtempSync(path.join(tmpdir(), 'decko-signin-trace-test-'));
+    const work = path.join(root, 'work');
+    mkdirSync(work);
+    const program = `
+SCENARIO = ${JSON.stringify(scenario)}
+module Card
+  module Auth
+    class << self
+      attr_accessor :account
+      def session
+        raise 'private-session-read-sentinel' if SCENARIO == 'session_read'
+        {}
+      end
+      def session_user_key = :fixture_user
+      def authenticate(*) = account
+      def password_valid?(*) = true
+      def signin(*) = :original
+      def signin_with_session(*) = :original
+    end
+  end
+end
+module Thin
+  class Server
+    attr_reader :app
+    def initialize(host, port, app, **kwargs) = (@app = app)
+  end
+end
+module HarnessSigninTrace
+  class << self
+    alias_method :original_emit, :emit
+    def emit(fields)
+      if (SCENARIO == 'auth_trace_write' && fields[:phase] == 'authenticate_result') ||
+         (SCENARIO == 'exception_trace_write' && fields[:phase] == 'request_exception')
+        raise IOError, 'private-write-sentinel'
+      end
+      original_emit(fields)
+    end
+  end
+end
+account = Struct.new(:left_id).new(1234)
+Card::Auth.account = account
+response = [302, {'location' => (SCENARIO == 'malformed_location' ? 'http://[' : '/')}, ['original']]
+original_error = RuntimeError.new('private-original-error-sentinel')
+app = lambda do |env|
+  raise original_error if SCENARIO == 'exception_trace_write'
+  raise 'account changed' unless Card::Auth.authenticate('email-sentinel', 'password-sentinel').equal?(account)
+  response
+end
+server = Thin::Server.new('127.0.0.1', 2990, app)
+begin
+  returned = server.app.call({'PATH_INFO' => '/update/*signin'})
+  raise 'response identity changed' unless returned.equal?(response)
+  raise 'original exception swallowed' if SCENARIO == 'exception_trace_write'
+rescue => error
+  raise unless SCENARIO == 'exception_trace_write' && error.equal?(original_error)
+end
+raise 'trace context leaked' unless HarnessSigninTrace.context.nil?
+`;
+    try {
+      const result = spawnSync(ruby, ['-r', fileURLToPath(bootstrap), '-e', program], {
+        windowsHide: true, encoding: 'utf8', env: { ...process.env, HARNESS_WORK: work, HARNESS_DECK: path.join(root, 'deck.sqlite3'), HARNESS_PORT: '2990' },
+      });
+      assert.equal(result.error, undefined);
+      assert.equal(result.status, 0, scenario + ': ' + result.stderr);
+      const raw = readFileSync(path.join(work, 'signin-trace.jsonl'), 'utf8');
+      assert.equal(raw.includes('sentinel'), false);
+      const events = validateSigninTrace(raw);
+      assert.ok(events.some(event => event.phase === 'observer_failure'), scenario);
+      assert.equal(events.some(event => event.phase === 'trace_finished'), false, scenario);
+      let saved;
+      const receipt = await retainVmSigninTrace({ config: {}, sessionDir: '/private', destination: path.resolve('synthetic.jsonl') }, {
+        readRemote: async () => raw, write: (_path, text) => { saved = text; },
+      });
+      assert.equal(receipt.diagnosticValid, false, scenario);
+      assert.equal(saved.includes('sentinel'), false);
+    } finally {
+      assert.equal(path.dirname(root), path.resolve(tmpdir()));
+      assert.ok(path.basename(root).startsWith('decko-signin-trace-test-'));
+      rmSync(root, { recursive: true });
+    }
+  }
+});
+
+test('installer uses intrinsic module identity instead of domain name methods', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'decko-signin-trace-test-'));
+  const work = path.join(root, 'work');
+  mkdirSync(work);
+  const program = `
+class Card
+  module Lexicon
+    module Prefetch; end
+  end
+  class Codename
+    def self.name(value) = value
+  end
+end
+if ENV['HARNESS_TEST_CARD_LEXICON']
+  load ENV.fetch('HARNESS_TEST_CARD_LEXICON')
+else
+  module Card::Lexicon
+    def self.name(id) = id
+  end
+end
+raise 'domain method changed' unless Card::Codename.name(:synthetic) == :synthetic
+raise 'domain identity dispatched during installation' if HarnessSigninTrace.instance_variable_get(:@observer_failed)
+headers = {}
+body = ['original']
+response = [200, headers, body]
+returned = HarnessSigninTrace::RequestTrace.new(->(env) { response }).call({'PATH_INFO' => '/'})
+raise 'response identity changed' unless returned.equal?(response)
+raise 'context leaked' unless HarnessSigninTrace.context.nil?
+`;
+  try {
+    const result = spawnSync(ruby, ['-r', fileURLToPath(bootstrap), '-e', program], {
+      windowsHide: true, encoding: 'utf8', env: { ...process.env, HARNESS_WORK: work, HARNESS_DECK: path.join(root, 'deck.sqlite3'), HARNESS_PORT: '2990' },
+    });
+    assert.equal(result.error, undefined);
+    assert.equal(result.status, 0, result.stderr);
+    const raw = readFileSync(path.join(work, 'signin-trace.jsonl'), 'utf8');
+    const events = validateSigninTrace(raw);
+    assert.deepEqual(events.map(event => event.phase), ['request_begin', 'response', 'trace_finished']);
+    assert.equal(events.some(event => event.phase === 'observer_failure'), false);
+  } finally {
+    assert.equal(path.dirname(root), path.resolve(tmpdir()));
+    assert.ok(path.basename(root).startsWith('decko-signin-trace-test-'));
+    rmSync(root, { recursive: true });
+  }
+});

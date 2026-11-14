@@ -1,0 +1,52 @@
+# Port scope and evidence
+
+These are guide templates for source checkpoint
+7f88f3fe1ab8ee6c7279fa8b64dce7de5afac453. No final package for this source has
+been exported, built or graded in this preparation. The retained Ruby reference
+is Decko 0.20.0/card 1.110.0; no other version or deployed profile is qualified.
+Final source-supply, privacy/sharing approval and native POSIX mode acceptance
+remain open.
+
+The implementation includes card names and inflections, row fetching, rule and
+permission lookup, CQL parsing and SQL generation, views and nesting, history,
+card saves and events, account/session handling, attachments, assets and
+hand-ported mod registrations. The source map lists each TypeScript module and
+its Ruby citations, including uncited modules rather than hiding them.
+
+The compatibility contract has four independent categories: persistence,
+semantics, rendering and side effects. Passing a render comparison says nothing
+about an unexecuted save or notification. The packaged reference harness can
+measure these categories on the included synthetic deck. No current aggregate
+compatibility percentage is claimed by this package.
+
+The eventual HANDOVER-MANIFEST.json must pin the actual integrated engine and
+packaging source. Older handover notes described byte-checker qualification
+and numeric-card work at their own checkpoints; those historical review states
+are not asserted as current blockers or closures. The frozen package requires
+its own admitted checker/source/fixture/settings evidence. A local build or
+green subset cannot substitute for that acceptance.
+
+Source present is not supported deployment evidence. SQL adapter source includes
+SQLite, libSQL HTTP, D1, MySQL and PostgreSQL; runtime-specific behavior must be
+verified independently on each selected adapter. This package's local recipe
+uses Node and SQLite only. The intended export excludes hosted-provider
+credentials, deployment resource configuration and production data; that
+boundary still needs actual frozen-surface privacy review. Native Bun and hosted-provider
+acceptance are outside the package smoke check.
+
+Ruby mods cannot be assumed to execute unchanged. The implementation includes
+ported TypeScript mod modules and Ruby-related loading/interpreting machinery;
+that presence does not establish arbitrary Ruby gem, native extension, Rails or
+HAML compatibility. Inspect the loader interfaces and test the specific mod.
+The TypeScript mod DSL supports declared synchronous format helpers, view
+permission predicates and set-scoped registration. It does not synthesize
+every Ruby trait accessor or make arbitrary Ruby method names override
+renderer internals. Each engine owns its compiled fallback view table;
+registration in another loader is not shared runtime state for that engine.
+The complete development suite and private migration corpora are not in this
+source snapshot. A missing test or fixture is not a passing test.
+
+This is a review package, not a claim that all engine work has closed. Release
+integration and independent attacks can change the release candidate. Regenerate
+and validate this exact package after integration; its manifest pins the code
+actually included, rather than whichever branch is later called a release.

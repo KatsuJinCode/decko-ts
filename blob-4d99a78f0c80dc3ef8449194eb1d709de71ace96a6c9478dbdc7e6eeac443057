@@ -1,0 +1,52 @@
+{
+  "row": "apply-remote-widget-cas",
+  "instrument": "recovery/release/private-probes/private-tool-repairs-20261018/apply-remote-widget-cas.mjs",
+  "plan": {
+    "at": "2026-10-18T21:35:06.113Z",
+    "scope": "Exact12 content cells using one atomic SQL statement with materialized all-row/content/version admission. No .com access, schema/history/name/type/timestamp changes. Existing version triggers remain monotonic.",
+    "versionBefore": 52,
+    "expectedVersionAfter": 64,
+    "admission": {
+      "matches": 12,
+      "version": 52,
+      "version_rows": 1,
+      "allowed": 1
+    },
+    "statementVersionArgument": 52,
+    "statementGuardsOnVersion": true,
+    "statementGuardsOnContent": true
+  },
+  "custodyImage": {
+    "cards": 12,
+    "beforeSha256": "4283c58d7f73213a15354ab675527417023d7ff72695b9007bf9a1486225c147"
+  },
+  "executedWrite": {
+    "at": "2026-10-18T21:35:53.298Z",
+    "pass": true,
+    "returnedWriteRows": 12,
+    "reportedAffectedRows": 12,
+    "allTwelveAfterMatch": true,
+    "otherFieldsUnchanged": true,
+    "monotonicVersionMatches": true,
+    "casRefused": false,
+    "contentWritten": true,
+    "versionBefore": 52,
+    "versionsAfter": [
+      {
+        "id": 1,
+        "version": 64
+      }
+    ]
+  },
+  "oneShot": {
+    "intentFile": "apply-intent.json",
+    "intentFileExists": true,
+    "intentWrittenAt": "2026-10-18T21:35:53.298Z",
+    "intentDatabaseUrlSha256": "ce079b072194c442787468d6bd886b72e02e9bfb9667788afacfbc0472c283b8"
+  },
+  "credential": {
+    "path": "C:/localProjects/decko-edge-verification-53c86269/.runtime/owned-cs-edge-cleanup-20261018.env",
+    "presentOnThisMachine": false,
+    "refusal": "node:fs:483\r\n    return binding.readFileUtf8(path, stringToFlags(options.flag));\r\n                   ^\r\n\r\nError: ENOENT: no such file or directory, open 'C:\\localProjects\\decko-edge-verification-53c86269\\.runtime\\owned-cs-edge-cleanup-20261018.env'\r\n    at Object.readFileSync (node:fs:483:20)\r\n    at parse (file:///C:/localProjects/brandonDojoTech/recovery/release/private-probes/private-tool-repairs-20261018/apply-remote-widget-cas.mjs:6:41)\r\n    at file:///C:/localProjects/brandonDojoTech/recovery/release/private-probes/private-tool-repairs-20261018/apply-remote-widget-cas.mjs:6:225\r\n    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)\r\n    at async node:internal/modules/esm/loader:647:26\r\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {\r\n  errno: -4058,\r\n  code: 'ENOENT',\r\n  syscall: 'open',\r\n  path: 'C:\\\\localProjects\\\\decko-edge-verification-53c86269\\\\.runtime\\\\owned-cs-edge-cleanup-20261018.env'\r\n}\r\n\r\nNode.js v24.22.1"
+  }
+}

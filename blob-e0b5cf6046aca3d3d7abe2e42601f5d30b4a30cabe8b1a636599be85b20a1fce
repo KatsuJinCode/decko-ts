@@ -1,0 +1,87 @@
+{
+  "what": "the whole-family base measurement at the tranche-7 tip, after the tranche's three instrument repairs and the two its own run surfaced",
+  "branch": "port/matrix-journey-tranche7-20261021",
+  "base": "5fa3cc7e (the tranche-6 tip)",
+  "tip": "22921385d92d7c92bcd248151b92d49ac899c7af",
+  "command": "node tools/edge-signed-in-exercise.mjs --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 --out .runtime/matrix-journey-tranche7-20261021/full-run-r3/report.md",
+  "scale": "no --only, no --case: the FULL exercise, every module",
+  "exitCode": 1,
+  "exitCodeNote": "the tool's own rule, not a failure: tools/edge-signed-in-exercise.mjs exits 0 only when no check failed AND the capability coverage is complete. The exit code was captured in this lane's command line.",
+  "result": "242 / 242 checks passed",
+  "capabilityCoverage": { "covered": 66, "partial": 20, "notCovered": 5, "outOfScope": 3, "of": 95 },
+  "provenance": {
+    "source": "22921385d92d7c92bcd248151b92d49ac899c7af",
+    "sourceFilesClean": true,
+    "dirty": false,
+    "bundleSha256": "b96ac0014d08fe0e5d2443a43d59830c0e97b3d8447c90df55af1906ef6de3cc",
+    "bundleNote": "byte-identical to the hash tranches 4, 5 and 6 recorded: this tranche changed no engine source",
+    "sourceDeckSha256": "6aebb6546a0620f3c61efad28cd01023e104d47ffd583272ce18036038f73b78",
+    "startedAt": "2026-10-22T01:02:35.887Z",
+    "completedAt": "2026-10-22T01:32:54.031Z",
+    "wallClockMinutes": 30.3
+  },
+  "theThreeLegsThisTrancheTook": {
+    "E11b": { "verdict": "PASS", "was": "FAIL: {\"threw\":\"database is not defined\"} at the tranche-6 tip" },
+    "9. timings / no signed-in page exceeded 3 s of server time": { "verdict": "PASS", "was": "FAIL at 9675 ms at the tranche-6 tip" },
+    "9. timings / no save exceeded 3 s of server time": { "verdict": "PASS" },
+    "final browser asset audit": { "verdict": "PASS", "was": "FAIL on a cdnjs stylesheet at the tranche-6 tip" }
+  },
+  "serverTimeMeasurement": {
+    "labelledRequests": 3821,
+    "budgetMs": 3000,
+    "overBudgetRequests": 0,
+    "slowestServerMs": 2660,
+    "population": {
+      "0-499": 2997, "500-999": 499, "1000-1499": 230, "1500-1999": 65, "2000-2499": 27, "2500-2999": 3
+    },
+    "requestsWhoseDbWallExceededTheirOwnTotal": {
+      "tranche5": 45, "tranche6": 59, "tranche7Run1": 0, "tranche7Run2": 0, "tranche7Run3": 0,
+      "note": "impossible for one request's own work: the signature of the harness's own traffic inside the measurement. The local host now serves the engine one request at a time, so the engine's own attribution contract (bunny-edge-server-timing.ts:66-68) holds in the local harness."
+    },
+    "harnessQueuing": { "totalSeconds": 138.5, "longestSingleWaitMs": 2603, "note": "recorded beside each request as queuedMs and never charged to a page" }
+  },
+  "assetAuditEvidence": {
+    "contexts": 28,
+    "deploymentFailures": [],
+    "notDeploymentAssets": [
+      { "outcome": "third-party-failure", "status": "failed:net::ERR_CONNECTION_CLOSED", "resourceType": "script", "url": "https://cdnjs.cloudflare.com/ajax/libs/tinymce/5.10.7/themes/silver/theme.min.js" },
+      { "outcome": "third-party-failure", "status": "failed:net::ERR_CONNECTION_CLOSED", "resourceType": "font", "url": "https://fonts.gstatic.com/s/materialicons/v145/flUhRq6tzZclQEJ-Vdg-IuiaDsNc.woff2" }
+    ],
+    "note": "the same two third-party hosts that failed the tranche-5 and tranche-6 runs failed AGAIN in this run, and the audit passed: the repair is working on the exact observation that used to fail it"
+  },
+  "theFamilyRowsInsideTheFullRun": {
+    "mx-B-081": ["E8 the nest image editor inserts a nest with view and size options"],
+    "mx-B-086": ["F1 a file can be uploaded through the File create form", "F3 an image can be uploaded through the Image create form", "F5 an empty file is refused", "F7 a member can upload a file"],
+    "mx-155": ["W1 a card can be followed from the board's Engage tab", "W3 a card and a cardtype can be watched", "W5 a follower is mailed when a followed card is edited", "W6 the unfollow link in the follower mail stops the follow rule", "R1 a card can be renamed and its referers follow"],
+    "mx-190": ["the search-overmatch module, all four checks"],
+    "verdict": "every leg PASS"
+  },
+  "theThreeRunsThisTrancheTook": [
+    { "run": 1, "tip": "32db3f30", "result": "240 / 242", "what": "E11b green, the timings leg green, the asset audit green; N10 red (the run that found it) and the asset audit red on the socket-pool refusal (the run that found it)" },
+    { "run": 2, "tip": "22921385", "result": "208 / 210", "what": "the C20 check's page.goto timed out at 30 s on a hanging cdnjs fetch; the fixture quarantine ended the run early" },
+    { "run": 3, "tip": "22921385", "result": "242 / 242", "what": "the whole exercise completed at the final tip" }
+  ],
+  "commits": [
+    { "sha": "d1816454", "fixes": "E11b: the check body read bare free variables; the named branch fix/e11b-module-context-20261020 is merged so it is an ancestor of this tip" },
+    { "sha": "241128e7", "fixes": "the final browser asset audit grades the deployment's assets, not a third-party CDN's" },
+    { "sha": "32db3f30", "fixes": "the 9. timings leg: the local host serves the engine one request at a time, and the budget's rule is extracted and tested" },
+    { "sha": "7736f4fc", "fixes": "N10 graded a card's KEY against its NAME; the port matches Ruby's Cardname#simple_key (read from the vendored gem and run on the machine's Ruby)" },
+    { "sha": "22921385", "fixes": "the asset audit does not charge the operating system's socket pool (net::ERR_NO_BUFFER_SPACE) to the deployment" }
+  ],
+  "battery": {
+    "node --test \"tools/edge-signed-in-exercise/test/*.test.mjs\"": "108 tests, 106 pass, 0 fail, 2 skipped (the opt-in live legs)",
+    "node tools/edge-signed-in-exercise.mjs": "three whole-family runs; the final one is 242 / 242"
+  },
+  "liveSide": {
+    "status": "a different deck under a different authorisation",
+    "note": "nothing in this tranche deploys and nothing in it touches live. The live deployment, the MySQL-rung assets and the ACT-155 live leg remain the operator-side blockers the earlier tranches named."
+  },
+  "openAndNamed": {
+    "thirdPartyDependency": "the engine answers every /mod/tinymce_editor/... request with a 302 to https://cdnjs.cloudflare.com/ajax/libs/tinymce/5.10.7/... (deploy/bunny-worker-src/bunny-edge-engine-handler.ts:375-387, TINYMCE_DIST_BASE at :105), so a page's load event waits for the public internet. Run 2's C20 navigation timeout (30 s) is that dependency showing: the engine served the URL 200 in 797 ms and 810 ms, and the wait was on the redirect target. The repo vendors the mod's own scripts but not the TinyMCE distribution, so the harness cannot serve them locally without a copy it does not have. Operator call: mirror the distribution into the harness, or point the deck's editor base at an asset host the deployment controls.",
+    "machineLoad": "the 9. timings leg now measures a host that serves the engine one request at a time, so the number it reads is the page's own work; a machine stalled by the sibling lanes still inflates that wall, and the budget still sees it."
+  },
+  "diskCost": {
+    "added": "the exclusive clone C:/localProjects/decko-ts-matrix-journey-tranche7-20261021 (574 MB of git objects, 1.4 GB of node_modules copied in, 15 MB dist/, 18 MB deploy/dist/) and 28 MB of run records under .runtime/matrix-journey-tranche7-20261021/",
+    "removed": "nothing: no file outside this clone was written except the run's own local deck copy, which the tool deletes at the end of each run"
+  }
+}

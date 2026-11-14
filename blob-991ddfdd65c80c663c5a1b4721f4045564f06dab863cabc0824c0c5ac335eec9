@@ -1,0 +1,144 @@
+{
+  "row": "add-comment",
+  "event": "add_comment",
+  "pinned_file": "card-mod-comment-0.20.0/set/all/comment.rb",
+  "pinned_declaration": "event :add_comment, :prepare_to_store, on: :save, when: :comment do",
+  "pinned_declaration_line": 5,
+  "pinned_body": "  Env.session[:comment_author] = comment_author if Env.session\n  return unless comment.present?\n\n  self.content =\n    [content, format.comment_with_signature].compact.join \"\\n<hr>\\n\"\n  self.comment = nil",
+  "pinned_body_lines": [
+    {
+      "line": 6,
+      "text": "  Env.session[:comment_author] = comment_author if Env.session"
+    },
+    {
+      "line": 7,
+      "text": "  return unless comment.present?"
+    },
+    {
+      "line": 8,
+      "text": ""
+    },
+    {
+      "line": 9,
+      "text": "  self.content ="
+    },
+    {
+      "line": 10,
+      "text": "    [content, format.comment_with_signature].compact.join \"\\n<hr>\\n\""
+    },
+    {
+      "line": 11,
+      "text": "  self.comment = nil"
+    }
+  ],
+  "pinned_author_method": "  @comment_author ||=\n    Env.session[:comment_author] || Env.params[:comment_author] || \"Anonymous\"",
+  "not_executed": {
+    "method": "format.comment_with_signature",
+    "why": "the format's own bytes are pinned by the mod's committed capture (fixtures/oracle-surfaces/comment.jsonl), so the double records the call and answers with a marker"
+  },
+  "scenarios": [
+    {
+      "scenario": "a comment on a card with content, no session",
+      "comment": "hello",
+      "content_before": "old body",
+      "session_present": false,
+      "params": {},
+      "errors_added": [],
+      "calls": [
+        {
+          "call": "content=",
+          "arguments": [
+            "old body\n<hr>\n<signature>"
+          ]
+        },
+        {
+          "call": "comment=",
+          "arguments": [
+            null
+          ]
+        }
+      ],
+      "content_after": "old body\n<hr>\n<signature>",
+      "comment_after": null,
+      "session_after": null,
+      "outcome": {
+        "raised": null
+      }
+    },
+    {
+      "scenario": "an empty comment",
+      "comment": "",
+      "content_before": "old body",
+      "session_present": false,
+      "params": {},
+      "errors_added": [],
+      "calls": [],
+      "content_after": "old body",
+      "comment_after": "",
+      "session_after": null,
+      "outcome": {
+        "raised": null
+      }
+    },
+    {
+      "scenario": "a comment on a card with NO content",
+      "comment": "hello",
+      "content_before": null,
+      "session_present": false,
+      "params": {},
+      "errors_added": [],
+      "calls": [
+        {
+          "call": "content=",
+          "arguments": [
+            "<signature>"
+          ]
+        },
+        {
+          "call": "comment=",
+          "arguments": [
+            null
+          ]
+        }
+      ],
+      "content_after": "<signature>",
+      "comment_after": null,
+      "session_after": null,
+      "outcome": {
+        "raised": null
+      }
+    },
+    {
+      "scenario": "a comment with a session",
+      "comment": "hello",
+      "content_before": "old body",
+      "session_present": true,
+      "params": {
+        "comment_author": "Joe User"
+      },
+      "errors_added": [],
+      "calls": [
+        {
+          "call": "content=",
+          "arguments": [
+            "old body\n<hr>\n<signature>"
+          ]
+        },
+        {
+          "call": "comment=",
+          "arguments": [
+            null
+          ]
+        }
+      ],
+      "content_after": "old body\n<hr>\n<signature>",
+      "comment_after": null,
+      "session_after": {
+        "comment_author": "Joe User"
+      },
+      "outcome": {
+        "raised": null
+      }
+    }
+  ]
+}

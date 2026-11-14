@@ -1,0 +1,48 @@
+{
+  "row": "validate-cardtype-name",
+  "event": "validate_cardtype_name",
+  "pinned_file": "card-1.110.0/mod/core/set/type/cardtype.rb",
+  "pinned_declaration": "event :validate_cardtype_name, :validate, on: :save, changed: :name do",
+  "pinned_declaration_line": 26,
+  "pinned_body": "  if %r{[<>/]}.match?(name)\n    errors.add :name, t(:core_error_invalid_character_in_cardtype, banned: \"<, >, /\")\n  end",
+  "pinned_body_lines": [
+    {
+      "line": 27,
+      "text": "  if %r{[<>/]}.match?(name)"
+    },
+    {
+      "line": 28,
+      "text": "    errors.add :name, t(:core_error_invalid_character_in_cardtype, banned: \"<, >, /\")"
+    },
+    {
+      "line": 29,
+      "text": "  end"
+    }
+  ],
+  "locale_file": "card-1.110.0/mod/core/config/locales/en.yml",
+  "scenarios": [
+    {
+      "scenario": "Bad/Name",
+      "cards_of_type_exist": true,
+      "errors_added": [
+        {
+          "attribute": "name",
+          "message": "may not contain any of the following characters: <, >, /"
+        }
+      ],
+      "calls": [],
+      "outcome": {
+        "raised": null
+      }
+    },
+    {
+      "scenario": "Good Name",
+      "cards_of_type_exist": true,
+      "errors_added": [],
+      "calls": [],
+      "outcome": {
+        "raised": null
+      }
+    }
+  ]
+}

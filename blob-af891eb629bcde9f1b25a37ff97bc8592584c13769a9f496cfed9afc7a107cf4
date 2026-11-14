@@ -1,0 +1,465 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import "../../support/typescript-source-loader.mjs";
+const { runModEventStage } = await import("../../../src/card/mod-loader/mod-event-dispatch.ts");
+const { ModEventRegistry } = await import("../../../src/card/mod-loader/mod-event-registry.ts");
+const { ModLoader } = await import("../../../src/card/mod-loader.ts");
+
+// Run real repository sources without writing shared dist:
+// node --import ./tests/support/typescript-source-loader.mjs --test ./tests/card/mod-loader/mod-event-override-precedence.source.test.mjs
+//
+// Expected behavior is derived from pinned Ruby sources, not a Ruby run:
+// card 1.110.0 lib/card/set/pattern/all.rb:44-46 and
+// mod/core/set/all/initialize.rb:61-73 determine module inclusion order;
+// lib/card/set/registrar.rb:74-76 retains first Module registration position;
+// lib/cardio/mod/loader.rb:61-64 and loader/set_template.rb:11-18 establish
+// full normalized constant identity, independent of contributing mod;
+// lib/card/set/event.rb:97-100,133-155 separates callback definition from
+// method definition and sends the event/body method on the original card;
+// lib/card/set/event/callbacks.rb:14-18 captures declaration conditions;
+// ActiveSupport 7.2.4 callbacks.rb:273-279,645-662 deduplicates callbacks by
+// target-chain/kind/symbol and :899-909 resets redefined inner chains.
+
+const patterns = [
+  { code: "self", anchorPartsCount: 1 },
+  { code: "type_plus_right", anchorPartsCount: 2 },
+  { code: "right", anchorPartsCount: 1 },
+  { code: "rule", anchorPartsCount: 0 },
+  { code: "rstar", anchorPartsCount: 0 },
+  { code: "star", anchorPartsCount: 0 },
+  { code: "type", anchorPartsCount: 1 },
+  { code: "all_plus", anchorPartsCount: 0 },
+  { code: "all", anchorPartsCount: 0 },
+];
+const unexpectedDependency = new Proxy({}, {
+  get(_target, key) {
+    throw new Error(`Precedence test unexpectedly accessed dependency ${String(key)}`);
+  },
+});
+const savingCard = {
+  name: "Topic+Field", id: 101, key: "topic+field", typeId: 2,
+  changedFields: [], act: { action: "update" },
+};
+
+function fixture(declarations, options = {}) {
+  const registry = new ModEventRegistry();
+  const calls = [];
+  for (const declaration of declarations) {
+    const { label, body, ...entry } = declaration;
+    registry.register({
+      event: "audit",
+      setPath: "all/override_probe",
+      modName: "first_mod",
+      ...(entry.before === undefined && entry.after === undefined ? { at: "validate" } : {}),
+      ...entry,
+      fn: card => {
+        calls.push(label ?? entry.event ?? "audit");
+        return body?.(card);
+      },
+    });
+  }
+  const { setPaths, card, ...runtimeOptions } = options;
+  const runtime = {
+    registry,
+    setMember: () => true,
+    ...(setPaths === undefined ? {} : { moduleOrder: { patterns, setPaths } }),
+    ...runtimeOptions,
+  };
+  return {
+    calls,
+    async run(stage = "validate") {
+      const report = await runModEventStage(runtime, stage, card ?? savingCard, {
+        driver: unexpectedDependency, lexicon: unexpectedDependency,
+      });
+      assert.deepEqual(report.failed, [], "no integration failure may hide a resolution error");
+      return report;
+    },
+  };
+}
+
+test("a single direct-registry declaration remains usable without module metadata", async () => {
+  const f = fixture([{ label: "only" }]);
+  const report = await f.run();
+  assert.deepEqual(f.calls, ["only"]);
+  assert.deepEqual(report.fired, ["audit"]);
+});
+
+test("same normalized module reopened by another mod replaces its body", async () => {
+  const f = fixture([
+    { setPath: "type/basic", label: "first" },
+    { setPath: "type/basic", modName: "second_mod", label: "replacement" },
+  ], { setPaths: ["type/basic", "type/basic"] });
+  const report = await f.run();
+  assert.deepEqual(f.calls, ["replacement"]);
+  assert.deepEqual(report.fired, ["audit"]);
+});
+
+test("A/Z/A2: reopening the earlier module does not move it above its later sibling", async () => {
+  const f = fixture([
+    { setPath: "type/basic", label: "A" },
+    { setPath: "type/basic/z", label: "Z" },
+    { setPath: "type/basic", modName: "second_mod", label: "A2" },
+  ], { setPaths: ["type/basic", "type/basic/z", "type/basic"] });
+  await f.run();
+  assert.deepEqual(f.calls, ["Z"]);
+});
+
+test("module inventory includes files registered before they declared any event", async () => {
+  const f = fixture([
+    { setPath: "type/basic/later", label: "later module" },
+    { setPath: "type/basic/earlier", modName: "second_mod", label: "earlier module reopened" },
+  ], { setPaths: ["type/basic/earlier", "type/basic/later", "type/basic/earlier"] });
+  await f.run();
+  assert.deepEqual(f.calls, ["later module"]);
+});
+
+test("real ModLoader inventory retains an initially eventless module's first position", async () => {
+  const calls = [];
+  const loader = new ModLoader([
+    { manifest: { name: "inventory_first", setModules: [
+      { setPath: "type/basic/a" },
+      { setPath: "type/basic/z", events: [
+        { event: "audit", at: "validate", fn: () => { calls.push("Z"); } },
+      ] },
+    ] } },
+    { manifest: { name: "inventory_second", setModules: [
+      { setPath: "type/basic/a", events: [
+        { event: "audit", at: "validate", fn: () => { calls.push("A2"); } },
+      ] },
+    ] } },
+  ], {});
+  try {
+    loader.load();
+    const moduleOrder = loader.eventModuleOrder();
+    assert.ok(moduleOrder.setPaths.indexOf("type/basic/a") < moduleOrder.setPaths.indexOf("type/basic/z"));
+    assert.deepEqual(loader.eventRegistry().all().map(entry => entry.setPath), ["type/basic/z", "type/basic/a"]);
+    const report = await runModEventStage({
+      registry: loader.eventRegistry(), moduleOrder, setMember: () => true,
+    }, "validate", savingCard, { driver: unexpectedDependency, lexicon: unexpectedDependency });
+    assert.deepEqual(calls, ["Z"]);
+    assert.deepEqual(report.fired, ["audit"]);
+    assert.deepEqual(report.failed, []);
+  } finally {
+    loader.reset();
+  }
+});
+
+const concretePaths = [
+  "all/base", "type/basic", "right/field", "type_plus_right/project/field", "self/topic",
+];
+for (let winnerIndex = 1; winnerIndex < concretePaths.length; winnerIndex++) {
+  const paths = concretePaths.slice(0, winnerIndex + 1);
+  const winner = paths.at(-1);
+  test(`concrete module precedence: ${winner} outranks all less specific matching patterns`, async () => {
+    const declarations = paths.map(setPath => ({ setPath, label: setPath }));
+    // Across mods, a later lower-pattern definition must not defeat an
+    // already-included higher-pattern module. All files precede nonbase files.
+    if (winnerIndex > 1) {
+      declarations.push({ setPath: paths.at(-2), modName: "second_mod", label: "later less specific body" });
+    }
+    const f = fixture(declarations, { setPaths: paths });
+    await f.run();
+    assert.deepEqual(f.calls, [winner]);
+  });
+}
+
+test("same-stage replacement retains the latest callback gate, including false", async () => {
+  const f = fixture([
+    { setPath: "all/base", label: "earlier body" },
+    { setPath: "type/basic", label: "later body", when: "disabled" },
+  ], { setPaths: ["all/base", "type/basic"], predicates: { disabled: () => false } });
+  const report = await f.run();
+  assert.deepEqual(f.calls, []);
+  assert.deepEqual(report.fired, []);
+  assert.deepEqual(report.skipped.map(({ event, reason }) => ({ event, reason })), [
+    { event: "audit", reason: "when-false" },
+  ]);
+});
+
+test("a nonapplicable replacement callback does not resurrect the earlier all-set callback", async () => {
+  const f = fixture([
+    { setPath: "all/base", label: "earlier body" },
+    { setPath: "type/other", label: "scoped replacement" },
+  ], { setPaths: ["all/base", "type/other"], setMember: () => false });
+  const report = await f.run();
+  assert.deepEqual(f.calls, []);
+  assert.deepEqual(report.fired, []);
+  assert.equal(report.skipped.length, 1);
+  assert.equal(report.skipped[0].reason, "set-not-applicable");
+});
+
+test("duplicate names in different stage chains retain separate invocations of the resolved method", async () => {
+  const f = fixture([
+    { setPath: "all/base", at: "validate", label: "all body" },
+    { setPath: "right/field", at: "store", label: "right body" },
+  ], { setPaths: ["all/base", "right/field"] });
+  const validate = await f.run("validate");
+  const store = await f.run("store");
+  assert.deepEqual(f.calls, ["right body", "right body"]);
+  assert.deepEqual(validate.fired, ["audit"]);
+  assert.deepEqual(store.fired, ["audit"]);
+});
+
+test("before and after callbacks with the same symbol both survive and use the latest body", async () => {
+  const f = fixture([
+    { event: "parent", setPath: "all/parent", label: "parent" },
+    { event: "hook", setPath: "all/hook", before: "parent", label: "old hook" },
+    { event: "hook", setPath: "all/hook", after: "parent", label: "new hook" },
+  ], { setPaths: ["all/parent", "all/hook"] });
+  const report = await f.run();
+  assert.deepEqual(f.calls, ["new hook", "parent", "new hook"]);
+  assert.deepEqual(report.fired, ["hook", "parent", "hook"]);
+});
+
+test("a single declaration can attach its symbol both before and after the same parent", async () => {
+  const f = fixture([
+    { event: "parent", setPath: "all/parent", label: "parent" },
+    { event: "hook", setPath: "all/hook", before: "parent", after: "parent", label: "hook" },
+  ], { setPaths: ["all/parent", "all/hook"] });
+  await f.run();
+  assert.deepEqual(f.calls, ["hook", "parent", "hook"]);
+});
+
+test("one declaration before a validate parent and after a store parent runs once in each stage", async () => {
+  const f = fixture([
+    { event: "parent_a", setPath: "all/parents", at: "validate", label: "validate parent" },
+    { event: "parent_b", setPath: "all/parents", at: "store", label: "store parent" },
+    { event: "hook", setPath: "all/hook", before: "parent_a", after: "parent_b", label: "hook" },
+  ], { setPaths: ["all/parents", "all/hook"] });
+  const validate = await f.run("validate");
+  assert.deepEqual(f.calls, ["hook", "validate parent"]);
+  const store = await f.run("store");
+  assert.deepEqual(f.calls, ["hook", "validate parent", "store parent", "hook"]);
+  assert.deepEqual(validate.fired, ["hook", "parent_a"]);
+  assert.deepEqual(store.fired, ["parent_b", "hook"]);
+});
+
+for (const beforeAllowed of [false, true]) {
+  test(`a later before-only definition replaces just the before occurrence; gate ${beforeAllowed}`, async () => {
+    const gateCalls = [];
+    const f = fixture([
+      { event: "parent", setPath: "all/parent", label: "parent" },
+      { event: "hook", setPath: "all/hook", before: "parent", after: "parent", when: "old_gate", label: "old hook" },
+      { event: "hook", setPath: "all/hook", before: "parent", when: "new_gate", label: "latest hook" },
+    ], {
+      setPaths: ["all/parent", "all/hook"],
+      predicates: {
+        old_gate: () => { gateCalls.push("old after gate"); return true; },
+        new_gate: () => { gateCalls.push("new before gate"); return beforeAllowed; },
+      },
+    });
+    const report = await f.run();
+    assert.deepEqual(gateCalls, ["new before gate", "old after gate"]);
+    assert.deepEqual(f.calls, beforeAllowed
+      ? ["latest hook", "parent", "latest hook"]
+      : ["parent", "latest hook"]);
+    assert.deepEqual(report.fired, beforeAllowed ? ["hook", "parent", "hook"] : ["parent", "hook"]);
+    assert.equal(report.skipped.length, beforeAllowed ? 0 : 1);
+    if (!beforeAllowed) assert.equal(report.skipped[0].reason, "when-false");
+  });
+}
+
+test("redefining a parent erases relative callbacks already attached to its inner chain", async () => {
+  const f = fixture([
+    { event: "parent", setPath: "all/parent", label: "old parent" },
+    { event: "hook", setPath: "all/hook", before: "parent", label: "erased hook" },
+    { event: "parent", setPath: "all/parent", modName: "second_mod", label: "new parent" },
+  ], { setPaths: ["all/parent", "all/hook", "all/parent"] });
+  const report = await f.run();
+  assert.deepEqual(f.calls, ["new parent"]);
+  assert.deepEqual(report.fired, ["parent"]);
+});
+
+test("relative callbacks registered after the final parent definition remain attached", async () => {
+  const f = fixture([
+    { event: "parent", setPath: "all/parent", label: "old parent" },
+    { event: "parent", setPath: "all/parent", modName: "second_mod", label: "new parent" },
+    { event: "before_hook", setPath: "all/before_hook", before: "parent", label: "before" },
+    { event: "after_hook", setPath: "all/after_hook", after: "parent", label: "after" },
+  ], { setPaths: ["all/parent", "all/before_hook", "all/after_hook"] });
+  await f.run();
+  assert.deepEqual(f.calls, ["before", "new parent", "after"]);
+});
+
+test("duplicate stage registration moves its callback to the latest registration position", async () => {
+  const f = fixture([
+    { event: "first", label: "first" },
+    { event: "audit", label: "old audit" },
+    { event: "middle", label: "middle" },
+    { event: "audit", modName: "second_mod", label: "new audit" },
+  ]);
+  await f.run();
+  assert.deepEqual(f.calls, ["first", "middle", "new audit"]);
+});
+
+test("numeric prefixes normalize to one module identity across mods", async () => {
+  const f = fixture([
+    { setPath: "type/01_basic/02_validation", label: "first" },
+    { setPath: "type/basic/validation", modName: "second_mod", label: "replacement" },
+  ], { setPaths: ["type/01_basic/02_validation", "type/basic/validation"] });
+  await f.run();
+  assert.deepEqual(f.calls, ["replacement"]);
+});
+
+test("abstract inheritance uses the explicit async card ancestry instead of registration order", async () => {
+  let suppliedCard;
+  const f = fixture([
+    { setPath: "abstract/first", label: "first abstract" },
+    { setPath: "abstract/last", label: "last registered abstract" },
+  ], {
+    setPaths: ["abstract/first", "abstract/last"],
+    async methodModules(card) {
+      suppliedCard = card;
+      return ["abstract/first", "abstract/last"];
+    },
+  });
+  await f.run();
+  assert.deepEqual(f.calls, ["first abstract"]);
+  assert.equal(suppliedCard, savingCard, "method ancestry belongs to the original saving card");
+});
+
+test("callback membership uses the assigned card while explicit method ancestry can retain old modules", async () => {
+  const card = { ...savingCard, typeId: 2, typeIdBeforeAct: 1, patternTypeId: 1 };
+  let bodyCard;
+  const f = fixture([
+    { setPath: "type/old", label: "attached old body", body: value => { bodyCard = value; } },
+    { setPath: "type/new", label: "new definition" },
+  ], {
+    card,
+    setPaths: ["type/old", "type/new"],
+    setMember: (setPath, conditionCard) => setPath === "type/new" && conditionCard.typeId === 2,
+    methodModules: async () => ["type/old", "type/new"],
+  });
+  await f.run();
+  assert.deepEqual(f.calls, ["attached old body"]);
+  assert.equal(bodyCard, card);
+  assert.equal(bodyCard.typeId, 2);
+});
+
+test("an explicit card ancestry also excludes a sole definition absent from the original receiver", async () => {
+  const f = fixture([
+    { setPath: "type/new", label: "unattached new body" },
+  ], {
+    card: { ...savingCard, typeId: 2, patternTypeId: 1 },
+    setMember: () => true,
+    methodModules: async () => ["type/old"],
+  });
+  await assert.rejects(f.run(), {
+    name: "NoMethodError",
+    message: "undefined method 'audit' for #<Card:0x0000000000000065>",
+  });
+  assert.deepEqual(f.calls, [], "an applicable condition card does not attach methods to the original receiver");
+});
+
+for (const receiverBranch of ["changing", "no-current-action"]) {
+  test(`${receiverBranch} membership uses complete actual receiver ancestry before attribute membership`, async () => {
+    const card = { ...savingCard, typeId: 2, patternTypeId: 1,
+      ...(receiverBranch === "no-current-action" ? { currentAction: false } : {}) };
+    let membershipCalls = 0;
+    const f = fixture([
+      { setPath: "type/new/nested", label: "attached new module",
+        ...(receiverBranch === "changing" ? { changing: [] } : {}) },
+    ], {
+      card,
+      setMember: () => { membershipCalls++; return false; },
+      methodModules: async value => {
+        assert.equal(value, card, "ancestry is requested on the original body receiver");
+        return ["type/new/nested", "type/old"];
+      },
+    });
+    await f.run();
+    assert.deepEqual(f.calls, ["attached new module"]);
+    assert.equal(membershipCalls, 0, "attribute buckets must not replace actual module inclusion");
+  });
+}
+
+test("changing membership does not mistake an attached parent bucket for a missing nested module", async () => {
+  const f = fixture([
+    { setPath: "type/new/nested", label: "unattached nested module", changing: [] },
+  ], {
+    card: { ...savingCard, typeId: 2, patternTypeId: 1 },
+    setMember: () => true,
+    methodModules: async () => ["type/new", "type/old"],
+  });
+  const report = await f.run();
+  assert.deepEqual(f.calls, []);
+  assert.deepEqual(report.skipped, [{ event: "audit", reason: "set-not-applicable" }]);
+});
+
+test("recorded receiver identities derive an omitted old key without inheriting the assigned key", async () => {
+  const f = fixture([{setPath:"self/old",changing:[],label:"old"}], {
+    card:{...savingCard,name:"*new",key:"*new",receiverSetIdentities:[{name:"*old",typeId:1},{name:"*new",typeId:2}]},
+    setMember:undefined,
+  });
+  await f.run();
+  assert.deepEqual(f.calls,["old"]);
+});
+
+test("recorded receiver identities preserve name/type pairs and an empty attachment list", async () => {
+  for(const receiverSetIdentities of [[{name:"*old",typeId:1},{name:"*new",typeId:2}],[]]){
+    const f=fixture([{setPath:"abstract/hybrid",changing:[],label:"invented cross pair"}],{
+      card:{...savingCard,name:"*new",key:"*new",receiverSetIdentities},
+      setMember:(_path,card)=>card.name==="*old"&&card.typeId===2,
+    });
+    const report=await f.run();
+    assert.deepEqual(f.calls,[]);
+    assert.deepEqual(report.skipped,[{event:"audit",reason:"set-not-applicable"}]);
+  }
+});
+
+test("retained old-set duplicate methods require actual ancestry after a type change", async () => {
+  const f = fixture([
+    { setPath: "type/old", label: "retained old body" },
+    { setPath: "type/new", label: "assigned new body" },
+  ], {
+    card: { ...savingCard, typeId: 2, typeIdBeforeAct: 1, patternTypeId: 1 },
+    setPaths: ["type/old", "type/new"],
+    setMember: (setPath, conditionCard) =>
+      (setPath === "type/old" && conditionCard.typeId === 1) ||
+      (setPath === "type/new" && conditionCard.typeId === 2),
+  });
+  await assert.rejects(f.run(), /ancestry.*name\/type change|ancestry.*type change|methodModules/i);
+  assert.deepEqual(f.calls, [], "assigned membership cannot reconstruct the original receiver's retained module order");
+});
+
+// options.rb:73-80 returns before assigning @stage when before:/after: is
+// present. A discarded explicit integration stage cannot rescue a failure
+// in a validation parent's callback chain (event.rb:147-155).
+for (const kind of ["before", "after"]) {
+  test(`relative ${kind} overrides an explicit integration stage and cannot swallow validation failure`, async () => {
+    const refusal = new Error("validation hook refused");
+    const f = fixture([
+      { event: "parent", setPath: "all/parent", label: "parent" },
+      { event: "hook", setPath: "all/hook", at: "integrate", [kind]: "parent", label: "hook", body: () => { throw refusal; } },
+    ], { setPaths: ["all/parent", "all/hook"] });
+    await assert.rejects(f.run(), error => error === refusal);
+    assert.deepEqual(f.calls, kind === "before" ? ["hook"] : ["parent", "hook"]);
+  });
+}
+
+test("competing abstract modules fail visibly when their inclusion ancestry is unknown", async () => {
+  const f = fixture([
+    { setPath: "abstract/first", label: "first" },
+    { setPath: "abstract/second", label: "second" },
+  ], { setPaths: ["abstract/first", "abstract/second"] });
+  await assert.rejects(f.run(), /ancestry|inheritance|abstract|methodModules/i);
+  assert.deepEqual(f.calls, []);
+});
+
+test("different applicable buckets within one pattern require explicit inheritance ancestry", async () => {
+  const f = fixture([
+    { setPath: "type/basic", label: "basic" },
+    { setPath: "type/json", label: "json" },
+  ], { setPaths: ["type/basic", "type/json"], setMember: () => true });
+  await assert.rejects(f.run(), /ancestry|inheritance|methodModules/i);
+  assert.deepEqual(f.calls, []);
+});
+
+test("cross-module duplicate methods require actual module order rather than guessing", async () => {
+  const f = fixture([
+    { setPath: "all/base", label: "base" },
+    { setPath: "type/basic", label: "type" },
+  ]);
+  await assert.rejects(f.run(), /module order|moduleOrder|metadata|precedence|ancestry/i);
+  assert.deepEqual(f.calls, []);
+});

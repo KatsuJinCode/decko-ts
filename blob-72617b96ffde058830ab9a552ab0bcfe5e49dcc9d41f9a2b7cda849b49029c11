@@ -1,0 +1,176 @@
+// Shared scratch-directory helper for tests, benchmarks and tools.
+//
+// Scratch remains registered until removal is confirmed. Explicit cleanup
+// throws on failure; exit cleanup reports unresolved paths and fails a
+// previously successful process. Debug retention deliberately keeps ownership.
+//
+//   scratchDir(prefix)   mkdtemp under the repo scratch root, registered for removal
+//   removeScratchDir(d)  remove one directory now (idempotent)
+//   cleanupScratch()     remove everything registered (afterAll / finally)
+//
+// Removal also runs from a process "exit" handler. Close native resources
+// before explicit cleanup when their teardown must be verified by a test.
+// No detached cleanup process is launched and no failure is silently deferred.
+//
+// DECKO_KEEP_SCRATCH=1 keeps every directory for debugging.
+//
+// Where directories live, and who may delete them: a scratch
+// directory is created under the repo's own root — tmp/test-scratch/, or the
+// directory named by DECKO_TEST_TEMP_ROOT — never directly in the shared OS
+// temp folder, and it carries an ownership manifest naming this repo checkout
+// and this machine. The stale-run purge (tests/support/purge-stale-vitest-temp.ts)
+// deletes a stale directory only under that root and only when its manifest
+// matches, so a directory this checkout did not create is never a deletion
+// candidate, no matter how its name looks or how old it is.
+import { lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { hostname } from "node:os";
+import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { randomUUID } from "node:crypto";
+
+const registered = new Set();
+let exitHookInstalled = false;
+
+/** The file inside a scratch directory that names its owner. */
+export const SCRATCH_OWNERSHIP_FILE = "decko-scratch-ownership.json";
+export const SCRATCH_CLEANUP_REQUEST_FILE = "decko-scratch-cleanup-request.json";
+const OWNERSHIP_TOOL = "decko test scratch";
+const envRoot = () => (process.env.DECKO_TEST_TEMP_ROOT ? resolve(process.env.DECKO_TEST_TEMP_ROOT) : null);
+const repoRoot = realpathSync(fileURLToPath(new URL("../..", import.meta.url)));
+const machine = hostname();
+const processToken = randomUUID();
+
+/** The dedicated root every scratch directory is created under: the repo's
+ *  own tmp/test-scratch/, or DECKO_TEST_TEMP_ROOT for a run that must keep
+ *  its scratch elsewhere (another drive, a CI cache). Created when missing. */
+export function scratchRoot() {
+  const root = envRoot() ?? join(repoRoot, "tmp", "test-scratch");
+  mkdirSync(root, { recursive: true });
+  return root;
+}
+
+/** The ownership manifest: which tool, which repo checkout, which machine. */
+export function writeScratchOwnershipManifest(dir) {
+  writeFileSync(join(dir, SCRATCH_OWNERSHIP_FILE), JSON.stringify({ tool: OWNERSHIP_TOOL, repo: repoRoot, machine, created_at: new Date().toISOString() }, null, 2) + "\n");
+}
+
+/** Read one metadata snapshot without swallowing native errors.
+ *  Writing the public legacy marker does not adopt process custody. */
+export function inspectScratchOwnership(dir) {
+  const contents = readFileSync(join(dir, SCRATCH_OWNERSHIP_FILE), "utf8");
+  const manifest = JSON.parse(contents);
+  if (manifest === null || typeof manifest !== "object" || Array.isArray(manifest)) throw new TypeError(`Invalid scratch ownership manifest: ${dir}`);
+  return { contents, manifest, matchesCheckout: manifest.tool === OWNERSHIP_TOOL && manifest.repo === repoRoot && manifest.machine === machine };
+}
+
+function allocationCustody(dir) {
+  const entry = lstatSync(dir, { bigint: true });
+  return { version: 1, allocation: "scratchDir", pid: process.pid, processToken,
+    identity: { dev: String(entry.dev), ino: String(entry.ino), birthtimeNs: String(entry.birthtimeNs) }, retained: keepScratch() };
+}
+
+function retainRegisteredScratch(dir) {
+  if (!registered.has(dir) || directoryEntry(dir) === undefined) return;
+  const observed = inspectScratchOwnership(dir);
+  if (!observed.matchesCheckout) throw new Error(`Scratch directory ownership changed: ${dir}`);
+  const custody = observed.manifest.custody;
+  // Legacy markers already lack purge authority; never adopt them here.
+  if (custody === undefined) return;
+  const current = allocationCustody(dir);
+  if (custody.pid !== process.pid || custody.processToken !== processToken || JSON.stringify(custody.identity) !== JSON.stringify(current.identity)) throw new Error(`Scratch directory custody changed: ${dir}`);
+  if (custody.retained !== true) writeFileSync(join(dir, SCRATCH_OWNERSHIP_FILE), JSON.stringify({ ...observed.manifest, custody: { ...custody, retained: true } }, null, 2) + "\n");
+}
+
+/** True when `dir` carries an ownership manifest naming this checkout of this
+ *  repo on this machine. Anything else — no manifest, a corrupt one, another
+ *  checkout's or another machine's — is not this repo's to delete. */
+export function scratchOwnershipMatches(dir) {
+  try {
+    const m = JSON.parse(readFileSync(join(dir, SCRATCH_OWNERSHIP_FILE), "utf8"));
+    return m.tool === OWNERSHIP_TOOL && m.repo === repoRoot && m.machine === machine;
+  } catch {
+    return false;
+  }
+}
+
+export function keepScratch() {
+  return process.env.DECKO_KEEP_SCRATCH === "1";
+}
+
+function directoryEntry(dir) {
+  try {
+    return lstatSync(dir);
+  } catch (error) {
+    if (error.code === "ENOENT") return undefined;
+    throw error;
+  }
+}
+
+function installExitHook() {
+  if (exitHookInstalled) return;
+  exitHookInstalled = true;
+  process.on("exit", () => {
+    try {
+      cleanupScratch();
+    } catch (error) {
+      // Retain an existing failure code and its diagnostics. Setting this
+      // before reporting also prevents a broken stderr from hiding failure.
+      if (process.exitCode === undefined || Number(process.exitCode) === 0) process.exitCode = 1;
+      console.error(error);
+    }
+  });
+}
+
+/** Create a uniquely named directory under the repo scratch root, owned by
+ *  this checkout (an ownership manifest is written at creation), removed at
+ *  the end of the run (or by cleanupScratch). */
+export function scratchDir(prefix) {
+  const dir = mkdtempSync(join(scratchRoot(), prefix));
+  writeScratchOwnershipManifest(dir);
+  const observed = inspectScratchOwnership(dir);
+  writeFileSync(join(dir, SCRATCH_OWNERSHIP_FILE), JSON.stringify({ ...observed.manifest, custody: allocationCustody(dir) }, null, 2) + "\n");
+  registered.add(dir);
+  installExitHook();
+  return dir;
+}
+
+/** Remove an owned registered directory, or confirm it already absent.
+ *  Native errors propagate unchanged and ownership is retained on failure. */
+export function removeScratchDir(dir) {
+  if (keepScratch()) { retainRegisteredScratch(dir); return; }
+  const entry = directoryEntry(dir);
+  if (entry === undefined) { registered.delete(dir); return; }
+  if (!registered.has(dir)) throw new Error(`Scratch directory is not registered to this process: ${dir}`);
+  if (!entry.isDirectory() || entry.isSymbolicLink()) throw new Error(`Scratch directory identity changed: ${dir}`);
+  // Read the manifest directly here: unlike the purge's boolean predicate,
+  // deletion must retain an unreadable/invalid manifest's original error.
+  const owner = JSON.parse(readFileSync(join(dir, SCRATCH_OWNERSHIP_FILE), "utf8"));
+  if (owner.tool !== OWNERSHIP_TOOL || owner.repo !== repoRoot || owner.machine !== machine) throw new Error(`Scratch directory ownership changed: ${dir}`);
+  // Process death alone is not resource settlement. Only an actual registered
+  // cleanup request can authorize later orphan reclamation; a crashed owner
+  // which never asked for cleanup leaves unknown custody, not deletion rights.
+  if (owner.custody !== undefined) {
+    const current = allocationCustody(dir);
+    if (owner.custody.pid !== process.pid || owner.custody.processToken !== processToken || JSON.stringify(owner.custody.identity) !== JSON.stringify(current.identity)) throw new Error(`Scratch directory custody changed: ${dir}`);
+    writeFileSync(join(dir, SCRATCH_CLEANUP_REQUEST_FILE), JSON.stringify({ version: 1, disposition: "remove", pid: process.pid, processToken, identity: current.identity }, null, 2) + "\n");
+  }
+  rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+  if (directoryEntry(dir) !== undefined) throw new Error(`Scratch directory remains after removal: ${dir}`);
+  registered.delete(dir);
+}
+
+/** Try every registered path. Report all failures with their original errors;
+ *  failed paths stay registered for inspection or an explicit later retry. */
+export function cleanupScratch() {
+  const failures = [], unresolved = [];
+  for (const dir of [...registered]) {
+    try { if (keepScratch()) retainRegisteredScratch(dir); else removeScratchDir(dir); }
+    catch (error) { failures.push(error); unresolved.push(dir); }
+  }
+  if (failures.length) throw new AggregateError(failures, `Scratch cleanup failed; unresolved owned directories: ${unresolved.join(", ")}`);
+}
+
+/** Directories still registered (for the self-test). */
+export function registeredScratch() {
+  return [...registered];
+}

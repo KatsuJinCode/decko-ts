@@ -1,0 +1,78 @@
+require "json"
+require "digest"
+
+gems = File.expand_path(ARGV.fetch(0))
+$LOAD_PATH.unshift File.join(gems, "activesupport-7.2.4/lib")
+require "active_support/core_ext/object/blank"
+require "active_support/core_ext/object/try"
+root = File.join(gems, "card-1.110.0")
+definition = File.join(root, "lib/card/set/format/abstract_format/wrapper.rb")
+runtime = File.join(root, "lib/card/format/wrapper.rb")
+naming = File.join(root, "lib/card/set/format.rb")
+class Card
+  module Set
+    module Format
+      module AbstractFormat; end
+    end
+  end
+  class Format; end
+  module Layout
+    def self.card_layout?(_name) = false
+  end
+end
+load definition
+load runtime
+lines = File.readlines(naming)
+start = lines.index { |line| line.strip == "def wrapper_method_name wrapper" }
+raise "Pinned wrapper naming method missing" unless start
+Card::Set::Format.singleton_class.class_eval(lines[start, 3].join, naming, start + 1)
+
+class ProbeFormat
+  extend Card::Set::Format::AbstractFormat::Wrapper
+  include Card::Format::Wrapper
+  attr_reader :voo
+  def initialize
+    @voo = Struct.new(:interior, :wrap).new
+  end
+  def interior = voo.interior
+  def flavor = "vanilla"
+  wrapper(:cream) { "cream_#{interior}_cream" }
+  wrapper(:flavored) { "#{flavor}_#{interior}" }
+  wrapper(:topping) { |opts| "#{opts[:topping]}_cream_#{interior}_cream" }
+  wrapper(:mutating) { |opts| opts[:class] = "changed"; interior }
+  wrapper(:inner) { "inner_#{interior}_inner" }
+  wrapper(:nothing) { nil }
+  def wrapped(wrap, content)
+    voo.wrap = wrap
+    @rendered = content
+    wrap_with_wrapper
+  end
+end
+
+format = ProbeFormat.new
+options = { class: "original" }
+cases = [
+  { id: "simple-block", body: format.wrap_with_cream { "cake" } },
+  { id: "simple-content", body: format.wrap_with_cream("cake") },
+  { id: "format-method", body: format.wrap_with_flavored("cake") },
+  { id: "options", body: format.wrap_with_topping("cake", topping: "cherry") },
+  { id: "option-copy", body: format.wrap_with_mutating("cake", options), options: options }
+]
+cases << { id: "nested", body: format.wrapped([:cream, :inner], "cake") }
+cases << { id: "view-options", body: format.wrapped([[:topping, { topping: "cherry" }]], "cake") }
+[:unknown, :nothing].each do |name|
+  begin
+    format.wrapped([name], "cake")
+    raise "Expected wrapper refusal"
+  rescue ArgumentError => error
+    cases << { id: name.to_s, error: { class: error.class.name, message: error.message } }
+  end
+end
+ProbeFormat.wrapper(:cream) { "new_#{interior}" }
+cases << { id: "reopened", body: format.wrap_with_cream("cake") }
+puts JSON.pretty_generate({
+  scope: "Pinned native wrapper definition, naming and invocation methods with synthetic format/voo backing; no Rails/DB/full wrapper framework",
+  runtime: RUBY_DESCRIPTION,
+  sources: [definition, runtime, naming].to_h { |file| [file, Digest::SHA256.file(file).hexdigest] },
+  cases: cases
+})

@@ -1,0 +1,11 @@
+{
+  "row": "set-read-rule",
+  "event_file": "card-mod-permissions-0.20.0/set/all/permissions.rb",
+  "event": "set_read_rule",
+  "scenarios": [
+    {
+      "name": "a save of a rule: the body writes the read rule's id and class onto the card",
+      "returns": { "permission_rule_id_and_class": [7, "Rule"] }
+    }
+  ]
+}

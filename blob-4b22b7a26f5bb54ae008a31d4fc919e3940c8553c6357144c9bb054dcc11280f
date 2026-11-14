@@ -1,0 +1,50 @@
+import { expect, it } from "vitest";
+import { DatabaseOutcomeUnknownError, type SQLDatabaseDriver } from "../../src/server/driver.js";
+import { FetchEngine } from "../../src/card/fetch.js";
+import { handleWriteRequest } from "../../src/server/write-routes.js";
+import { runAuthMigrations, SessionStore } from "../../src/card/auth/index.js";
+import { createActionsTestStorage, seedCard, seedStandardDeck } from "../card/actions/actions-test-storage.js";
+
+it.each([true, false])("exposes reconciliation without claiming rollback or inviting replay (json=%s)", async (json) => {
+  const storage = await createActionsTestStorage();
+  try {
+    await seedStandardDeck(storage);
+    await seedCard(storage, { id: 900, name: "Outcome Editor" });
+    await runAuthMigrations(storage.driver);
+    const token = (await new SessionStore({ driver: storage.driver }).createSession(900)).token;
+    let commits = 0;
+    const driver: SQLDatabaseDriver = {
+      query: (sql, params) => storage.driver.query(sql, params),
+      batch: (statements) => storage.driver.batch(statements),
+      transactionGuarantee: storage.driver.transactionGuarantee,
+      transaction: async (work) => {
+        await storage.driver.transaction!(work);
+        commits += 1;
+        throw new DatabaseOutcomeUnknownError("commit", new Error("injected lost acknowledgement"));
+      },
+    };
+    const name = "Uncertain Save";
+    const response = await handleWriteRequest({ driver, fetcher: new FetchEngine(driver) }, {
+      method: "POST", pathname: "/Uncertain_Save", host: "fixture.invalid",
+      headers: { "content-type": "application/x-www-form-urlencoded", "accept": json ? "application/json" : "text/html",
+        cookie: `decko_ts_session=${token}` },
+      body: new URLSearchParams({ "card[name]": name, "card[content]": "committed" }).toString(),
+    });
+    expect(commits, response?.body).toBe(1);
+    expect(response?.status).toBe(409);
+    expect(response?.headers["Cache-Control"]).toBe("no-store");
+    expect(response?.headers.Location).toBeUndefined();
+    expect(response?.headers["Retry-After"]).toBeUndefined();
+    expect(response?.expiryName).toBe(name);
+    const row = await storage.selectOne<{ id: number }>("SELECT id FROM cards WHERE name = ?", [name]);
+    expect(row?.id).toBeGreaterThan(0);
+    if (json) {
+      const payload = JSON.parse(response!.body);
+      expect(payload).toMatchObject({ code: "database-outcome-unknown", outcome: "unknown", retry_safe: false,
+        reconciliation: { cardId: row!.id, nextAction: "read-card-and-action-history-before-retry" } });
+      expect(payload.reconciliation.actionId).toBeGreaterThan(0);
+    } else {
+      expect(response!.body).toContain("Reload the card and check its history before trying again");
+    }
+  } finally { storage.close(); }
+});

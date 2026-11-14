@@ -1,0 +1,385 @@
+{
+  "instrument": "tools/perf/asset-bytes/measure-vendored-asset-bytes.mjs",
+  "note": "decoded/gzip/brotli are per-asset; base64InBundle is what the asset costs inside the Bunny script text",
+  "fontAwesome": {
+    "servedCss": {
+      "key": "css/all.min.css",
+      "decoded": 73890,
+      "gzip": 20894,
+      "brotli": 18183,
+      "base64InBundle": 98520
+    },
+    "cssUrlTargets": [
+      "fa-brands-400.ttf",
+      "fa-brands-400.woff2",
+      "fa-regular-400.ttf",
+      "fa-regular-400.woff2",
+      "fa-solid-900.ttf",
+      "fa-solid-900.woff2",
+      "fa-v4compatibility.ttf",
+      "fa-v4compatibility.woff2"
+    ],
+    "fontFaceSrcOrder": [
+      {
+        "family": "Font Awesome 6 Brands",
+        "sources": [
+          {
+            "file": "fa-brands-400.woff2",
+            "format": "woff2"
+          },
+          {
+            "file": "fa-brands-400.ttf",
+            "format": "truetype"
+          }
+        ]
+      },
+      {
+        "family": "Font Awesome 6 Free",
+        "sources": [
+          {
+            "file": "fa-regular-400.woff2",
+            "format": "woff2"
+          },
+          {
+            "file": "fa-regular-400.ttf",
+            "format": "truetype"
+          }
+        ]
+      },
+      {
+        "family": "Font Awesome 6 Free",
+        "sources": [
+          {
+            "file": "fa-solid-900.woff2",
+            "format": "woff2"
+          },
+          {
+            "file": "fa-solid-900.ttf",
+            "format": "truetype"
+          }
+        ]
+      },
+      {
+        "family": "Font Awesome 5 Brands",
+        "sources": [
+          {
+            "file": "fa-brands-400.woff2",
+            "format": "woff2"
+          },
+          {
+            "file": "fa-brands-400.ttf",
+            "format": "truetype"
+          }
+        ]
+      },
+      {
+        "family": "Font Awesome 5 Free",
+        "sources": [
+          {
+            "file": "fa-solid-900.woff2",
+            "format": "woff2"
+          },
+          {
+            "file": "fa-solid-900.ttf",
+            "format": "truetype"
+          }
+        ]
+      },
+      {
+        "family": "Font Awesome 5 Free",
+        "sources": [
+          {
+            "file": "fa-regular-400.woff2",
+            "format": "woff2"
+          },
+          {
+            "file": "fa-regular-400.ttf",
+            "format": "truetype"
+          }
+        ]
+      },
+      {
+        "family": "FontAwesome",
+        "sources": [
+          {
+            "file": "fa-solid-900.woff2",
+            "format": "woff2"
+          },
+          {
+            "file": "fa-solid-900.ttf",
+            "format": "truetype"
+          }
+        ]
+      },
+      {
+        "family": "FontAwesome",
+        "sources": [
+          {
+            "file": "fa-brands-400.woff2",
+            "format": "woff2"
+          },
+          {
+            "file": "fa-brands-400.ttf",
+            "format": "truetype"
+          }
+        ]
+      },
+      {
+        "family": "FontAwesome",
+        "sources": [
+          {
+            "file": "fa-regular-400.woff2",
+            "format": "woff2"
+          },
+          {
+            "file": "fa-regular-400.ttf",
+            "format": "truetype"
+          }
+        ]
+      },
+      {
+        "family": "FontAwesome",
+        "sources": [
+          {
+            "file": "fa-v4compatibility.woff2",
+            "format": "woff2"
+          },
+          {
+            "file": "fa-v4compatibility.ttf",
+            "format": "truetype"
+          }
+        ]
+      }
+    ],
+    "fonts": [
+      {
+        "key": "webfonts/fa-solid-900.ttf",
+        "decoded": 426112,
+        "gzip": 172717,
+        "brotli": 147765,
+        "base64InBundle": 568152,
+        "referencedByServedCss": true,
+        "selectedByWoff2Browser": false
+      },
+      {
+        "key": "webfonts/fa-brands-400.ttf",
+        "decoded": 210792,
+        "gzip": 122800,
+        "brotli": 110080,
+        "base64InBundle": 281056,
+        "referencedByServedCss": true,
+        "selectedByWoff2Browser": false
+      },
+      {
+        "key": "webfonts/fa-solid-900.woff2",
+        "decoded": 158220,
+        "gzip": 158288,
+        "brotli": 158225,
+        "base64InBundle": 210960,
+        "referencedByServedCss": true,
+        "selectedByWoff2Browser": true
+      },
+      {
+        "key": "webfonts/fa-brands-400.woff2",
+        "decoded": 118684,
+        "gzip": 118737,
+        "brotli": 118689,
+        "base64InBundle": 158248,
+        "referencedByServedCss": true,
+        "selectedByWoff2Browser": true
+      },
+      {
+        "key": "webfonts/fa-regular-400.ttf",
+        "decoded": 68064,
+        "gzip": 26987,
+        "brotli": 24496,
+        "base64InBundle": 90752,
+        "referencedByServedCss": true,
+        "selectedByWoff2Browser": false
+      },
+      {
+        "key": "webfonts/fa-regular-400.woff2",
+        "decoded": 25472,
+        "gzip": 25500,
+        "brotli": 25476,
+        "base64InBundle": 33964,
+        "referencedByServedCss": true,
+        "selectedByWoff2Browser": true
+      },
+      {
+        "key": "webfonts/fa-v4compatibility.ttf",
+        "decoded": 10836,
+        "gzip": 5133,
+        "brotli": 4728,
+        "base64InBundle": 14448,
+        "referencedByServedCss": true,
+        "selectedByWoff2Browser": false
+      },
+      {
+        "key": "webfonts/fa-v4compatibility.woff2",
+        "decoded": 4796,
+        "gzip": 4819,
+        "brotli": 4800,
+        "base64InBundle": 6396,
+        "referencedByServedCss": true,
+        "selectedByWoff2Browser": true
+      }
+    ],
+    "totals": {
+      "decoded": 1022976,
+      "gzip": 634981,
+      "base64InBundle": 1363976
+    }
+  },
+  "bootstrapFonts": {
+    "servedCss": {
+      "key": "mod-style-assets/card-mod-bootstrap/assets/style/bootstrap-icons.css",
+      "bytes": 95641
+    },
+    "cssUrlTargets": [
+      "bootstrap-icons.woff",
+      "bootstrap-icons.woff2"
+    ],
+    "fontFaceSrcOrder": [
+      {
+        "family": "bootstrap-icons",
+        "sources": [
+          {
+            "file": "bootstrap-icons.woff2",
+            "format": "woff2"
+          },
+          {
+            "file": "bootstrap-icons.woff",
+            "format": "woff"
+          }
+        ]
+      }
+    ],
+    "fonts": [
+      {
+        "key": "bootstrap-icons.woff2",
+        "decoded": 121296,
+        "gzip": 121161,
+        "brotli": 121301,
+        "base64InBundle": 161728,
+        "referencedByServedCss": true,
+        "selectedByWoff2Browser": true
+      },
+      {
+        "key": "bootstrap-icons.woff",
+        "decoded": 164352,
+        "gzip": 163747,
+        "brotli": 162336,
+        "base64InBundle": 219136,
+        "referencedByServedCss": true,
+        "selectedByWoff2Browser": false
+      }
+    ],
+    "totals": {
+      "decoded": 285648,
+      "gzip": 284908,
+      "base64InBundle": 380864
+    }
+  },
+  "codedAttachments": {
+    "rows": [
+      {
+        "key": ":logo/carrierwave.svg",
+        "codename": "logo",
+        "extension": "svg",
+        "versions": {
+          "original": {
+            "decoded": 4206,
+            "gzip": 1114,
+            "brotli": 924,
+            "base64InBundle": 5608
+          }
+        }
+      },
+      {
+        "key": ":decko_logo/carrierwave.svg",
+        "codename": "decko_logo",
+        "extension": "svg",
+        "versions": {
+          "original": {
+            "decoded": 4206,
+            "gzip": 1114,
+            "brotli": 924,
+            "base64InBundle": 5608
+          }
+        }
+      },
+      {
+        "key": ":favicon/carrierwave.png",
+        "codename": "favicon",
+        "extension": "png",
+        "versions": {
+          "original": {
+            "decoded": 16666,
+            "gzip": 16530,
+            "brotli": 16512,
+            "base64InBundle": 22224
+          },
+          "icon": {
+            "decoded": 1322,
+            "gzip": 1254,
+            "brotli": 1185,
+            "base64InBundle": 1764
+          },
+          "small": {
+            "decoded": 5914,
+            "gzip": 5917,
+            "brotli": 5854,
+            "base64InBundle": 7888
+          },
+          "medium": {
+            "decoded": 16679,
+            "gzip": 16543,
+            "brotli": 16521,
+            "base64InBundle": 22240
+          },
+          "large": {
+            "decoded": 16679,
+            "gzip": 16543,
+            "brotli": 16522,
+            "base64InBundle": 22240
+          }
+        }
+      }
+    ]
+  },
+  "duplicateGroups": [
+    {
+      "sha256": "312389d4825c90b0b9fe27969b333b83169e4328504115d21f2db7f04172f230",
+      "bytesEach": 4206,
+      "redundantBytes": 4206,
+      "keys": [
+        ":logo/carrierwave.svg#original",
+        ":decko_logo/carrierwave.svg#original"
+      ]
+    }
+  ],
+  "unreferencedTotals": {
+    "count": 0,
+    "decoded": 0,
+    "base64InBundle": 0,
+    "keys": []
+  },
+  "neverFetchedByWoff2Browser": {
+    "count": 5,
+    "decoded": 880156,
+    "base64InBundle": 1173544,
+    "keys": [
+      "webfonts/fa-solid-900.ttf",
+      "webfonts/fa-brands-400.ttf",
+      "webfonts/fa-regular-400.ttf",
+      "webfonts/fa-v4compatibility.ttf",
+      "bootstrap-icons.woff"
+    ]
+  },
+  "servedCssTotals": {
+    "decoded": 1382514,
+    "gzip": 940783,
+    "base64InBundle": 1843360
+  }
+}

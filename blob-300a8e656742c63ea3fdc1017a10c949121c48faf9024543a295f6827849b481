@@ -1,0 +1,210 @@
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { Miniflare, convertV4MiniflareOptions } from "miniflare";
+import { spawn } from "node:child_process";
+import { join } from "node:path";
+import { MemoryBlobDriver } from "../../src/blob/memory.js";
+import { FilesystemBlobDriver } from "../../src/blob/filesystem.js";
+import { BunnyStorageBlobDriver } from "../../src/blob/bunny-storage.js";
+import { R2BlobDriver, type R2BucketLike } from "../../src/blob/r2.js";
+import type { BlobDriver } from "../../src/blob/driver.js";
+import { BlobAttachmentStore, type AttachmentStore } from "../../src/card/attachments/attachment-store.js";
+import { assetBytesSha256, reconcileAssetRecoveries } from "../../src/card/actions/save-outcome.js";
+import { scratchDir } from "../support/scratch-dir.mjs";
+// @ts-expect-error - local mock is plain JavaScript.
+import { startMockBunnyStorage } from "./mock-bunny-storage.mjs";
+
+const bytes = (text: string) => new TextEncoder().encode(text);
+let nextCard = 300;
+async function fixture(driver: BlobDriver, area?: "files" | "tmp") {
+  const store = new BlobAttachmentStore(driver);
+  const target = { cardId: nextCard++, actionId: 2, ext: ".css", area };
+  const backup = { ...target, ext: ".css.recovery" };
+  await store.store({ ...target, bytes: bytes("replacement") });
+  await store.store({ ...backup, bytes: bytes("previous") });
+  const recovery = { target, backup,
+    originalSha256: await assetBytesSha256(bytes("previous")),
+    replacementSha256: await assetBytesSha256(bytes("replacement")) };
+  return { store, recovery, key: `${area === "tmp" ? "tmp/" : ""}${target.cardId}/2.css`,
+    targetBytes: () => store.read(target.cardId, 2, target.ext, undefined, area),
+    backupBytes: () => store.read(target.cardId, 2, backup.ext, undefined, area) };
+}
+
+it.each([undefined, "tmp"] as const)("restores through the actual memory store in area %s", async (area) => {
+  const f = await fixture(new MemoryBlobDriver(), area);
+  await reconcileAssetRecoveries(f.store, [f.recovery], "rolled-back");
+  expect(await f.targetBytes()).toEqual(bytes("previous"));
+  expect(await f.backupBytes()).toBeUndefined();
+});
+
+it("memory comparison rejects a different store's later write", async () => {
+  const driver = new MemoryBlobDriver();
+  const f = await fixture(driver);
+  const other = new BlobAttachmentStore(driver);
+  const conditional = driver.putIfUnchanged.bind(driver);
+  driver.putIfUnchanged = async (...args) => {
+    await other.store({ ...f.recovery.target, bytes: bytes("newer") });
+    return conditional(...args);
+  };
+  await expect(reconcileAssetRecoveries(f.store, [f.recovery], "rolled-back")).rejects.toThrow("conditional restoration");
+  expect(await f.targetBytes()).toEqual(bytes("newer"));
+  expect(await f.backupBytes()).toEqual(bytes("previous"));
+});
+
+describe("R2 storage-enforced recovery (local workerd bucket)", () => {
+  let mf: Miniflare;
+  let bucket: R2BucketLike;
+  beforeAll(async () => {
+    mf = new Miniflare(convertV4MiniflareOptions({ modules: true,
+      script: "export default { fetch() { return new Response('ok'); } }",
+      r2Buckets: { BLOB: "attachment-recovery" } }));
+    bucket = await mf.getR2Bucket("BLOB") as unknown as R2BucketLike;
+  });
+  afterAll(async () => { await mf?.dispose(); });
+
+  it.each(["committed", "rolled-back"] as const)("reconciles %s through BlobAttachmentStore", async (outcome) => {
+    const f = await fixture(new R2BlobDriver(bucket));
+    await reconcileAssetRecoveries(f.store, [f.recovery], outcome);
+    expect(await f.targetBytes()).toEqual(bytes(outcome === "committed" ? "replacement" : "previous"));
+    expect(await f.backupBytes()).toBeUndefined();
+  });
+
+  it.each([1, 2])("preserves a raw bucket writer after target snapshot %s", async (raceAt) => {
+    let key = "";
+    let reads = 0;
+    let conditionalWrites = 0;
+    const wrapped: R2BucketLike = {
+      get: async (name) => {
+        const snapshot = await bucket.get(name);
+        if (name === key && ++reads === raceAt) await bucket.put(name, bytes("newer raw write"));
+        return snapshot;
+      },
+      put: async (name, value, options) => {
+        if (options?.onlyIf) conditionalWrites++;
+        return bucket.put(name, value, options);
+      },
+      head: bucket.head.bind(bucket), delete: bucket.delete.bind(bucket), list: bucket.list.bind(bucket),
+    };
+    const f = await fixture(new R2BlobDriver(wrapped));
+    key = f.key;
+    await expect(reconcileAssetRecoveries(f.store, [f.recovery], "rolled-back")).rejects.toThrow("conditional restoration");
+    expect(await f.targetBytes()).toEqual(bytes("newer raw write"));
+    expect(await f.backupBytes()).toEqual(bytes("previous"));
+    expect(conditionalWrites).toBe(raceAt === 2 ? 1 : 0);
+  });
+
+  it.each([true, false])("retains the backup on conditional PUT uncertainty (applied: %s)", async (applied) => {
+    let writes = 0;
+    const wrapped: R2BucketLike = {
+      get: bucket.get.bind(bucket), head: bucket.head.bind(bucket),
+      delete: bucket.delete.bind(bucket), list: bucket.list.bind(bucket),
+      put: async (key, value, options) => {
+        if (options?.onlyIf) {
+          writes++;
+          if (applied) await bucket.put(key, value, options);
+          throw new Error("conditional PUT reply lost");
+        }
+        return bucket.put(key, value, options);
+      },
+    };
+    const f = await fixture(new R2BlobDriver(wrapped));
+    await expect(reconcileAssetRecoveries(f.store, [f.recovery], "rolled-back")).rejects.toMatchObject({
+      code: "blob-conditional-write-outcome-unknown", retrySafe: false,
+      cause: expect.objectContaining({ message: "conditional PUT reply lost" }),
+    });
+    expect(await f.targetBytes()).toEqual(bytes(applied ? "previous" : "replacement"));
+    expect(await f.backupBytes()).toEqual(bytes("previous"));
+    expect(writes).toBe(1);
+  });
+});
+
+it("filesystem refuses restoration and preserves an external process's replacement", async () => {
+  const root = scratchDir("attachment-recovery-filesystem");
+  const driver = new FilesystemBlobDriver(root);
+  const f = await fixture(driver);
+  const read = driver.getBytes.bind(driver);
+  let raced = false;
+  driver.getBytes = async (key) => {
+    const snapshot = await read(key);
+    if (key === f.key && !raced) {
+      raced = true;
+      await new Promise<void>((resolve, reject) => {
+        const child = spawn(process.execPath, ["-e",
+          "const fs=require('node:fs');const p=process.argv[1];fs.writeFileSync(p+'.other','newer external write');fs.renameSync(p+'.other',p)",
+          join(root, ...key.split("/"))], { windowsHide: true, stdio: "ignore" });
+        child.once("error", reject);
+        child.once("exit", (code) => code === 0 ? resolve() : reject(new Error(`external writer exited ${code}`)));
+      });
+    }
+    return snapshot;
+  };
+  await expect(reconcileAssetRecoveries(f.store, [f.recovery], "rolled-back")).rejects.toThrow("unconditional rename");
+  expect(await f.targetBytes()).toEqual(bytes("newer external write"));
+  expect(await f.backupBytes()).toEqual(bytes("previous"));
+});
+
+it("configured Bunny HTTP storage refuses recovery without changing either object", async () => {
+  const mock = await startMockBunnyStorage();
+  try {
+    const driver = new BunnyStorageBlobDriver({ endpoint: mock.host, storageZone: mock.zone,
+      accessKey: mock.password, fetch: mock.fetch });
+    const f = await fixture(driver);
+    const mutationsBefore = mock.requests.filter((request: { method: string }) => request.method === "PUT" || request.method === "DELETE").length;
+    await expect(reconcileAssetRecoveries(f.store, [f.recovery], "rolled-back")).rejects.toThrow("no verified destination conditional PUT");
+    expect(await f.targetBytes()).toEqual(bytes("replacement"));
+    expect(await f.backupBytes()).toEqual(bytes("previous"));
+    expect(mock.requests.filter((request: { method: string }) => request.method === "PUT" || request.method === "DELETE")).toHaveLength(mutationsBefore);
+  } finally { await mock.stop(); }
+});
+
+it("retains every backup when one restoration succeeds before another refuses", async () => {
+  const driver = new MemoryBlobDriver();
+  const first = await fixture(driver);
+  const second = await fixture(driver);
+  const conditional = driver.putIfUnchanged.bind(driver);
+  driver.putIfUnchanged = async (...args) => args[0] === first.key ? false : conditional(...args);
+  await expect(reconcileAssetRecoveries(first.store, [first.recovery, second.recovery], "rolled-back")).rejects.toThrow("conditional restoration");
+  expect(await first.targetBytes()).toEqual(bytes("replacement"));
+  expect(await second.targetBytes()).toEqual(bytes("previous"));
+  expect(await first.backupBytes()).toEqual(bytes("previous"));
+  expect(await second.backupBytes()).toEqual(bytes("previous"));
+});
+
+it.each(["backup", "expected"])("owns borrowed Buffer %s bytes throughout reconciliation", async (changed) => {
+  const driver = new MemoryBlobDriver();
+  const f = await fixture(driver);
+  let current = Buffer.from("replacement");
+  const backup = Buffer.from("previous");
+  let discarded = false;
+  const store: AttachmentStore = {
+    store: f.store.store.bind(f.store),
+    read: async (_card, _action, ext) => {
+      if (ext === ".css.recovery") return backup;
+      if (changed === "backup") backup.set(bytes("tampered"));
+      return current;
+    },
+    restoreIfUnchanged: async (input, expected) => {
+      if (changed === "expected") current.set(bytes("later value"));
+      if (!current.equals(Buffer.from(expected))) return false;
+      current = Buffer.from(input.bytes);
+      return true;
+    },
+    discard: async () => { discarded = true; },
+  };
+  if (changed === "expected") {
+    await expect(reconcileAssetRecoveries(store, [f.recovery], "rolled-back")).rejects.toThrow("conditional restoration");
+    expect(current).toEqual(Buffer.from("later value"));
+    expect(discarded).toBe(false);
+  } else {
+    await reconcileAssetRecoveries(store, [f.recovery], "rolled-back");
+    expect(current).toEqual(Buffer.from("previous"));
+    expect(discarded).toBe(true);
+  }
+});
+
+it("refuses multi-object restoration before mutating any object", async () => {
+  const f = await fixture(new MemoryBlobDriver());
+  await expect(f.store.restoreIfUnchanged({ ...f.recovery.target, bytes: bytes("previous"),
+    renditionNames: ["2-original.css"] }, bytes("replacement"))).rejects.toThrow("single regular attachment");
+  expect(await f.targetBytes()).toEqual(bytes("replacement"));
+  expect(await f.backupBytes()).toEqual(bytes("previous"));
+});

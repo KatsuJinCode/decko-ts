@@ -1,0 +1,95 @@
+{
+  "row": "validate-type",
+  "event": "validate_type",
+  "pinned_file": "card-1.110.0/mod/core/set/all/type.rb",
+  "pinned_declaration": "event :validate_type, :validate, changed: :type_id, on: :save do",
+  "pinned_declaration_line": 17,
+  "pinned_body": "  errors.add :type, t(:core_error_no_such_type) unless type_name\n\n  if structure&.assigns_type? && type_id != structure.type_id\n    errors.add :type,\n               t(:core_error_structured, name: name, type_name: structure.type_name)\n  end",
+  "pinned_body_lines": [
+    {
+      "line": 18,
+      "text": "  errors.add :type, t(:core_error_no_such_type) unless type_name"
+    },
+    {
+      "line": 19,
+      "text": ""
+    },
+    {
+      "line": 20,
+      "text": "  if structure&.assigns_type? && type_id != structure.type_id"
+    },
+    {
+      "line": 21,
+      "text": "    errors.add :type,"
+    },
+    {
+      "line": 22,
+      "text": "               t(:core_error_structured, name: name, type_name: structure.type_name)"
+    },
+    {
+      "line": 23,
+      "text": "  end"
+    }
+  ],
+  "locale_file": "card-1.110.0/mod/core/config/locales/en.yml",
+  "scenarios": [
+    {
+      "scenario": "no such type",
+      "probe": {
+        "name": "Plain Card",
+        "type_name": null,
+        "type_id": 999,
+        "structure": null
+      },
+      "env_params": {},
+      "always_ok": false,
+      "errors_added": [
+        {
+          "attribute": "type",
+          "message": "No such type"
+        }
+      ],
+      "calls": [],
+      "outcome": {
+        "raised": null
+      }
+    },
+    {
+      "scenario": "a structured field away from the rule card's type",
+      "probe": {
+        "name": "Field+Structure",
+        "type_name": "RichText",
+        "type_id": 3,
+        "structure": "#<struct Structure assigns_type=true, type_id=7, type_name=\"RichText\">"
+      },
+      "env_params": {},
+      "always_ok": false,
+      "errors_added": [
+        {
+          "attribute": "type",
+          "message": "can't be changed because Field+Structure is structured as a RichText"
+        }
+      ],
+      "calls": [],
+      "outcome": {
+        "raised": null
+      }
+    },
+    {
+      "scenario": "a structured field onto the rule card's type",
+      "probe": {
+        "name": "Field+Structure",
+        "type_name": "RichText",
+        "type_id": 7,
+        "structure": "#<struct Structure assigns_type=true, type_id=7, type_name=\"RichText\">"
+      },
+      "env_params": {},
+      "always_ok": false,
+      "errors_added": [],
+      "calls": [],
+      "outcome": {
+        "raised": null
+      }
+    }
+  ]
+}

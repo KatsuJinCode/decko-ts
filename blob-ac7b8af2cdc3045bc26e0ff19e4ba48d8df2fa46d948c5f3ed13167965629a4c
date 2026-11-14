@@ -1,0 +1,11 @@
+{
+  "requests": 1439,
+  "errors": 0,
+  "deniedNetwork": [],
+  "hranaViolations": [],
+  "statuses": {
+    "200": 1320,
+    "403": 118,
+    "404": 1
+  }
+}

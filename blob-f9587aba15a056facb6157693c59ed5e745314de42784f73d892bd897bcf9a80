@@ -1,0 +1,23 @@
+{
+  "what": "the port side of the upload create forms row, re-verified on the local signed-in exercise at the tranche-3 base",
+  "row": "mx-B-086-cover-b-files-upload-a-file-an",
+  "check": "F1/F3/F7 upload a file, an image, and upload as a member through the create forms (registry static extraction truncated this check name); F5 (the neighbouring empty-file refusal) passes in the same run",
+  "command": "node tools/edge-signed-in-exercise.mjs --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 --out .runtime/matrix-journey-tranche3-20261021/full-run/report.md",
+  "source": "51356bd4 (port/matrix-journey-tranche-20261020, the tip carrying the mx-155 follow-view and mx-190 verification work)",
+  "result": "PASS",
+  "runTotals": "240 / 242 checks passed; capability coverage 66 covered, 20 partial, 5 not covered, 3 out of scope (of 95)",
+  "legs": [
+    { "leg": "F1 a file can be uploaded through the File create form", "evidence": { "writeStatus": 200, "mountKey": "card[action_id_of_cached_upload] value=139", "afterStatus": 200, "stored": true } },
+    { "leg": "F3 an image can be uploaded through the Image create form", "evidence": { "writeStatus": 200, "mountKey": "card[action_id_of_cached_upload] value=141", "afterStatus": 200, "stored": true } },
+    { "leg": "F5 an empty file is refused", "evidence": { "writeStatus": 422, "errorShown": true, "createdAnyway": false } },
+    { "leg": "F7 a member can upload a file", "evidence": { "writeStatus": 200, "mountKey": "card[action_id_of_cached_upload] value=143", "afterStatus": 200, "stored": true } }
+  ],
+  "theRunsTwoFailures": [
+    { "check": "E11b the +summary junction's own edit modal targets the junction card with its stored content", "cause": "the committed INSTRUMENT throws 'database is not defined' (a pre-existing red at this base; the repair rides fix/e11b-module-context-20261020, which is not in this branch's base)" },
+    { "check": "9. timings no signed-in page exceeded 3 s of server time", "cause": "one page measured 4845 ms of server time (/Harness_CB_History_mvibsy8x/board_act?act_id=115) - a performance check, not a correctness failure" }
+  ],
+  "liveSide": {
+    "status": "operator-blocked",
+    "blocker": "the guarded live deploy is blocked on arming the files-area pair (an operator account-side call; the roster row files-area-arming-decko-storage-pair-absent). Live 96867 was left on pre-bundle release 1194026 (the live deploy was refused 2026-10-20). Nothing in this tranche deploys."
+  }
+}
