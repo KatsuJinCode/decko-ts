@@ -1,0 +1,63 @@
+These public Ruby inputs make the junction, pod round-trip and leftover tests run in a normal checkout. The four original tests pass with the original assertions and comparators. Integration review and the complete merged-tree gate remain with the integration lead.
+
+The input is the committed synthetic-v1 SQLite seed, SHA-256
+`a9f580814c2a5adc30e21f704985573ebb3f1090a14993bacacbdb1fb9a32f3d`.
+No private deck, account or capture is used. `public-oracle-scene.rb` builds
+Person, the Shark member list and the documented create/update inheritance
+rules through the installed Ruby engine on a private database copy.
+
+`manifest.json` records the Ruby version, application configuration and lockfile
+hashes, original probe source hashes, database/output hashes, native statuses,
+and unfiltered Ruby stdout/stderr. `capture-generator.py` retains the exact
+generation program hashed by that manifest. Ruby runs only on the existing VM,
+using its already installed stock application and gems. The two operation lists
+have separate databases and caches. Per-step process boundaries preserve the
+original runner's request and stack behavior. No application, committed seed,
+shared gems or provider resource is changed. Each capture's temporary directory
+is owned by its generator and retired after its child processes finish.
+
+The original `leftover-probe.rb` produces all twelve dumps. The original
+`persist-write-probe.rb` produces steps 1 through 19 for the pod source,
+including the live child under a trashed PersistProbe Parent. Steps 8 and 10
+record Ruby's own uniqueness refusals; no observation is edited to make an
+operation succeed. Ruby's original `pod-sow.rb` and `pod-eat.rb` produce the
+source pod, Ruby-to-Ruby output and import report. The TS test independently
+exports that same database and compares the bytes before importing either pod.
+
+`ts-trip-manifest.json` binds the actual TS-exported pod to a second native
+Ruby eat/sow execution. Its input hash must equal the independently captured
+Ruby pod. Both Ruby import reports include the original `*signin` validation
+error. The original test handles that known outcome without any change here.
+Neither manifest contains cached TS verdicts; every test run performs the TS
+writes, pod comparisons, full-state comparisons and revert render comparisons.
+
+Normal verification needs no SSH, Ruby installation or environment variables:
+
+```text
+node node_modules/vitest/vitest.mjs run tests/tools/junction-create-left-inheritance.test.ts tests/tools/pod-round-trip.test.ts tests/tools/persist-leftover-probe.test.ts
+```
+
+Regeneration, by an agent authorized to use the existing VM:
+
+1. Run `node tools/persistence/build-public-oracle-fixtures.mjs --slice` to
+   measure scene creation plus one original leftover step.
+2. Run `node tools/persistence/build-public-oracle-fixtures.mjs`. It transfers
+   SHA-checked sources and seed bytes, executes Ruby with private DB/cache/
+   files/log paths, and saves checked outputs. Its two independent operation
+   lists run alongside each other; no operation order within either list changes.
+3. Run the three original tests with explicit `EDITING_DECK` and
+   `PERSIST_SRC_DECK` set to this directory's `base.sqlite3`,
+   `PERSIST_RUBY_STEPS` set to its `leftover` directory, `PODS_SRC_DECK` set to
+   its `pods-src.sqlite3`, `PODS_BASE_DECK` set to its `base.sqlite3`, and
+   `PODS_DIR` set to the checkout's owned `tmp/persist/pods` directory. Copy
+   `ruby-src.yml`, `ruby-to-ruby.yml` and `ruby-to-ruby.eat.json` there first.
+   These explicit inputs allow regeneration before the second manifest exists.
+4. Run `node tools/persistence/capture-public-oracle-ts-trip.mjs` against the
+   actual `tmp/persist/pods/ts-src.yml` just produced by the original test.
+5. Run the normal verification above with the overrides removed. It validates
+   source and output hashes and checks both Ruby import reports.
+
+An absent or changed committed input fails during fixture validation. Explicit
+external-capture overrides retain their original behavior. Older captures under
+`tests/fixtures/persistence-leftover-oracle` remain unchanged and are not the
+default for these public inputs.

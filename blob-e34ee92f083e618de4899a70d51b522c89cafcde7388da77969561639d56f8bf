@@ -1,0 +1,84 @@
+// The routing that decides which test files run in a fresh process of their
+// own (tests/support/test-isolation-routing.mjs, used by vitest.config.ts).
+// Sample sources are assembled from pieces so this file's own text does not
+// match the patterns it tests, and the file keeps sharing a worker process.
+import { describe, expect, it } from "vitest";
+import {
+  globsMatchingExactly,
+  processStateReasons,
+  splitTestFilesByIsolation,
+} from "../support/test-isolation-routing.mjs";
+
+const vi = "vi.";
+const env = "process" + ".env";
+const glob = "global" + "This";
+const proc = "pro" + "cess";
+const proto = "proto" + "type";
+const con = "con" + "sole";
+
+describe("a test file that changes process-wide state is routed to its own process", () => {
+  it.each([
+    ["a module mock", `${vi}mock("../src/x.js", () => ({}));`],
+    ["a late module mock", `${vi}doMock("mysql2/promise");`],
+    ["an environment variable set", `${env}.DECKO_FLAG = "1";`],
+    ["an environment variable set by key", `${env}[key] = prior;`],
+    ["an environment variable deleted", `delete ${env}.DECKO_FLAG;`],
+    ["a global assigned", `${glob}.fetch = async () => new Response("");`],
+    ["a global defined", `Object.defineProperty(${glob}, "crypto", { value: {} });`],
+    ["a prototype patched", `Response.${proto}.json = async function () { return {}; };`],
+    ["a console method replaced", `${con}.error = () => {};`],
+    ["fake timers", `${vi}useFakeTimers();`],
+    ["a process listener", `${proc}.on("unhandledRejection", () => {});`],
+    ["a directory change", `${proc}.chdir(dir);`],
+    ["a stubbed global never restored", `${vi}stubGlobal("fetch", stub);`],
+  ])("%s", (_name, source) => {
+    expect(processStateReasons(source)).not.toEqual([]);
+  });
+});
+
+describe("a test file that only reads process-wide state keeps sharing a worker process", () => {
+  it.each([
+    ["an environment variable read", `const flag = ${env}.DECKO_FLAG === "1";`],
+    ["an environment variable compared", `if (${env}.CI == "true") skip();`],
+    ["a global read", `const fetcher = ${glob}.fetch;`],
+    ["a spy, which Vitest restores after every file", `${vi}spyOn(console, "warn");`],
+    ["a stubbed global restored", `${vi}stubGlobal("fetch", stub); afterEach(() => ${vi}unstubAllGlobals());`],
+    ["a child process listener", `child.on("exit", done); child_${proc}.on("x", done);`],
+  ])("%s", (_name, source) => {
+    expect(processStateReasons(source)).toEqual([]);
+  });
+});
+
+describe("exclude globs name exactly the files given", () => {
+  it("joins paths into brace alternations, escaping glob syntax", () => {
+    expect(globsMatchingExactly(["a/x.test.ts", "b/y (2),{z}.test.ts"]))
+      .toEqual(["{a/x.test.ts,b/y \\(2\\)\\,\\{z\\}.test.ts}"]);
+  });
+
+  it("gives a lone path as itself, since a one-item brace is literal text", () => {
+    expect(globsMatchingExactly(["a/x.test.ts"])).toEqual(["a/x.test.ts"]);
+    expect(globsMatchingExactly([])).toEqual([]);
+  });
+
+  it("splits long lists so every pattern stays under the length limit", () => {
+    const files = Array.from({ length: 50 }, (_, index) => `tests/dir/file-${index}.test.ts`);
+    const globs = globsMatchingExactly(files, 200);
+    expect(globs.length).toBeGreaterThan(1);
+    for (const pattern of globs) expect(pattern.length).toBeLessThanOrEqual(202);
+    expect(globs.join(",").replace(/[{}]/g, "").split(",")).toEqual(files);
+  });
+});
+
+describe("the repository's own test files", () => {
+  const { isolated, shared } = splitTestFilesByIsolation();
+
+  it("are each routed exactly once", () => {
+    const all = [...isolated.keys(), ...shared];
+    expect(new Set(all).size).toBe(all.length);
+    expect(shared).toContain("tests/tools/test-isolation-routing.test.ts");
+  });
+
+  it("route every module mock to its own process", () => {
+    expect(isolated.get("tests/server/drivers/terminal-commit-cleanup.test.ts")?.join(" ")).toMatch(/mock/);
+  });
+});

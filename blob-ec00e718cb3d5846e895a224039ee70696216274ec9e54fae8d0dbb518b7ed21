@@ -1,0 +1,37 @@
+# Canonical Ruby reference and tag recapture
+
+Status: accepted DEC102 reference, applied to DECKO-818.
+
+The project's reference is the existing VM's Ruby 3.2.3 and card 1.110.0.
+Ruby reference, oracle and comparison executions use that VM. Earlier Windows
+Ruby 3.3/3.4 captures retain their historical provenance; they do not redefine
+the current reference. This is a reference correction, not permission to
+relax a comparison or change expected bytes without native observations.
+
+The shared tag-wrapper fixture is recaptured through
+`tests/support/recapture-tag-wrapper-vm.mjs`. Its adjacent VM provenance file
+binds the full native response, Ruby/gem versions, original probe and source
+hashes. The same pinned Ruby methods execute; the fixture changes only the
+observed runtime and the reference's malformed-wrapper Hash spelling.
+Numeric runtime revision expectations now bind the actual 52bb2ac0a6 revision.
+
+The recapture exposed thirteen exact product differences: twelve portable
+Hash-rendering cases and one malformed-wrapper diagnostic. The raw differences
+were retained before product changes in the DECKO-818 evidence. Ruby 3.2 emits
+`{:opts=>:x}` where the previous implementation emitted Ruby 3.4's
+`{opts: :x}`. Nested tag values and wrapper diagnostics now use the canonical
+Symbol and Hash spelling. Every original assertion and comparison stays exact.
+
+Native observations record 280 symbol/hash spellings, including operators,
+variables, Unicode and quoted names, with source and stdin hashes. The initial
+59 checks fail on the previous implementation. An independent 221-input
+recapture then found six additional operator/global-name differences; those
+failed before the correction and now retain their exact native expectations.
+Original probe scope remains
+explicit: selected original Decko/ActionView methods with disclosed synthetic
+format backing, not a complete Rails application or whole-port acceptance.
+
+Stored-capture comparisons may execute locally without Ruby. Their provenance
+must bind the genuine VM recapture. No Windows Ruby exception, interpreter
+installation, shared VM application change or private-corpus substitution is
+part of this correction.

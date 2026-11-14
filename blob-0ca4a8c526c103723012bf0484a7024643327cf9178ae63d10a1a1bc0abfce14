@@ -1,0 +1,143 @@
+import { expect, it, vi } from "vitest";
+import { createConnection } from "mysql2/promise";
+import { DatabaseOutcomeUnknownError } from "../../../src/server/driver.js";
+import { PostgresDriver } from "../../../src/server/drivers/postgres.js";
+import { MysqlDriver } from "../../../src/server/drivers/mysql.js";
+import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
+import { runInTransactionStatementScope } from "../../../src/server/transaction-statement-scope.js";
+import { freshPglite } from "../../support/fresh-pglite.js";
+
+vi.mock("mysql2/promise", () => ({ createConnection: vi.fn() }));
+
+it.each(["before", "after"] as const)("PostgreSQL/PGlite cleans up a lost COMMIT (%s delivery) before reuse", async (phase) => {
+  const client = await freshPglite();
+  const calls: string[] = [];
+  let fault = true;
+  const driver = new PostgresDriver({ client: {
+    query: async (sql, params) => {
+      calls.push(sql);
+      const lose = sql === "COMMIT" && fault;
+      if (lose) fault = false;
+      if (lose && phase === "before") throw new TypeError("injected failure before COMMIT delivery");
+      const result = await client.query<Record<string, unknown>>(sql, params);
+      if (lose) throw new TypeError("injected loss of successful COMMIT reply");
+      return result;
+    },
+    exec: (sql) => client.exec(sql), close: () => client.close(),
+  } });
+  try {
+    await driver.query("CREATE TABLE terminal_counter (n INTEGER)", []);
+    await driver.query("INSERT INTO terminal_counter VALUES (0)", []);
+    await expect(driver.transaction(() => driver.query("UPDATE terminal_counter SET n = 1", [])))
+      .rejects.toMatchObject({ code: "database-outcome-unknown", operation: "commit", retrySafe: false });
+    expect((await client.query("SELECT n FROM terminal_counter")).rows).toEqual([{ n: phase === "after" ? 1 : 0 }]);
+    // PostgreSQL refuses SAVEPOINT outside a transaction. This reads real
+    // PGlite state, independently of the driver's bookkeeping flag.
+    await expect(client.query("SAVEPOINT leaked_transaction_probe")).rejects.toThrow();
+    expect(calls.filter((sql) => ["BEGIN", "COMMIT", "ROLLBACK"].includes(sql))).toEqual(["BEGIN", "COMMIT", "ROLLBACK"]);
+    await driver.transaction(() => driver.query("UPDATE terminal_counter SET n = n + 10", []));
+    expect((await driver.query("SELECT n FROM terminal_counter", [])).rows).toEqual([{ n: phase === "after" ? 11 : 10 }]);
+  } finally { await driver.close(); }
+});
+
+it.each(["before", "after"] as const)("MySQL client seam cleans up a lost COMMIT (%s delivery), SQLite-backed control", async (phase) => {
+  const sqlite = new LocalSqliteDriver();
+  const calls: string[] = [];
+  let fault = true;
+  let open = false;
+  const raw = <T,>(sql: string, params: unknown[] = []) => runInTransactionStatementScope(() => sqlite.query<T>(sql, params));
+  const conn = {
+    query: async (input: string | { sql: string; values?: unknown[] }, params: unknown[] = []) => {
+      const sql = typeof input === "string" ? input : input.sql;
+      if (typeof input !== "string") params = input.values ?? [];
+      calls.push(sql);
+      if (sql.startsWith("SET SESSION") || (sql === "ROLLBACK" && !open)) return [{ affectedRows: 0 }];
+      const lose = sql === "COMMIT" && fault;
+      if (lose) fault = false;
+      if (lose && phase === "before") throw new TypeError("injected failure before MySQL COMMIT delivery");
+      const result = await raw(sql === "START TRANSACTION" ? "BEGIN" : sql, params);
+      if (sql === "START TRANSACTION") open = true;
+      if (sql === "COMMIT" || sql === "ROLLBACK") open = false;
+      if (lose) throw new TypeError("injected loss of successful MySQL COMMIT reply");
+      return [result.rows.length ? result.rows : { affectedRows: result.rowsAffected, insertId: result.lastInsertRowId }];
+    },
+    end: async () => sqlite.close(),
+  };
+  vi.mocked(createConnection).mockResolvedValue(conn as never);
+  const driver = await MysqlDriver.connect({ database: "local_control" });
+  try {
+    await driver.query("CREATE TABLE terminal_counter (n INTEGER)", []);
+    await driver.query("INSERT INTO terminal_counter VALUES (0)", []);
+    const error = await driver.transaction(() => driver.query("UPDATE terminal_counter SET n = 1", []))
+      .then(() => undefined, (failure: unknown) => failure);
+    expect(error).toBeInstanceOf(DatabaseOutcomeUnknownError);
+    expect((await raw("SELECT n FROM terminal_counter")).rows).toEqual([{ n: phase === "after" ? 1 : 0 }]);
+    expect(open).toBe(false);
+    expect(calls.filter((sql) => ["START TRANSACTION", "COMMIT", "ROLLBACK"].includes(sql)))
+      .toEqual(["START TRANSACTION", "COMMIT", "ROLLBACK"]);
+    await driver.transaction(() => driver.query("UPDATE terminal_counter SET n = n + 10", []));
+    expect((await driver.query("SELECT n FROM terminal_counter", [])).rows).toEqual([{ n: phase === "after" ? 11 : 10 }]);
+  } finally { await driver.close(); }
+});
+
+it("PostgreSQL closes an owned client and rejects reuse when rollback cleanup also fails", async () => {
+  const client = await freshPglite();
+  const calls: string[] = [];
+  let closed = false;
+  const driver = new PostgresDriver({ client: {
+    query: async (sql, params) => {
+      calls.push(sql);
+      if (sql === "COMMIT" || sql === "ROLLBACK") throw new TypeError(`injected undelivered ${sql}`);
+      return client.query<Record<string, unknown>>(sql, params);
+    },
+    exec: (sql) => client.exec(sql),
+    close: async () => { await client.close(); closed = true; },
+  } });
+  try {
+    await driver.query("CREATE TABLE terminal_counter (n INTEGER)", []);
+    await driver.query("INSERT INTO terminal_counter VALUES (0)", []);
+    await expect(driver.transaction(() => driver.query("UPDATE terminal_counter SET n = 1", [])))
+      .rejects.toMatchObject({ code: "database-outcome-unknown", operation: "commit" });
+    expect(closed).toBe(true);
+    await expect(client.query("SELECT 1")).rejects.toThrow();
+    const count = calls.length;
+    await expect(driver.query("SELECT 1", [])).rejects.toBeInstanceOf(DatabaseOutcomeUnknownError);
+    await expect(driver.transaction(async () => undefined)).rejects.toBeInstanceOf(DatabaseOutcomeUnknownError);
+    expect(calls).toHaveLength(count);
+  } finally { await driver.close(); }
+});
+
+it("the MySQL client seam ends the owned connection after failed rollback and rejects reuse", async () => {
+  const sqlite = new LocalSqliteDriver();
+  const raw = <T,>(sql: string, params: unknown[] = []) => runInTransactionStatementScope(() => sqlite.query<T>(sql, params));
+  let ended = false;
+  let queries = 0;
+  const conn = {
+    query: async (input: string | { sql: string; values?: unknown[] }) => {
+      queries += 1;
+      if (ended) throw new Error("synthetic client ended");
+      const sql = typeof input === "string" ? input : input.sql;
+      if (sql.startsWith("SET SESSION")) return [{ affectedRows: 0 }];
+      if (sql === "COMMIT" || sql === "ROLLBACK") throw new TypeError(`injected undelivered ${sql}`);
+      const result = await raw(sql === "START TRANSACTION" ? "BEGIN" : sql, typeof input === "string" ? [] : input.values);
+      return [result.rows.length ? result.rows : { affectedRows: result.rowsAffected, insertId: result.lastInsertRowId }];
+    },
+    // The SQLite-backed fixture models disconnect aborting this client's
+    // still-open transaction while the database remains available to read.
+    end: async () => { await raw("ROLLBACK"); ended = true; },
+  };
+  vi.mocked(createConnection).mockResolvedValue(conn as never);
+  const driver = await MysqlDriver.connect({ database: "local_control" });
+  try {
+    await driver.query("CREATE TABLE terminal_counter (n INTEGER)", []);
+    await driver.query("INSERT INTO terminal_counter VALUES (0)", []);
+    await expect(driver.transaction(() => driver.query("UPDATE terminal_counter SET n = 1", [])))
+      .rejects.toMatchObject({ code: "database-outcome-unknown", operation: "commit" });
+    expect(ended).toBe(true);
+    expect((await raw("SELECT n FROM terminal_counter")).rows).toEqual([{ n: 0 }]);
+    const count = queries;
+    await expect(driver.query("SELECT 1", [])).rejects.toBeInstanceOf(DatabaseOutcomeUnknownError);
+    await expect(driver.transaction(async () => undefined)).rejects.toBeInstanceOf(DatabaseOutcomeUnknownError);
+    expect(queries).toBe(count);
+  } finally { sqlite.close(); }
+});

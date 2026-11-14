@@ -1,0 +1,82 @@
+import {describe, expect, it} from "vitest";
+import {ModLoader, type DeckoModManifest} from "../../../src/card/mod-loader.js";
+import {viewPermissionDenial} from "../../../src/card/permissions/view-perms.js";
+
+function loader(setModules: DeckoModManifest["setModules"]): ModLoader {
+  const result = new ModLoader([{manifest: {name: "permission_settings", setModules}}], {});
+  result.load();
+  return result;
+}
+
+describe("view setting method lookup", () => {
+  it("reconstructs registries when a public load order removes a permission exemption", () => {
+    const mod = new ModLoader([
+      {manifest: {name: "base", setModules: [{setPath: "all/base_probe", formats: {html: {views: [{view: "protected", config: {perms: "update"}, viewFn: () => "BASE"}]}}}]}},
+      {manifest: {name: "exemption", setModules: [{setPath: "all/exemption", formats: {html: {views: [{view: "protected", config: {perms: "none"}, viewFn: () => "EXEMPT"}]}}}]}},
+    ], {});
+    mod.resolveOrder({gemMods: ["base", "exemption"]});
+    mod.load();
+    expect(mod.viewSettingForCard("ALL", "protected", "perms")).toBe("none");
+    mod.resolveOrder({gemMods: ["base"]});
+    expect(mod.load().modNames).toEqual(["base"]);
+    const declaredPerms = mod.viewSettingForCard("ALL", "protected", "perms");
+    expect(declaredPerms).toBe("update");
+    expect(viewPermissionDenial("protected", {declaredPerms, renderOpts: {}, taskAllowed: () => false})).toContain("permission (update)");
+    expect(mod.viewChain("ALL", "protected").map(entry => entry.setModule)).toEqual(["All::BaseProbe"]);
+    mod.resolveOrder({gemMods: []});
+    expect(mod.load().modNames).toEqual([]);
+    expect(mod.modNames()).toEqual([]);
+    expect(mod.viewSettingForCard("ALL", "protected", "perms")).toBeUndefined();
+    expect(mod.viewChain("ALL", "protected")).toEqual([]);
+  });
+  it("resolves predicate methods by set and format without adding public views", () => {
+    const all = () => true, right = () => false, text = () => null;
+    const mod = loader([
+      {setPath: "all/predicates", formats: {html: {methods: [{name: "custom_ok?", fn: all}]}, email_text: {methods: [{name: "custom_ok?", fn: text}]}}},
+      {setPath: "right/private_control", formats: {html: {methods: [{name: "custom_ok?", fn: right}]}}},
+    ]);
+    expect(mod.formatMethodForCard("ALL", "custom_ok?")).toBe(all);
+    expect(mod.formatMethodForCard("ALL RIGHT-private_control", "custom_ok?")).toBe(right);
+    expect(mod.formatMethodForCard("ALL", "custom_ok?", "email_text")).toBe(text);
+    expect(mod.viewChainTable().entries()).toEqual([]);
+  });
+  it("inherits directives independently from body-only overrides and format subclasses", () => {
+    const mod = loader([
+      {setPath: "all/first", formats: {base: {views: [{view: "protected", config: {perms: "update", denial: "blank"}, viewFn: () => "base"}]}}},
+      {setPath: "all/later", formats: {html: {views: [{view: "protected", viewFn: () => "html"}]}}},
+    ]);
+    expect(mod.viewChain("ALL", "protected", "html")[0]?.viewFn({} as never)).toBe("html");
+    expect(mod.viewSettingForCard("ALL", "protected", "perms", "html")).toBe("update");
+    expect(mod.viewSettingForCard("ALL", "protected", "denial", "rss")).toBe("blank");
+    expect(mod.viewChainTable().entries()).toHaveLength(2);
+  });
+
+  it("keeps set-scoped and format-scoped declarations from becoming global", () => {
+    const mod = loader([
+      {setPath: "all/default", formats: {html: {views: [{view: "protected", config: {perms: "read"}, viewFn: () => "read"}]}}},
+      {setPath: "right/private_control", formats: {html: {views: [{view: "protected", config: {perms: "update"}, viewFn: () => "edit"}]}}},
+      {setPath: "all/json_only", formats: {json: {views: [{view: "protected", config: {perms: "delete"}, viewFn: () => "json"}]}}},
+    ]);
+    expect(mod.viewSettingForCard("ALL", "protected", "perms")).toBe("read");
+    expect(mod.viewSettingForCard("ALL RIGHT-private_control", "protected", "perms")).toBe("update");
+    expect(mod.viewSettingForCard("ALL", "protected", "perms", "json")).toBe("delete");
+    expect(mod.viewSettingForCard("ALL", "protected", "perms", "email_text")).toBeUndefined();
+    expect(mod.viewTasksRequiredForCard("ALL", "html")).toBe(false);
+    expect(mod.viewTasksRequiredForCard("ALL", "json")).toBe(true);
+    expect(mod.viewTasksRequiredForCard("ALL")).toBe(true);
+  });
+
+  it("preserves prior settings on a reopening with other options or a false setting", () => {
+    const mod = loader([{setPath: "all/reopened", formats: {html: {views: [
+      {view: "protected", config: {perms: "update", unknown: true}, viewFn: () => "first"},
+      {view: "protected", config: {denial: "blank", unknown: false}, viewFn: () => "second"},
+    ]}}}]);
+    expect(mod.viewSettingForCard("ALL", "protected", "perms")).toBe("update");
+    expect(mod.viewSettingForCard("ALL", "protected", "unknown")).toBe(true);
+    expect(mod.viewSettingForCard("ALL", "protected", "denial")).toBe("blank");
+    mod.reset();
+    expect(mod.viewSettingForCard("ALL", "protected", "perms")).toBeUndefined();
+    mod.load();
+    expect(mod.viewSettingForCard("ALL", "protected", "perms")).toBe("update");
+  });
+});

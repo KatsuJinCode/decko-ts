@@ -1,0 +1,634 @@
+#!/usr/bin/env node
+// Removes comments from the port's own shipped source.
+//
+// Selection: every tracked file that tools/handover/package.mjs ships, inside the
+// port's own code (src/, tools/, deploy/, db/, reference-harness/, tests/,
+// vm-staging-server.mjs, configured-public-page-shell.mjs), minus vendored,
+// third-party, fixture and generated files that carry embedded third-party code.
+//
+// TypeScript and JavaScript files (.ts, .mts, .js, .mjs) are parsed with the
+// repository's installed TypeScript compiler API. The parsed tree locates every
+// string, template and regular expression literal; the compiler's scanner then
+// walks the text, stepping over those literals, and reports each comment range.
+// SQL files are read by a small SQL lexer that knows quoted strings, quoted
+// identifiers and dollar-quoted bodies.
+//
+// Kept: shebang lines, TypeScript compiler directives (@ts-expect-error,
+// @ts-ignore, @ts-nocheck, @ts-check, /// <reference ...>), and license or
+// attribution headers (/*! ... */ blocks, and comments carrying an
+// SPDX-License-Identifier, an @license tag, or a copyright notice of the form
+// "Copyright (c)", "Copyright ©" or "Copyright <year>"). A comment that merely
+// mentions the word "Copyright" or the letters "(c)" is not a notice.
+//
+// Each removed comment is deleted in place. A line left holding only whitespace
+// is dropped, the whitespace that separated the comment from code is dropped,
+// and blank lines that the removal leaves doubled, leading, trailing or against
+// a bracket are collapsed. Nothing else is reformatted or reprinted.
+//
+// Before any file is written, its new text is parsed again and its token stream
+// (kind, text, and whether a line break precedes each token), its syntax tree
+// shape and its syntactic diagnostics are compared with the original; any
+// difference refuses the whole run.
+//
+// Usage:
+//   node tools/release/strip-comments.mjs --list
+//   node tools/release/strip-comments.mjs            (dry run: report only)
+//   node tools/release/strip-comments.mjs --write    (rewrite files)
+//   node tools/release/strip-comments.mjs --verify-against <git-ref>
+//        (compare every file changed since <git-ref> with its version there)
+//   --report <file>      write the full JSON report to <file>
+//   --typescript <dir>   the installed typescript package directory, when the
+//                        checkout has no node_modules of its own
+import { execFileSync } from 'node:child_process';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { selected as shippedByHandoverPackage } from '../handover/package.mjs';
+
+const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
+const git = (...args) => execFileSync('git', args, { cwd: repoRoot, encoding: 'utf8', windowsHide: true, maxBuffer: 256 * 1024 * 1024 });
+
+const ownCodeRoots = ['src/', 'tools/', 'deploy/', 'db/', 'reference-harness/', 'tests/'];
+const ownCodeSingles = new Set(['vm-staging-server.mjs', 'configured-public-page-shell.mjs']);
+const scriptExtensions = ['.ts', '.mts', '.js', '.mjs'];
+const sqlExtensions = ['.sql'];
+const excludedPathSegments = new Set(['node_modules']);
+const excludedPrefixes = ['vendor/', 'third-party-source/', 'fixtures/', 'reference-harness/fixtures/', 'tools/libsass/libsass/'];
+const excludedFiles = new Set(['src/card/assets/uglify-harmony-static.generated.ts']);
+const licenseNoticePattern = /SPDX-License-Identifier:|@license\b|\bCopyright\s+(?:\(c\)|©|\d{4})/i;
+
+function parseArguments(argv) {
+  const options = { list: false, write: false, verifyAgainst: null, report: null, typescript: null, root: null };
+  for (let index = 0; index < argv.length; index++) {
+    const argument = argv[index];
+    if (argument === '--list') options.list = true;
+    else if (argument === '--write') options.write = true;
+    else if (argument === '--verify-against') options.verifyAgainst = argv[++index];
+    else if (argument === '--report') options.report = argv[++index];
+    else if (argument === '--typescript') options.typescript = argv[++index];
+    else if (argument === '--root') options.root = argv[++index];
+    else throw new Error(`unknown argument: ${argument}`);
+  }
+  return options;
+}
+
+function extensionOf(file) {
+  const base = file.slice(file.lastIndexOf('/') + 1);
+  const dot = base.lastIndexOf('.');
+  return dot < 0 ? '' : base.slice(dot);
+}
+
+function containsLicenseMarker(text) {
+  return licenseNoticePattern.test(text);
+}
+
+// A generated file that carries third-party license notices in its comments holds
+// embedded third-party code; it is left exactly as generated.
+function isGeneratedThirdPartyFile(file, text, keptLicenseComments) {
+  const base = file.slice(file.lastIndexOf('/') + 1);
+  const head = text.slice(0, 2000);
+  const claimsGenerated = base.includes('.generated.') || head.includes('@generated') || head.includes('DO NOT EDIT');
+  return claimsGenerated && keptLicenseComments > 0;
+}
+
+function selectTargets() {
+  const tracked = git('ls-files', '-z').split('\0').filter(Boolean).sort();
+  const targets = [];
+  const excluded = [];
+  for (const file of tracked) {
+    const ownCode = ownCodeSingles.has(file) || ownCodeRoots.some(prefix => file.startsWith(prefix));
+    if (!ownCode) continue;
+    const extension = extensionOf(file);
+    const language = scriptExtensions.includes(extension) ? 'script' : sqlExtensions.includes(extension) ? 'sql' : null;
+    if (!language) continue;
+    if (!shippedByHandoverPackage(file)) continue;
+    let reason = null;
+    if (file.split('/').some(segment => excludedPathSegments.has(segment))) reason = 'node_modules';
+    else if (excludedPrefixes.some(prefix => file.startsWith(prefix))) reason = 'vendored, third-party or fixture directory';
+    else if (excludedFiles.has(file)) reason = 'generated file carrying embedded third-party code';
+    if (reason) excluded.push({ file, reason });
+    else targets.push({ file, language });
+  }
+  return { targets, excluded };
+}
+
+function locateTypeScriptPackage(explicitDirectory) {
+  const candidates = [];
+  if (explicitDirectory) candidates.push(path.resolve(explicitDirectory));
+  try {
+    candidates.push(path.dirname(createRequire(path.join(repoRoot, 'package.json')).resolve('typescript/package.json')));
+  } catch {
+    // The checkout may be a worktree without node_modules; the main checkout is tried next.
+  }
+  try {
+    const commonDirectory = git('rev-parse', '--path-format=absolute', '--git-common-dir').trim();
+    candidates.push(path.join(path.dirname(commonDirectory), 'node_modules', 'typescript'));
+  } catch {
+    // Not inside a git checkout; only an explicit directory can be used.
+  }
+  const found = candidates.find(directory => existsSync(path.join(directory, 'dist', 'ast', 'index.js')) && existsSync(path.join(directory, 'dist', 'api', 'sync', 'api.js')));
+  if (!found) throw new Error(`the installed typescript package was not found; tried: ${candidates.join(', ') || '(none)'}`);
+  const expected = JSON.parse(readFileSync(path.join(repoRoot, 'package.json'), 'utf8'));
+  const declared = (expected.devDependencies && expected.devDependencies.typescript) || (expected.dependencies && expected.dependencies.typescript) || null;
+  const installed = JSON.parse(readFileSync(path.join(found, 'package.json'), 'utf8')).version;
+  return { directory: found, declared, installed };
+}
+
+async function loadTypeScript(directory) {
+  const ast = await import(pathToFileURL(path.join(directory, 'dist', 'ast', 'index.js')).href);
+  const syncApi = await import(pathToFileURL(path.join(directory, 'dist', 'api', 'sync', 'api.js')).href);
+  const fsModule = await import(pathToFileURL(path.join(directory, 'dist', 'api', 'fs.js')).href);
+  return { ast, syncApi, fsModule };
+}
+
+// Parses many texts in one virtual project through the TypeScript compiler API.
+function parseTexts(typescript, entries) {
+  const { syncApi, fsModule } = typescript;
+  const virtualRoot = '/strip-comments-virtual';
+  const files = {};
+  const virtualPathOf = new Map();
+  entries.forEach((entry, index) => {
+    const virtualPath = `${virtualRoot}/f${index}/${entry.file}`;
+    files[virtualPath] = entry.text;
+    virtualPathOf.set(entry.key, virtualPath);
+  });
+  const configPath = `${virtualRoot}/tsconfig.json`;
+  files[configPath] = JSON.stringify({
+    compilerOptions: { allowJs: true, checkJs: false, noLib: true, noResolve: true, types: [], target: 'esnext', module: 'esnext', noEmit: true },
+    files: [...virtualPathOf.values()],
+  });
+  const api = new syncApi.API({ fs: fsModule.createVirtualFileSystem(files) });
+  try {
+    const snapshot = api.updateSnapshot({ openProjects: [configPath] });
+    const project = snapshot.getProject(configPath);
+    if (!project) throw new Error('the TypeScript compiler API did not load the virtual project');
+    const results = new Map();
+    for (const entry of entries) {
+      const virtualPath = virtualPathOf.get(entry.key);
+      const sourceFile = project.program.getSourceFile(virtualPath);
+      if (!sourceFile) throw new Error(`the TypeScript compiler API returned no source file for ${entry.file}`);
+      if (sourceFile.text !== entry.text) throw new Error(`the TypeScript compiler API parsed different text for ${entry.file}`);
+      const diagnostics = project.program.getSyntacticDiagnostics(virtualPath).map(diagnostic => `${diagnostic.code}@${diagnostic.start ?? diagnostic.pos ?? ''}`);
+      results.set(entry.key, { sourceFile, diagnostics });
+    }
+    return results;
+  } finally {
+    api.close();
+  }
+}
+
+const literalKindNames = ['StringLiteral', 'NoSubstitutionTemplateLiteral', 'TemplateHead', 'TemplateMiddle', 'TemplateTail', 'RegularExpressionLiteral', 'JsxText'];
+
+// Walks a parsed file with the compiler's scanner, stepping over every literal the
+// parser found, and returns the comment ranges and the token stream.
+function analyzeScript(typescript, file, sourceFile, text) {
+  const { SyntaxKind, createScanner, LanguageVariant } = typescript.ast;
+  const literalKinds = new Set(literalKindNames.map(name => SyntaxKind[name]));
+  const jsxKinds = new Set(Object.keys(SyntaxKind).filter(name => name.startsWith('Jsx') && typeof SyntaxKind[name] === 'number').map(name => SyntaxKind[name]));
+  const literalEndByStart = new Map();
+  const literals = [];
+  const treeShape = [];
+  let jsxSeen = false;
+  // In JavaScript files the compiler re-parses JSDoc type tags into type nodes
+  // flagged Reparsed or JSDoc. They come from comments, not from code, so they are
+  // left out of the code's tree shape and literal list.
+  const fromComments = typescript.ast.NodeFlags.Reparsed | typescript.ast.NodeFlags.JSDoc;
+  const visit = node => {
+    if (node.flags & fromComments) return;
+    treeShape.push(node.kind);
+    if (jsxKinds.has(node.kind)) jsxSeen = true;
+    if (literalKinds.has(node.kind)) {
+      const start = node.getStart(sourceFile);
+      literalEndByStart.set(start, node.end);
+      literals.push({ start, end: node.end, kind: SyntaxKind[node.kind], text: text.slice(start, node.end) });
+    }
+    node.forEachChild(visit);
+  };
+  sourceFile.forEachChild(visit);
+  if (jsxSeen) throw new Error(`${file}: contains JSX, which this script does not handle`);
+
+  const scanner = createScanner(false, LanguageVariant.Standard, text);
+  const comments = [];
+  const tokens = [];
+  let shebang = null;
+  const shebangText = typescript.ast.getShebang(text);
+  if (shebangText) {
+    if (!text.startsWith(shebangText)) throw new Error(`${file}: the shebang is not at the start of the file`);
+    shebang = { pos: 0, end: shebangText.length };
+    scanner.resetTokenState(shebangText.length);
+  }
+  // The first token has no token before it, so a line break before it never matters.
+  let lineBreakSinceToken = false;
+  let firstToken = true;
+  let literalsStepped = 0;
+  for (;;) {
+    const kind = scanner.scan();
+    if (kind === SyntaxKind.EndOfFile) break;
+    const start = scanner.getTokenStart();
+    const end = scanner.getTokenEnd();
+    if (kind === SyntaxKind.NewLineTrivia) { lineBreakSinceToken = true; continue; }
+    if (kind === SyntaxKind.WhitespaceTrivia) continue;
+    if (kind === SyntaxKind.ShebangTrivia) { shebang = { pos: start, end }; continue; }
+    if (kind === SyntaxKind.ConflictMarkerTrivia) throw new Error(`${file}: contains a merge conflict marker at ${start}`);
+    if (kind === SyntaxKind.SingleLineCommentTrivia || kind === SyntaxKind.MultiLineCommentTrivia) {
+      const commentText = text.slice(start, end);
+      if (containsLineBreak(commentText)) lineBreakSinceToken = true;
+      comments.push({ pos: start, end, text: commentText, multiLine: kind === SyntaxKind.MultiLineCommentTrivia });
+      continue;
+    }
+    const literalEnd = literalEndByStart.get(start);
+    if (literalEnd !== undefined) {
+      tokens.push(`literal\u0000${text.slice(start, literalEnd)}\u0000${firstToken || !lineBreakSinceToken ? 0 : 1}`); firstToken = false;
+      literalsStepped++;
+      lineBreakSinceToken = false;
+      scanner.resetTokenState(literalEnd);
+      continue;
+    }
+    tokens.push(`${kind}\u0000${text.slice(start, end)}\u0000${firstToken || !lineBreakSinceToken ? 0 : 1}`); firstToken = false;
+    lineBreakSinceToken = false;
+  }
+  if (literalsStepped !== literalEndByStart.size) {
+    throw new Error(`${file}: the scanner reached ${literalsStepped} of the ${literalEndByStart.size} literals the parser found; refusing to guess`);
+  }
+  return { comments, tokens, treeShape, literals, shebang };
+}
+
+function containsLineBreak(text) {
+  for (let index = 0; index < text.length; index++) {
+    const code = text.charCodeAt(index);
+    if (code === 10 || code === 13 || code === 0x2028 || code === 0x2029) return true;
+  }
+  return false;
+}
+
+function isHorizontalWhitespace(character) {
+  return character === ' ' || character === '\t' || character === '\v' || character === '\f' || character === ' ' || character === '﻿';
+}
+
+function isBlank(text) {
+  for (const character of text) if (!isHorizontalWhitespace(character) && character !== '\r' && character !== '\n') return false;
+  return true;
+}
+
+function trimLeadingHorizontal(text) {
+  let index = 0;
+  while (index < text.length && isHorizontalWhitespace(text[index])) index++;
+  return text.slice(index);
+}
+
+function trimTrailingHorizontal(text) {
+  let end = text.length;
+  while (end > 0 && isHorizontalWhitespace(text[end - 1])) end--;
+  return text.slice(0, end);
+}
+
+function skipLeadingCommentMarkers(text) {
+  let index = 0;
+  while (index < text.length && (text[index] === '/' || text[index] === '*')) index++;
+  while (index < text.length && isHorizontalWhitespace(text[index])) index++;
+  return text.slice(index);
+}
+
+function classifyScriptComment(commentText) {
+  if (commentText.startsWith('///')) {
+    const body = trimLeadingHorizontal(commentText.slice(3));
+    if (body.startsWith('<reference') || body.startsWith('<amd-module') || body.startsWith('<amd-dependency')) return 'directive';
+  }
+  const body = skipLeadingCommentMarkers(commentText);
+  if (['@ts-expect-error', '@ts-ignore', '@ts-nocheck', '@ts-check'].some(directive => body.startsWith(directive))) return 'directive';
+  if (commentText.startsWith('/*!') || containsLicenseMarker(commentText)) return 'license';
+  return null;
+}
+
+function classifySqlComment(commentText) {
+  if (commentText.startsWith('/*!') || containsLicenseMarker(commentText)) return 'license';
+  return null;
+}
+
+// A small SQL lexer: comments (-- and /* */), quoted strings ('...' with '' escapes
+// and E'...' backslash escapes), quoted identifiers ("...", `...`), dollar-quoted
+// bodies ($tag$...$tag$) and everything else as words and punctuation.
+function analyzeSql(file, text) {
+  const comments = [];
+  const tokens = [];
+  let lineBreakSinceToken = false;
+  let firstToken = true;
+  let index = 0;
+  const isWordCharacter = character => (character >= 'a' && character <= 'z') || (character >= 'A' && character <= 'Z') || (character >= '0' && character <= '9') || character === '_' || character === '$' || character > '\u007f';
+  const pushToken = (kind, start, end) => { tokens.push(`${kind}\u0000${text.slice(start, end)}\u0000${firstToken || !lineBreakSinceToken ? 0 : 1}`); firstToken = false; lineBreakSinceToken = false; };
+  const readQuoted = (start, quote, backslashEscapes) => {
+    let position = start + 1;
+    for (;;) {
+      if (position >= text.length) throw new Error(`${file}: unterminated ${quote} quoted text starting at ${start}`);
+      const character = text[position];
+      if (backslashEscapes && character === '\\') { position += 2; continue; }
+      if (character === quote) {
+        if (text[position + 1] === quote) { position += 2; continue; }
+        return position + 1;
+      }
+      position++;
+    }
+  };
+  while (index < text.length) {
+    const character = text[index];
+    if (character === '\n' || character === '\r') { lineBreakSinceToken = true; index++; continue; }
+    if (isHorizontalWhitespace(character)) { index++; continue; }
+    if (character === '-' && text[index + 1] === '-') {
+      let end = index;
+      while (end < text.length && text[end] !== '\n' && text[end] !== '\r') end++;
+      comments.push({ pos: index, end, text: text.slice(index, end), multiLine: false });
+      index = end;
+      continue;
+    }
+    if (character === '/' && text[index + 1] === '*') {
+      const close = text.indexOf('*/', index + 2);
+      if (close < 0) throw new Error(`${file}: unterminated block comment starting at ${index}`);
+      const end = close + 2;
+      const commentText = text.slice(index, end);
+      if (containsLineBreak(commentText)) lineBreakSinceToken = true;
+      comments.push({ pos: index, end, text: commentText, multiLine: true });
+      index = end;
+      continue;
+    }
+    if ((character === 'E' || character === 'e') && text[index + 1] === "'" && !(index > 0 && isWordCharacter(text[index - 1]))) {
+      const end = readQuoted(index + 1, "'", true);
+      pushToken('string', index, end);
+      index = end;
+      continue;
+    }
+    if (character === "'" || character === '"' || character === '`') {
+      const end = readQuoted(index, character, false);
+      pushToken(character === "'" ? 'string' : 'identifier', index, end);
+      index = end;
+      continue;
+    }
+    if (character === '$') {
+      let tagEnd = index + 1;
+      while (tagEnd < text.length && isWordCharacter(text[tagEnd]) && text[tagEnd] !== '$') tagEnd++;
+      if (text[tagEnd] === '$' && !(tagEnd > index + 1 && text[index + 1] >= '0' && text[index + 1] <= '9')) {
+        const tag = text.slice(index, tagEnd + 1);
+        const close = text.indexOf(tag, tagEnd + 1);
+        if (close < 0) throw new Error(`${file}: unterminated dollar-quoted body ${tag} starting at ${index}`);
+        const end = close + tag.length;
+        pushToken('dollar-quoted', index, end);
+        index = end;
+        continue;
+      }
+    }
+    if (isWordCharacter(character)) {
+      let end = index + 1;
+      while (end < text.length && isWordCharacter(text[end])) end++;
+      pushToken('word', index, end);
+      index = end;
+      continue;
+    }
+    pushToken('punctuation', index, index + 1);
+    index++;
+  }
+  return { comments, tokens, treeShape: [], literals: tokens.filter(token => !token.startsWith('word') && !token.startsWith('punctuation')), shebang: null };
+}
+
+function needsSeparator(leftCharacter, rightCharacter) {
+  if ('([{'.includes(leftCharacter)) return false;
+  if (')]},;:.'.includes(rightCharacter)) return false;
+  return true;
+}
+
+// Deletes the given ranges, dropping lines they leave empty, the whitespace that
+// tied each comment to code, and blank lines the removal leaves behind.
+function removeRanges(text, ranges) {
+  if (ranges.length === 0) return text;
+  const deleted = new Uint8Array(text.length);
+  for (const range of ranges) {
+    for (let position = range.pos; position < range.end; position++) {
+      const character = text[position];
+      if (character !== '\n' && character !== '\r') deleted[position] = 1;
+    }
+  }
+  const lines = [];
+  for (let start = 0; start <= text.length;) {
+    let end = start;
+    while (end < text.length && text[end] !== '\n' && text[end] !== '\r') end++;
+    let terminatorEnd = end;
+    if (text[terminatorEnd] === '\r' && text[terminatorEnd + 1] === '\n') terminatorEnd += 2;
+    else if (terminatorEnd < text.length) terminatorEnd += 1;
+    lines.push({ start, end, terminator: text.slice(end, terminatorEnd) });
+    if (terminatorEnd >= text.length) break;
+    start = terminatorEnd;
+  }
+  const output = [];
+  const dropSites = new Set();
+  for (const line of lines) {
+    let touched = false;
+    for (let position = line.start; position < line.end; position++) if (deleted[position]) { touched = true; break; }
+    if (!touched) { output.push({ body: text.slice(line.start, line.end), terminator: line.terminator }); continue; }
+    let body = '';
+    let trimNextLeading = false;
+    let position = line.start;
+    while (position < line.end) {
+      if (!deleted[position]) {
+        let next = position;
+        while (next < line.end && !deleted[next]) next++;
+        let piece = text.slice(position, next);
+        if (trimNextLeading) { piece = trimLeadingHorizontal(piece); trimNextLeading = false; }
+        body += piece;
+        position = next;
+        continue;
+      }
+      let afterRun = position;
+      while (afterRun < line.end && deleted[afterRun]) afterRun++;
+      let rightEnd = afterRun;
+      while (rightEnd < line.end && !deleted[rightEnd]) rightEnd++;
+      const right = text.slice(afterRun, rightEnd);
+      if (isBlank(body)) {
+        if (position === line.start) {
+          let indentEnd = line.start;
+          while (indentEnd < line.end && isHorizontalWhitespace(text[indentEnd])) indentEnd++;
+          body = text.slice(line.start, indentEnd);
+        }
+        trimNextLeading = true;
+      } else if (isBlank(right) && rightEnd === line.end) {
+        body = trimTrailingHorizontal(body);
+        trimNextLeading = true;
+      } else if (isHorizontalWhitespace(body[body.length - 1])) {
+        trimNextLeading = true;
+      } else if (!isHorizontalWhitespace(right[0]) && needsSeparator(body[body.length - 1], right[0])) {
+        body += ' ';
+      }
+      position = afterRun;
+    }
+    if (isBlank(body)) { dropSites.add(output.length); continue; }
+    output.push({ body, terminator: line.terminator });
+  }
+  const blankAt = index => index >= 0 && index < output.length && isBlank(output[index].body);
+  const sites = [...dropSites].sort((a, b) => b - a);
+  for (let site of sites) {
+    if (site > output.length) site = output.length;
+    if (site === 0) {
+      while (blankAt(0)) output.splice(0, 1);
+      continue;
+    }
+    if (site === output.length) {
+      let removed = false;
+      while (output.length > 0 && blankAt(output.length - 1)) { output.pop(); removed = true; }
+      if (removed && output.length > 0 && output[output.length - 1].terminator === '') output[output.length - 1].terminator = '\n';
+      continue;
+    }
+    const before = output[site - 1].body;
+    const opensBlock = before.length > 0 && '{(['.includes(trimTrailingHorizontal(before).slice(-1));
+    if (opensBlock || blankAt(site - 1)) {
+      while (blankAt(site)) output.splice(site, 1);
+    }
+    if (site < output.length) {
+      const after = trimLeadingHorizontal(output[site].body);
+      if (after.length > 0 && '}])'.includes(after[0])) {
+        while (blankAt(site - 1)) { output.splice(site - 1, 1); site--; }
+      }
+    }
+  }
+  return output.map(line => line.body + line.terminator).join('');
+}
+
+function analyze(typescript, entry, parsed) {
+  if (entry.language === 'sql') return analyzeSql(entry.file, entry.text);
+  return analyzeScript(typescript, entry.file, parsed.sourceFile, entry.text);
+}
+
+function compareAnalyses(file, before, after, beforeParsed, afterParsed) {
+  const problems = [];
+  if (before.tokens.length !== after.tokens.length) problems.push(`token count ${before.tokens.length} became ${after.tokens.length}`);
+  const limit = Math.min(before.tokens.length, after.tokens.length);
+  for (let index = 0; index < limit; index++) {
+    if (before.tokens[index] !== after.tokens[index]) { problems.push(`token ${index} differs: ${JSON.stringify(before.tokens[index])} became ${JSON.stringify(after.tokens[index])}`); break; }
+  }
+  if (before.treeShape.join(',') !== after.treeShape.join(',')) problems.push('syntax tree shape differs');
+  if (beforeParsed && afterParsed && beforeParsed.diagnostics.length !== afterParsed.diagnostics.length) problems.push(`syntactic diagnostics ${beforeParsed.diagnostics.length} became ${afterParsed.diagnostics.length}`);
+  if ((before.shebang ? 1 : 0) !== (after.shebang ? 1 : 0)) problems.push('shebang presence differs');
+  return problems.map(problem => `${file}: ${problem}`);
+}
+
+function processEntries(typescript, entries) {
+  const scriptEntries = entries.filter(entry => entry.language === 'script');
+  const parsedBefore = scriptEntries.length ? parseTexts(typescript, scriptEntries.map(entry => ({ key: entry.file, file: entry.file, text: entry.text }))) : new Map();
+  const results = [];
+  const generatedExclusions = [];
+  for (const entry of entries) {
+    const parsed = parsedBefore.get(entry.file);
+    const analysis = analyze(typescript, entry, parsed);
+    const kept = { shebang: analysis.shebang ? 1 : 0, directive: 0, license: 0 };
+    const keptComments = [];
+    const removed = [];
+    for (const comment of analysis.comments) {
+      const category = entry.language === 'sql' ? classifySqlComment(comment.text) : classifyScriptComment(comment.text);
+      if (category) { kept[category]++; keptComments.push({ category, text: comment.text.length > 200 ? `${comment.text.slice(0, 200)}...` : comment.text }); }
+      else removed.push(comment);
+    }
+    if (isGeneratedThirdPartyFile(entry.file, entry.text, kept.license)) {
+      generatedExclusions.push({ file: entry.file, reason: 'generated file carrying license notices' });
+      continue;
+    }
+    const newText = removeRanges(entry.text, removed);
+    results.push({ entry, parsed, analysis, kept, keptComments, removedCount: removed.length, newText });
+  }
+  const changed = results.filter(result => result.newText !== result.entry.text);
+  const changedScripts = changed.filter(result => result.entry.language === 'script');
+  const parsedAfter = changedScripts.length ? parseTexts(typescript, changedScripts.map(result => ({ key: result.entry.file, file: result.entry.file, text: result.newText }))) : new Map();
+  const problems = [];
+  for (const result of changed) {
+    const afterEntry = { ...result.entry, text: result.newText };
+    const afterParsed = parsedAfter.get(result.entry.file);
+    const afterAnalysis = analyze(typescript, afterEntry, afterParsed);
+    problems.push(...compareAnalyses(result.entry.file, result.analysis, afterAnalysis, result.parsed, afterParsed));
+    const remaining = afterAnalysis.comments.filter(comment => !(result.entry.language === 'sql' ? classifySqlComment(comment.text) : classifyScriptComment(comment.text)));
+    if (remaining.length) problems.push(`${result.entry.file}: ${remaining.length} removable comments remain after removal`);
+    result.literalsUnchanged = result.analysis.literals.length === afterAnalysis.literals.length && result.analysis.literals.every((literal, index) => (literal.text ?? literal) === (afterAnalysis.literals[index].text ?? afterAnalysis.literals[index]));
+    if (!result.literalsUnchanged) problems.push(`${result.entry.file}: a literal changed`);
+    result.tokenCount = result.analysis.tokens.length;
+  }
+  return { results, changed, problems, generatedExclusions };
+}
+
+function summarize(results, changed) {
+  const keptTotals = { shebang: 0, directive: 0, license: 0 };
+  let removedTotal = 0;
+  for (const result of results) {
+    removedTotal += result.removedCount;
+    for (const category of Object.keys(keptTotals)) keptTotals[category] += result.kept[category];
+  }
+  return {
+    filesExamined: results.length,
+    filesChanged: changed.length,
+    commentsRemoved: removedTotal,
+    kept: keptTotals,
+    keptComments: results.filter(result => result.keptComments.length).map(result => ({ file: result.entry.file, comments: result.keptComments })),
+  };
+}
+
+async function main() {
+  const options = parseArguments(process.argv.slice(2));
+  const { targets, excluded } = selectTargets();
+  if (options.list) {
+    console.log(JSON.stringify({ targets: targets.map(target => target.file), excluded }, null, 2));
+    return;
+  }
+  const typescriptPackage = locateTypeScriptPackage(options.typescript);
+  const typescript = await loadTypeScript(typescriptPackage.directory);
+  let report;
+  if (options.verifyAgainst) {
+    const changedFiles = new Set(git('diff', '--name-only', '-z', options.verifyAgainst, '--').split('\0').filter(Boolean));
+    const entries = [];
+    for (const target of targets) {
+      if (!changedFiles.has(target.file)) continue;
+      entries.push({ ...target, text: git('show', `${options.verifyAgainst}:${target.file}`), current: readFileSync(path.join(repoRoot, target.file), 'utf8') });
+    }
+    const outOfScope = [...changedFiles].filter(file => file !== 'tools/release/strip-comments.mjs' && !targets.some(target => target.file === file));
+    const beforeEntries = entries.map(entry => ({ key: entry.file, file: entry.file, text: entry.text }));
+    const afterEntries = entries.map(entry => ({ key: entry.file, file: entry.file, text: entry.current }));
+    const scriptBefore = parseTexts(typescript, beforeEntries.filter((_, index) => entries[index].language === 'script'));
+    const scriptAfter = parseTexts(typescript, afterEntries.filter((_, index) => entries[index].language === 'script'));
+    const problems = [];
+    let tokensCompared = 0;
+    let literalsCompared = 0;
+    const perFile = [];
+    for (const entry of entries) {
+      const before = analyze(typescript, entry, scriptBefore.get(entry.file));
+      const after = analyze(typescript, { ...entry, text: entry.current }, scriptAfter.get(entry.file));
+      const fileProblems = compareAnalyses(entry.file, before, after, scriptBefore.get(entry.file), scriptAfter.get(entry.file));
+      const literalTexts = list => list.map(literal => literal.text ?? literal);
+      if (literalTexts(before.literals).join('\u0001') !== literalTexts(after.literals).join('\u0001')) fileProblems.push(`${entry.file}: literal text differs`);
+      problems.push(...fileProblems);
+      tokensCompared += before.tokens.length;
+      literalsCompared += before.literals.length;
+      perFile.push({ file: entry.file, tokens: before.tokens.length, literals: before.literals.length, commentsBefore: before.comments.length, commentsAfter: after.comments.length, identical: fileProblems.length === 0 });
+    }
+    const structure = perFile.find(row => row.file === 'src/card/rules/structure.ts');
+    report = {
+      mode: 'verify', against: options.verifyAgainst, typescript: typescriptPackage,
+      filesCompared: entries.length, filesIdentical: perFile.filter(row => row.identical).length,
+      tokensCompared, literalsCompared, outOfScopeChanges: outOfScope, problems, perFile,
+      structureTs: structure ?? 'not changed',
+    };
+    if (options.report) writeFileSync(options.report, JSON.stringify(report, null, 2) + '\n');
+    console.log(JSON.stringify({ ...report, perFile: undefined }, null, 2));
+    if (problems.length || outOfScope.length) process.exitCode = 1;
+    return;
+  }
+  const workRoot = options.root ? path.resolve(options.root) : repoRoot;
+  const entries = targets.filter(target => !options.root || existsSync(path.join(workRoot, target.file))).map(target => ({ ...target, text: readFileSync(path.join(workRoot, target.file), 'utf8') }));
+  const { results, changed, problems, generatedExclusions } = processEntries(typescript, entries);
+  excluded.push(...generatedExclusions);
+  const summary = summarize(results, changed);
+  report = {
+    mode: options.write ? 'write' : 'dry-run', typescript: typescriptPackage, excluded, ...summary, problems,
+    changedFiles: changed.map(result => ({ file: result.entry.file, removed: result.removedCount, kept: result.kept, tokens: result.tokenCount, literalsUnchanged: result.literalsUnchanged })),
+  };
+  if (options.report) writeFileSync(options.report, JSON.stringify(report, null, 2) + '\n');
+  console.log(JSON.stringify({ mode: report.mode, typescript: typescriptPackage, filesExamined: summary.filesExamined, filesChanged: summary.filesChanged, commentsRemoved: summary.commentsRemoved, kept: summary.kept, excluded: excluded.length, problems }, null, 2));
+  if (problems.length) { process.exitCode = 1; return; }
+  if (options.write) {
+    for (const result of changed) writeFileSync(path.join(workRoot, result.entry.file), result.newText);
+  }
+}
+
+main().catch(error => { console.error(error && error.stack ? error.stack : error); process.exitCode = 1; });

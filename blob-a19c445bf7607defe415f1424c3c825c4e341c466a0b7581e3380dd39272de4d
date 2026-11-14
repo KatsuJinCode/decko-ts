@@ -1,0 +1,337 @@
+{
+  "format": "decko-reference-expected-manifest/1",
+  "fixture": "synthetic-v2",
+  "fixture_digest": "30f722160261d06295e900eedc70e45bab728825ae3529a02deacc3036303945",
+  "oracle": {
+    "variant": "stock",
+    "patches": [],
+    "contract_sha256": "d80cf4d0a96d651a69460e2eb9a80df62243d2d5a8f6c2c64420a0abf459ed3d",
+    "contract": {
+      "format": "decko-reference-oracle-contract/1",
+      "summary": "What the reference oracle is: stock Ruby Decko at pinned versions, run one request at a time by a runner process instead of a web server. Every way the oracle's process differs from a stock, served deck is listed here with its class. The stock oracle has no entry of class \"patch\". An oracle that changes what Decko does is a patched variant: its expected outputs live in fixtures/<name>/expected-patched/<variant>/, never in expected/, and its manifest lists the patches.",
+      "basis": {
+        "decko": "0.20.0",
+        "card": "1.110.0",
+        "lockfile": "oracle/app/Gemfile.lock",
+        "gem_source_patches": []
+      },
+      "classes": {
+        "determinism": "pins a value that would otherwise vary between runs; no served-deck behaviour changes",
+        "configuration": "a value a deck operator sets in configuration; the fixture states it",
+        "request": "makes the runner process behave as one request served through Decko's controller",
+        "capture": "records an effect (mail) instead of sending it; what is recorded is what would be sent",
+        "platform": "a host-platform workaround with no effect on any recorded byte",
+        "fixture": "a fixture data choice, applied as an ordinary card write through Decko's own create path",
+        "patch": "changes what Decko does; only allowed in a patched variant"
+      },
+      "settings": [
+        {
+          "id": "frozen-clock",
+          "class": "determinism",
+          "where": "oracle/lib/harness_env.rb freeze_clock!",
+          "what": "Time.now and Date.today pinned to deck.json clock (ActiveSupport travel_to) for the whole process"
+        },
+        {
+          "id": "deck-origin",
+          "class": "configuration",
+          "where": "oracle/lib/harness_env.rb apply_environment!",
+          "what": "Cardio.config.deck_origin from deck.json environment.origin"
+        },
+        {
+          "id": "default-html-view",
+          "class": "configuration",
+          "where": "oracle/lib/harness_env.rb apply_environment!",
+          "what": "Cardio.config.default_html_view from deck.json environment.default_html_view"
+        },
+        {
+          "id": "inline-render-errors",
+          "class": "request",
+          "where": "oracle/lib/harness_env.rb apply_environment!; oracle/adapter.rb with_production_render",
+          "what": "Cardio.config.raise_all_rendering_errors = false and Rails.env reporting production while a render runs: a nested view error renders inline without debug detail, as on a served production deck"
+        },
+        {
+          "id": "no-recaptcha",
+          "class": "configuration",
+          "where": "oracle/lib/harness_env.rb apply_environment!",
+          "what": "recaptcha keys unset, so no save calls a verification endpoint"
+        },
+        {
+          "id": "local-file-storage",
+          "class": "configuration",
+          "where": "oracle/lib/harness_env.rb configure_files!; oracle/app/config/application.rb",
+          "what": "uploaded files on local disk under the session's files directory; no cloud buckets"
+        },
+        {
+          "id": "file-cache-per-session",
+          "class": "determinism",
+          "where": "oracle/app/config/application.rb",
+          "what": "the Rails cache store is a per-session directory, so sessions share no state"
+        },
+        {
+          "id": "assets-never-refreshed",
+          "class": "determinism",
+          "where": "oracle/adapter.rb",
+          "what": "Cardio.config.asset_refresh = :never: the deck build compiled the script and style outputs, and a render never rewrites them"
+        },
+        {
+          "id": "mail-captured",
+          "class": "capture",
+          "where": "oracle/lib/harness_env.rb apply_environment!; oracle/app/config/application.rb",
+          "what": "ActionMailer delivery_method :test with deliveries on: mail goes to the in-memory store the adapter reads, never to the network"
+        },
+        {
+          "id": "request-boundary",
+          "class": "request",
+          "where": "oracle/lib/harness_env.rb begin_request!",
+          "what": "before each operation: Card::Env.reset, Card::Cache.renew, mail store cleared, the actor signed in"
+        },
+        {
+          "id": "served-request-notifications",
+          "class": "request",
+          "where": "oracle/adapter.rb",
+          "what": "Card::Set::All::Notify.force_notifications = true: outside a controller Decko silences follower notifications (card-mod-follow set/all/notify.rb silence_notifications?); a served request does not"
+        },
+        {
+          "id": "windows-hard-links",
+          "class": "platform",
+          "where": "oracle/lib/harness_env.rb configure_files!",
+          "what": "on Windows only, File.symlink makes a hard link (symlinks need a privilege there); the public-link step's link kind reaches no recorded byte. Not applied on Linux or in Docker"
+        },
+        {
+          "id": "big-stack-thread",
+          "class": "platform",
+          "where": "oracle/lib/harness_env.rb on_big_stack",
+          "what": "with HARNESS_BIG_STACK=1 each operation runs on a thread with a large stack (compound-name resolution recurses past the main thread's fixed stack on Windows)"
+        }
+      ],
+      "fixture_corrections": [
+        {
+          "id": "email-stylesheet-type",
+          "class": "fixture",
+          "fixture": "synthetic-v1",
+          "where": "deck.json card \"email stylesheet\" (corpus/generate-deck.mjs)",
+          "what": "`decko setup` leaves the \"email stylesheet\" card RichText although the seed data declares SCSS, and every notification email then fails to render, so a fresh stock deck sends no follower mail. The fixture sets the declared type, as an administrator would, through Decko's own update path"
+        }
+      ],
+      "patches": []
+    }
+  },
+  "runs": {
+    "render": {
+      "started": "2026-11-03T17:39:44.628Z",
+      "finished": "2026-11-03T17:50:16.337Z",
+      "complete": true,
+      "selection": null,
+      "ops_total": 2581,
+      "ops_run": 2581,
+      "adapter": "decko-ruby",
+      "lane": null,
+      "adapter_checkout": {
+        "commit": "b703c503b81dbcc46c214a4ec61d07be89000829",
+        "dirty": true
+      },
+      "engine": {
+        "ready": true,
+        "protocol": 1,
+        "engine": "decko-ruby",
+        "version": {
+          "decko": "0.20.0",
+          "card": "1.110.0",
+          "ruby": "3.2.3",
+          "ruby_platform": "aarch64-linux-gnu",
+          "ruby_engine": "ruby"
+        }
+      },
+      "fixture_digest": "30f722160261d06295e900eedc70e45bab728825ae3529a02deacc3036303945",
+      "fixture_problems": [],
+      "ms_per_op": 242,
+      "session_writes": {}
+    },
+    "semantics": {
+      "started": "2026-11-03T17:50:16.361Z",
+      "finished": "2026-11-03T17:50:21.556Z",
+      "complete": true,
+      "selection": null,
+      "ops_total": 0,
+      "ops_run": 0,
+      "adapter": "decko-ruby",
+      "lane": null,
+      "adapter_checkout": {
+        "commit": "b703c503b81dbcc46c214a4ec61d07be89000829",
+        "dirty": true
+      },
+      "engine": {
+        "ready": true,
+        "protocol": 1,
+        "engine": "decko-ruby",
+        "version": {
+          "decko": "0.20.0",
+          "card": "1.110.0",
+          "ruby": "3.2.3",
+          "ruby_platform": "aarch64-linux-gnu",
+          "ruby_engine": "ruby"
+        }
+      },
+      "fixture_digest": "30f722160261d06295e900eedc70e45bab728825ae3529a02deacc3036303945",
+      "fixture_problems": [],
+      "ms_per_op": 0,
+      "session_writes": {}
+    },
+    "scenarios": {
+      "started": "2026-11-03T17:50:21.599Z",
+      "finished": "2026-11-03T17:50:26.781Z",
+      "complete": true,
+      "selection": null,
+      "ops_total": 0,
+      "ops_run": 0,
+      "adapter": "decko-ruby",
+      "lane": null,
+      "adapter_checkout": {
+        "commit": "b703c503b81dbcc46c214a4ec61d07be89000829",
+        "dirty": true
+      },
+      "engine": {
+        "ready": true,
+        "protocol": 1,
+        "engine": "decko-ruby",
+        "version": {
+          "decko": "0.20.0",
+          "card": "1.110.0",
+          "ruby": "3.2.3",
+          "ruby_platform": "aarch64-linux-gnu",
+          "ruby_engine": "ruby"
+        }
+      },
+      "fixture_digest": "30f722160261d06295e900eedc70e45bab728825ae3529a02deacc3036303945",
+      "fixture_problems": [],
+      "steps_total": 0,
+      "steps_run": 0,
+      "session_timings": [],
+      "scenario_workers": 0
+    }
+  },
+  "files": {
+    "render.jsonl": {
+      "sha256": "111d84997e324cd5e7a4898a9796e9e68b03bd20de64d34846f439a143681b8c",
+      "content_sha256": "111d84997e324cd5e7a4898a9796e9e68b03bd20de64d34846f439a143681b8c",
+      "bytes": 44797291
+    },
+    "run-meta.json": {
+      "sha256": "63ca16e53a8b3974ab8e812441c826263194dce4dcd6d6b849796e038f772cd6",
+      "content_sha256": "63ca16e53a8b3974ab8e812441c826263194dce4dcd6d6b849796e038f772cd6",
+      "bytes": 2751
+    },
+    "scenarios.jsonl": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "content_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "semantics.jsonl": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "content_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    }
+  },
+  "provenance": {
+    "captured": "Complete unfiltered stock Ruby 3.2.3 runs of the recorded kinds after the neutral email-template rename in deck JSON, SQLite card name/key and reference key, and render operation IDs/card names. Every result comes from the Ruby adapter; no port output supplies an expected answer.",
+    "scope": "Every fixture kind, complete and unfiltered.",
+    "source": {
+      "commit": "b703c503b81dbcc46c214a4ec61d07be89000829",
+      "dirty": true,
+      "dirty_paths": [
+        "tools/compat-report/graded-ops.json",
+        "tools/compat-report/graded-probes.json",
+        "tools/compat-report/mod-compat-report.json",
+        "tools/compat-report/mod-compat-report.md"
+      ],
+      "dirty_note": "Inherited generated reports only; the capture source and fixture inputs were committed before these runs. Full before/after inventories remain in raw metadata, whose digest is retained below.",
+      "full_metadata_sha256": "3028ae3fa2443353473cab82cc0c6474ced97b6a0be15e66d261fcb4f7968ad2",
+      "runner_execution_id": "b640353a-41b1-44b8-a7c3-9b5e410b4431",
+      "engine": {
+        "ready": true,
+        "protocol": 1,
+        "engine": "decko-ruby",
+        "version": {
+          "decko": "0.20.0",
+          "card": "1.110.0",
+          "ruby": "3.2.3",
+          "ruby_platform": "aarch64-linux-gnu",
+          "ruby_engine": "ruby"
+        }
+      }
+    },
+    "capture_fixture_digest": "a8e055c544a6c266e5bfffd12c95d2a2ffaa5031fca05e98c366d7208fc4dcff",
+    "final_fixture_digest": "30f722160261d06295e900eedc70e45bab728825ae3529a02deacc3036303945",
+    "repin": "Only the withheld expected file changed after capture; deck JSON, SQLite deck, files and operation lists are byte-identical to the captured inputs. The final digest includes that replaced withheld file. Run records are re-pinned to it, with the actual capture digest retained here.",
+    "storage": "Plain JSONL; no new compressed data is created. Superseded gzip members are replaced by their newly captured plain counterparts.",
+    "privacy": [
+      {
+        "id": "synthetic-v2/view:admin:*all+*script:asset_output_url",
+        "root_occurrences": 11,
+        "session_occurrences": 1,
+        "normalization_unchanged": true
+      }
+    ],
+    "privacy_note": "Only capture root and per-session directory strings inside N10 receiver dumps become CAPTURE_ROOT and HARNESS_SESSION_DIR. Each changed answer is asserted unchanged under the grader normalization. Other answer bytes are retained.",
+    "superseded_manifest_sha256": "b0aa5752a2525fb8418ff395f1d215167a1ecb2f81fb5edec42e342cbaaf8853",
+    "history": {
+      "captured": "Recaptured on 2026-11-03 on the project's VM (Linux aarch64) with the stock Ruby oracle under the canonical reference runtime Ruby 3.2.3, through the harness's own runner (reference-harness/runner/run.mjs) and the repository's ruby-linux oracle adapter (reference-harness/adapters/ruby-linux/adapter.json): one complete, unfiltered run of every kind over the committed synthetic-v2 inputs, the 2,573 public render operations and the 8 withheld ones in one render session, as the runner always runs them. It replaces the 2026-10-09 capture taken on Windows with Ruby 3.3.",
+      "environment": {
+        "machine": "the project's VM, Linux aarch64",
+        "ruby": "3.2.3 (2024-01-18 revision 52bb2ac0a6) [aarch64-linux-gnu]",
+        "ruby_platform": "aarch64-linux-gnu",
+        "ruby_engine": "ruby",
+        "decko": "0.20.0",
+        "card": "1.110.0",
+        "node": "v24.22.1",
+        "adapter": "reference-harness/adapters/ruby-linux/adapter.json",
+        "oracle_bundle": "The Linux oracle bundle installed for the synthetic-v1 Ruby 3.2.3 recapture (reference-harness/oracle/app copied to a work root, aarch64-linux added to the copy's lockfile, bundle installed there), the same bundle the synthetic-v2-mod-probes Ruby 3.2.3 recapture used; nothing was installed for this capture. ORACLE_LINUX_BUNDLE named that bundle.",
+        "source_commit": "1bae39324dc670bc277179b1bef665cee2e67720 (the VM tree's commit; its tree equals 0042c5cbb224c4172bccf30fb8ee0ca2af38823f outside the directories the VM tree leaves out)",
+        "source_dirty": false,
+        "runner_execution_id": "22664cd6-9a0d-4618-a883-c4daa6cf6a16",
+        "full_run_meta_sha256": "651fbdad0b83118861502df53ad88ed9e3e2279ada2fd32edcf20c09db818deb",
+        "run_meta_note": "The runner's run-meta.json also carries the candidate-only source inventory and adapter diagnostics; they are recorded here by the full file's hash and left out of the committed record, as for every other committed fixture."
+      },
+      "repin": {
+        "date": "2026-11-03",
+        "what": "The withheld set's recorded answers are part of the fixture identity (manifest.mjs digestOf), so recapturing them changes the fixture digest. The capture ran on the previous digest, whose inputs (deck, files, operation lists) are byte-identical to the new one; the fixture manifest, this directory's run-meta run records and this manifest were re-pinned to the new digest after the capture, as on 2026-10-13 and 2026-10-14.",
+        "previous_fixture_digest": "765466b82063ccb82bd5d2dd366d60de39520b28df8bbd921dbee3c7815c13f2"
+      },
+      "capture_paths": "Captured text is unchanged except in the withheld asset_output_url answer: Ruby 3.2.3's NoMethodError message prints the CardActionView receiver's instance variables, which carry the capture host's work root (11 times) and the runner's per-session temporary directory (once); they are replaced by the fixed placeholders CAPTURE_ROOT and HARNESS_SESSION_DIR. Both lie inside the receiver dump grading rule N10 masks, so the grade is unchanged.",
+      "variance_against_superseded": "Public answers: 579 byte-identical, 1,994 equal under the grader's normalisation (N1 slot ids, N3 class-token order and the other recorded forms), 0 different. Withheld answers: 3 equal after normalisation, 5 different, all in the NoMethodError message wording of Ruby 3.3 against Ruby 3.2.3 (edit_structure, preview_editor, closure, search_error, asset_output_url).",
+      "supersedes": {
+        "captured": "2026-10-09",
+        "ruby": "3.3 (x64-mingw-ucrt)",
+        "previous_files": {
+          "render.jsonl.gz": "50c4e8074b83a6603fa231fa64d20640aa9ccf2225f0be87562ce46c5906ccf2",
+          "run-meta.json": "976260fa9c192b7613786905d74687099c87d573c8e326488b3c30d9cf21eb06",
+          "scenarios.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "semantics.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "previous_withheld_files": {
+          "expected/render.jsonl.gz": "92efeef916d3ad9db4b78b0905cbb5919a608f837ae278752d17eabd2652a5db",
+          "ops/render.jsonl": "cac7265dd48d079e3685b7cedbfbc77da5767065b9cef3635d86929135304336",
+          "withheld.json": "891ead1a5efbdaf0509acde3de527e9b965c7962b335d9bf5743da190ed8a848"
+        }
+      },
+      "history": {
+        "repin": {
+          "date": "2026-10-13",
+          "what": "The fixture deck lost eight empty tables that another application running on the same engine had left in it (reference-harness/corpus/drop-private-app-tables-from-fixture-decks.mjs, which now drops every table stock Decko does not create); the fixture manifest, this directory's run-meta run records and this manifest were re-pinned to the new fixture digest without re-capture.",
+          "why": "The tables carried another application's schema, were empty, and sit outside the graded surface: render, semantics and scenario answers and every row delta are unchanged. The grade run recorded beside this manifest re-verifies the answers against the re-pinned fixture.",
+          "previous_fixture_digest": "138323ec925ab7f206a03cb6b2a139306ad4d9e328191d6cba585436edbe6841"
+        },
+        "withheld": {
+          "date": "2026-10-14",
+          "what": "Eight render operations, each a whole operation with its whole recorded answer, moved out of ops/render.jsonl and this directory's render.jsonl.gz into the fixture's withheld/ set (same shapes, lines byte-identical and in their original order). The fixture manifest, this directory's run-meta run records and this manifest were re-pinned to the new fixture digest without re-capture; the run records still describe the capture of the full 2,581-operation list.",
+          "why": "Their recorded answers are Decko's admin error view (card-mod-format set/all/html/error.rb), which shows the exception backtrace to an admin actor, so the recorded bytes carry the capturing machine's filesystem paths. Captured text is never rewritten. With the withheld set present the op list and the capture are the full ones and every answer is graded; without it the eight are reported NOT RUN.",
+          "previous_fixture_digest": "234d801c4f0f3accbc1ed2635f85c93fc45f3ed91265d49c77dbb8f69d5b0367",
+          "previous_files": {
+            "render.jsonl.gz": "33a45a244f2c2924f567941648b164c6e24456e7ffaa22327f9dda06cea0ce75",
+            "run-meta.json": "4e3a5698e990108cddf7cf81ce3db687a3acc54ac739ed000d730fc33538be8c"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,509 @@
+{
+  "source": "the external workspace 9a376c614 docs/reports/controlled-ruby-bunny-comparison-20261101/{actual-first-pair,actual-resumed-views}.json",
+  "requestHeaders": {
+    "Host": "edge.example",
+    "Accept": "text/html",
+    "User-Agent": "controlled-decko-comparison/1",
+    "X-Requested-With": "XMLHttpRequest",
+    "X-Forwarded-Proto": "https"
+  },
+  "cases": [
+    {
+      "path": "/Home?view=title",
+      "ruby": {
+        "status": 200,
+        "headers": [
+          [
+            "X-Frame-Options",
+            "SAMEORIGIN"
+          ],
+          [
+            "X-XSS-Protection",
+            "1; mode=block"
+          ],
+          [
+            "X-Content-Type-Options",
+            "nosniff"
+          ],
+          [
+            "X-Download-Options",
+            "noopen"
+          ],
+          [
+            "X-Permitted-Cross-Domain-Policies",
+            "none"
+          ],
+          [
+            "Referrer-Policy",
+            "strict-origin-when-cross-origin"
+          ],
+          [
+            "Content-Type",
+            "text/html; charset=utf-8"
+          ],
+          [
+            "ETag",
+            "W/\"6e6386cf74efda689565d8e036894aab\""
+          ],
+          [
+            "Cache-Control",
+            "max-age=0, private, must-revalidate"
+          ],
+          [
+            "X-Request-Id",
+            "ef3c8c10-da66-4b96-a19b-8a578b3aec69"
+          ],
+          [
+            "X-Runtime",
+            "30.275743"
+          ],
+          [
+            "connection",
+            "close"
+          ],
+          [
+            "server",
+            "thin"
+          ]
+        ],
+        "bodyBytes": 49,
+        "bodyBase64": "PHNwYW4gY2xhc3M9ImNhcmQtdGl0bGUiIHRpdGxlPSJIb21lIj5Ib21lPC9zcGFuPg==",
+        "bodySHA256": "6e6386cf74efda689565d8e036894aab04a23d76681921367103c7692d401365"
+      },
+      "bunny": {
+        "status": 200,
+        "headers": [
+          [
+            "Date",
+            "Sun, 01 Nov 2026 06:55:53 GMT"
+          ],
+          [
+            "Content-Type",
+            "text/html; charset=utf-8"
+          ],
+          [
+            "Transfer-Encoding",
+            "chunked"
+          ],
+          [
+            "Connection",
+            "keep-alive"
+          ],
+          [
+            "Vary",
+            "Accept-Encoding"
+          ],
+          [
+            "Server",
+            "BunnyCDN-IL1-1346"
+          ],
+          [
+            "CDN-PullZone",
+            "6805030"
+          ],
+          [
+            "CDN-RequestCountryCode",
+            "US"
+          ],
+          [
+            "Cache-Control",
+            "no-cache"
+          ],
+          [
+            "Referrer-Policy",
+            "strict-origin-when-cross-origin"
+          ],
+          [
+            "Server-Timing",
+            "auth;dur=0, seat;dur=83, db;dur=2923;stmt=44, render;dur=4311, total;dur=4921"
+          ],
+          [
+            "X-Content-Type-Options",
+            "nosniff"
+          ],
+          [
+            "x-decko-edge-cache",
+            "armed; cache=miss+stored; ttl=300"
+          ],
+          [
+            "x-download-options",
+            "noopen"
+          ],
+          [
+            "X-Frame-Options",
+            "SAMEORIGIN"
+          ],
+          [
+            "x-permitted-cross-domain-policies",
+            "none"
+          ],
+          [
+            "X-XSS-Protection",
+            "1; mode=block"
+          ],
+          [
+            "cdn-bess-version",
+            "1.40.31"
+          ],
+          [
+            "CDN-ProxyVer",
+            "1.71"
+          ],
+          [
+            "CDN-RequestPullSuccess",
+            "True"
+          ],
+          [
+            "CDN-RequestPullCode",
+            "200"
+          ],
+          [
+            "CDN-CachedAt",
+            "11/01/2026 06:55:53"
+          ],
+          [
+            "CDN-EdgeStorageId",
+            "718"
+          ],
+          [
+            "CDN-RequestId",
+            "07f75c6c1093e589347bf5f821ef6b01"
+          ],
+          [
+            "CDN-Cache",
+            "MISS"
+          ],
+          [
+            "CDN-Status",
+            "200"
+          ],
+          [
+            "CDN-RequestTime",
+            "0"
+          ]
+        ],
+        "bodyBytes": 50,
+        "bodyBase64": "PHNwYW4gY2xhc3M9ImNhcmQtdGl0bGUiIHRpdGxlPSJIb21lIj5Ib21lPC9zcGFuPgo=",
+        "bodySHA256": "500c458df219b7d5ac46b9a0738b04e12890aa6a63f6edb43a89b2e9b7deda49"
+      }
+    },
+    {
+      "path": "/RichText?view=title",
+      "ruby": {
+        "status": 200,
+        "headers": [
+          [
+            "X-Frame-Options",
+            "SAMEORIGIN"
+          ],
+          [
+            "X-XSS-Protection",
+            "1; mode=block"
+          ],
+          [
+            "X-Content-Type-Options",
+            "nosniff"
+          ],
+          [
+            "X-Download-Options",
+            "noopen"
+          ],
+          [
+            "X-Permitted-Cross-Domain-Policies",
+            "none"
+          ],
+          [
+            "Referrer-Policy",
+            "strict-origin-when-cross-origin"
+          ],
+          [
+            "Content-Type",
+            "text/html; charset=utf-8"
+          ],
+          [
+            "ETag",
+            "W/\"caf518a118f720f8f6becb730b372280\""
+          ],
+          [
+            "Cache-Control",
+            "max-age=0, private, must-revalidate"
+          ],
+          [
+            "X-Request-Id",
+            "a3ed203c-3fe4-47bd-b6d7-88e6a7129032"
+          ],
+          [
+            "X-Runtime",
+            "1.014399"
+          ],
+          [
+            "connection",
+            "close"
+          ],
+          [
+            "server",
+            "thin"
+          ]
+        ],
+        "bodyBytes": 57,
+        "bodyBase64": "PHNwYW4gY2xhc3M9ImNhcmQtdGl0bGUiIHRpdGxlPSJSaWNoVGV4dCI+UmljaFRleHQ8L3NwYW4+",
+        "bodySHA256": "caf518a118f720f8f6becb730b372280f2b59f4871caf5e1adbeedda4a8a789d"
+      },
+      "bunny": {
+        "status": 400,
+        "headers": [
+          [
+            "Date",
+            "Sun, 01 Nov 2026 19:05:30 GMT"
+          ],
+          [
+            "Content-Length",
+            "0"
+          ],
+          [
+            "Connection",
+            "keep-alive"
+          ],
+          [
+            "Server",
+            "BunnyCDN-IL1-1348"
+          ],
+          [
+            "CDN-PullZone",
+            "6805030"
+          ],
+          [
+            "CDN-RequestCountryCode",
+            "US"
+          ],
+          [
+            "Cache-Control",
+            "no-cache"
+          ],
+          [
+            "cdn-bess-version",
+            "1.40.31"
+          ],
+          [
+            "CDN-ProxyVer",
+            "1.71"
+          ],
+          [
+            "CDN-RequestPullSuccess",
+            "True"
+          ],
+          [
+            "CDN-RequestPullCode",
+            "400"
+          ],
+          [
+            "CDN-CachedAt",
+            "11/01/2026 19:05:30"
+          ],
+          [
+            "CDN-EdgeStorageId",
+            "1346"
+          ],
+          [
+            "CDN-RequestId",
+            "5b31e6a04e3965584adb0d48a33c93bc"
+          ],
+          [
+            "CDN-Cache",
+            "MISS"
+          ],
+          [
+            "CDN-Status",
+            "400"
+          ],
+          [
+            "CDN-RequestTime",
+            "0"
+          ]
+        ],
+        "bodyBytes": 0,
+        "bodyBase64": "",
+        "bodySHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "path": "/Anyone?view=title",
+      "ruby": {
+        "status": 200,
+        "headers": [
+          [
+            "X-Frame-Options",
+            "SAMEORIGIN"
+          ],
+          [
+            "X-XSS-Protection",
+            "1; mode=block"
+          ],
+          [
+            "X-Content-Type-Options",
+            "nosniff"
+          ],
+          [
+            "X-Download-Options",
+            "noopen"
+          ],
+          [
+            "X-Permitted-Cross-Domain-Policies",
+            "none"
+          ],
+          [
+            "Referrer-Policy",
+            "strict-origin-when-cross-origin"
+          ],
+          [
+            "Content-Type",
+            "text/html; charset=utf-8"
+          ],
+          [
+            "ETag",
+            "W/\"2f235cee3ace7c3d278f7eddee0d130a\""
+          ],
+          [
+            "Cache-Control",
+            "max-age=0, private, must-revalidate"
+          ],
+          [
+            "X-Request-Id",
+            "19971304-ed38-4c01-9e94-b4295f77aa0b"
+          ],
+          [
+            "X-Runtime",
+            "0.033638"
+          ],
+          [
+            "connection",
+            "close"
+          ],
+          [
+            "server",
+            "thin"
+          ]
+        ],
+        "bodyBytes": 53,
+        "bodyBase64": "PHNwYW4gY2xhc3M9ImNhcmQtdGl0bGUiIHRpdGxlPSJBbnlvbmUiPkFueW9uZTwvc3Bhbj4=",
+        "bodySHA256": "2f235cee3ace7c3d278f7eddee0d130ae466fd0515e7379d48855170125ffcb0"
+      },
+      "bunny": {
+        "status": 200,
+        "headers": [
+          [
+            "Date",
+            "Sun, 01 Nov 2026 19:05:41 GMT"
+          ],
+          [
+            "Content-Type",
+            "text/html; charset=utf-8"
+          ],
+          [
+            "Transfer-Encoding",
+            "chunked"
+          ],
+          [
+            "Connection",
+            "keep-alive"
+          ],
+          [
+            "Vary",
+            "Accept-Encoding"
+          ],
+          [
+            "Server",
+            "BunnyCDN-IL1-1348"
+          ],
+          [
+            "CDN-PullZone",
+            "6805030"
+          ],
+          [
+            "CDN-RequestCountryCode",
+            "US"
+          ],
+          [
+            "Cache-Control",
+            "no-cache"
+          ],
+          [
+            "Referrer-Policy",
+            "strict-origin-when-cross-origin"
+          ],
+          [
+            "Server-Timing",
+            "auth;dur=0, seat;dur=19, db;dur=3039;stmt=44, render;dur=4099, total;dur=4686"
+          ],
+          [
+            "X-Content-Type-Options",
+            "nosniff"
+          ],
+          [
+            "x-decko-edge-cache",
+            "armed; cache=miss+stored; ttl=300"
+          ],
+          [
+            "x-download-options",
+            "noopen"
+          ],
+          [
+            "X-Frame-Options",
+            "SAMEORIGIN"
+          ],
+          [
+            "x-permitted-cross-domain-policies",
+            "none"
+          ],
+          [
+            "X-XSS-Protection",
+            "1; mode=block"
+          ],
+          [
+            "cdn-bess-version",
+            "1.40.31"
+          ],
+          [
+            "CDN-ProxyVer",
+            "1.71"
+          ],
+          [
+            "CDN-RequestPullSuccess",
+            "True"
+          ],
+          [
+            "CDN-RequestPullCode",
+            "200"
+          ],
+          [
+            "CDN-CachedAt",
+            "11/01/2026 19:05:41"
+          ],
+          [
+            "CDN-EdgeStorageId",
+            "1348"
+          ],
+          [
+            "CDN-RequestId",
+            "c29c2d376e394b98bcbf270e666cb229"
+          ],
+          [
+            "CDN-Cache",
+            "MISS"
+          ],
+          [
+            "CDN-Status",
+            "200"
+          ],
+          [
+            "CDN-RequestTime",
+            "0"
+          ]
+        ],
+        "bodyBytes": 54,
+        "bodyBase64": "PHNwYW4gY2xhc3M9ImNhcmQtdGl0bGUiIHRpdGxlPSJBbnlvbmUiPkFueW9uZTwvc3Bhbj4K",
+        "bodySHA256": "33619a8382cc545480abc4587a0a6ebc88b2944c0f84d0e03bf2095976d67cd3"
+      }
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "name": "live-override",
+  "description": "Host-override profile: attach the journeys to a RUNNING engine given by --base-url (or DECKO_LIVE_BASE) instead of booting one. Boots nothing, stages nothing, writes nothing by default (write mode defaults to read-only; scratch-allowlist mode needs an operator-approved prefix file). The proof target is always a LOCAL mock (reference-harness/browser/serve-local-mock-engine.mjs); see run-exhaustive.mjs's header for usage.",
+  "mode": "host-override",
+  "ready": "/"
+}

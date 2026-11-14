@@ -1,0 +1,6 @@
+export class SourceExportPlatformError extends Error {}
+export function sourceExportPermissions(mode: string): number;
+export function sourceExportModeEvidence(platform?: string): string;
+export function writeWindowsSourceExportFile(destination: string, bytes: Uint8Array | string, mode: string, filesystem?: typeof import('node:fs')): { mode: string; bytes: number };
+export function writeLinuxSourceExportFile(destination: string, bytes: Uint8Array | string, mode: string, filesystem?: typeof import('node:fs')): { mode: string; bytes: number };
+export function writeSourceExportFile(destination: string, bytes: Uint8Array | string, mode: string, options?: {platform?: string; filesystem?: typeof import('node:fs')}): {mode: string; bytes: number};

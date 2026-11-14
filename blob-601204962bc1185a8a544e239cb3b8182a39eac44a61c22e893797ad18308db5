@@ -1,0 +1,228 @@
+// The card-mod-monkey mod loader test: the developer-introspection views of
+// card-mod-monkey-0.20.0 (set/all/debug.rb, set/all/event_viz.rb,
+// set/all/view_viz.rb) loaded through the loader, proved against a probe
+// deck and a probe mod whose registrations are known.
+//
+// Proof shape:
+//   WITHOUT the mod: :debug, :views_by_format and :views_by_name raise the
+//     unsupported-view error (the views are not on the live registry).
+//   WITH the mod: each view answers from the engine's own registries -
+//     views_by_name lists the views THIS card resolves (a self-set view only
+//     on its own card), views_by_format groups the class-level views by
+//     format class and all-set module (a self-set module never appears),
+//     the events tree lists the probe events per stage in the Ruby printer's
+//     layout, and :debug renders its four sections for an always-ok viewer
+//     and is denied to anyone else (perms: :always_ok?, debug.rb:2).
+//
+// The gem's own specs are the floor this suite keeps: debug_spec.rb (the
+// :debug view of card "A" rendered as the bot has a table),
+// view_viz_spec.rb (views_by_format is div.accordion > div.accordion-body >
+// ul.list-group > li.list-group-item) and event_viz_spec.rb (events(:update)
+// lists the card's update events, one per line).
+
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import {
+  bindModLoaderToEngine,
+  createRenderTestStorage,
+  seedCard,
+  type RenderTestStorage,
+} from "../render/render-test-storage.js";
+import { UnsupportedViewError } from "../../../src/card/render/format.js";
+import { RenderEngine } from "../../../src/card/render.js";
+import { FetchEngine } from "../../../src/card/fetch.js";
+import { DeckoName } from "../../../src/card/name.js";
+import { ModLoader, defineMod, modEngineHost } from "../../../src/card/mod-loader.js";
+import cardModMonkey, { DEVELOPER_CARDS, STAGE_SYMBOLS } from "../../../src/card/mod-loader/mods/card-mod-monkey.js";
+import { cardInSetModule } from "../../../src/card/set-modules/set-module-membership.js";
+
+/** A probe mod with known registrations: one all-set view, one self-set view
+ *  (only "Probe Target" is in that set), and events whose conditions the
+ *  tree must settle - an update event at :validate, an event ordered after
+ *  it, a create-only event, an event gated on a changed field and an event
+ *  scoped to another card's self set. */
+const probeMod = defineMod("card-mod-monkeyprobe", { group: "gem" }, ({ set }) => {
+  set("all/probe_everywhere", ({ format, event }) => {
+    format("html", ({ view }) => {
+      view("probe_all", () => "probe all");
+    });
+    event("probe_validate", "validate", { on: "update" });
+    event("probe_after", { after: "probe_validate" });
+    event("probe_create", "store", { on: "create" });
+    event("probe_on_save", "integrate", { on: "save" });
+    event("probe_changed", "validate", { on: "update", changed: "name" });
+  });
+  set("self/probe_target", ({ format, event }) => {
+    format("html", ({ view }) => {
+      view("probe_only", () => "probe only");
+    });
+    event("probe_target_only", "finalize", { on: "update" });
+  });
+});
+
+let storage: RenderTestStorage | undefined;
+let loader: ModLoader | undefined;
+
+beforeAll(async () => {
+  storage = await createRenderTestStorage();
+  const s = storage;
+  // the always-ok actor (read-rules.ts recognizes it by the decko_bot codename)
+  await seedCard(s, { id: 1, name: "Decko Bot", codename: "decko_bot" });
+  await seedCard(s, { id: 1001, name: "A", dbContent: "Alpha" });
+  // a self set module exists only for a codenamed card (set/self/<codename>.rb;
+  // set-keys-to-modules.ts rubySelfToken), so the probe target carries one
+  await seedCard(s, { id: 1002, name: "Probe Target", codename: "probe_target", dbContent: "target body" });
+}, 60_000);
+
+afterAll(() => {
+  loader?.reset();
+  storage?.close();
+});
+
+/** An engine whose viewer is the always-ok DeckoBot actor. The viewer's
+ *  always-ok verdict is settled in an engine's prepare phase, so the bot
+ *  renders on an engine of its own (as card-mod-help's :guide probe does). */
+async function botEngine(): Promise<RenderEngine> {
+  const s = storage!;
+  const engine = new RenderEngine(new FetchEngine(s.counting));
+  engine.viewer = { signedIn: true, actorId: 1 };
+  engine.pageSession = { signedIn: true, actorId: 1 };
+  engine.modLoader = loader;
+  await loader!.installInto(modEngineHost(engine, s.fetcher));
+  return engine;
+}
+
+/** The <li> items of the first list group in an html fragment. */
+function listItems(html: string): string[] {
+  return [...html.matchAll(/<li class="list-group-item">([^<]*)<\/li>/g)].map((m) => m[1]!);
+}
+
+/** The text of one events pane of the :debug view. */
+function eventsPane(html: string, action: string): string {
+  const match = html.match(new RegExp(`tab-pane-${action}(?: active)?"><pre>([\\s\\S]*?)</pre>`));
+  if (match === null) throw new Error(`no ${action} events pane in the debug view`);
+  return match[1]!;
+}
+
+function stageLines(stageBodies: Record<string, string> = {}): string {
+  return STAGE_SYMBOLS.map((stage) => `${stage}_stage\n${stageBodies[stage] ?? ""}`).join("");
+}
+
+describe("card-mod-monkey through the mod loader (A/B)", () => {
+  it("cardInSetModule places a card in its self set when its codename equals its key", async () => {
+    loader = new ModLoader([{ manifest: cardModMonkey }]);
+    await botEngine();
+    expect(cardInSetModule("self/probe_target", "ALL SELF-probe_target")).toBe(true);
+    loader.reset();
+  });
+
+  it("WITHOUT the mod: :debug, :views_by_format and :views_by_name are unsupported", async () => {
+    const s = storage!;
+    for (const view of ["debug", "views_by_format", "views_by_name"]) {
+      await expect(s.engine.render("A", view)).rejects.toThrow(UnsupportedViewError);
+    }
+  });
+
+  it("WITH the mod: views_by_name lists the views this card resolves, sorted, a self-set view only on its own card", async () => {
+    const s = storage!;
+    loader = new ModLoader([{ manifest: cardModMonkey }, { manifest: probeMod }]);
+    loader.load();
+    bindModLoaderToEngine(s, loader);
+    await loader.installInto(modEngineHost(s.engine, s.fetcher));
+
+    const onA = listItems(await s.engine.render("A", "views_by_name"));
+    const onTarget = listItems(await s.engine.render("Probe Target", "views_by_name"));
+    for (const view of ["debug", "views_by_format", "views_by_name", "probe_all", "core"]) {
+      expect(onA).toContain(view);
+      expect(onTarget).toContain(view);
+    }
+    expect(onTarget).toContain("probe_only");
+    expect(onA).not.toContain("probe_only");
+    expect(onA).toEqual([...onA].sort());
+    expect(onTarget.length).toBe(onA.length + 1);
+  });
+
+  it("WITH the mod: views_by_format is an accordion of format classes and all-set modules (view_viz_spec.rb shape)", async () => {
+    const s = storage!;
+    const html = await s.engine.render("Probe Target", "views_by_format");
+    expect(html).toMatch(/<div class="[^"]*accordion[^"]*">/);
+    expect(html).toMatch(/accordion-body[\s\S]*<ul class="list-group"><li class="list-group-item">/);
+    const titles = [...html.matchAll(/type='button'>\n([^\n]*)\n<\/button>/g)].map((m) => m[1]!);
+    expect(titles[0]).toBe("Format::HtmlFormat");
+    // the all-set format modules follow their class, the last-included first
+    expect(titles.indexOf("All::ProbeEverywhere::HtmlFormat")).toBeGreaterThan(0);
+    expect(titles.indexOf("All::ProbeEverywhere::HtmlFormat")).toBeLessThan(titles.indexOf("All::ViewViz::HtmlFormat"));
+    expect(titles.indexOf("All::ViewViz::HtmlFormat")).toBeLessThan(titles.indexOf("All::Debug::HtmlFormat"));
+    // a self-set module is mixed into the singleton, not the format class
+    expect(titles.some((t) => t.startsWith("Self::"))).toBe(false);
+    // the module's own views are its item's body
+    const viewViz = html.split("All::ViewViz::HtmlFormat\n")[1]!;
+    expect(listItems(viewViz).slice(0, 2)).toEqual(["views_by_format", "views_by_name"]);
+    expect(html).toContain(
+      `data-bs-target='#card-probe_target-${DeckoName.parse("All::ViewViz::HtmlFormat").key}-collapse-id'`,
+    );
+  });
+
+  it("WITH the mod: the events tree prints each stage, its applicable events and their after: dependants (event_viz.rb layout)", async () => {
+    const bot = await botEngine();
+    const html = await bot.render("A", "debug");
+    expect(eventsPane(html, "update")).toBe(
+      stageLines({
+        validate: "  ^  probe_validate\n    ^  probe_after\n",
+        integrate: "  ^  probe_on_save\n",
+      }),
+    );
+    expect(eventsPane(html, "create")).toBe(
+      stageLines({ store: "  ^  probe_create\n", integrate: "  ^  probe_on_save\n" }),
+    );
+    expect(eventsPane(html, "delete")).toBe(stageLines());
+    // the self-set event applies to its own card only
+    const target = await bot.render("Probe Target", "debug");
+    expect(eventsPane(target, "update")).toBe(
+      stageLines({
+        validate: "  ^  probe_validate\n    ^  probe_after\n",
+        finalize: "  ^  probe_target_only\n",
+        integrate: "  ^  probe_on_save\n",
+      }),
+    );
+  });
+
+  it("WITH the mod: :debug renders its four sections and the cache/DB table for an always-ok viewer (debug_spec.rb)", async () => {
+    const bot = await botEngine();
+    const html = await bot.render("A", "debug");
+    for (const title of ["Sets", "Views", "Events", "Cache/DB Comparison"]) {
+      expect(html).toContain(`<p><h3>${title}</h3>`);
+    }
+    expect(html).toContain(
+      `<table class="table"><thead><tr><th>Field</th>\n<th>Cache Val</th>\n<th>Database Val</th></tr></thead>\n<tbody><tr><td>name</td>\n<td>A</td>\n<td>A</td></tr>`,
+    );
+    expect(html).toContain(`<tr><td>content</td>\n<td>Alpha</td>\n<td>Alpha</td></tr>`);
+    expect(html).toMatch(/<tr><td>inspect<\/td>\n<td>#&lt;Card#1001\[[^\]]*\]\(A\)\{set_mods_loaded\}<\/td>/);
+    // Sets: the tab buttons, the all-modules list (most specific first) and
+    // the pattern breadcrumb (most general first, ending at the card's self set)
+    for (const tab of ["set modules", "all modules", "patterns", "by format", "by name", "create", "update", "delete"]) {
+      expect(html).toContain(`data-tab-name="${tab}"`);
+    }
+    const allModules = listItems(html.split('tab-pane-all modules"')[1]!);
+    expect(allModules).toContain("Card::Set::All::Debug");
+    expect(allModules).toContain("Card::Set::All::ProbeEverywhere");
+    expect(allModules).not.toContain("Card::Set::Self::ProbeTarget");
+    expect(html).toMatch(/<ol class="breadcrumb"><li class="breadcrumb-item"><a class="(known|wanted)-card" href="\/\*all">\*all<\/a><\/li>/);
+    expect(html).toMatch(/<li class="breadcrumb-item"><a class="(known|wanted)-card" href="\/A\+\*self">A\+\*self<\/a><\/li><\/ol>/);
+    const targetModules = listItems((await bot.render("Probe Target", "debug")).split('tab-pane-all modules"')[1]!);
+    expect(targetModules[0]).toBe("Card::Set::Self::ProbeTarget");
+  });
+
+  it("WITH the mod: :debug is denied to a viewer who is not always-ok (perms: :always_ok?)", async () => {
+    const s = storage!;
+    const html = await s.engine.render("A", "debug");
+    expect(html).not.toContain("<h3>Sets</h3>");
+    expect(html).not.toContain("Cache/DB Comparison");
+  });
+
+  it("ports the developer-cards transform as seed data", () => {
+    expect(DEVELOPER_CARDS[0]).toEqual({ name: "*debug", codename: "debug" });
+    expect(DEVELOPER_CARDS[1].content).toBe("[[Administrator]]");
+    expect(DEVELOPER_CARDS[1].name).toBe("*debug+*right+*read");
+  });
+});
+

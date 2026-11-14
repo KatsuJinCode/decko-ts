@@ -1,0 +1,48 @@
+import {expect,it,vi} from 'vitest';
+import {createRenderTestStorage,seedCard} from './render-test-storage.js';
+import {defaultDeckLoader} from '../../../src/card/mod-loader/default-mod-deck.js';
+import {setDefaultModLoader} from '../../../src/card/mod-loader.js';
+import {RenderFormat} from '../../../src/card/render/format.js';
+import {renderPageWithStatus} from '../../../src/card/render/page.js';
+import {recordAsMain} from '../../../src/card/name/environment.js';
+
+for(const [label,mark,missing] of [
+  ['live','~1001',false],['missing','~999999',true],
+  ['zero','~0',true],['numeric overflow','~'+'9'.repeat(400),true],
+] as const)it(`actual code-default layout splices prepared numeric body: ${label}`,async()=>{
+  const loader=defaultDeckLoader(),storage=await createRenderTestStorage();
+  const original=RenderFormat.prototype.mainNest;
+  const calls:{stack:string,body:string}[]=[];
+  const spy=vi.spyOn(RenderFormat.prototype,'mainNest').mockImplementation(function(this:RenderFormat,piece){
+    const body=original.call(this,piece);
+    if(piece.nest?.name==='_main')calls.push({stack:new Error().stack??'',body});
+    return body;
+  });
+  try{
+    const read={readRuleId:storage.bootstrapRule!,readRuleClass:'*all'};
+    for(const row of [
+      {id:2,name:'RichText',codename:'basic',typeId:5},
+      {id:5,name:'Cardtype',codename:'cardtype',typeId:5},
+      {id:8,name:'Anonymous',codename:'anonymous',typeId:2},
+      {id:200,name:'header',codename:'header',typeId:2},
+      {id:201,name:'footer',codename:'footer',typeId:2},
+      {id:202,name:'sidebar',codename:'sidebar',typeId:2},
+      {id:1001,name:'Prepared numeric original',typeId:2,dbContent:'PREPARED_NUMERIC_MAIN_BODY'},
+    ])await seedCard(storage,{...row,...read});
+    storage.engine.viewer={signedIn:false,actorId:8};
+    storage.engine.renderAbsentCards=true;
+    storage.fetcher.installNameEnvironment();
+    recordAsMain(undefined,mark);
+    const result=await renderPageWithStatus(storage.engine,mark);
+    const fallback=calls.filter(call=>call.stack.includes('codeDefaultLayoutInterior'));
+    expect(fallback.length).toBeGreaterThan(0);
+    // Preparation may render more than once. Judge the body actually sent.
+    const finalBody=fallback.at(-1)!.body;
+    expect(result.html).toContain(`<article>${finalBody}</article>`);
+    expect(result.status).toBe(missing?404:200);
+    if(missing){
+      expect(finalBody).toContain('not_found-view');
+      expect(result.html).not.toContain('PREPARED_NUMERIC_MAIN_BODY');
+    }else expect(finalBody).toContain('PREPARED_NUMERIC_MAIN_BODY');
+  }finally{spy.mockRestore();storage.close();loader.reset();setDefaultModLoader(undefined);}
+});

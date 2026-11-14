@@ -1,0 +1,44 @@
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { expect, it } from "vitest";
+import { runRubyOracleOnVm } from "../../tools/platform/ruby-oracle-vm.mjs";
+import { rubyOracleChildEnv } from "./ruby-oracle-child-env.mjs";
+
+it("rejects the retired host environment helper before any interpreter starts", () => {
+  const source = readFileSync(new URL("./ruby-oracle-child-env.mjs", import.meta.url), "utf8");
+  // Check source before calling: a regression must fail without starting Ruby.
+  expect(source).not.toMatch(/node:child_process|\b(?:spawn|exec)(?:File)?(?:Sync)?\s*\(|[A-Za-z]:[\\/]/);
+  expect(() => rubyOracleChildEnv()).toThrow(/DEC102 requires VM Ruby/);
+});
+
+it("delivers exact stdin bytes to real VM Ruby, including Unicode, NUL and CRLF", () => {
+  const input = " leading space\u0000\r\nUnicode: é 😀\ntrailing space ";
+  const result = runRubyOracleOnVm(["-e", "STDOUT.write(STDIN.read)"], { input });
+  expect(result.status, result.stderr).toBe(0);
+  expect(result.stdout).toBe(input);
+  expect(result.stdinSha256).toBe(createHash("sha256").update(input).digest("hex"));
+  expect(result.provenance.stdinSha256).toBe(result.stdinSha256);
+  expect(result.runtime).toContain("linux");
+}, 120_000);
+
+it("binds the stored tag fixture to its VM recapture, source probe and DEC102 runtime", () => {
+  const fixtureBytes = readFileSync(new URL("../card/mod-loader/fixtures/declared-tag-wrapper-native.json", import.meta.url));
+  const fixture = JSON.parse(fixtureBytes.toString("utf8"));
+  const receipt = JSON.parse(readFileSync(new URL("../card/mod-loader/fixtures/declared-tag-wrapper-native.vm-provenance.json", import.meta.url), "utf8"));
+  const digest = (bytes: string | Buffer) => createHash("sha256").update(bytes).digest("hex");
+  expect(digest(fixtureBytes)).toBe(receipt.fixtureSha256);
+  expect(digest(receipt.observation.stdout)).toBe(receipt.stdoutSha256);
+  expect(digest(receipt.observation.stderr)).toBe(receipt.stderrSha256);
+  expect(receipt.observation.runtime).toContain("ruby 3.2.3 ");
+  expect(receipt.observation.runtime).toContain("linux");
+  expect(fixture.runtime).toBe(receipt.observation.runtime);
+  expect(fixture.probeSha256).toBe(digest(readFileSync(new URL("../card/mod-loader/ruby-declared-tag-wrapper-probe.rb", import.meta.url))));
+  const sources = receipt.observation.provenance.sources as Array<{ relative: string; sha256: string }>;
+  expect(sources).toHaveLength(receipt.observation.sourceFiles);
+  expect(sources.find(source => source.relative === "tests/card/mod-loader/ruby-declared-tag-wrapper-probe.rb")?.sha256).toBe(fixture.probeSha256);
+  for (const [file, sha256] of Object.entries(fixture.sources)) {
+    expect(sources.find(source => source.relative === `gems/${file}`)?.sha256).toBe(sha256);
+  }
+  const { probeSha256, ...baseline } = fixture;
+  expect(baseline).toEqual(JSON.parse(receipt.observation.stdout).baseline);
+});

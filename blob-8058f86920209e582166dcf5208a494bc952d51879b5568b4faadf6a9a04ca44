@@ -1,0 +1,19 @@
+/** Preserve body and cleanup errors while independently retiring owned resources. */
+export async function runBrowserInstrument(run, stages) {
+  let primaryError, failed = false;
+  try { await run(); } catch (error) { failed = true; primaryError = error; }
+  const cleanupErrors = [];
+  for (const [stage, close] of stages) {
+    try { await close(); } catch (error) { cleanupErrors.push({stage, error}); }
+  }
+  if (cleanupErrors.length) {
+    const errors = [...(failed ? [primaryError] : []), ...cleanupErrors.map(item => item.error)];
+    const failure = new AggregateError(errors, 'Browser instrument failed: ' + [
+      ...(failed ? ['primary assertion or setup'] : []), ...cleanupErrors.map(item => item.stage),
+    ].join(', '), {cause: failed ? primaryError : errors[0]});
+    failure.primaryError = primaryError;
+    failure.cleanupErrors = cleanupErrors;
+    throw failure;
+  }
+  if (failed) throw primaryError;
+}

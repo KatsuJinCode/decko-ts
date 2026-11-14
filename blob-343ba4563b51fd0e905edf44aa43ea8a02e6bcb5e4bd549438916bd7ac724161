@@ -1,0 +1,57 @@
+import { createHash } from 'node:crypto';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+import { runRubyOracleOnVm } from '../../tools/platform/ruby-oracle-vm.mjs';
+import { vmConfig } from '../../reference-harness/browser/lib/vm-engines.mjs';
+
+const root = fileURLToPath(new URL('../..', import.meta.url));
+export function verifyEditSessionCapture(manifestPath, databasePath) {
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  const actual = createHash('sha256').update(readFileSync(databasePath)).digest('hex');
+  if (actual !== manifest.provenance?.database_sha256) throw Error('Ruby edit-session manifest/database mismatch');
+  if (!Number.isSafeInteger(manifest.db_baseline?.actor_id) || manifest.db_baseline.actor_id <= 0) {
+    throw Error('Ruby edit-session manifest has no recorded actor');
+  }
+  const firstSave = manifest.steps.find(step => step.step === 'step-04-save-rev2');
+  if (firstSave?.db_after?.card_acts[0]?.actor_id !== manifest.db_baseline.actor_id) {
+    throw Error('Ruby edit-session recorded actor does not match the first save');
+  }
+  return manifest;
+}
+
+export function buildEditSessionCapture(destination = path.join(root, 'tmp/edit-session-captures')) {
+  const script = path.join(root, 'tests/support/edit-session-capture.rb');
+  const files = [script, 'reference-harness/oracle/lib/harness_env.rb', 'reference-harness/oracle/lib/sqlite_regexp.rb'].map(file => path.resolve(root, file));
+  const remote = runRubyOracleOnVm([script, vmConfig().root], { files, roots: [root] });
+  const line = remote.stdout.split('\n').find(line => line.startsWith('EDIT_SESSION_RESULT='));
+  if (!line) throw Error('Ruby edit-session recorder returned no result');
+  const result = JSON.parse(line.slice('EDIT_SESSION_RESULT='.length));
+  if (result.manifest.provenance.capture_source_sha256 !== createHash('sha256').update(readFileSync(script)).digest('hex')) {
+    throw Error('Ruby edit-session capture source hash mismatch');
+  }
+  const bytes = Buffer.from(result.database_base64, 'base64');
+  const sha = createHash('sha256').update(bytes).digest('hex');
+  if (sha !== result.manifest.provenance.database_sha256) throw Error('Ruby edit-session database hash mismatch');
+  mkdirSync(destination, { recursive: true });
+  const database = path.join(destination, 'source.sqlite3');
+  writeFileSync(database, bytes);
+  const manifest = path.join(destination, 'manifest.json');
+  for (const step of result.manifest.steps) {
+    if (!/^[a-z0-9-]+$/.test(step.step)) throw Error('Invalid Ruby edit-session response name');
+    const body = Buffer.from(result.responses_base64[step.step], 'base64');
+    if (body.length !== step.response.bytes || createHash('sha256').update(body).digest('hex') !== step.response.sha256) {
+      throw Error('Ruby edit-session response hash mismatch: ' + step.step);
+    }
+    writeFileSync(path.join(destination, step.step + '.body'), body);
+  }
+  writeFileSync(manifest, JSON.stringify(result.manifest, null, 2) + '\n');
+  if (!readFileSync(database).equals(bytes)) throw Error('Ruby edit-session database write mismatch');
+  verifyEditSessionCapture(manifest, database);
+  return { database, manifest, sourceSha256: result.manifest.provenance.capture_source_sha256,
+    databaseSha256: sha, steps: result.manifest.steps.map(step => ({ step: step.step, ...step.response })) };
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  console.log(JSON.stringify(buildEditSessionCapture(process.argv[2]), null, 2));
+}

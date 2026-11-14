@@ -1,0 +1,27 @@
+// API adapter only: all SQL, WAL, backup and integrity work executes in the
+// existing VM's native node:sqlite engine. Recovery code remains unchanged.
+import { DatabaseSync, backup } from 'node:sqlite';
+import { statSync } from 'node:fs';
+
+const ordinaryRow = row => row === undefined ? undefined : Object.fromEntries(Object.entries(row));
+export default class NativeSqliteDatabase {
+  constructor(file, { readonly = false, fileMustExist = false } = {}) {
+    if (fileMustExist) statSync(file);
+    this.database = new DatabaseSync(file, { readOnly: readonly });
+  }
+  exec(sql) { return this.database.exec(sql); }
+  prepare(sql) {
+    const statement = this.database.prepare(sql);
+    return {
+      get: (...parameters) => ordinaryRow(statement.get(...parameters)),
+      all: (...parameters) => statement.all(...parameters).map(ordinaryRow),
+      run: (...parameters) => statement.run(...parameters),
+    };
+  }
+  pragma(sql, { simple = false } = {}) {
+    const rows = this.prepare(`PRAGMA ${sql}`).all();
+    return simple ? Object.values(rows[0] ?? {})[0] : rows;
+  }
+  backup(destination) { return backup(this.database, destination); }
+  close() { return this.database.close(); }
+}

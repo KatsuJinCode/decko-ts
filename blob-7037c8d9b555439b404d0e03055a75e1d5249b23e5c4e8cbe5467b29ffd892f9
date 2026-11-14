@@ -1,0 +1,69 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import {createHash} from 'node:crypto';
+import {treeDigest} from '../../reference-harness/browser/lib/journey-provenance.mjs';
+import {sourceProvenance} from '../../tools/dist/source-provenance.mjs';
+
+/** The real engine build is mandatory; this test never manufactures its receipt. */
+export function requireFreshnessBuild(root) {
+  const file = path.join(root, '.runtime/browser-build.json');
+  let bytes;
+  try { bytes = fs.readFileSync(file); }
+  catch (cause) {
+    throw new Error(`Staging freshness requires the real engine build receipt before host startup: ${file}`, {cause});
+  }
+  const receipt = JSON.parse(bytes);
+  assert.ok(['tsconfig.dist.json', 'tsconfig.browser-hosts.json'].includes(receipt.config), 'Receipt must name the repository engine build');
+  assert.match(receipt.sourceCommit, /^[a-f0-9]{40}$/);
+  assert.match(receipt.sourceDiffSha256, /^[a-f0-9]{64}$/);
+  assert.match(receipt.distSha256, /^[a-f0-9]{64}$/);
+  const source = sourceProvenance(root);
+  assert.equal(receipt.sourceCommit, source.sourceCommit, 'Build receipt must match the current source commit');
+  assert.equal(receipt.sourceDiffSha256, source.sourceDiffSha256, 'Build receipt must match the current source diff');
+  assert.equal(treeDigest(path.join(root, 'dist')), receipt.distSha256, 'Actual engine distribution must match its build receipt');
+  return {receipt, receiptSha256: createHash('sha256').update(bytes).digest('hex')};
+}
+
+export function observeFreshnessHost(child) {
+  const observation = {closed: false};
+  observation.finished = new Promise(resolve => {
+    child.once('close', (code, signal) => {
+      Object.assign(observation, {closed: true, code, signal});
+      resolve();
+    });
+    child.once('error', error => { observation.error = error; resolve(); });
+  });
+  return observation;
+}
+
+export function requireFreshnessHostClosed(child, observation) {
+  if (child === undefined) return;
+  assert.ok(observation?.closed === true &&
+    (Number.isInteger(child.exitCode) || typeof child.signalCode === 'string'),
+  'Owned host close must be observed before scratch removal; unknown custody is retained');
+  assert.equal(observation.code, child.exitCode);
+  assert.equal(observation.signal, child.signalCode);
+}
+
+/** Every cleanup stage runs, including diagnostics, without replacing the body error. */
+export async function runFreshnessCaseWithCleanup(run, stages) {
+  let primaryError, failed = false;
+  try { await run(); }
+  catch (error) { primaryError = error; failed = true; }
+  const cleanupErrors = [];
+  for (const [stage, cleanup] of stages) {
+    try { await cleanup(); }
+    catch (error) { cleanupErrors.push({stage, error}); }
+  }
+  if (cleanupErrors.length) {
+    const errors = [...(failed ? [primaryError] : []), ...cleanupErrors.map(item => item.error)];
+    const failure = new AggregateError(errors, 'Staging freshness failed: ' + [
+      ...(failed ? ['primary assertion or setup'] : []), ...cleanupErrors.map(item => item.stage),
+    ].join(', '), failed ? {cause: primaryError} : undefined);
+    failure.primaryError = primaryError;
+    failure.cleanupErrors = cleanupErrors;
+    throw failure;
+  }
+  if (failed) throw primaryError;
+}

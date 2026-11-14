@@ -1,0 +1,96 @@
+import {describe, expect, it} from "vitest";
+import {Miniflare, convertV4MiniflareOptions} from "miniflare";
+import {LocalSqliteDriver} from "../../../src/server/drivers/local-sqlite.js";
+import {PostgresDriver} from "../../../src/server/drivers/postgres.js";
+import {CloudflareD1Adapter, type D1DatabaseLike} from "../../../src/server/drivers/d1.js";
+import type {SQLDatabaseDriver, SQLStatement} from "../../../src/server/driver.js";
+import type {CardsRow} from "../../../src/server/schema.js";
+import {readCompositionBatch, rowsMatchingPointIdentity} from "../../../src/card/render/wave-read-statements.js";
+import {CountingRenderDriver} from "./render-test-storage.js";
+import { freshPglite } from "../../support/fresh-pglite.js";
+
+const schema = 'CREATE TABLE cards(id INTEGER PRIMARY KEY,name TEXT,"key" TEXT UNIQUE,left_id INTEGER,right_id INTEGER,trash INTEGER NOT NULL DEFAULT 0)';
+const seed = `INSERT INTO cards(id,name,"key",left_id,right_id,trash) VALUES
+  (1,'Root','root',NULL,NULL,0),(2,'Field','field',NULL,NULL,0),(3,'Tail','tail',NULL,NULL,0),
+  (4,NULL,NULL,1,2,0),(5,NULL,NULL,1,2,0),(6,NULL,NULL,4,3,0),(7,NULL,NULL,5,3,0),
+  (8,'DRIFT','DRIFT',NULL,NULL,0),(9,NULL,NULL,8,2,0),(10,'Unrelated','unrelated',NULL,NULL,0)`;
+const selected = (id: number): SQLStatement => ({sql: 'SELECT * FROM cards WHERE id = ?', params: [id]});
+
+async function admitted(driver: SQLDatabaseDriver, statements: SQLStatement[]): Promise<CardsRow[]> {
+  const rows = (await readCompositionBatch(driver, statements)).flatMap(result => result.rows as CardsRow[]);
+  return rowsMatchingPointIdentity(driver, rows);
+}
+
+describe("composition identity evidence travels with the row read", () => {
+  for (const mode of ["sqlite", "postgres"] as const) {
+    it(`checks the complete side chain and lowest live pair without extra reads on ${mode}`, async () => {
+      const inner = mode === "sqlite" ? new LocalSqliteDriver({path: ":memory:"}) : new PostgresDriver({client: await freshPglite()});
+      try {
+        await inner.query(schema, []); await inner.query(seed, []);
+        const driver = new CountingRenderDriver(inner);
+        // A partial batch need not contain the lower duplicate or any side.
+        const result = await admitted(driver, [selected(4), selected(5), selected(6), selected(7)]);
+        expect(result.map(row => row.id)).toEqual([4, 6]);
+        expect(driver.snapshot()).toEqual({roundTrips: 1, statements: 4});
+        expect(Object.keys(result[0]).sort()).toEqual(["id", "key", "left_id", "name", "right_id", "trash"]);
+        // The evidence is request-local: a new read after a mutation sees
+        // the new point answer, with no retained positive or negative entry.
+        await inner.query("UPDATE cards SET trash = 1 WHERE id = 4", []);
+        driver.reset();
+        expect((await admitted(driver, [selected(5), selected(7)])).map(row => row.id)).toEqual([5, 7]);
+        expect(driver.snapshot()).toEqual({roundTrips: 1, statements: 2});
+        await inner.query("UPDATE cards SET trash = 1 WHERE id = 2", []);
+        expect(await admitted(driver, [selected(5)])).toEqual([]);
+      } finally { await inner.close(); }
+    });
+  }
+
+  it("runs the nested recursive statement on an isolated local D1 binding", async () => {
+    const mf = new Miniflare(convertV4MiniflareOptions({modules: true,
+      script: 'export default {fetch(){return new Response("ok")}}', d1Databases: {DB: "composition-proof"}}));
+    try {
+      const inner = new CloudflareD1Adapter(await mf.getD1Database("DB") as unknown as D1DatabaseLike);
+      await inner.query(schema, []); await inner.query(seed, []);
+      const driver = new CountingRenderDriver(inner);
+      const nested = {sql: "WITH requested AS (SELECT ? AS id) SELECT cards.* FROM cards JOIN requested ON requested.id=cards.id", params: [6]};
+      expect((await admitted(driver, [nested])).map(row => row.id)).toEqual([6]);
+      expect(driver.snapshot()).toEqual({roundTrips: 1, statements: 1});
+    } finally { await mf.dispose(); }
+  }, 30_000);
+
+  it("retains independent validation for drifted names and untagged partial rows", async () => {
+    const driver = new LocalSqliteDriver({path: ":memory:"});
+    try {
+      await driver.query(schema, []); await driver.query(seed, []);
+      expect(await admitted(driver, [selected(9)])).toEqual([]);
+      const partial = (await driver.query<CardsRow>(selected(5).sql, [5])).rows;
+      expect(await rowsMatchingPointIdentity(driver, partial)).toEqual([]);
+      const drift = (await readCompositionBatch(driver, [selected(8)])).flatMap(result => result.rows as CardsRow[]);
+      expect(await rowsMatchingPointIdentity(driver, drift)).toEqual([]);
+      expect((await rowsMatchingPointIdentity(driver, drift, {storedKeyFallback: true})).map(row => row.id)).toEqual([8]);
+    } finally { driver.close(); }
+  });
+
+  it("terminates a cyclic side closure and never exposes evidence as extra seats", async () => {
+    const driver = new LocalSqliteDriver({path: ":memory:"});
+    try {
+      await driver.query(schema, []); await driver.query(seed, []);
+      await driver.query("UPDATE cards SET left_id = 6 WHERE id = 4", []);
+      const rows = (await readCompositionBatch(driver, [selected(6)])).flatMap(result => result.rows as CardsRow[]);
+      expect(rows.map(row => row.id)).toEqual([6]);
+    } finally { driver.close(); }
+  });
+
+  it("propagates the original batch error without replay and reports incomplete output", async () => {
+    let calls = 0;
+    const failure = new Error("inert composition batch failure");
+    const driver: SQLDatabaseDriver = {
+      async query() { throw new Error("unexpected point read"); },
+      async batch() { calls++; throw failure; },
+    };
+    await expect(readCompositionBatch(driver, [selected(4)])).rejects.toBe(failure);
+    expect(calls).toBe(1);
+    await expect(readCompositionBatch({...driver, async batch() { return []; }}, [selected(4)]))
+      .rejects.toThrow("incomplete results");
+  });
+});

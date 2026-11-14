@@ -1,0 +1,609 @@
+// Sign-in + sessions on the Bunny edge — the round-trip PROOF.
+//
+// WHAT IS UNDER TEST
+//   The Bunny edge host adapter
+//   (deploy/bunny-worker-src/bunny-edge-signin-session-surface.ts) mounting
+//   the shared write surface (src/server/cloudflare-write-routes.ts) on the
+//   real BunnyDbDriver, so a sign-in on the edge mints a real auth_sessions
+//   row and hands back a real session cookie.
+//
+// WHY THIS IS NOT A MOCK-OF-A-MOCK
+//   Every layer between the HTTP request and the INSERT is the production
+//   one. Only the far end of the socket is substituted, and only for the
+//   offline test:
+//     Request  ->  readBunnyEdgeRequest (host adapter, real)
+//              ->  handleWorkersWriteSurface (shared, real)
+//              ->  handleWriteRequest / handleSigninUpdate (shared, real)
+//              ->  signinAccount / authenticateAccount (real)
+//              ->  SessionStore.createSession (real)
+//              ->  BunnyDbDriver.query  (REAL driver: Hrana v2 tagging,
+//                  one POST /v2/pipeline, affected_row_count decoding)
+//              ->  [offline] protocol-faithful mock Hrana server running a
+//                  REAL better-sqlite3 with the REAL cards DDL from
+//                  db/schema.sqlite.sql and the REAL auth_sessions DDL from
+//                  deploy/migrations/0005-auth-sessions.sql
+//   The adjacent .live.test.ts file swaps the mock for the real Bunny trial DB.
+//
+// DATA: synthetic. Credentials come from src/testing/generated-credentials.ts —
+// no real deck content, no real account.
+//
+// NOT PROVEN HERE, and why:
+//   - The Bunny EDGE SCRIPT runtime itself (workerd vs Bunny's isolate) is
+//     not exercised. What is proven is that the adapter's contract with the
+//     runtime — Web Request/Response, process.env, no D1 binding — holds,
+//     and that the seam it depends on is the real driver.
+//   - The real deploy is gated off by default; the live trial-DB test
+//     writes and deletes exactly one auth_sessions row and never touches an
+//     existing account.
+
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { createHash } from "node:crypto";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+
+import { BunnyDbDriver } from "../../src/card/drivers/bunny-db.js";
+import { FetchEngine } from "../../src/card/fetch.js";
+import { RenderEngine } from "../../src/card/render.js";
+import { SessionStore } from "../../src/card/auth/session-store.js";
+import { sha256Hex } from "../../src/card/auth/session-token.js";
+import { DeckoName } from "../../src/card/name.js";
+import {
+  generatedEmail,
+  generatedPassword,
+} from "../../src/testing/generated-credentials.js";
+import {
+  bunnyEdgeWriteArmed,
+  BUNNY_EDGE_SIGNIN_PATH,
+  mountBunnyEdgeWriteSurface,
+  type BunnyEdgeEnv,
+} from "../../deploy/bunny-worker-src/bunny-edge-signin-session-surface.js";
+import { startMockHranaServer, type MockHranaServer } from "../server/drivers/mock-hrana-server.js";
+
+const REPO_ROOT = path.resolve(import.meta.dirname, "..", "..");
+
+// The sign-in form's grammar (write-routes.ts:613-624): the two
+// subcard fields plus the Rails method-override and success fields. Posting
+// anything else would not reach the :signin branch at all.
+const SIGNIN_PATH = "/update/*signin";
+const TS = "2026-10-02 12:00:00.000";
+const SALT = "SALT";
+const HOLDER = { id: 9100, name: "Joe User" };
+const JUNCTION_ID = 9101;
+const IDS = { account: 9001, email: 9002, password: 9003, salt: 9004, status: 9005 } as const;
+const EMAIL = generatedEmail("bunny-edge-signin");
+const PASSWORD = generatedPassword("bunny-edge-signin");
+const DIGEST = createHash("sha1").update(`${SALT}--${PASSWORD}--`).digest("hex");
+
+/** Split a .sql file into single statements: strip `--` line comments (the
+ *  core schema puts them INSIDE its DDL, so they must go before SQLite sees
+ *  the text), then split on `;`, keeping a CREATE TRIGGER's `BEGIN ... END`
+ *  body (whose statements end in `;`) in one piece. No string literal in
+ *  either migration file contains a `;`, so this is exact for these two
+ *  files. */
+function sqlStatements(file: string): string[] {
+  const statements: string[] = [];
+  let pending = "";
+  for (const piece of readFileSync(path.join(REPO_ROOT, file), "utf8").replace(/--[^\n]*/g, "").split(";")) {
+    pending = pending === "" ? piece : `${pending};${piece}`;
+    const statement = pending.trim();
+    if (statement === "") {
+      pending = "";
+      continue;
+    }
+    if (/^CREATE\s+TRIGGER\b/i.test(statement) && !/\bEND$/i.test(statement)) continue;
+    statements.push(statement);
+    pending = "";
+  }
+  return statements;
+}
+
+/** Apply a migration file THROUGH the real driver. Doing the DDL over the
+ *  same Hrana wire the sign-in will use is deliberate: it proves the driver
+ *  can carry DDL, not just SELECT/INSERT the engine happens to issue. */
+async function applyMigration(driver: BunnyDbDriver, file: string): Promise<number> {
+  const statements = sqlStatements(file);
+  for (const sql of statements) await driver.query(sql, []);
+  return statements.length;
+}
+
+function insertCodenameCard(driver: BunnyDbDriver, id: number, codename: string, name: string) {
+  return driver.query(
+    `INSERT INTO cards
+       (id, name, key, codename, left_id, right_id, current_revision_id,
+        created_at, updated_at, creator_id, updater_id,
+        read_rule_class, read_rule_id, references_expired, trash, type_id, db_content)
+     VALUES (?, ?, ?, ?, NULL, NULL, NULL, ?, ?, 1, 1, NULL, NULL, NULL, 0, 1, NULL)`,
+    [id, name, DeckoName.parse(name).key, codename, TS, TS],
+  );
+}
+
+function insertCompoundCard(
+  driver: BunnyDbDriver,
+  id: number,
+  name: string,
+  leftId: number,
+  rightId: number,
+  content: string | null,
+) {
+  return driver.query(
+    `INSERT INTO cards
+       (id, name, key, codename, left_id, right_id, current_revision_id,
+        created_at, updated_at, creator_id, updater_id,
+        read_rule_class, read_rule_id, references_expired, trash, type_id, db_content)
+     VALUES (?, ?, ?, NULL, ?, ?, NULL, ?, ?, 1, 1, NULL, NULL, NULL, 0, 1, ?)`,
+    [id, name, DeckoName.parse(name).key, leftId, rightId, TS, TS, content],
+  );
+}
+
+/** The synthetic account substrate, shaped exactly as
+ *  tests/card/auth/signin.test.ts builds it: five codename cards, the
+ *  holder, its +*account junction, and the four field children (active,
+ *  salted, sha1-digested per Card::Auth.encrypt). */
+async function seedSyntheticAccount(driver: BunnyDbDriver): Promise<void> {
+  await insertCodenameCard(driver, IDS.account, "account", "*account");
+  await insertCodenameCard(driver, IDS.email, "email", "*email");
+  await insertCodenameCard(driver, IDS.password, "password", "*password");
+  await insertCodenameCard(driver, IDS.salt, "salt", "*salt");
+  await insertCodenameCard(driver, IDS.status, "status", "*status");
+  await insertCodenameCard(driver, HOLDER.id, "", HOLDER.name);
+  await insertCompoundCard(driver, JUNCTION_ID, `${HOLDER.name}+*account`, HOLDER.id, IDS.account, null);
+  await insertCompoundCard(driver, 9102, `${HOLDER.name}+*account+*email`, JUNCTION_ID, IDS.email, EMAIL);
+  await insertCompoundCard(
+    driver,
+    9103,
+    `${HOLDER.name}+*account+*password`,
+    JUNCTION_ID,
+    IDS.password,
+    DIGEST,
+  );
+  await insertCompoundCard(driver, 9104, `${HOLDER.name}+*account+*salt`, JUNCTION_ID, IDS.salt, SALT);
+  await insertCompoundCard(driver, 9105, `${HOLDER.name}+*account+*status`, JUNCTION_ID, IDS.status, "active");
+}
+
+/** The reference sign-in form, verbatim in shape. `extraHeaders` lets a test
+ *  add proxy evidence (x-forwarded-proto) on top of the form headers. */
+function signinFormRequest(
+  email: string,
+  password: string,
+  url: string,
+  extraHeaders: Record<string, string> = {},
+): Request {
+  const body = new URLSearchParams({
+    "_method": "patch",
+    "success[redirect]": "true",
+    "success[mark]": "*previous",
+    "card[subcards][+*email][content]": email,
+    "card[subcards][+*password][content]": password,
+  }).toString();
+  return new Request(url, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded", ...extraHeaders },
+    body,
+  });
+}
+
+/** The account card's save form: the +*password subcard under the
+ *  +*account junction, with the Rails method override and a success target,
+ *  as the account edit form posts it. `extraHeaders` carries the session
+ *  cookie the write rides. */
+function accountPasswordFormRequest(
+  password: string,
+  url: string,
+  extraHeaders: Record<string, string> = {},
+): Request {
+  const body = new URLSearchParams({
+    "_method": "patch",
+    "success[mark]": "_self",
+    "card[subcards][+*password][content]": password,
+  }).toString();
+  return new Request(url, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded", ...extraHeaders },
+    body,
+  });
+}
+
+function cookieToken(setCookie: string | null): string {
+  expect(setCookie, "sign-in must set a cookie").not.toBeNull();
+  const match = /^decko_ts_session=([^;]*)/.exec(setCookie ?? "");
+  expect(match, `no decko_ts_session in ${setCookie}`).not.toBeNull();
+  return match![1] as string;
+}
+
+describe("Bunny edge sign-in + sessions over the real BunnyDbDriver", () => {
+  let server: MockHranaServer;
+  let driver: BunnyDbDriver;
+  let fetcher: FetchEngine;
+  let render: RenderEngine;
+
+  const ARMED: BunnyEdgeEnv = { DECKO_WRITE_PATH: "1", DECKO_FIRST_RUN: "0" };
+
+  beforeAll(async () => {
+    server = await startMockHranaServer();
+    driver = new BunnyDbDriver({ url: server.url, authToken: "bunny-edge-signin-test" });
+    // The REAL cards DDL and the REAL auth_sessions DDL (migration 0005 —
+    // the same file the Bunny trial DB already has applied).
+    await applyMigration(driver, "db/schema.sqlite.sql");
+    await applyMigration(driver, "deploy/migrations/0005-auth-sessions.sql");
+    await seedSyntheticAccount(driver);
+    fetcher = new FetchEngine(driver);
+    render = new RenderEngine(fetcher);
+  });
+
+  afterAll(async () => {
+    await server.close();
+  });
+
+  it("migration 0005 created the real auth_sessions table on this driver", async () => {
+    const result = await driver.query<{ name: string }>(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'auth_sessions'",
+      [],
+    );
+    expect(result.rows.map((r) => r.name)).toEqual(["auth_sessions"]);
+  });
+
+  it("a sign-in POST on the edge 303s, sets a hardened session cookie, and writes ONE auth_sessions row carrying the digest", async () => {
+    const before = await driver.query<{ n: number }>("SELECT COUNT(*) AS n FROM auth_sessions", []);
+    const wireBefore = server.requests.length;
+
+    const response = await mountBunnyEdgeWriteSurface(
+      { fetcher, render, driver },
+      signinFormRequest(EMAIL, PASSWORD, `https://edge.example${SIGNIN_PATH}`),
+      ARMED,
+    );
+
+    expect(response).not.toBeNull();
+    expect(response!.status).toBe(303);
+    // *previous resolves to "/" (location_history.rb:6-9). cardUrl
+    // absolutizes it with the bridge-derived scheme (write-routes.ts:568,
+    // WriteRouteRequest.scheme): the request URL is https, so the 303
+    // points back at https. The pre-fix behavior answered http:// here — a
+    // scheme DOWNGRADE on an HTTPS-only edge, served on the same response
+    // that had already set the hardened Secure cookie.
+    expect(response!.headers.get("Location")).toBe("https://edge.example/");
+
+    // The cookie: HttpOnly + SameSite=Lax + Max-Age (write-routes.ts:223-228)
+    // and Secure, which the HOST adds on https (the Cloudflare host does the
+    // same at cloudflare-write-routes.ts:187-191; here on the Bunny edge).
+    const setCookie = response!.headers.get("set-cookie");
+    expect(setCookie).toMatch(/^decko_ts_session=[0-9a-f]{64};/);
+    expect(setCookie).toContain("HttpOnly");
+    expect(setCookie).toContain("SameSite=Lax");
+    expect(setCookie).toContain("Secure");
+    expect(setCookie).toContain("Max-Age=");
+
+    // Exactly one row, and it holds the sha256 DIGEST — never the raw token.
+    const after = await driver.query<{ n: number }>("SELECT COUNT(*) AS n FROM auth_sessions", []);
+    expect(Number(after.rows[0]?.n)).toBe(Number(before.rows[0]?.n) + 1);
+
+    const token = cookieToken(setCookie);
+    const rows = await driver.query<{ token_hash: string; account_card_id: number; expires_at: string }>(
+      "SELECT token_hash, account_card_id, expires_at FROM auth_sessions",
+      [],
+    );
+    expect(rows.rows).toHaveLength(1);
+    const row = rows.rows[0]!;
+    expect(row.token_hash).toBe(await sha256Hex(token));
+    expect(row.token_hash).not.toBe(token);
+    expect(Number(row.account_card_id)).toBe(HOLDER.id);
+
+    // And it really went over the Bunny wire (Hrana v2, /v2/pipeline), not
+    // through some side channel.
+    const wire = server.requests.slice(wireBefore);
+    expect(wire.length).toBeGreaterThan(0);
+    expect(wire.every((r) => r.url === "/v2/pipeline" && r.method === "POST")).toBe(true);
+    expect(wire.every((r) => r.headers["authorization"] === "Bearer bunny-edge-signin-test")).toBe(true);
+  });
+
+  it("an http URL carrying x-forwarded-proto: https — the edge-proxy shape — still answers an https Location", async () => {
+    // Bunny's TLS-terminating proxy may hand the script a request whose URL
+    // still reads http (module header :54-63) — the downgrade shape that
+    // motivated the fix. The bridge's TLS evidence is x-forwarded-proto
+    // here (arrivedOverTls), so BOTH the Location scheme and the Secure
+    // cookie must come out https from one decision.
+    const response = await mountBunnyEdgeWriteSurface(
+      { fetcher, render, driver },
+      signinFormRequest(EMAIL, PASSWORD, `http://edge.example${SIGNIN_PATH}`, {
+        "x-forwarded-proto": "https",
+      }),
+      ARMED,
+    );
+    expect(response!.status).toBe(303);
+    expect(response!.headers.get("Location")).toBe("https://edge.example/");
+    expect(response!.headers.get("set-cookie")).toContain("Secure");
+  });
+
+  it("a genuinely plain http request with no forwarded evidence answers http:// (the fallback — the staging host's shape)", async () => {
+    const response = await mountBunnyEdgeWriteSurface(
+      { fetcher, render, driver },
+      signinFormRequest(EMAIL, PASSWORD, `http://edge.example${SIGNIN_PATH}`),
+      ARMED,
+    );
+    expect(response!.status).toBe(303);
+    expect(response!.headers.get("Location")).toBe("http://edge.example/");
+    expect(response!.headers.get("set-cookie")).not.toContain("Secure");
+  });
+
+  it("the cookie resolves back to the signed-in actor through the same driver", async () => {
+    const sessions = new SessionStore({ driver });
+    const token = (
+      await driver.query<{ token_hash: string }>("SELECT token_hash FROM auth_sessions", [])
+    ).rows[0]!.token_hash;
+    // The raw token is not recoverable from the DB (that is the point), so
+    // resolve through a fresh sign-in to get a cookie value back.
+    const response = await mountBunnyEdgeWriteSurface(
+      { fetcher, render, driver },
+      signinFormRequest(EMAIL, PASSWORD, `https://edge.example${SIGNIN_PATH}`),
+      ARMED,
+    );
+    const fresh = cookieToken(response!.headers.get("set-cookie"));
+    const actor = await sessions.lookupSession(fresh);
+    expect(actor).toEqual({ id: HOLDER.id, name: HOLDER.name });
+    expect(await sha256Hex(fresh)).toBe(
+      (await driver.query<{ token_hash: string }>(
+        "SELECT token_hash FROM auth_sessions WHERE token_hash = ?",
+        [await sha256Hex(fresh)],
+      )).rows[0]!.token_hash,
+    );
+    expect(token).not.toBe(fresh);
+  });
+
+  it("a revoked token stops resolving (the DELETE rides the Bunny driver too)", async () => {
+    const response = await mountBunnyEdgeWriteSurface(
+      { fetcher, render, driver },
+      signinFormRequest(EMAIL, PASSWORD, `https://edge.example${SIGNIN_PATH}`),
+      ARMED,
+    );
+    const token = cookieToken(response!.headers.get("set-cookie"));
+    const sessions = new SessionStore({ driver });
+    expect(await sessions.lookupSession(token)).not.toBeNull();
+    expect(await sessions.revokeSession(token)).toBe(true);
+    expect(await sessions.lookupSession(token)).toBeNull();
+  });
+
+  it("the session that changes the account's password keeps working on the edge; the account's other session ends", async () => {
+    // The account card's save form, as Decko's account form posts it (the
+    // +*password subcard under the +*account junction), carried by the
+    // session a fresh sign-in mints. The other session for the same account
+    // is a second sign-in, so the check is over two REAL rows.
+    const first = await mountBunnyEdgeWriteSurface(
+      { fetcher, render, driver },
+      signinFormRequest(EMAIL, PASSWORD, `https://edge.example${SIGNIN_PATH}`),
+      ARMED,
+    );
+    const firstToken = cookieToken(first!.headers.get("set-cookie"));
+    const second = await mountBunnyEdgeWriteSurface(
+      { fetcher, render, driver },
+      signinFormRequest(EMAIL, PASSWORD, `https://edge.example${SIGNIN_PATH}`),
+      ARMED,
+    );
+    const secondToken = cookieToken(second!.headers.get("set-cookie"));
+    expect(secondToken).not.toBe(firstToken);
+    const sessions = new SessionStore({ driver });
+    expect(await sessions.lookupSession(firstToken)).toEqual({ id: HOLDER.id, name: HOLDER.name });
+
+    const newPassword = generatedPassword("bunny-edge-changed");
+    const saved = await updatePasswordThroughTheEdge(newPassword, firstToken);
+    expect(saved.ok, JSON.stringify(saved)).toBe(true);
+
+    // The session that made the change still resolves; the account's other
+    // session does not (docs/SECURITY.md divergence 4).
+    expect(await sessions.lookupSession(firstToken)).toEqual({ id: HOLDER.id, name: HOLDER.name });
+    expect(await sessions.lookupSession(secondToken)).toBeNull();
+
+    // The later tests sign in with the seeded password: put the seeded digest back.
+    await driver.query("UPDATE cards SET db_content = ? WHERE id = 9103", [DIGEST]);
+  });
+
+  /** The account card's +*password save through the edge surface. The
+   *  engine's own save path is what is under test, so the write rides the
+   *  UPDATE branch: the account card exists and carries a type, exactly as
+   *  a deck built by a setup does. Returns the engine's own result so a
+   *  refused save reports its own reason. */
+  async function updatePasswordThroughTheEdge(
+    password: string,
+    token: string,
+  ): Promise<{ ok: true } | { ok: false; reason: string }> {
+    // The save's type resolution (type-resolution.ts:391-407) walks the
+    // *all+*default rule card for the default type (card/type.rb:3-5); the
+    // synthetic substrate seeds none, so the rule and the type it names are
+    // added here — the same rows a deck's seed carries.
+    await insertCodenameCard(driver, 9006, "all", "*all");
+    await insertCodenameCard(driver, 9007, "default", "*default");
+    await insertCodenameCard(driver, 9008, "cardtype", "*cardtype");
+    // The holder is a User (type card codename "user"), so the account
+    // field override (read-override.ts ownAccountVerdict) lets the holder
+    // write their own +*account subcards: Ruby's own_account? (account_field.rb).
+    await insertCodenameCard(driver, 9011, "user", "User");
+    await driver.query("UPDATE cards SET type_id = 9011 WHERE id = ?", [HOLDER.id]);
+    await insertCompoundCard(driver, 9009, "*all+*default", 9006, 9007, null);
+    await driver.query("UPDATE cards SET type_id = 9008 WHERE id = 9009", []);
+    const response = await mountBunnyEdgeWriteSurface(
+      { fetcher, render, driver },
+      accountPasswordFormRequest(password, `https://edge.example/update/${HOLDER.name}+*account`, {
+        cookie: `decko_ts_session=${token}`,
+      }),
+      { ...ARMED, DECKO_ORIGIN_CHECK: "off" },
+    );
+    if (response === null) return { ok: false, reason: "no response" };
+    if (response.status >= 400) return { ok: false, reason: `status ${response.status}: ${(await response.clone().text()).slice(0, 300)}` };
+    return { ok: true };
+  }
+
+  it("a wrong password writes NO session row (the failure ladder short-circuits)", async () => {
+    const before = Number(
+      (await driver.query<{ n: number }>("SELECT COUNT(*) AS n FROM auth_sessions", [])).rows[0]?.n,
+    );
+    const response = await mountBunnyEdgeWriteSurface(
+      { fetcher, render, driver },
+      signinFormRequest(EMAIL, generatedPassword("wrong-one"), `https://edge.example${SIGNIN_PATH}`),
+      ARMED,
+    );
+    expect(response!.status).toBe(422);
+    expect(response!.headers.get("set-cookie")).toBeNull();
+    const after = Number(
+      (await driver.query<{ n: number }>("SELECT COUNT(*) AS n FROM auth_sessions", [])).rows[0]?.n,
+    );
+    expect(after).toBe(before);
+  });
+
+  it("the sign-in form is served on GET when armed", async () => {
+    const response = await mountBunnyEdgeWriteSurface(
+      { fetcher, render, driver },
+      new Request(`https://edge.example${BUNNY_EDGE_SIGNIN_PATH}`),
+      ARMED,
+    );
+    expect(response!.status).toBe(200);
+    const body = await response!.text();
+    expect(body).toContain(SIGNIN_PATH);
+    expect(body).toContain("card[subcards][+*email][content]");
+  });
+
+  it("UNARMED: the login action STILL dispatches (auth is not a card write); every other route keeps the null fall-through", async () => {
+    // REVISED: the original pin asserted null for EVERY verb while
+    // disarmed — the exact posture this change fixes: a trial edge with
+    // DECKO_WRITE_PATH="0" could not sign anyone in. Ruby decko never gates
+    // the login action behind a deploy flag (set/self/signin.rb:6
+    // "/update/:signin is the login action"; the :signin event aborts the
+    // save — no card/act rows, only an auth_sessions row). The disarm-time
+    // cost boundary moved WITH the behavior: the mount now spends its
+    // queries ONLY on the auth route; every other non-read verb still
+    // returns null with zero statements.
+    const unarmed: BunnyEdgeEnv = { DECKO_FIRST_RUN: "0" };
+    expect(bunnyEdgeWriteArmed(unarmed)).toBe(false);
+
+    // THE EXEMPTION: the login action answers on the unarmed edge.
+    const wireBefore = server.requests.length;
+    const post = await mountBunnyEdgeWriteSurface(
+      { fetcher, render, driver },
+      signinFormRequest(EMAIL, PASSWORD, `https://edge.example${SIGNIN_PATH}`),
+      unarmed,
+    );
+    expect(post).not.toBeNull();
+    expect(post!.status).toBe(303);
+    expect(post!.headers.get("set-cookie")).toContain("decko_ts_session=");
+    // and it really went over the wire (the driver was reached).
+    expect(server.requests.length).toBeGreaterThan(wireBefore);
+    // the minted row is real; revoke it through the (ungated) sign-out
+    // helper so the fixture's session census stays clean for the live arm.
+    const sessions = new SessionStore({ driver });
+    const token = cookieToken(post!.headers.get("set-cookie"));
+    expect(await sessions.lookupSession(token)).toEqual({ id: HOLDER.id, name: HOLDER.name });
+    await sessions.revokeSession(token);
+
+    // UNCHANGED: a card-create POST (bare single-segment mark) stays null.
+    const create = await mountBunnyEdgeWriteSurface(
+      { fetcher, render, driver },
+      new Request("https://edge.example/Injected", {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: "card[content]=x",
+      }),
+      unarmed,
+    );
+    expect(create).toBeNull();
+    // UNCHANGED: an update against a NON-signin mark stays null.
+    const update = await mountBunnyEdgeWriteSurface(
+      { fetcher, render, driver },
+      signinFormRequest(EMAIL, PASSWORD, "https://edge.example/update/Home"),
+      unarmed,
+    );
+    expect(update).toBeNull();
+    // UNCHANGED: the GET sign-in form page stays write-gated (the real form
+    // lives on the /*signin card page, an ordinary read-route render).
+    const get = await mountBunnyEdgeWriteSurface(
+      { fetcher, render, driver },
+      new Request(`https://edge.example${BUNNY_EDGE_SIGNIN_PATH}`),
+      unarmed,
+    );
+    expect(get).toBeNull();
+  });
+
+  it("UNARMED: a delete-spoof against *signin is NOT the login action and stays gated", async () => {
+    // _method=delete rewrites the verb (effectiveMethod): matchRoute answers
+    // verb=delete mark=*signin — a CARD DELETE route, never the login
+    // action. The carve must not widen to "any /update/*signin request".
+    const unarmed: BunnyEdgeEnv = { DECKO_FIRST_RUN: "0" };
+    const before = Number(
+      (await driver.query<{ n: number }>("SELECT COUNT(*) AS n FROM auth_sessions", [])).rows[0]?.n,
+    );
+    const response = await mountBunnyEdgeWriteSurface(
+      { fetcher, render, driver },
+      new Request("https://edge.example/update/*signin", {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: "_method=delete",
+      }),
+      unarmed,
+    );
+    expect(response).toBeNull();
+    const after = Number(
+      (await driver.query<{ n: number }>("SELECT COUNT(*) AS n FROM auth_sessions", [])).rows[0]?.n,
+    );
+    expect(after).toBe(before);
+  });
+
+  // Security settings (docs/SECURITY.md) come from this host's env bag on the
+  // sign-in-only arm too, not only when the write path is armed.
+  describe("UNARMED: the sign-in action honours the edge's security settings", () => {
+    const sessionCount = async (): Promise<number> =>
+      Number((await driver.query<{ n: number }>("SELECT COUNT(*) AS n FROM auth_sessions", [])).rows[0]?.n);
+    const storedPassword = async (): Promise<string> =>
+      String((await driver.query<{ db_content: string }>("SELECT db_content FROM cards WHERE id = 9103", [])).rows[0]?.db_content);
+
+    it("a cross-site sign-in POST is refused with 403 and mints no session", async () => {
+      const before = await sessionCount();
+      const response = await mountBunnyEdgeWriteSurface(
+        { fetcher, render, driver },
+        signinFormRequest(EMAIL, PASSWORD, `https://edge.example${SIGNIN_PATH}`, { origin: "https://attacker.example" }),
+        { DECKO_FIRST_RUN: "0" },
+      );
+      expect(response!.status).toBe(403);
+      expect(response!.headers.get("set-cookie")).toBeNull();
+      expect(await sessionCount()).toBe(before);
+    });
+
+    it("DECKO_ORIGIN_CHECK=off in the edge env lets it through", async () => {
+      const response = await mountBunnyEdgeWriteSurface(
+        { fetcher, render, driver },
+        signinFormRequest(EMAIL, PASSWORD, `https://edge.example${SIGNIN_PATH}`, { origin: "https://attacker.example" }),
+        { DECKO_FIRST_RUN: "0", DECKO_ORIGIN_CHECK: "off" },
+      );
+      expect(response!.status).toBe(303);
+      await new SessionStore({ driver }).revokeSession(cookieToken(response!.headers.get("set-cookie")));
+    });
+
+    it("DECKO_PASSWORD_HASH=legacy-sha1 in the edge env keeps Ruby's digest at sign-in", async () => {
+      await driver.query("UPDATE cards SET db_content = ? WHERE id = 9103", [DIGEST]);
+      const response = await mountBunnyEdgeWriteSurface(
+        { fetcher, render, driver },
+        signinFormRequest(EMAIL, PASSWORD, `https://edge.example${SIGNIN_PATH}`),
+        { DECKO_FIRST_RUN: "0", DECKO_PASSWORD_HASH: "legacy-sha1" },
+      );
+      expect(response!.status).toBe(303);
+      expect(await storedPassword()).toBe(DIGEST);
+      await new SessionStore({ driver }).revokeSession(cookieToken(response!.headers.get("set-cookie")));
+    });
+
+    it("by default the edge replaces the legacy digest with PBKDF2 at sign-in, and it still signs in", async () => {
+      await driver.query("UPDATE cards SET db_content = ? WHERE id = 9103", [DIGEST]);
+      const env = { DECKO_FIRST_RUN: "0", DECKO_PASSWORD_PBKDF2_ITERATIONS: "100000" };
+      const first = await mountBunnyEdgeWriteSurface(
+        { fetcher, render, driver },
+        signinFormRequest(EMAIL, PASSWORD, `https://edge.example${SIGNIN_PATH}`),
+        env,
+      );
+      expect(first!.status).toBe(303);
+      expect(await storedPassword()).toMatch(/^pbkdf2_sha256\$100000\$/);
+      const second = await mountBunnyEdgeWriteSurface(
+        { fetcher, render, driver },
+        signinFormRequest(EMAIL, PASSWORD, `https://edge.example${SIGNIN_PATH}`),
+        env,
+      );
+      expect(second!.status).toBe(303);
+      const sessions = new SessionStore({ driver });
+      await sessions.revokeSession(cookieToken(first!.headers.get("set-cookie")));
+      await sessions.revokeSession(cookieToken(second!.headers.get("set-cookie")));
+    });
+  });
+});

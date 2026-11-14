@@ -1,0 +1,38 @@
+import { DeckoName, type Cardish } from "../card/name.js";
+
+/** CardQuery::Run#alter_result: compact the outer tuple, then Card::Name
+ * flattens arrays and resolves integer identifiers through the deck lexicon.
+ * Nested nil is an empty name part; it is not removed by the outer compact. */
+export async function composeCqlResultName(
+  prepend: unknown,
+  name: DeckoName,
+  append: unknown,
+  lookupName: (id: number) => Promise<DeckoName | undefined>,
+): Promise<DeckoName> {
+  async function resolvePart(value: unknown): Promise<Cardish> {
+    if (value === null || typeof value === "string" || value instanceof DeckoName) return value;
+    if (Array.isArray(value)) {
+      const parts: Cardish[] = [];
+      for (const part of value) parts.push(await resolvePart(part));
+      return parts;
+    }
+    if (typeof value === "number" && Number.isInteger(value)) {
+      const resolved = await lookupName(value);
+      if (resolved !== undefined) return resolved;
+    }
+    // A JSON object remains a Ruby Hash, including one with a codename key;
+    // it must not be reinterpreted as the port's internal Symbol marker.
+    const rubyClass = typeof value === "boolean" ? (value ? "TrueClass" : "FalseClass")
+      : typeof value === "number" ? (Number.isInteger(value) ? "Integer" : "Float")
+        : value !== null && typeof value === "object" ? "Hash" : typeof value;
+    const error = new Error(`${rubyClass} not supported as name identifier`);
+    error.name = "ArgumentError";
+    throw error;
+  }
+
+  const parts: Cardish[] = [];
+  for (const value of [prepend, name, append]) {
+    if (value !== null && value !== undefined) parts.push(await resolvePart(value));
+  }
+  return DeckoName.compose(parts);
+}

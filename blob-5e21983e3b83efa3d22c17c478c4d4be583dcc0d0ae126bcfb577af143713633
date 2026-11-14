@@ -1,0 +1,103 @@
+{
+  "captures": {
+    "before-after-options.json": {
+      "after": {
+        "count": 34,
+        "formAction": "/update/D3_TypeChange_mvmvrzeu",
+        "value": "PlainText",
+        "values": [
+          "RichText",
+          "PlainText",
+          "Markdown",
+          "Phrase",
+          "HTML",
+          "Number",
+          "Toggle",
+          "Date",
+          "URI",
+          "File",
+          "Image",
+          "Book_mvmvrzeu",
+          "Brief",
+          "Memo",
+          "Note",
+          "Tag",
+          "Topic",
+          "List",
+          "Pointer",
+          "Search",
+          "Link list",
+          "Nest list",
+          "Notification template",
+          "Email template",
+          "Cardtype",
+          "User",
+          "Role",
+          "Layout",
+          "Skin",
+          "CSS",
+          "SCSS",
+          "JSON",
+          "JavaScript",
+          "CoffeeScript"
+        ]
+      },
+      "before": {
+        "count": 33,
+        "formAction": "/update/D3_TypeChange_mvmvrzeu",
+        "value": "PlainText",
+        "values": [
+          "RichText",
+          "PlainText",
+          "Markdown",
+          "Phrase",
+          "HTML",
+          "Number",
+          "Toggle",
+          "Date",
+          "URI",
+          "File",
+          "Image",
+          "Brief",
+          "Memo",
+          "Note",
+          "Tag",
+          "Topic",
+          "List",
+          "Pointer",
+          "Search",
+          "Link list",
+          "Nest list",
+          "Notification template",
+          "Email template",
+          "Cardtype",
+          "User",
+          "Role",
+          "Layout",
+          "Skin",
+          "CSS",
+          "SCSS",
+          "JSON",
+          "JavaScript",
+          "CoffeeScript"
+        ]
+      },
+      "book": "Book_mvmvrzeu",
+      "bookId": 912
+    },
+    "outcome.json": {
+      "book": "Book_mvmvrzeu",
+      "bookId": 912,
+      "chosen": {
+        "value": null
+      },
+      "post": {
+        "path": "/update/D3_TypeChange_mvmvrzeu",
+        "status": 200
+      },
+      "storedTypeId": 37
+    }
+  },
+  "leg": "ts",
+  "row": "type-select-refresh-after-create"
+}

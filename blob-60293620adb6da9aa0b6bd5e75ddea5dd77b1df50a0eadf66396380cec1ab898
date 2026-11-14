@@ -1,0 +1,104 @@
+// d1BindingOverWorkerFetch answers what Miniflare's own Node-side D1 proxy
+// answers: the same statements, run through both on two identical databases
+// of one Miniflare, give the same rows (byte values keeping their type), the
+// same meta, the same errors (name, message and cause text) and the same
+// atomic batch rollback.
+import { afterAll, beforeAll, expect, it } from "vitest";
+import { Miniflare, convertV4MiniflareOptions } from "miniflare";
+import type { D1DatabaseLike, D1ResultLike } from "../../src/server/drivers/d1.js";
+import { D1_STATEMENT_EXECUTOR_SCRIPT, d1BindingOverWorkerFetch } from "./d1-binding-over-worker-fetch.js";
+
+let mf: Miniflare | undefined;
+let viaFetch: D1DatabaseLike;
+let viaProxy: D1DatabaseLike;
+
+beforeAll(async () => {
+  mf = new Miniflare(
+    convertV4MiniflareOptions({
+      modules: true,
+      script: D1_STATEMENT_EXECUTOR_SCRIPT,
+      d1Databases: { FETCHED: "d1-over-fetch-fetched", PROXIED: "d1-over-fetch-proxied" },
+    }) as never,
+  );
+  viaFetch = d1BindingOverWorkerFetch(mf, "FETCHED");
+  viaProxy = (await mf.getD1Database("PROXIED")) as unknown as D1DatabaseLike;
+}, 120_000);
+
+afterAll(async () => {
+  await mf?.dispose();
+});
+
+/** Meta without the fields that measure time or name the serving process. */
+function comparable(result: D1ResultLike): D1ResultLike {
+  const meta = Object.fromEntries(
+    Object.entries(result.meta ?? {}).filter(([key]) => !/duration|timings|served_by/.test(key)),
+  );
+  return { ...result, meta: meta as D1ResultLike["meta"] };
+}
+
+async function both<T>(run: (db: D1DatabaseLike) => Promise<T>): Promise<[T, T]> {
+  return [await run(viaFetch), await run(viaProxy)];
+}
+
+async function failure(run: () => Promise<unknown>): Promise<{ name: string; message: string; cause: string }> {
+  try {
+    await run();
+  } catch (error) {
+    const e = error as Error;
+    return { name: e.name, message: e.message, cause: String((e as { cause?: unknown }).cause ?? "") };
+  }
+  throw new Error("expected the statement to fail");
+}
+
+it("returns the same rows, byte values and meta for batches and single queries", async () => {
+  const [created, createdProxy] = await both((db) =>
+    db.batch([
+      db.prepare("CREATE TABLE sample (id INTEGER PRIMARY KEY, label TEXT NOT NULL, amount REAL, payload BLOB, CHECK (amount IS NULL OR amount >= 0))"),
+    ]),
+  );
+  expect(created.map(comparable)).toEqual(createdProxy.map(comparable));
+
+  const [inserted, insertedProxy] = await both((db) =>
+    db.batch([
+      db.prepare("INSERT INTO sample (id, label, amount, payload) VALUES (?, ?, ?, ?)").bind(1, "bytes", 1.5, new Uint8Array([0, 1, 254, 255])),
+      db.prepare("INSERT INTO sample (id, label, amount, payload) VALUES (?, ?, ?, ?)").bind(2, "buffer", null, new Uint8Array([7, 8]).buffer),
+      db.prepare("INSERT INTO sample (label) VALUES (?)").bind("generated id"),
+      db.prepare("SELECT changes() AS changed"),
+    ]),
+  );
+  expect(inserted.map(comparable)).toEqual(insertedProxy.map(comparable));
+
+  const [rows, rowsProxy] = await both((db) => db.prepare("SELECT id, label, amount, payload, typeof(payload) AS kind FROM sample ORDER BY id").all());
+  expect(comparable(rows)).toEqual(comparable(rowsProxy));
+  expect(rows.results).toHaveLength(3);
+});
+
+it("rethrows D1 failures with the same name, message and cause, and rolls a failed batch back", async () => {
+  const constraint = await both((db) =>
+    failure(() => db.prepare("INSERT INTO sample (id, label) VALUES (?, ?)").bind(1, "duplicate id").all()),
+  );
+  expect(constraint[0]).toEqual(constraint[1]);
+  expect(`${constraint[0].message} ${constraint[0].cause}`).toMatch(/UNIQUE constraint failed/);
+
+  const check = await both((db) =>
+    failure(() => db.batch([db.prepare("INSERT INTO sample (label, amount) VALUES (?, ?)").bind("negative", -1)])),
+  );
+  expect(check[0]).toEqual(check[1]);
+  expect(`${check[0].message} ${check[0].cause}`).toMatch(/CHECK constraint failed/);
+
+  const missing = await both((db) => failure(() => db.prepare("SELECT * FROM no_such_table").all()));
+  expect(missing[0]).toEqual(missing[1]);
+
+  const rolledBack = await both(async (db) => {
+    const error = await failure(() =>
+      db.batch([
+        db.prepare("INSERT INTO sample (id, label) VALUES (?, ?)").bind(10, "first of a failing batch"),
+        db.prepare("INSERT INTO sample (id, label) VALUES (?, ?)").bind(1, "duplicate id"),
+      ]),
+    );
+    const count = await db.prepare("SELECT COUNT(*) AS n FROM sample WHERE id = 10").all();
+    return { error, count: count.results };
+  });
+  expect(rolledBack[0]).toEqual(rolledBack[1]);
+  expect(rolledBack[0].count).toEqual([{ n: 0 }]);
+});

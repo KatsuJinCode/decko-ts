@@ -1,0 +1,54 @@
+import { readFileSync, readdirSync, writeFileSync, openSync, fsyncSync, closeSync } from 'node:fs';
+import { createHash, randomUUID } from 'node:crypto';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+
+export function verifyTransferredComparisonResult(receipt, bytes) {
+  if (!Number.isSafeInteger(receipt.bytes) || receipt.bytes !== bytes.length || createHash('sha256').update(bytes).digest('hex') !== receipt.sha256) throw Error('Owned Ruby result transfer is incomplete or changed; retained remote evidence must not be replayed');
+  return JSON.parse(bytes.toString('utf8'));
+}
+
+export function qualifyLocalComparisonResult(receipt, file, io = { openSync, fsyncSync, closeSync, readFileSync }) {
+  const fd = io.openSync(file, 'r+');
+  try { io.fsyncSync(fd); } finally { io.closeSync(fd); }
+  return verifyTransferredComparisonResult(receipt, io.readFileSync(file));
+}
+
+// The caller supplies the existing project-owned transport and runtime paths.
+// These deployment identities never become defaults in portable engine code.
+export async function runRubyComparisonOnVm({ transportFile, runtime, repo, fixture, plan, output }) {
+  const { runVMCommandWithPrivateInputToFile, runVMCommandWithPrivateInput, quoteRemote, validateRemotePython } = await import(pathToFileURL(path.resolve(transportFile)).href);
+  const source = readFileSync(new URL('./ruby-comparison-linux.py', import.meta.url), 'utf8');
+  validateRemotePython(source);
+  const files = {};
+  const add = (name, file) => { files[name] = readFileSync(file).toString('base64'); };
+  for (const file of ['config.ru', 'config/application.rb', 'config/boot.rb', 'config/environment.rb', 'config/routes.rb', 'config/storage.yml']) add('app/' + file, path.join(repo, 'reference-harness/oracle/app', file));
+  add('deck.sqlite3', path.join(fixture, 'deck/deck.sqlite3'));
+  add('deck.json', path.join(fixture, 'deck.json'));
+  add('capture.rb', path.join(repo, 'tools/same-database/ruby-rack-capture.rb'));
+  for (const name of ['harness_env', 'sqlite_regexp']) add(name + '.rb', path.join(repo, 'reference-harness/oracle/lib', name + '.rb'));
+  function addTree(sourceRoot, relative = '') {
+    for (const entry of readdirSync(path.join(sourceRoot, relative), { withFileTypes: true })) {
+      const name = path.join(relative, entry.name);
+      if (entry.isSymbolicLink()) throw Error('Refuse aliased fixture file');
+      if (entry.isDirectory()) addTree(sourceRoot, name);
+      else add('files/' + name.split(path.sep).join('/'), path.join(sourceRoot, name));
+    }
+  }
+  addTree(path.join(fixture, 'deck/files'));
+  const runId = randomUUID();
+  const payload = { runId, files, runtime, plan, databaseSha256: plan.fixtureDatabaseSha256, cardTables: ['cards', 'card_acts', 'card_actions', 'card_changes', 'card_references', 'card_virtuals'] };
+  writeFileSync(output + '.request.json', JSON.stringify({ runId, planSha256: createHash('sha256').update(JSON.stringify(plan)).digest('hex') }, null, 2) + '\n', { flag: 'wx' });
+  runVMCommandWithPrivateInputToFile('python3 -c ' + quoteRemote(source), JSON.stringify(payload), output + '.control.json');
+  const receipt = JSON.parse(readFileSync(output + '.control.json', 'utf8'));
+  if (receipt.runId !== runId || !receipt.resultFile.endsWith('/decko-comparison-result-' + runId + '.json')) throw Error('Ruby result is not bound to this owned run');
+  const readProgram = 'import pathlib,sys; sys.stdout.buffer.write(pathlib.Path(sys.argv[1]).read_bytes())';
+  runVMCommandWithPrivateInputToFile('python3 -c ' + quoteRemote(readProgram) + ' ' + quoteRemote(receipt.resultFile), '', output);
+  // Do not retire the durable remote spool until the local copy is durable
+  // too. A local fsync/read/digest failure leaves that spool recoverable.
+  qualifyLocalComparisonResult(receipt, output);
+  const cleanupProgram = 'import hashlib,json,pathlib,sys\nr=json.load(sys.stdin)\np=pathlib.Path(r["resultFile"])\nb=p.read_bytes()\nassert len(b)==r["bytes"] and hashlib.sha256(b).hexdigest()==r["sha256"]\np.unlink()\nprint(json.dumps({"removed":not p.exists(),"sha256":r["sha256"]}))';
+  const cleanup = JSON.parse(runVMCommandWithPrivateInput('python3 -c ' + quoteRemote(cleanupProgram), JSON.stringify(receipt)));
+  writeFileSync(output + '.transport.json', JSON.stringify({ ...receipt, verifiedLocalCopy: true, cleanup }, null, 2) + '\n', { flag: 'wx' });
+  if (!cleanup.removed) throw Error('Owned Ruby result cleanup did not complete');
+}

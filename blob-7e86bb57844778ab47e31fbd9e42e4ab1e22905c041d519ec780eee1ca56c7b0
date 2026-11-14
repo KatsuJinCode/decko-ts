@@ -1,0 +1,42 @@
+import {expect,it} from 'vitest';
+import {mkdirSync,mkdtempSync,readFileSync,rmSync,writeFileSync} from 'node:fs';
+import {resolve} from 'node:path';
+import { runRubyRuleProbeOnVm } from "../support/ruby-source-probe-vm.js";
+import {LocalSqliteDriver} from '../../src/server/drivers/local-sqlite.js';
+import {FetchEngine} from '../../src/card/fetch.js';
+import {findRule} from '../../src/card/rules/lookup.js';
+import {ruleCacheStatement} from '../../src/card/rules/rule-cache.js';
+import {splitSqlStatements,createRenderTestStorage,seedCard} from '../card/render/render-test-storage.js';
+const observations:unknown[]=[];
+it('observes the original serving fixture default type and absent Setting registration',async()=>{
+ const s=await createRenderTestStorage();
+ try{
+  await seedCard(s,{id:1,name:'*all',codename:'all',typeId:2});
+  await seedCard(s,{id:2,name:'Set',codename:'set'});
+  await seedCard(s,{id:10000,name:'*autoname',codename:'autoname'});
+  await seedCard(s,{id:10001,leftId:1,rightId:10000,dbContent:'HttpAuto001'});
+  const rows=await s.counting.query('SELECT id,name,codename,type_id,left_id,right_id,db_content FROM cards WHERE id IN (1,2,10000,10001) OR codename=? ORDER BY id',['setting']);
+  observations.push({mode:'original-helper',rows:rows.rows});
+  expect(await s.fetcher.codenames.id('setting')).toBeUndefined();
+  expect(await findRule(s.fetcher,{name:'',isNew:true,typeId:14,typeName:'Basic'},'*autoname')).toBeUndefined();
+ }finally{s.close();mkdirSync(resolve('tmp'),{recursive:true});writeFileSync(resolve('tmp/serving-fixture-qualification.json'),JSON.stringify(observations,null,2));}
+});
+for(const mode of ['valid','wrong-setting','wrong-set'])it(`matches actual root and native cache qualification: ${mode}`,async()=>{
+ mkdirSync(resolve('tmp'),{recursive:true});const folder=mkdtempSync(resolve('tmp/serving-qualification-')),database=resolve(folder,'deck.sqlite3');
+ const driver=new LocalSqliteDriver({path:database});
+ try{
+  for(const sql of splitSqlStatements(readFileSync(resolve('db/schema.sqlite.sql'),'utf8')))await driver.query(sql,[]);
+  for(const [id,name,code,type]of [[1,'*all','all',mode==='wrong-set'?14:2],[2,'Set','set',0],[14,'Basic',null,0],[10000,'*autoname','autoname',mode==='wrong-setting'?14:10002],[10002,'Setting','setting',0],[10003,'User','user',0]] as const)
+   await driver.query("INSERT INTO cards(id,name,key,codename,type_id,db_content,created_at,updated_at,creator_id,updater_id,trash) VALUES(?,?,?,?,?,?,'2026-10-31 00:00:00','2026-10-31 00:00:00',1,1,0)",[id,name,name.toLowerCase(),code,type,'']);
+  await driver.query("INSERT INTO cards(id,left_id,right_id,type_id,db_content,created_at,updated_at,creator_id,updater_id,trash) VALUES(10001,1,10000,0,?,'2026-10-31 00:00:00','2026-10-31 00:00:00',1,1,0)",['HttpAuto001']);
+  const fetcher=new FetchEngine(driver);fetcher.installNameEnvironment();
+  const statement=ruleCacheStatement(2,10002),qualified=await driver.query(statement.sql,statement.params);
+  const found=(await findRule(fetcher,{name:'',isNew:true,typeId:14,typeName:'Basic'},'*autoname'))?.rule.dbContent??null;
+  const native=await runRubyRuleProbeOnVm(database,JSON.stringify({mode:'rule',keys:['14+type','all'],setting:'autoname'}));
+  expect(native.status,native.stderr).toBe(0);const reference=JSON.parse(native.stdout);
+  const rows=await driver.query('SELECT id,name,codename,type_id,left_id,right_id,db_content FROM cards ORDER BY id',[]);
+  observations.push({mode,statement,rows:rows.rows,qualified:qualified.rows,found,reference});
+  expect(qualified.rows.length).toBe(mode==='valid'?1:0);
+  expect(found).toBe(mode==='valid'?'HttpAuto001':null);expect(found).toBe(reference.result.value);
+ }finally{driver.close();rmSync(folder,{recursive:true});writeFileSync(resolve('tmp/serving-fixture-qualification.json'),JSON.stringify(observations,null,2));}
+});

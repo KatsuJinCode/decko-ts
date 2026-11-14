@@ -1,0 +1,9 @@
+{
+  "name": "decko-ruby-mysql",
+  "description": "Stock Ruby Decko on the explicit frozen Linux MySQL bundle; bridge synchronizes committed database writes before every response.",
+  "lane": "mysql",
+  "command": [
+    "node",
+    "../ruby-mysql/adapter.mjs"
+  ]
+}

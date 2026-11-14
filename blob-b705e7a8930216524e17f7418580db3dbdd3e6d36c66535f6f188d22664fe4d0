@@ -1,0 +1,27 @@
+// deploy/bunny-worker-src/bunny-edge-async-context.ts — gives the Bunny edge
+// runtime AsyncLocalStorage for per-request render state.
+//
+// The Bunny runtime (Deno-based) may expose node:async_hooks only through an
+// import, not as a global or through process.getBuiltinModule. This module
+// makes that one import, with a literal specifier, so the bundle verifier
+// (tools/vendor/bunny-runtime-imports.mjs) can read it as a node builtin. The
+// Cloudflare build never includes this file: its worker (no nodejs_compat)
+// keeps serializing renders as before.
+//
+// A load failure is tolerated, as it always was: renders keep serializing.
+
+import {
+  installAsyncLocalStorage,
+  type RequestContextStorageConstructor,
+} from "../../src/card/request-context.js";
+
+interface AsyncHooksModule {
+  AsyncLocalStorage?: RequestContextStorageConstructor;
+}
+
+import("node:async_hooks").then(
+  (asyncHooks: AsyncHooksModule) => {
+    if (typeof asyncHooks?.AsyncLocalStorage === "function") installAsyncLocalStorage(asyncHooks.AsyncLocalStorage);
+  },
+  () => undefined,
+);

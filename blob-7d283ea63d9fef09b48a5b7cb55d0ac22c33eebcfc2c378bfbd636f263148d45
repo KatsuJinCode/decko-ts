@@ -1,0 +1,61 @@
+import { createHash } from "node:crypto";
+import { copyFileSync, mkdirSync, readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+const fixture = path.join(repo, "tests/fixtures/public-oracle-v1");
+const hash = (file: string) => createHash("sha256").update(readFileSync(file)).digest("hex");
+
+/** Validate cached Ruby observations against both their bytes and source inputs.
+ * No result verdict is cached; each caller runs the real TS operations again. */
+export function publicOracleFixtures() {
+  const manifest = JSON.parse(readFileSync(path.join(fixture, "manifest.json"), "utf8")) as {
+    format: string;
+    sourceHashes: Record<string, string>;
+    runnerSha256: string;
+    files: Record<string, string>;
+    receipts: { status: number }[];
+  };
+  if (manifest.format !== "decko-public-ruby-oracle/1" || manifest.receipts.some(r => r.status !== 0)) {
+    throw new Error("PublicOracleCaptureInvalid");
+  }
+  if (hash(path.join(fixture, "capture-generator.py")) !== manifest.runnerSha256) {
+    throw new Error("PublicOracleGeneratorMismatch");
+  }
+  for (const [name, expected] of Object.entries(manifest.sourceHashes)) {
+    const file = name === "seed.sqlite3"
+      ? path.join(repo, "reference-harness/fixtures/synthetic-v1/deck/deck.sqlite3")
+      : path.join(repo, "tools/persistence", name);
+    if (hash(file) !== expected) throw new Error(`PublicOracleSourceMismatch: ${name}`);
+  }
+  for (const [name, expected] of Object.entries(manifest.files)) {
+    if (hash(path.join(fixture, name)) !== expected) throw new Error(`PublicOracleDataMismatch: ${name}`);
+  }
+  const trip = JSON.parse(readFileSync(path.join(fixture, "ts-trip-manifest.json"), "utf8")) as {
+    sourceHashes: Record<string, string>;
+    podSha256: string;
+    files: Record<string, string>;
+    receipts: { status: number }[];
+  };
+  for (const [name, expected] of Object.entries(trip.sourceHashes)) {
+    if (hash(path.join(repo, name)) !== expected) throw new Error(`PublicOracleTripSourceMismatch: ${name}`);
+  }
+  if (hash(path.join(fixture, "ruby-src.yml")) !== trip.podSha256 || trip.receipts.some(r => r.status !== 0)) {
+    throw new Error("PublicOracleTripCaptureInvalid");
+  }
+  for (const [name, expected] of Object.entries(trip.files)) {
+    if (hash(path.join(fixture, name)) !== expected) throw new Error(`PublicOracleTripDataMismatch: ${name}`);
+  }
+  return {
+    base: path.join(fixture, "base.sqlite3"),
+    src: path.join(fixture, "pods-src.sqlite3"),
+    leftover: path.join(fixture, "leftover"),
+    preparePods(dir: string) {
+      mkdirSync(dir, { recursive: true });
+      for (const name of ["ruby-src.yml", "ruby-to-ruby.yml", "ruby-to-ruby.eat.json", "ts-to-ruby.eat.json"]) {
+        copyFileSync(path.join(fixture, name), path.join(dir, name));
+      }
+    },
+  };
+}

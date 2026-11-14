@@ -1,0 +1,97 @@
+import {createHash} from 'node:crypto';
+import {mkdirSync,readFileSync,writeFileSync} from 'node:fs';
+import {join} from 'node:path';
+
+const credentialIds="SELECT c.id FROM cards c WHERE c.right_id IN (SELECT id FROM cards WHERE codename IN ('email','password','salt'))";
+const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
+const canonicalCell=cell=>{
+  if(cell.type==='null')return{type:'null'};
+  if(cell.type==='blob')return{type:'blob',base64:cell.base64};
+  if(['integer','float','text'].includes(cell.type))return{type:cell.type,value:cell.value};
+  throw Error('Unsupported selected-record cell type');
+};
+
+/** Caller owns hosted authorization/build admission. No credentials are written.
+ * Keep only protocol parsing and durable raw capture inside the read transaction;
+ * compute every source/body hash after close. Both tables use keyset pages so a
+ * large references response cannot consume the stream's idle allowance in transit. */
+export async function captureSelectedRecords({endpoint,token,destination,fetchImpl=fetch,pageSize=1000,hashBytes=digest}){
+  if(!Number.isSafeInteger(pageSize)||pageSize<1)throw Error('Invalid selected-record page size');
+  mkdirSync(destination,{recursive:false});
+  let baton=null,base=endpoint;
+  const responses=[],pages={cards:[],card_references:[]};
+  const record={sourceWrites:0,committed:false,closed:false,errors:[],tables:[],responses:[]};
+  async function send(requests){
+    const ordinal=responses.length;
+    const response=await fetchImpl(base,{method:'POST',redirect:'manual',signal:AbortSignal.timeout(45000),headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({baton,requests})});
+    const chunks=[];let readError;
+    try{for await(const chunk of response.body)chunks.push(Buffer.from(chunk));}catch(error){readError=error;}
+    const body=Buffer.concat(chunks),bodyPath=join(destination,`response-${ordinal}.body`);
+    const receipt={ordinal,status:response.status,headers:[...response.headers],bodyBytes:body.length,bodyPath,complete:!readError};
+    // Raw bytes precede parsing, including malformed or failed responses.
+    writeFileSync(bodyPath,body,{flag:'wx',mode:0o600});
+    writeFileSync(join(destination,`response-${ordinal}.headers.json`),JSON.stringify(receipt),{flag:'wx',mode:0o600});
+    responses.push(receipt);
+    if(readError)throw readError;
+    if(response.status!==200)throw Error('Source HTTP failure at response '+ordinal);
+    const parsed=JSON.parse(body);
+    if(!Array.isArray(parsed.results)||parsed.results.some(r=>r.type!=='ok'))throw Error('Source statement failure at response '+ordinal);
+    baton=parsed.baton;
+    if(parsed.base_url){
+      const next=new URL(parsed.base_url);
+      if(next.protocol!=='https:'||!next.hostname.endsWith('.bunnydb.net'))throw Error('Unexpected source continuation origin');
+      base=parsed.base_url.replace(/\/+$/,'')+'/v2/pipeline';
+    }
+    return parsed.results;
+  }
+  const execute=async(sql,args=[])=>{const rows=await send([{type:'execute',stmt:{sql,args}}]);return rows[0].response.result;};
+  try{
+    await execute('BEGIN DEFERRED');
+    record.beforeVersion=await execute('SELECT * FROM deck_data_version');
+    for(const table of ['cards','card_references']){
+      let cursor='-1';
+      for(;;){
+        const filter=table==='cards'?`id NOT IN (${credentialIds})`:`referer_id NOT IN (${credentialIds}) AND (referee_id IS NULL OR referee_id NOT IN (${credentialIds}))`;
+        const result=await execute(`SELECT * FROM ${table} WHERE ${filter} AND id>? ORDER BY id LIMIT ${pageSize}`,[{type:'integer',value:cursor}]);
+        pages[table].push(result);
+        if(!result.rows.length)break;
+        const id=result.cols.findIndex(c=>c.name==='id');
+        if(id<0)throw Error('Selected table has no keyset id');
+        const next=result.rows.at(-1)[id];
+        if(next.type!=='integer'||BigInt(next.value)<=BigInt(cursor))throw Error('Selected keyset did not advance');
+        cursor=next.value;
+      }
+    }
+    record.afterVersion=await execute('SELECT * FROM deck_data_version');
+    const finish=await send([{type:'execute',stmt:{sql:'COMMIT'}},{type:'close'}]);
+    if(finish[1]?.response?.type!=='close')throw Error('Source close was not confirmed');
+    record.committed=true;record.closed=true;
+  }catch(error){record.errors.push({name:error.name,message:error.message});}
+  finally{
+    if(baton&&!record.closed){
+      try{const result=await send([{type:'close'}]);record.closed=result[0]?.response?.type==='close';}
+      catch(error){record.errors.push({phase:'close',name:error.name,message:error.message});}
+    }
+  }
+  // A failed close retains raw bytes without doing more work on a possibly open stream.
+  if(record.closed){
+    try{
+      for(const response of responses)record.responses.push({...response,sha256:hashBytes(readFileSync(response.bodyPath))});
+      for(const table of ['cards','card_references']){
+        const results=pages[table];if(!results.length)continue;
+        const columns=results[0].cols.map(c=>c.name),rows=[];let prior=-1n;
+        for(const result of results){
+          if(JSON.stringify(columns)!==JSON.stringify(result.cols.map(c=>c.name)))throw Error('Selected column order changed');
+          const id=columns.indexOf('id');
+          for(const row of result.rows){
+            const value=BigInt(row[id].value);if(value<=prior)throw Error('Selected rows are not unique and ordered');prior=value;
+            rows.push(row.map(canonicalCell));
+          }
+        }
+        record.tables.push({table,columns,rows:rows.length,sha256:hashBytes(Buffer.from(JSON.stringify({columns,rows}))),rowsRead:results.reduce((n,r)=>n+(r.rows_read??0),0),replicationIndices:results.map(r=>r.replication_index)});
+      }
+    }catch(error){record.errors.push({phase:'after-close',name:error.name,message:error.message});}
+  }else record.responses=responses;
+  writeFileSync(join(destination,'capture.json'),JSON.stringify(record,null,2),{flag:'wx',mode:0o600});
+  return record;
+}

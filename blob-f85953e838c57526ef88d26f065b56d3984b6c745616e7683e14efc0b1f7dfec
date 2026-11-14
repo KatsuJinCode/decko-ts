@@ -1,0 +1,120 @@
+import { afterAll, afterEach, beforeAll, beforeEach, expect, it, vi } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { scratchDir, registeredScratch, scratchOwnershipMatches, removeScratchDir } from "../../support/scratch-dir.mjs";
+import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
+import { FetchEngine } from "../../../src/card/fetch.js";
+import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
+import { ModLoader } from "../../../src/card/mod-loader.js";
+import coreMod from "../../../src/card/mod-loader/mods/core-mod.js";
+import { JOE, fakeClock, seedStandardDeck, type ActionsTestStorage } from "./actions-test-storage.js";
+import { splitSqlStatements } from "../fetch/fetch-test-storage.js";
+
+let scratch: string;
+let scratchBytes = 0;
+let sequence = 0;
+let handles: LocalSqliteDriver[] = [];
+beforeAll(() => {
+  scratch = scratchDir("compound165-connections-");
+});
+beforeEach(() => vi.stubGlobal("fetch", vi.fn(() => { throw new Error("No network in independent compound connection tests"); })));
+afterEach(() => {
+  for (const driver of handles) driver.close();
+  handles = [];
+  vi.unstubAllGlobals();
+  expect(registeredScratch()).toContain(scratch);
+  expect(scratchOwnershipMatches(scratch)).toBe(true);
+  scratchBytes = fs.readdirSync(scratch).reduce((bytes, name) => {
+    const entry = fs.lstatSync(path.join(scratch, name));
+    expect(entry.isFile()).toBe(true);
+    return bytes + entry.size;
+  }, 0);
+});
+afterAll(() => {
+  expect(handles).toHaveLength(0);
+  // The shared file teardown may already have removed our registered root.
+  if (fs.existsSync(scratch)) {
+    expect(registeredScratch()).toContain(scratch);
+    expect(scratchOwnershipMatches(scratch)).toBe(true);
+    removeScratchDir(scratch);
+  }
+  expect(fs.existsSync(scratch)).toBe(false);
+  console.log(JSON.stringify({ event: "compound-test-scratch-removed", file: import.meta.url, scratch, logicalBytesRemoved: scratchBytes }));
+});
+
+async function fixture(registered: boolean) {
+  const file = path.join(scratch, `fixture-${++sequence}.sqlite`);
+  const a = new LocalSqliteDriver({ path: file }); handles.push(a);
+  const schema = fs.readFileSync(fileURLToPath(new URL("../../../db/schema.sqlite.sql", import.meta.url)), "utf8");
+  for (const statement of splitSqlStatements(schema)) await a.query(statement, []);
+  const fetchA = new FetchEngine(a);
+  const s: ActionsTestStorage = {
+    driver: a, engine: fetchA, close: () => a.close(),
+    selectAll: async <T>(sql: string, params: unknown[] = []) => (await a.query<T>(sql, params)).rows,
+    selectOne: async <T>(sql: string, params: unknown[] = []) => (await a.query<T>(sql, params)).rows[0],
+    count: async table => Number((await a.query<{ n: number }>(`SELECT COUNT(*) n FROM ${table}`, [])).rows[0]!.n),
+  };
+  await seedStandardDeck(s);
+  const b = new LocalSqliteDriver({ path: file }); handles.push(b);
+  const fetchB = new FetchEngine(b);
+  const events = coreMod.setModules!.flatMap(module => module.events ?? []).filter(event => ["validate_uniqueness_of_name", "prepare_left_and_right"].includes(event.event));
+  expect(events).toHaveLength(2);
+  const loader = new ModLoader([{ manifest: { name: "connection-conflict", setModules: [{ setPath: "all/name_events", events }] } }]);
+  loader.resolveOrder({ gemMods: ["connection-conflict"] }); loader.load();
+  const engine = (fetcher: FetchEngine) => new CardActionEngine(fetcher, {
+    actor: JOE, now: fakeClock(),
+    ...(registered ? { modEvents: { registry: loader.eventRegistry(), predicates: {} } } : {}),
+  });
+  fetchA.installNameEnvironment();
+  const snapshot = async () => Object.fromEntries(await Promise.all(
+    ["cards", "card_references", "card_acts", "card_actions", "card_changes"].map(async table => [table, await s.selectAll(`SELECT * FROM ${table} ORDER BY rowid`)]),
+  ));
+  return { s, a, b, fetchA, fetchB, writerA: engine(fetchA), writerB: engine(fetchB), snapshot };
+}
+
+for (const registered of [false, true]) {
+  const label = registered ? "actual core uniqueness and side events" : "built-in";
+  it(`${label}: external simple-side rename cannot retarget a new nested child`, async () => {
+    const f = await fixture(registered);
+    const original = await f.writerA.createCard({ name: "Pudding+waffle", content: "original compound" });
+    expect((await f.fetchB.fetchByName("Pudding+waffle"))?.id).toBe(original.cardId);
+    const waffle = await f.fetchA.lexicon.id("waffle");
+    expect(waffle).toBeDefined();
+    await f.writerA.updateCard({ cardId: waffle!, name: "syrup" });
+    const made = await f.writerB.createCard({ name: "Pudding+waffle+New leaf", content: "child" });
+    const fresh = new FetchEngine(f.b);
+    expect(await fresh.lexicon.id("Pudding+syrup")).toBe(original.cardId);
+    const replacement = await fresh.lexicon.id("Pudding+waffle");
+    expect(replacement).toBeDefined();
+    expect(replacement).not.toBe(original.cardId);
+    expect(await f.s.selectOne("SELECT left_id FROM cards WHERE id=?", [made.cardId])).toEqual({ left_id: replacement });
+    expect(await f.s.selectOne("SELECT db_content FROM cards WHERE id=?", [original.cardId])).toEqual({ db_content: "original compound" });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it(`${label}: reuse after external content change preserves the latest side content`, async () => {
+    const f = await fixture(registered);
+    const side = await f.writerA.createCard({ name: "Pudding+waffle", content: "old content" });
+    expect((await f.fetchB.fetchByName("Pudding+waffle"))?.dbContent).toBe("old content");
+    await f.writerA.updateCard({ cardId: side.cardId, content: "external latest content" });
+    const made = await f.writerB.createCard({ name: "Pudding+waffle+New leaf", content: "child content" });
+    expect(await f.s.selectOne("SELECT left_id FROM cards WHERE id=?", [made.cardId])).toEqual({ left_id: side.cardId });
+    expect(await f.s.selectOne("SELECT db_content FROM cards WHERE id=?", [side.cardId])).toEqual({ db_content: "external latest content" });
+    expect((await f.s.selectAll("SELECT card_id FROM card_actions WHERE card_act_id=?", [made.actId])).some(row => row.card_id === side.cardId)).toBe(false);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it(`${label}: a stale positive for an externally trashed side permits transactional revival`, async () => {
+    const f = await fixture(registered);
+    const side = await f.writerA.createCard({ name: "Pudding+waffle", content: "old" });
+    expect(await f.fetchB.lexicon.id("Pudding+waffle")).toBe(side.cardId);
+    await f.writerA.deleteCard({ cardId: side.cardId });
+    expect(await f.s.selectOne("SELECT trash FROM cards WHERE id=?", [side.cardId])).toEqual({ trash: 1 });
+    const made = await f.writerB.createCard({ name: "Pudding+waffle+New leaf" });
+    expect(await f.s.selectOne("SELECT left_id FROM cards WHERE id=?", [made.cardId])).toEqual({ left_id: side.cardId });
+    expect(await f.s.selectOne("SELECT trash FROM cards WHERE id=?", [side.cardId])).toEqual({ trash: 0 });
+    expect(await new FetchEngine(f.b).lexicon.id("Pudding+waffle")).toBe(side.cardId);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+}

@@ -1,0 +1,32 @@
+// The *recent feed's action summary for an action on a `<User>+*follow`
+// dashboard card. card-mod-follow set/type_plus_right/user/follow.rb overrides
+// item_names, not content, so Ruby's raw_view (card-mod-history
+// lib/card/action/differ.rb:60-66) renders the action's stored content. The
+// committed synthetic-v2 capture pins "*always" for `Ada Admin+*follow` on
+// core:admin:*recent.
+
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { openHarnessSession, type HarnessSession } from "./harness-session.js";
+
+describe("*recent action summary of a <User>+*follow card", () => {
+  let session: HarnessSession;
+  beforeAll(async () => {
+    session = await openHarnessSession();
+  }, 120_000);
+  afterAll(async () => {
+    await session?.close();
+  });
+
+  it("renders the stored content the action wrote", async () => {
+    const created = await session.write({ action: "create", actor: "admin", card: "Ada Admin+*follow", fields: { type: "List", content: "*always" } });
+    expect(created.errors).toEqual([]);
+    expect(created.saved).toBe(true);
+    const answer = await session.render("*recent", { actor: "admin", view: "core" });
+    expect(answer.ok).toBe(true);
+    const html = answer.html ?? "";
+    const slot = html.indexOf('data-card-name="Ada Admin+*follow"');
+    expect(slot).toBeGreaterThan(-1);
+    const summary = html.slice(slot, html.indexOf("</div>", slot));
+    expect(summary).toMatch(/<ins class='[^']*diff-added[^']*'>\*always<\/ins>$/);
+  }, 120_000);
+});

@@ -1,0 +1,72 @@
+{
+  "row": "validate-api-key",
+  "event": "validate_api_key",
+  "pinned_file": "card-mod-api_key-0.20.0/set/right/api_key.rb",
+  "pinned_declaration": "event :validate_api_key, :validate, on: :save, changed: :content do",
+  "pinned_declaration_line": 8,
+  "pinned_body": "  errors.add :content, t(:api_key_invalid) unless content.match?(/^\\w{20,}$/)\n  errors.add :content, t(:api_key_taken) if api_key_taken?",
+  "pinned_body_lines": [
+    {
+      "line": 9,
+      "text": "  errors.add :content, t(:api_key_invalid) unless content.match?(/^\\w{20,}$/)"
+    },
+    {
+      "line": 10,
+      "text": "  errors.add :content, t(:api_key_taken) if api_key_taken?"
+    }
+  ],
+  "locale_file": "card-mod-api_key-0.20.0/config/locales/en.yml",
+  "scenarios": [
+    {
+      "scenario": "a content too short for the grammar",
+      "content": "short",
+      "found_account": null,
+      "errors_added": [
+        {
+          "attribute": "content",
+          "message": "Invalid API Key; must contain 20+ alphanumeric characters only"
+        }
+      ],
+      "calls": [],
+      "api_key_lookups": [
+        "short"
+      ],
+      "outcome": {
+        "raised": null
+      }
+    },
+    {
+      "scenario": "a fresh 24 word-character key",
+      "content": "aaaaaaaaaaaaaaaaaaaaaaaa",
+      "found_account": null,
+      "errors_added": [],
+      "calls": [],
+      "api_key_lookups": [
+        "aaaaaaaaaaaaaaaaaaaaaaaa"
+      ],
+      "outcome": {
+        "raised": null
+      }
+    },
+    {
+      "scenario": "another holder's key",
+      "content": "bbbbbbbbbbbbbbbbbbbbbbbb",
+      "found_account": {
+        "id": 99
+      },
+      "errors_added": [
+        {
+          "attribute": "content",
+          "message": "API Key taken"
+        }
+      ],
+      "calls": [],
+      "api_key_lookups": [
+        "bbbbbbbbbbbbbbbbbbbbbbbb"
+      ],
+      "outcome": {
+        "raised": null
+      }
+    }
+  ]
+}

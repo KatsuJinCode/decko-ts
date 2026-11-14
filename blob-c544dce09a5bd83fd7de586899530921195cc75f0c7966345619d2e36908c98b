@@ -1,0 +1,198 @@
+[
+  [
+    "/* c */ 1",
+    "unexpected token '/*' at line 1 column 1"
+  ],
+  [
+    "// c\n1",
+    "unexpected token '//' at line 1 column 1"
+  ],
+  [
+    "01",
+    "invalid number: '01' at line 1 column 1"
+  ],
+  [
+    "1.",
+    "invalid number: '1.' at line 1 column 1"
+  ],
+  [
+    "-",
+    "invalid number: '-' at line 1 column 1"
+  ],
+  [
+    "1e",
+    "invalid number: '1e' at line 1 column 1"
+  ],
+  [
+    "-x",
+    "invalid number: '-x' at line 1 column 1"
+  ],
+  [
+    "\"a\tb\"",
+    "invalid ASCII control character in string: \tb\" at line 1 column 3"
+  ],
+  [
+    "\"a\\qb\"",
+    "invalid escape character in string: '\\qb\"' at line 1 column 3"
+  ],
+  [
+    "\"\\u12\"",
+    "incomplete unicode character escape sequence at '\\u12\"' at line 1 column 2"
+  ],
+  [
+    "[1,2",
+    "expected ',' or ']' after array value at line 1 column 5"
+  ],
+  [
+    "{",
+    "expected object key, got EOF at line 1 column 2"
+  ],
+  [
+    "{\"a\"",
+    "expected ':' after object key at line 1 column 5"
+  ],
+  [
+    "{\"a\":",
+    "unexpected end of input at line 1 column 6"
+  ],
+  [
+    "{\"a\":1",
+    "expected ',' or '}' after object value, got: EOF at line 1 column 7"
+  ],
+  [
+    "{\"a\":1 \"b\"",
+    "expected ',' or '}' after object value, got: '\"b\"' at line 1 column 8"
+  ],
+  [
+    "nul",
+    "unexpected token 'nul' at line 1 column 1"
+  ],
+  [
+    "[nan]",
+    "unexpected token 'nan]' at line 1 column 2"
+  ],
+  [
+    "NaN",
+    "unexpected token 'NaN' at line 1 column 1"
+  ],
+  [
+    "[1]  // x",
+    "unexpected token '//' at line 1 column 6"
+  ],
+  [
+    "\"abc",
+    "unexpected end of input, expected closing \" at line 1 column 5"
+  ],
+  [
+    "1.5e3",
+    null
+  ],
+  [
+    "-0",
+    null
+  ],
+  [
+    "2.",
+    "invalid number: '2.' at line 1 column 1"
+  ],
+  [
+    "[01]",
+    "invalid number: '01]' at line 1 column 2"
+  ],
+  [
+    "\n\n  x",
+    "unexpected character: 'x' at line 3 column 3"
+  ],
+  [
+    "{bad",
+    "expected object key, got 'bad' at line 1 column 2"
+  ],
+  [
+    "[1 2]",
+    "expected ',' or ']' after array value at line 1 column 4"
+  ],
+  [
+    "{\"a\":1,}",
+    "expected object key, got: '}' at line 1 column 8"
+  ],
+  [
+    "[1,]",
+    "unexpected character: ']' at line 1 column 4"
+  ],
+  [
+    "tru",
+    "unexpected token 'tru' at line 1 column 1"
+  ],
+  [
+    "  ",
+    "unexpected end of input at line 1 column 3"
+  ],
+  [
+    "{\"a\":1}x",
+    "unexpected token at end of stream 'x' at line 1 column 8"
+  ],
+  [
+    "\"a\" \"b\"",
+    "unexpected token at end of stream '\"b\"' at line 1 column 5"
+  ],
+  [
+    "{\"a\" 1}",
+    "expected ':' after object key at line 1 column 6"
+  ],
+  [
+    "{\"a\":1, 2}",
+    "expected object key, got: '2}' at line 1 column 9"
+  ],
+  [
+    "[1,2,3]]",
+    "unexpected token at end of stream ']' at line 1 column 8"
+  ],
+  [
+    "\"a\nb\"",
+    "invalid ASCII control character in string: \nb\" at line 2 column 0"
+  ],
+  [
+    "[-]",
+    "invalid number: '-]' at line 1 column 2"
+  ],
+  [
+    "[1.2.3]",
+    "expected ',' or ']' after array value at line 1 column 5"
+  ],
+  [
+    "{\"a\": tru}",
+    "unexpected token 'tru}' at line 1 column 7"
+  ],
+  [
+    "[true false]",
+    "expected ',' or ']' after array value at line 1 column 7"
+  ],
+  [
+    "1 2",
+    "unexpected token at end of stream '2' at line 1 column 3"
+  ],
+  [
+    "{\"k\":\"v\" , \"x\" : }",
+    "unexpected character: '}' at line 1 column 18"
+  ],
+  [
+    "é",
+    "unexpected character: '' at line 1 column 1"
+  ],
+  [
+    "[\"\\ud800\"]",
+    "incomplete surrogate pair at '\\ud800\"]' at line 1 column 3"
+  ],
+  [
+    "123abc",
+    "unexpected token at end of stream 'abc' at line 1 column 4"
+  ],
+  [
+    "0x10",
+    "unexpected token at end of stream 'x10' at line 1 column 2"
+  ],
+  [
+    "[1e5, -2.5E-3]",
+    null
+  ]
+]
