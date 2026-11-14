@@ -1,0 +1,41 @@
+import {afterEach,beforeAll,expect,it} from 'vitest';
+import {spawnSync} from 'node:child_process';
+import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
+import {resolve} from 'node:path';
+import {defineMod} from '../../../src/card/mod-loader/mod-dsl.js';
+import {ModLoader} from '../../../src/card/mod-loader.js';
+import {createRenderTestStorage,seedCard} from '../render/render-test-storage.js';
+
+const cases=[
+  {id:'ordinary-and-aria-scalars',tag:'section',defaults:{title:'default'},options:{title:'A<&"',id:'ordinary',aria:{label:'A&B',hidden:false,valuenow:1.5}},content:'<b>cake</b>'},
+  {id:'ordinary-object-refusal',tag:'div',defaults:{},options:{title:{enabled:true}},content:'cake',refusal:'title'},
+  {id:'compound-aria-refusal',tag:'div',defaults:{},options:{aria:{label:['alpha',false,'beta']}},content:'cake',refusal:'aria-label'},
+  {id:'conditional-class-object-refusal',tag:'div',defaults:{},options:{class:{active:true,disabled:false}},content:'cake',refusal:'class'},
+  {id:'scalar-prototype-named-attribute',tag:'div',defaults:{},options:JSON.parse('{"__proto__":"retained","title":"ordinary","data":{"__proto__":"nested"}}'),content:'cake'},
+  {id:'ordinary-small-float',tag:'input',defaults:{},options:{min:0.0000001,step:0.000001,aria:{valuemin:0.0000001}},content:''},
+  {id:'ordinary-large-float',tag:'div',defaults:{},options:{title:1e21,aria:{valuemax:1e21}},content:'cake'},
+  {id:'regular-integer-and-float',tag:'div',defaults:{},options:{title:1.5,tabindex:0,aria:{valuemin:-2,valuemax:2.5}},content:'cake'},
+] as const;
+let reference:{baseline:unknown,cases:Array<{id:string,body?:string,error?:{class:string,message:string}}>};
+beforeAll(()=>{
+  const result=spawnSync('ruby',[resolve('tests/card/mod-loader/ruby-adversarial-tag-values-probe.rb'),'C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems'],{windowsHide:true,encoding:'utf8',input:JSON.stringify(cases),maxBuffer:Infinity});
+  expect(result.status,result.stderr).toBe(0);reference=JSON.parse(result.stdout);
+  const fixture=JSON.parse(readFileSync(resolve('tests/card/mod-loader/fixtures/declared-tag-wrapper-native.json'),'utf8'));delete fixture.probeSha256;
+  expect(reference.baseline).toEqual(fixture);
+  mkdirSync(resolve('tmp'),{recursive:true});writeFileSync(resolve('tmp/attack-tag-attribute-scope-native.json'),result.stdout);
+});
+const cleanups:Array<()=>void>=[];
+afterEach(()=>{while(cleanups.length)cleanups.pop()!();});
+for(const request of cases)it(`actual native attribute scope: ${request.id}`,async()=>{
+  const storage=await createRenderTestStorage();cleanups.push(()=>storage.close());
+  await seedCard(storage,{id:2,name:'RichText',codename:'basic'});await seedCard(storage,{id:500,name:'Attribute Example',typeId:2});
+  const manifest=defineMod('attribute_scope',({set})=>set('all/attribute_scope',({format})=>format('html',({wrapper,view})=>{
+    wrapper('attribute',request.tag,request.defaults);
+    view('attribute_scope',{perms:'none'},ctx=>ctx.fmt.callFormatMethod('wrap_with_attribute',request.content,request.options) as string);
+  })));
+  const loader=new ModLoader([{manifest}],{});cleanups.push(()=>loader.reset());loader.load();storage.engine.modLoader=loader;
+  const expected=reference.cases.find(row=>row.id===request.id)!;
+  // The three historical refusal IDs now have explicit portable support.
+  // Original requests/native results and the numeric/prototype assertions stay.
+  expect({id:request.id,body:await storage.engine.render('Attribute Example','attribute_scope')}).toEqual(expected);
+});

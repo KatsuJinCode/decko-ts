@@ -1,0 +1,66 @@
+{
+  "sourceCommit": "f188218c770a0095d21d3fb7417b314b4a315341",
+  "label": "Re-measurement of the Ruby-versus-Bunny local comparison at the integration head f188218c7, against the same pinned-Ruby capture.",
+  "comparator": {
+    "accepted": true,
+    "strictExactAccepted": false,
+    "qualifiedNormalizedAccepted": true,
+    "fullContractAcceptance": false,
+    "counts": {
+      "normalized-only": 1436,
+      "exact": 3
+    },
+    "samePlan": true,
+    "sameData": true,
+    "sameEndingData": true,
+    "sameMail": true,
+    "sameConfiguration": true,
+    "refusalReason": null,
+    "responses": 1439
+  },
+  "classification": {
+    "responses": 1439,
+    "counts": {
+      "exact": 3,
+      "slotIdOnly": 707,
+      "slotIdAndClassOrder": 729,
+      "other": 0
+    },
+    "statusMismatches": [],
+    "lengthMismatches": [],
+    "otherIds": []
+  },
+  "capture": {
+    "requests": 1439,
+    "errors": 0,
+    "deniedNetwork": [],
+    "hranaViolations": [],
+    "statuses": {
+      "200": 1320,
+      "403": 118,
+      "404": 1
+    }
+  },
+  "custody": {
+    "checkedSourceFiles": 328,
+    "mismatches": 0,
+    "dependencyProjectLockSha256": "96a3efb62e81fdb24516d8106316e92e44cdde583d63399ca0b6e1e54731ae69"
+  },
+  "bodies": {
+    "algorithm": "sha256-lines: sha256 over \"name + sha256_hex + newline\" in ascending name order",
+    "ruby": {
+      "files": 1439,
+      "bytes": 26733036,
+      "treeSha256": "5c26b8d80a642c6304483dae14cca9f2594646f79ccf7c20f85f571b3225f3e3"
+    },
+    "localBunny": {
+      "files": 1439,
+      "bytes": 26733036,
+      "treeSha256": "7afed6841d9138e8f3cee023d0aaf14c1685a1e7f00e96a5871e848c34452120"
+    }
+  },
+  "transform": "oxc via rolldown/utils transformSync, lang ts, target es2022, ES modules",
+  "dependencyRoot": "C:\\localProjects\\decko-ts-combined-release-e80a0ee9",
+  "node": "v24.22.1",
+  "note": "The body tree digests are the documented algorithm above. The digest quoted in the 245089373 receipt used an algorithm that was never recorded and is not reproduced by this one."
+}

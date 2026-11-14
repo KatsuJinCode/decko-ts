@@ -1,0 +1,66 @@
+{
+  "what": "the signed-in exercise at the FINAL state of this tranche's branch (the change landed), measured twice on the same tree",
+  "command": "node tools/edge-signed-in-exercise.mjs --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 --out .runtime/matrix-journey-tranche2-20261021/<run>/report.md",
+  "tree": {
+    "branch": "port/matrix-journey-tranche-20261020",
+    "head": "2db9ce36 (the report-only follow-up to the mx-190 row); the engine change is 735bfebc",
+    "note": "the tree of both runs below"
+  },
+  "runs": [
+    {
+      "name": "full-run-after",
+      "result": "238 / 242 passed, 4 failed, 0 skipped by write mode",
+      "failures": [
+        {
+          "check": "4. edit a RichText card (TinyMCE, nest dialog, link button) / the saved RichText content is on the page",
+          "evidence": {
+            "status": 200
+          },
+          "cause": "one browser flake in that run, not a change effect: the RichText journey's TinyMCE typing did not land in the editor, so the save wrote the old content. The leg's upstream legs in the SAME run passed ('TinyMCE loads for the RichText editor' PASS, 'saving the RichText card persists (Save answers a write)' PASS), and the re-run below has this leg green on the SAME tree."
+        },
+        {
+          "check": "7b. further signed-in capabilities / the history page lists the card's acts (not just a 200)",
+          "evidence": {
+            "status": 200,
+            "actToggles": 4,
+            "runEditListed": false
+          },
+          "cause": "the same flake, downstream: the harness's own comment at tools/edge-signed-in-exercise.mjs:1203-1206 says the leg asserts that the run's own edit content ('Harness rich text ', typed and saved by the RichText journey) appears among the listed acts' drafts - so a RichText save that carried no typed text fails this leg too. The re-run below has this leg green on the SAME tree."
+        },
+        {
+          "check": "checks module catalog-edit-create (checks-catalog-edit-create.mjs) / E11b the +summary junction's own edit modal targets the junction card with its stored content",
+          "evidence": {
+            "threw": "database is not defined"
+          },
+          "cause": "a defect in the committed INSTRUMENT, not an engine red: the leg's body calls database() (checks-catalog-edit-create.mjs:221) but its run signature destructures only ctx (line 220), while the neighbouring legs destructure database from ctx (lines 59, 112, 152, 252). The reference is therefore undefined in that scope. Present at this base and at the tranche-1 base. NOT fixed by this tranche: the leg belongs to the capability-catalog rows, not to this family, and this lane does not edit another family's instruments."
+        },
+        {
+          "check": "9. timings / no signed-in page exceeded 3 s of server time",
+          "evidence": {
+            "slow": [
+              {
+                "path": "/Harness_CB_History_mvi1sv7h/board_act?act_id=115&",
+                "ms": 4809,
+                "timing": "auth;dur=3, seat;dur=0, db;dur=6826;stmt=1964, render;dur=4806, total;dur=4809"
+              }
+            ]
+          },
+          "cause": "the same timing leg that is red at the BASE of this tranche (9820 ms there, 3233 ms at the tranche-1 base): the local deck serves by walking its nest closure because the nest index is not built for these runs ('[nest-index] missing (version none)' in the run log), and a history page render is the slow surface. Not a change effect - the leg was red in the base run before the change."
+        }
+      ]
+    },
+    {
+      "name": "full-run-after-rerun",
+      "result": "the two legs that were red in the run above are GREEN on the same tree",
+      "legs": {
+        "the saved RichText content is on the page": "PASS",
+        "the history page lists the card's acts (not just a 200)": "PASS",
+        "TinyMCE loads for the RichText editor": "PASS",
+        "saving the RichText card persists (Save answers a write)": "PASS"
+      },
+      "note": "this is the comparison that settles the two reds: the same command, the same tree, the same deck, a second run - and both legs pass. The change is therefore not their cause. The run was still in progress (66 checks, zero failures) when this receipt was written; the report file is .runtime/matrix-journey-tranche2-20261021/full-run-after-rerun/report.md."
+    }
+  ],
+  "why_the_change_cannot_reach_the_richtext_path": "the change touches one view body: the list family's :input view, for a card that is NOT in the list family. A RichText card is not in the list family, and the base run proves it: with the pre-change code that view raised 'the base-format view is not ported' for a non-family card, and the base run's RichText legs (the editor opening, TinyMCE loading, the save persisting, the content on the page) all passed. So the RichText card's :input view is served by the editor module's own view, whose bytes this change does not touch.",
+  "the_surface_the_change_does_touch": "the W4 follow views: /<User>+follow answered 500 before the change and answers 200 after it, with the list family's hidden content field and the editor module's rich text input in the body (docs/reports/receipts/row-mx-155-follow-views-surfaces-2026-10-21.json)."
+}

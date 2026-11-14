@@ -1,0 +1,249 @@
+import fs from "node:fs";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+import { createHash } from "node:crypto";
+import { spawnSync } from "node:child_process";
+import { build } from "esbuild";
+import { expect, it, vi } from "vitest";
+import { rawWasmAssetsPlugin, validatedWasmAssetBase, writeRawWasmAssets } from "../../tools/vendor/raw-wasm-assets-esbuild-plugin.mjs";
+import { imageVersionBytes } from "../../src/card/attachments/image-resize.js";
+import { libsassWasmCompiler } from "../../src/server/libsass-wasm.js";
+
+it("refuses implicit or unsafe asset hosts", () => {
+  for (const url of [undefined, ["https://assets.invalid/"], new URL("https://assets.invalid/"), { toString: () => "https://assets.invalid/" }, "http://assets.invalid/", "https://assets.invalid/wasm", "https://user:secret@assets.invalid/", "https://assets.invalid/?secret=fixture", "https://assets.invalid/#fragment"]) {
+    expect(() => validatedWasmAssetBase(url)).toThrow("explicit HTTPS directory");
+  }
+});
+
+function scratchBuildBoundary() {
+  const root = process.cwd();
+  const directory = fs.mkdtempSync(path.join(root, ".runtime/raw-wasm-build-test-"));
+  return {
+    directory,
+    dispose() {
+      if (path.dirname(path.resolve(directory)) !== path.join(root, ".runtime") || !path.basename(directory).startsWith("raw-wasm-build-test-")) throw Error("Unexpected test output directory");
+      fs.rmSync(directory, { recursive: true });
+    },
+  };
+}
+
+it("reads replaced canonical provider bytes during a same-process rebuild and refuses a different provider", async () => {
+  const scratch = scratchBuildBoundary();
+  const root = scratch.directory;
+  const canonical = path.join(root, "vendor/libsass-wasm/libsass-3.6.4-wasm-base64.js");
+  const alternate = path.join(root, "alternate/libsass-3.6.4-wasm-base64.js");
+  const first = Buffer.from("0061736d01000000", "hex");
+  const second = Buffer.from("0061736d01000000000100", "hex");
+  expect(WebAssembly.validate(first)).toBe(true);
+  expect(WebAssembly.validate(second)).toBe(true);
+  async function bundle(file: string) {
+    const raw = rawWasmAssetsPlugin({ repoRoot: root, assetBaseUrl: "https://assets.invalid/wasm/" });
+    await build({ entryPoints: [file], bundle: true, write: false, format: "esm", external: [path.join(root, "src/server/verified-wasm-asset.ts")], plugins: [raw.plugin], logLevel: "silent" });
+    return [...raw.assets.values()];
+  }
+  try {
+    fs.mkdirSync(path.dirname(canonical), { recursive: true });
+    fs.writeFileSync(canonical, `export default ${JSON.stringify(first.toString("base64"))};`);
+    const original = await bundle(canonical);
+    fs.writeFileSync(canonical, `export default ${JSON.stringify(second.toString("base64"))};`);
+    const replacement = await bundle(canonical);
+    expect(original[0].bytes).toEqual(first);
+    expect(replacement[0].bytes).toEqual(second);
+    expect(original[0].sha256).not.toBe(replacement[0].sha256);
+    expect(replacement[0].sha256).toBe(createHash("sha256").update(second).digest("hex"));
+    fs.mkdirSync(path.dirname(alternate));
+    fs.writeFileSync(alternate, fs.readFileSync(canonical));
+    await expect(bundle(alternate)).rejects.toThrow("canonical vendored provider path");
+  } finally { scratch.dispose(); }
+});
+
+it("rejects malformed CLI arguments and an existing metafile before creating package output", () => {
+  const scratch = scratchBuildBoundary();
+  const output = path.join(scratch.directory, "package");
+  const metadata = path.join(scratch.directory, "metadata");
+  const script = path.join(process.cwd(), "tools/bundle-bunny-edge-engine.mjs");
+  const base = [script, "--out-dir", output, "--wasm-asset-base", "https://assets.invalid/wasm/"];
+  try {
+    for (const flags of [["--metafile"], ["--metafile", "--unknown"], ["--unknown", "fixture"], ["--out-dir", output], ["--metafile", metadata, "--metafile", metadata]]) {
+      const result = spawnSync(process.execPath, [...base, ...flags], { windowsHide: true, encoding: "utf8" });
+      expect(result.error).toBeUndefined();
+      expect(result.status, result.stderr).not.toBe(0);
+      expect(result.stderr).toMatch(/requires a value|Unknown build option|Duplicate build option/);
+      expect(fs.existsSync(output)).toBe(false);
+      expect(fs.existsSync(metadata)).toBe(false);
+    }
+    fs.mkdirSync(metadata);
+    // Check both targets, including refusal before the first script writes.
+    const sentinel = path.join(metadata, "bunny-edge-read.bundle.js.meta.json");
+    fs.writeFileSync(sentinel, "reviewed sentinel");
+    const refused = spawnSync(process.execPath, [...base, "--metafile", metadata], { windowsHide: true, encoding: "utf8" });
+    expect(refused.status).not.toBe(0);
+    expect(refused.stderr).toContain("Existing reviewed metafile must not be overwritten");
+    expect(fs.readFileSync(sentinel, "utf8")).toBe("reviewed sentinel");
+    expect(fs.existsSync(output)).toBe(false);
+  } finally { scratch.dispose(); }
+});
+
+it("admits all raw writer entries before output, including names, bytes, licenses and existing destinations", () => {
+  const scratch = scratchBuildBoundary();
+  const output = path.join(scratch.directory, "assets");
+  const bytes = Buffer.from("0061736d01000000", "hex");
+  const sha256 = createHash("sha256").update(bytes).digest("hex");
+  const licensePath = path.join(scratch.directory, "LICENSE");
+  const asset = { bytes, sha256, byteLength: bytes.length, filename: `${sha256}.wasm`,
+    url: `https://assets.invalid/${sha256}.wasm`, source: "fixture", license: "MIT", licenseSource: "fixture/LICENSE", licensePath };
+  try {
+    fs.mkdirSync(output);
+    fs.writeFileSync(licensePath, "fixture license");
+    const invalidEntries = [
+      { ...asset, filename: "../escaped.wasm" },
+      { ...asset, byteLength: bytes.length + 1 },
+      { ...asset, bytes: Buffer.alloc(bytes.length) },
+      { ...asset, licensePath: path.join(scratch.directory, "missing-license") },
+      { ...asset }, // Duplicate output under a different map key.
+    ];
+    for (const bad of invalidEntries) {
+      expect(() => writeRawWasmAssets({ assets: new Map([["first", asset], ["second", bad]]), outputDirectory: output })).toThrow();
+      expect(fs.readdirSync(output)).toEqual([]);
+      expect(fs.existsSync(path.join(scratch.directory, "escaped.wasm"))).toBe(false);
+    }
+    const sentinel = path.join(output, `${sha256}.LICENSE.txt`);
+    fs.writeFileSync(sentinel, "reviewed sentinel");
+    expect(() => writeRawWasmAssets({ assets: new Map([[sha256, asset]]), outputDirectory: output })).toThrow("already exists");
+    expect(fs.readdirSync(output)).toEqual([`${sha256}.LICENSE.txt`]);
+    expect(fs.readFileSync(sentinel, "utf8")).toBe("reviewed sentinel");
+  } finally { scratch.dispose(); }
+});
+
+it("preflights a dangling later license link and metadata link without writing earlier outputs", () => {
+  const scratch = scratchBuildBoundary();
+  const output = path.join(scratch.directory, "assets");
+  const metadata = path.join(scratch.directory, "metadata");
+  const licensePath = path.join(scratch.directory, "LICENSE");
+  const missing = path.join(scratch.directory, "missing-target");
+  const kind = process.platform === "win32" ? "junction" : "dir";
+  const entries = [Buffer.from("0061736d01000000", "hex"), Buffer.from("0061736d01000000000100", "hex")].map(bytes => {
+    const sha256 = createHash("sha256").update(bytes).digest("hex");
+    return { bytes, sha256, byteLength: bytes.length, filename: `${sha256}.wasm`, url: `https://assets.invalid/${sha256}.wasm`, source: "fixture", license: "MIT", licenseSource: "fixture/LICENSE", licensePath };
+  });
+  try {
+    fs.mkdirSync(output);
+    fs.mkdirSync(metadata);
+    fs.writeFileSync(licensePath, "fixture license");
+    const licenseLink = path.join(output, `${entries[1].sha256}.LICENSE.txt`);
+    fs.symlinkSync(missing, licenseLink, kind);
+    expect(fs.existsSync(licenseLink)).toBe(false);
+    expect(fs.lstatSync(licenseLink).isSymbolicLink()).toBe(true);
+    expect(() => writeRawWasmAssets({ assets: new Map(entries.map(entry => [entry.sha256, entry])), outputDirectory: output })).toThrow("already exists");
+    expect(fs.readdirSync(output)).toEqual([`${entries[1].sha256}.LICENSE.txt`]);
+    const metadataLink = path.join(metadata, "bunny-edge-read.bundle.js.meta.json");
+    fs.symlinkSync(missing, metadataLink, kind);
+    const packageDirectory = path.join(scratch.directory, "package");
+    const result = spawnSync(process.execPath, [path.join(process.cwd(), "tools/bundle-bunny-edge-engine.mjs"), "--out-dir", packageDirectory, "--wasm-asset-base", "https://assets.invalid/wasm/", "--metafile", metadata], { windowsHide: true, encoding: "utf8" });
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("Existing reviewed metafile must not be overwritten");
+    expect(fs.existsSync(packageDirectory)).toBe(false);
+    expect(fs.lstatSync(metadataLink).isSymbolicLink()).toBe(true);
+    // Unlink the two owned links themselves before recursive scratch cleanup.
+    fs.unlinkSync(licenseLink);
+    fs.unlinkSync(metadataLink);
+    expect(fs.lstatSync(licenseLink, { throwIfNoEntry: false })).toBeUndefined();
+    expect(fs.lstatSync(metadataLink, { throwIfNoEntry: false })).toBeUndefined();
+  } finally { scratch.dispose(); }
+});
+
+it("builds the actual complete package and refuses to overwrite it", () => {
+  const root = process.cwd();
+  const directory = fs.mkdtempSync(path.join(root, ".runtime/raw-wasm-build-test-"));
+  const output = path.join(directory, "package");
+  const metadata = path.join(directory, "metadata");
+  const args = [path.join(root, "tools/bundle-bunny-edge-engine.mjs"), "--out-dir", output,
+    "--wasm-asset-base", "https://assets.invalid/wasm/", "--metafile", metadata];
+  try {
+    const result = spawnSync(process.execPath, args, { cwd: root, windowsHide: true, encoding: "utf8" });
+    expect(result.error).toBeUndefined();
+    expect(result.status, result.stderr).toBe(0);
+    const manifest = JSON.parse(fs.readFileSync(path.join(output, "bunny-edge-artifacts.json"), "utf8"));
+    expect(manifest.compressed).toBe(false);
+    expect(manifest.scripts).toHaveLength(2);
+    expect(manifest.assets).toHaveLength(2);
+    for (const script of manifest.scripts) {
+      const bytes = fs.readFileSync(path.join(output, script.filename));
+      expect(bytes.byteLength).toBe(script.byteLength);
+      expect(createHash("sha256").update(bytes).digest("hex")).toBe(script.sha256);
+      const envelope = JSON.parse(fs.readFileSync(path.join(output, script.filename.replace(".bundle.js", ".code.json")), "utf8"));
+      expect(envelope.Code).toBe(bytes.toString("utf8"));
+      const graph = JSON.parse(fs.readFileSync(path.join(metadata, `${script.filename}.meta.json`), "utf8"));
+      expect(Object.keys(graph.inputs).length).toBeGreaterThan(0);
+    }
+    expect(manifest.assets.map((asset: { licenseSource: string }) => asset.licenseSource)).toEqual([
+      "vendor/libsass-wasm/LICENSE", "@cf-wasm/photon@0.4.0/LICENSE.md",
+    ]);
+    const before = fs.readFileSync(path.join(output, "bunny-edge-artifacts.json"));
+    const refused = spawnSync(process.execPath, args, { cwd: root, windowsHide: true, encoding: "utf8" });
+    expect(refused.status).not.toBe(0);
+    expect(refused.stderr).toContain("existing reviewed package must not be overwritten");
+    expect(fs.readFileSync(path.join(output, "bunny-edge-artifacts.json"))).toEqual(before);
+  } finally {
+    if (path.dirname(path.resolve(directory)) !== path.join(root, ".runtime") || !path.basename(directory).startsWith("raw-wasm-build-test-")) throw Error("Unexpected test output directory");
+    fs.rmSync(directory, { recursive: true });
+  }
+});
+
+it("builds real binary providers without boot fetches and recovers later compiler/image operations", async () => {
+  const root = process.cwd();
+  const directory = fs.mkdtempSync(path.join(root, ".runtime/raw-wasm-build-test-"));
+  const raw = rawWasmAssetsPlugin({ repoRoot: root, assetBaseUrl: "https://assets.invalid/wasm/" });
+  try {
+    const built = await build({
+      stdin: { contents: 'export {libsassWasmCompiler} from "./src/server/libsass-wasm.ts"; export {imageVersionBytes} from "./src/card/attachments/image-resize.ts";', resolveDir: root, loader: "ts" },
+      outfile: path.join(directory, "processors.mjs"), bundle: true, write: false,
+      platform: "node", format: "esm", target: "es2022", plugins: [raw.plugin], logLevel: "silent",
+    });
+    const entries = [...raw.assets.values()];
+    expect(entries).toHaveLength(2);
+    const outputs = writeRawWasmAssets({ assets: raw.assets, outputDirectory: directory });
+    for (const entry of outputs) {
+      const bytes = fs.readFileSync(path.join(directory, entry.filename));
+      expect(bytes.length).toBe(entry.byteLength);
+      expect(createHash("sha256").update(bytes).digest("hex")).toBe(entry.sha256);
+      expect(createHash("sha256").update(fs.readFileSync(path.join(directory, entry.licenseFilename))).digest("hex")).toBe(entry.licenseSha256);
+    }
+    const requests: string[] = [];
+    const failed = new Set<string>();
+    vi.stubGlobal("fetch", async (input: string | URL | Request) => {
+      const url = String(input);
+      requests.push(url);
+      const entry = entries.find(entry => entry.url === url);
+      if (!entry) throw Error("Unexpected asset URL");
+      if (!failed.has(url)) {
+        failed.add(url);
+        return entry.license === "MIT" ? new Response("unavailable", { status: 503 }) : new Response(new Uint8Array(entry.byteLength));
+      }
+      return new Response(new Uint8Array(entry.bytes), { headers: { "content-length": String(entry.byteLength) } });
+    });
+    const bundlePath = path.join(directory, "processors.mjs");
+    fs.writeFileSync(bundlePath, built.outputFiles[0].contents, { flag: "wx" });
+    const processors = await import(pathToFileURL(bundlePath).href);
+    expect(requests).toEqual([]);
+    const compiler = processors.libsassWasmCompiler();
+    const source = ".fixture { color: red; .nested { padding: 1px; } }";
+    await expect(compiler(source, "expanded")).rejects.toMatchObject({ code: "response" });
+    const [expanded, compact] = await Promise.all([compiler(source, "expanded"), compiler(source, "compact")]);
+    const nativeCompiler = libsassWasmCompiler();
+    expect(expanded).toBe(await nativeCompiler(source, "expanded"));
+    expect(compact).toBe(await nativeCompiler(source, "compact"));
+    expect(requests).toHaveLength(2);
+    const photo = new Uint8Array(fs.readFileSync(path.join(root, "tools/parity-side-effects/fixtures/parity-photo.png")));
+    await expect(processors.imageVersionBytes(photo, ".png")).rejects.toMatchObject({ code: "integrity" });
+    const [versions, concurrentVersions] = await Promise.all([processors.imageVersionBytes(photo, ".png"), processors.imageVersionBytes(photo, ".png")]);
+    const nativeVersions = await imageVersionBytes(photo, ".png");
+    expect(versions).toEqual(nativeVersions);
+    expect(concurrentVersions).toEqual(nativeVersions);
+    expect(requests).toHaveLength(4);
+  } finally {
+    vi.unstubAllGlobals();
+    if (path.dirname(path.resolve(directory)) !== path.join(root, ".runtime") || !path.basename(directory).startsWith("raw-wasm-build-test-")) throw Error("Unexpected test output directory");
+    fs.rmSync(directory, { recursive: true });
+  }
+});

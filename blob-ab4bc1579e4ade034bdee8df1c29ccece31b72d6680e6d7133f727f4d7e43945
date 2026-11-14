@@ -1,0 +1,18 @@
+// Redirect only the two immutable historical observation destinations.
+// Assertions, fixture SQL, original probes and rejecting fake verifiers stay
+// unchanged. Preload in the Vitest process and its children via NODE_OPTIONS.
+const fs = require('node:fs');
+const path = require('node:path');
+const { syncBuiltinESMExports } = require('node:module');
+const destination = process.env.DECKO_RULE177_OBSERVATIONS_DIRECTORY;
+if (!destination) throw new Error('RULE177_OBSERVATIONS_DIRECTORY_REQUIRED');
+const targets = new Map([
+  [path.resolve('docs/runs/security-rule163-recovery-20261031/raw/native.json'), path.resolve(destination, 'original163-after.json')],
+  [path.resolve('docs/runs/security-rule163-reattack-20261031/visibility.json'), path.resolve(destination, 'visibility-after.json')],
+]);
+const original = fs.writeFileSync;
+fs.writeFileSync = function (file, ...args) {
+  const target = typeof file === 'string' ? targets.get(path.resolve(file)) ?? file : file;
+  return Reflect.apply(original, fs, [target, ...args]);
+};
+syncBuiltinESMExports();

@@ -1,0 +1,348 @@
+// The runtime/database qualification matrix.
+//
+// The four capabilities the completion check names — saves, rollback,
+// concurrent reads/writes and permissions — run over one database per
+// process: the one DECKO_MATRIX_BACKEND names. One database per process, so
+// one backend's failure cannot hide another's result;
+// tools/runtime-db-matrix/run.mjs runs the cells one at a time and records
+// every cell's outcome, including the cells it could not run.
+//
+// The checks are the engine's own, not the adapter's: a real CardActionEngine
+// over a real seeded deck. What varies is the database. Each check is read
+// against the guarantee the adapter declares for itself (src/server/driver.ts):
+// whether a reader outside the writer's driver object is served the
+// transaction's uncommitted rows (readersIsolated), and at what scope writers
+// are serialized against each other (serializedWriters).
+//
+// A cell whose prerequisite is absent is not run, and says why. The pinned
+// MySQL server binaries and the hosted services' credentials are both absent
+// from this checkout; downloading the first and provisioning the second are
+// outside this area, so those cells are skipped, never passed.
+
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import {
+  InjectedFailure,
+  MATRIX_BACKENDS,
+  disposeMatrixResources,
+  openMatrixDeck,
+  removeScratchDirs,
+  type MatrixBackend,
+  type MatrixDeck,
+} from "../card/actions/backend-matrix.js";
+import { hostedDeck } from "../hosted/hosted-backend.js";
+import { seedCard } from "../card/actions/actions-test-storage.js";
+import { expireRuleResolutionCache } from "../../src/card/permissions/read-rules.js";
+import { skipLoud } from "../support/describe-with-corpus.js";
+
+const TIMEOUT = 180_000;
+
+/** How long a reader is given to answer while a save is held open. A reader
+ *  that answers inside this window must answer with the committed state; one
+ *  that does not is waiting for the holder, which the D1 adapter does by
+ *  design (src/server/drivers/d1.ts). */
+const READER_WINDOW_MS = 2_000;
+
+interface Cell {
+  id: string;
+  runtime: string;
+  label: string;
+  unavailable: string;
+  open(): Promise<MatrixBackend>;
+}
+
+const hosted = hostedDeck();
+
+const CELLS: Cell[] = [
+  ...Object.entries(MATRIX_BACKENDS).map(([id, entry]) => ({
+    id,
+    runtime: entry.runtime,
+    label: entry.label,
+    unavailable: entry.unavailable,
+    open: () => entry.open(),
+  })),
+  ...(hosted === undefined
+    ? []
+    : [
+        {
+          id: "hosted",
+          runtime: "hosted",
+          label: hosted.label,
+          unavailable: "",
+          open: async () => ({
+            driver: await hosted.open(),
+            observer: hosted.connect(),
+            secondHandle: "independent" as const,
+            dispose: async () => undefined,
+          }),
+        },
+      ]),
+];
+
+const SELECTED = process.env.DECKO_MATRIX_BACKEND;
+const chosen = SELECTED === undefined ? CELLS : CELLS.filter((cell) => cell.id === SELECTED);
+
+if (SELECTED !== undefined && chosen.length === 0) {
+  throw new Error(`no matrix cell is named ${SELECTED}`);
+}
+
+async function asError(promise: Promise<unknown>): Promise<{ code?: string; message: string }> {
+  try {
+    await promise;
+  } catch (error) {
+    return error as { code?: string; message: string };
+  }
+  throw new Error("expected the call to fail, and it did not");
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Whether a promise settled inside the window. */
+async function settledWithin(promise: Promise<unknown>, ms: number): Promise<boolean> {
+  return Promise.race([promise.then(() => true), sleep(ms).then(() => false)]);
+}
+
+for (const cell of chosen) {
+  describe(`matrix: ${cell.label}`, () => {
+    let deck: MatrixDeck | undefined;
+
+    beforeAll(async () => {
+      if (cell.unavailable !== "") return;
+      deck = await openMatrixDeck({
+        runtime: cell.runtime,
+        label: cell.label,
+        unavailable: cell.unavailable,
+        open: cell.open,
+      });
+    }, TIMEOUT);
+
+    afterAll(async () => {
+      await deck?.backend.dispose();
+    });
+
+    it(
+      "saves: a create, an update and a delete are committed and read back",
+      async (ctx) => {
+        if (cell.unavailable !== "") {
+          skipLoud(ctx, `the ${cell.label} matrix cell`, cell.unavailable);
+          return;
+        }
+        const d = deck!;
+        const observer = d.backend.observer;
+        if (observer === undefined) {
+          skipLoud(ctx, `the ${cell.label} matrix cell`, "the backend offers no second handle to read back through");
+          return;
+        }
+        const saved = await d.engine().createCard({ name: "Matrix Card", content: "first" });
+        expect(saved.cardId).toBeGreaterThan(0);
+
+        const created = await observer.query<{ id: number; db_content: string }>(
+          "SELECT id, db_content FROM cards WHERE id = ?",
+          [saved.cardId],
+        );
+        expect(created.rows).toHaveLength(1);
+        expect(String(created.rows[0]!.db_content)).toBe("first");
+
+        await d.engine().updateCard({ cardId: saved.cardId, content: "second" });
+        const updated = await observer.query<{ db_content: string }>(
+          "SELECT db_content FROM cards WHERE id = ?",
+          [saved.cardId],
+        );
+        expect(String(updated.rows[0]!.db_content)).toBe("second");
+
+        await d.engine().deleteCard({ cardId: saved.cardId });
+        const deleted = await observer.query<{ trash: number }>(
+          "SELECT trash FROM cards WHERE id = ?",
+          [saved.cardId],
+        );
+        expect(Number(deleted.rows[0]!.trash)).toBe(1);
+      },
+      TIMEOUT,
+    );
+
+    it(
+      "rollback: a failure in a later stage of a save leaves every table as it was",
+      async (ctx) => {
+        if (cell.unavailable !== "") {
+          skipLoud(ctx, `the ${cell.label} matrix cell`, cell.unavailable);
+          return;
+        }
+        const d = deck!;
+        const before = await d.snapshot();
+        // The main card's row, action and changes are written first (one
+        // batch); the subcard's change rows are the second such write, so a
+        // failure there lands after the main card's row is already written.
+        d.injector.failOn(/INSERT INTO card_changes/i, 2);
+        await expect(
+          d.engine().updateCard({
+            cardId: 60,
+            content: "parent v2 that must not stay",
+            subcards: { "+kid": { content: "kid v2 that must not stay" } },
+          }),
+        ).rejects.toBeInstanceOf(InjectedFailure);
+        d.injector.disarm();
+
+        const after = await d.snapshot();
+        expect(after.tables).toEqual(before.tables);
+        expect(after.bookkeepingRows).toBe(0);
+        if (d.backend.driver.transactionGuarantee?.idsReusedAfterRollback === true) {
+          expect(after.version).toBe(before.version);
+        } else {
+          expect(after.version).toBeGreaterThanOrEqual(before.version);
+        }
+      },
+      TIMEOUT,
+    );
+
+    it(
+      "concurrent writes: two saves on two handles both commit, each with its own history",
+      async (ctx) => {
+        if (cell.unavailable !== "") {
+          skipLoud(ctx, `the ${cell.label} matrix cell`, cell.unavailable);
+          return;
+        }
+        const d = deck!;
+        if (d.backend.secondHandle !== "independent") {
+          skipLoud(
+            ctx,
+            `the ${cell.label} matrix cell`,
+            "the backend offers one session, so a second writer cannot run beside the first",
+          );
+          return;
+        }
+        const observer = d.backend.observer!;
+        const writerA = d.engine();
+        const writerB = d.engineOn(observer);
+        const [a, b] = await Promise.all([
+          writerA.createCard({ name: "Concurrent A", content: "alpha" }),
+          writerB.createCard({ name: "Concurrent B", content: "beta" }),
+        ]);
+        expect(a.cardId).toBeGreaterThan(0);
+        expect(b.cardId).toBeGreaterThan(0);
+        expect(a.cardId).not.toBe(b.cardId);
+
+        const cards = await observer.query<{ id: number; db_content: string }>(
+          "SELECT id, db_content FROM cards WHERE name IN ('Concurrent A', 'Concurrent B')",
+          [],
+        );
+        expect(cards.rows).toHaveLength(2);
+        // Each save wrote its own act: neither writer's history was lost or
+        // merged into the other's.
+        for (const cardId of [a.cardId, b.cardId]) {
+          const acts = await observer.query<{ n: number }>(
+            "SELECT COUNT(*) AS n FROM card_acts WHERE card_id = ?",
+            [cardId],
+          );
+          expect(Number(acts.rows[0]!.n)).toBe(1);
+        }
+      },
+      TIMEOUT,
+    );
+
+    it(
+      "concurrent reads: a reader is never served a save's uncommitted rows",
+      async (ctx) => {
+        if (cell.unavailable !== "") {
+          skipLoud(ctx, `the ${cell.label} matrix cell`, cell.unavailable);
+          return;
+        }
+        const d = deck!;
+        const observer = d.backend.observer;
+        if (observer === undefined || d.backend.secondHandle !== "independent") {
+          skipLoud(
+            ctx,
+            `the ${cell.label} matrix cell`,
+            "the backend offers no independent second handle to read through while a save is in flight",
+          );
+          return;
+        }
+        const gate = d.injector.blockOn(/INSERT INTO card_changes/i, 2);
+        const saving = d.engine().updateCard({
+          cardId: 60,
+          content: "parent v2 that must not stay",
+          subcards: { "+kid": { content: "kid v2 that must not stay" } },
+        });
+        // Observe early rejection while waiting for the gate; the finally
+        // block still joins the original save and propagates its failure.
+        void saving.catch(() => undefined);
+        let read: Promise<{ rows: { db_content: string }[] }> | undefined;
+        try {
+          await Promise.race([
+            gate.reached,
+            saving.then(() => { throw new Error("save completed without reaching the gated history write"); }),
+          ]);
+          read = observer.query<{ db_content: string }>("SELECT db_content FROM cards WHERE id = ?", [60]);
+          if (await settledWithin(read, READER_WINDOW_MS)) {
+            const seen = await read;
+            expect(String(seen.rows[0]?.db_content ?? "")).toBe("parent");
+          }
+        } finally {
+          gate.release();
+          d.injector.disarm();
+          const settled = await Promise.allSettled([saving, ...(read === undefined ? [] : [read])]);
+          const failures = settled.filter((r): r is PromiseRejectedResult => r.status === "rejected");
+          if (failures.length > 0) throw new AggregateError(failures.map((r) => r.reason), "matrix save or read failed");
+        }
+        const after = await observer.query<{ db_content: string }>("SELECT db_content FROM cards WHERE id = ?", [60]);
+        expect(String(after.rows[0]?.db_content)).toBe("parent v2 that must not stay");
+      },
+      TIMEOUT,
+    );
+
+    it(
+      "permissions: a rule that grants another party denies the write and writes nothing",
+      async (ctx) => {
+        if (cell.unavailable !== "") {
+          skipLoud(ctx, `the ${cell.label} matrix cell`, cell.unavailable);
+          return;
+        }
+        const d = deck!;
+        // The standard deck grants the three write tasks to [[Anyone]], so the
+        // actor (Joe User, id 9) may write.
+        const allowed = await d.engine().createCard({ name: "Allowed Card", content: "yes" });
+        expect(allowed.cardId).toBeGreaterThan(0);
+
+        // Move the grants to a party the actor does not hold: the rule's
+        // reference and the rule card's content name the same party.
+        await seedCard(d.storage, { id: 310, name: "Editor", codename: "editor" });
+        await d.driver.query(
+          "UPDATE card_references SET referee_id = ?, referee_key = ? WHERE referee_id = ? AND referer_id IN " +
+            "(305, 306, 307)",
+          [310, "editor", 304],
+        );
+        await d.driver.query(
+          "UPDATE cards SET db_content = ? WHERE id IN (305, 306, 307)",
+          ["[[Editor]]"],
+        );
+        // The rule resolution is cached per driver; the write gate reads the
+        // rules itself, but the cache must not serve the old grants.
+        expireRuleResolutionCache(d.driver);
+
+        const cardsBefore = await d.storage.count("cards");
+        const actsBefore = await d.storage.count("card_acts");
+        const denied = await asError(d.engine().createCard({ name: "Denied Card", content: "no" }));
+        expect(denied.code).toBe("permission-denied");
+        expect(await d.storage.count("cards")).toBe(cardsBefore);
+        expect(await d.storage.count("card_acts")).toBe(actsBefore);
+
+        const deniedDelete = await asError(d.engine().deleteCard({ cardId: 60 }));
+        expect(deniedDelete.code).toBe("permission-denied");
+        expect(await d.storage.count("cards")).toBe(cardsBefore);
+        expect(await d.storage.count("card_acts")).toBe(actsBefore);
+        expect(Number((await d.driver.query<{ trash: number }>("SELECT trash FROM cards WHERE id = ?", [60])).rows[0].trash)).toBe(0);
+
+        const deniedUpdate = await asError(d.engine().updateCard({ cardId: 60, content: "not yours" }));
+        expect(deniedUpdate.code).toBe("permission-denied");
+        expect(await d.storage.count("cards")).toBe(cardsBefore);
+        expect(await d.storage.count("card_acts")).toBe(actsBefore);
+      },
+      TIMEOUT,
+    );
+  });
+}
+
+afterAll(async () => {
+  await disposeMatrixResources();
+  removeScratchDirs();
+});

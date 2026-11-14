@@ -1,0 +1,41 @@
+import {describe, expect, it} from "vitest";
+import {findRule} from "../../../src/card/rules/lookup.js";
+import {buildRuleLookupHash, ruleCacheStatement, type RuleCacheRow} from "../../../src/card/rules/rule-cache.js";
+import {createRenderTestStorage, seedCard} from "./render-test-storage.js";
+
+describe("modal layout rule storage qualification", () => {
+  for (const mutation of ["valid", "wrong-setting-type", "wrong-set-type", "missing-setting-code"] as const) {
+    it(`matches the original cache SQL/key conditions for ${mutation}`, async () => {
+      const storage = await createRenderTestStorage();
+      try {
+        await seedCard(storage, {id: 2, name: "Basic", codename: "basic", typeId: 2});
+        await seedCard(storage, {id: 900, name: "*all", codename: "all", typeId: 2});
+        await seedCard(storage, {id: 902, name: "Setting", codename: "setting", typeId: 2});
+        await seedCard(storage, {id: 901, name: "*layout", codename: "layout", typeId: 902});
+        await seedCard(storage, {id: 910, leftId: 900, rightId: 901, typeId: 2, dbContent: "Probe Layout"});
+        await seedCard(storage, {id: 914, name: "Probe Page", typeId: 2});
+        await storage.fetcher.codenames.ensureLoaded();
+        storage.fetcher.installNameEnvironment();
+        const setType = await storage.fetcher.codenames.id("set");
+        const settingType = await storage.fetcher.codenames.id("setting");
+        const storedSet = await storage.counting.query<{type_id: number}>("SELECT type_id FROM cards WHERE id = ?", [900]);
+        expect(storedSet.rows[0].type_id).toBe(setType);
+        expect(settingType).toBe(902);
+        if (mutation === "wrong-setting-type") await storage.counting.query("UPDATE cards SET type_id = ? WHERE id = ?", [2, 901]);
+        if (mutation === "wrong-set-type") await storage.counting.query("UPDATE cards SET type_id = ? WHERE id = ?", [2, 900]);
+        if (mutation === "missing-setting-code") await storage.counting.query("UPDATE cards SET codename = NULL WHERE id = ?", [901]);
+        storage.fetcher.resetCaches();
+        await storage.fetcher.codenames.ensureLoaded();
+        // Shared port of card-1.110.0 rule/cache.rb SQL and codename keys;
+        // execute it against the actual fixture, not a name-only stub.
+        const statement = ruleCacheStatement(setType!, settingType!);
+        const raw = await storage.counting.query<RuleCacheRow>(statement.sql, statement.params);
+        const keys = buildRuleLookupHash(raw.rows, id => storage.fetcher.codenames.peekNameForId(id));
+        const expected = mutation === "valid" ? 910 : undefined;
+        expect(keys.get("all+layout")).toBe(expected);
+        const selected = await findRule(storage.fetcher, {id: 914, name: "Probe Page", typeId: 2, typeName: "Basic"}, "*layout");
+        expect(selected?.rule.id).toBe(expected);
+      } finally { storage.close(); }
+    });
+  }
+});

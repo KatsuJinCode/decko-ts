@@ -1,0 +1,56 @@
+{
+  "row": "comment-add-comment",
+  "event_file": "card-mod-comment-0.20.0/set/all/comment.rb",
+  "event": "add_comment",
+  "notes": [
+    "The format's own bytes (comment.rb:27-37, the `format do ... end` block) are not executed by this rig: the rig answers `format.comment_with_signature` from the spec. The answer this spec supplies is the PINNED surface capture's own bytes (fixtures/oracle-surfaces/comment.jsonl, the after_signed_in_comment and comment_signature_anonymous rows), so the joined content the capture writes is the pinned Ruby's own bytes and not a transcription.",
+    "The comment is the pinned surface capture's own comment (\"first comment\") and the author is the pinned surface capture's own author (\"Anonymous (Not signed in)\", the card-level resolution of comment.rb:16-19 with no signed-in reader), so the signature the spec supplies is the one Ruby's own format block would build for that comment and author."
+  ],
+  "scenarios": [
+    {
+      "name": "a save with a comment and a content: the body joins the content and the signature with the separator",
+      "attributes": { "comment": "first comment", "content": "body before comment" },
+      "env_session": { "comment_author": null },
+      "returns": {
+        "format": {
+          "__calls__": {
+            "comment_with_signature": "<p>first comment</p>\n<div class=\"w-comment-author\">Anonymous (Not signed in).....2026-09-29 12:00:00 UTC</div>"
+          }
+        }
+      },
+      "pinned_methods": [
+        { "name": "comment_author", "file": "card-mod-comment-0.20.0/set/all/comment.rb" }
+      ]
+    },
+    {
+      "name": "a save with a comment and NO content: the body writes the signature alone, with no separator",
+      "attributes": { "comment": "first comment", "content": null },
+      "env_session": { "comment_author": null },
+      "returns": {
+        "format": {
+          "__calls__": {
+            "comment_with_signature": "<p>first comment</p>\n<div class=\"w-comment-author\">Anonymous (Not signed in).....2026-09-29 12:00:00 UTC</div>"
+          }
+        }
+      },
+      "pinned_methods": [
+        { "name": "comment_author", "file": "card-mod-comment-0.20.0/set/all/comment.rb" }
+      ]
+    },
+    {
+      "name": "a save with NO comment: the body sticks the author and then returns, touching neither the content nor the comment",
+      "attributes": { "comment": null, "content": "body before comment" },
+      "env_session": { "comment_author": null },
+      "returns": {
+        "format": {
+          "__calls__": {
+            "comment_with_signature": "<p>first comment</p>\n<div class=\"w-comment-author\">Anonymous (Not signed in).....2026-09-29 12:00:00 UTC</div>"
+          }
+        }
+      },
+      "pinned_methods": [
+        { "name": "comment_author", "file": "card-mod-comment-0.20.0/set/all/comment.rb" }
+      ]
+    }
+  ]
+}

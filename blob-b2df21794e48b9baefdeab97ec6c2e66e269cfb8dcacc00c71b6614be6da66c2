@@ -1,0 +1,48 @@
+import * as nativeFilesystem from 'node:fs';
+
+export class SourceExportPlatformError extends Error {
+  name = 'SourceExportPlatformError';
+}
+
+export function sourceExportPermissions(mode) {
+  if (mode === '100644') return 0o644;
+  if (mode === '100755') return 0o755;
+  throw new SourceExportPlatformError('Unsupported source export Git mode: ' + mode);
+}
+
+export function sourceExportModeEvidence(platform = process.platform) {
+  if (platform === 'win32') return 'Git mode recorded; Windows filesystem execute bits are not qualified';
+  if (platform === 'linux') return 'Git mode plus Linux permission readback on every output file';
+  throw new SourceExportPlatformError('Unsupported source export platform: ' + platform);
+}
+
+function writeAndReadBack(destination, bytes, mode, filesystem, applyPermissions) {
+  const permissions = sourceExportPermissions(mode);
+  filesystem.writeFileSync(destination, bytes, { flag: 'wx', mode: permissions });
+  if (applyPermissions) filesystem.chmodSync(destination, permissions);
+  const details = filesystem.lstatSync(destination);
+  if (!details.isFile() || details.isSymbolicLink()) throw Error('Output is not a regular source file');
+  if (applyPermissions && (details.mode & 0o7777) !== permissions) throw Error('Output permission readback differs');
+  if (!Buffer.from(filesystem.readFileSync(destination)).equals(Buffer.from(bytes))) throw Error('Output byte readback differs');
+  return { mode, bytes: Buffer.byteLength(bytes) };
+}
+
+export function writeWindowsSourceExportFile(destination, bytes, mode, filesystem = nativeFilesystem) {
+  return writeAndReadBack(destination, bytes, mode, filesystem, false);
+}
+
+export function writeLinuxSourceExportFile(destination, bytes, mode, filesystem = nativeFilesystem) {
+  return writeAndReadBack(destination, bytes, mode, filesystem, true);
+}
+
+export function writeSourceExportFile(destination, bytes, mode, options = {}) {
+  const platform = options.platform ?? process.platform;
+  const filesystem = options.filesystem ?? nativeFilesystem;
+  sourceExportModeEvidence(platform);
+  try {
+    if (platform === 'win32') return writeWindowsSourceExportFile(destination, bytes, mode, filesystem);
+    return writeLinuxSourceExportFile(destination, bytes, mode, filesystem);
+  } catch (cause) {
+    throw new SourceExportPlatformError('Source export write/refusal on ' + platform + ': ' + destination, { cause });
+  }
+}

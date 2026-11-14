@@ -1,0 +1,37 @@
+# Extracts the pinned blank_content? body (content/all.rb:46-48) and runs it
+# against concrete contents, the same line-extraction rule the capture rig
+# uses (tests/server/oracle-capture-pinned-card-gem-methods-ruby.rb). The
+# receiver answers `content` with each probe input, so the executed bytes are
+# the gem's own and the answers are the row's oracle values.
+#
+# blank? is ActiveSupport's (activesupport-7.2.4
+# lib/active_support/core_ext/object/blank.rb:136-160): String#blank? is
+# `empty? || BLANK_RE.match?(self)` with BLANK_RE = /\A[[:space:]]*\z/. The
+# stub carries those exact semantics, because a bare interpreter has no
+# blank? at all (measured: the pinned body dies with NoMethodError on it).
+GEM = "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/content/all.rb"
+lines = File.readlines(GEM)
+body = lines[45..47].join # 0-indexed: file lines 46..48 (def .. end)
+class String
+  BLANK_RE = /\A[[:space:]]*\z/
+  def blank?
+    empty? || BLANK_RE.match?(self)
+  end
+end
+receiver = Object.new
+receiver.define_singleton_method(:content) { @content }
+PROBES = [["empty", ""], ["one space", " "], ["tab newline", "\t\n"], ["nul", "\0"],
+          ["word", "hello"], ["word plus spaces", " hello "], ["nul plus word", "\0x"]].freeze
+PROBES.each do |label, value|
+  receiver.instance_variable_set(:@content, value)
+  receiver.instance_eval(body) # defines blank_content? on the receiver's singleton
+  result = receiver.blank_content?
+  puts "#{label}: #{result.inspect}"
+end
+# The whitespace-set edges, on the same ActiveSupport semantics: Ruby's
+# [[:space:]] is the Unicode White_Space set (NEL in, BOM out), and Ruby's
+# String#strip moves only ASCII whitespace plus NUL off the ends.
+puts "NEL blank: #{"\u0085".blank?.inspect}"
+puts "BOM blank: #{"\uFEFF".blank?.inspect}"
+puts "NBSP blank: #{"\u00A0".blank?.inspect}"
+puts "nul strip: #{"\0".strip.inspect}"

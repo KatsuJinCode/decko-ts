@@ -1,0 +1,117 @@
+# Qualified-rule compatibility fixtures: issue 176
+
+## Exact comparison
+
+The four failures are reproduced against immutable source before fixture edits.
+All production modules are loaded through an isolated Vitest pre-load control,
+not copied into the working tree. Every loaded source has its Git ref, path and
+SHA-256 recorded. No root checkout is changed.
+
+Parent: `022ffd28e0c1930c44c2b49b48092372474e9740`.
+Experimental selection: `9c93fa3fcc0189993c389b579e6207df5784014e`.
+The initial selected control used the nine reviewed modules from
+`762e4ad3ab9f95d88bb70c7ff14d5131bff346f3` over the parent. A Git diff verifies
+those nine files are byte-identical to the experimental selection, whose only
+production differences from the parent are those nine files. Final controls
+load the entire experimental production tree and immutable helper tests from
+the exact experimental ref.
+
+| Source | Three unchanged original files | Corrected fixture setup |
+| --- | --- | --- |
+| Exact parent | 15 pass, zero failures/skips | 15 pass, zero failures/skips |
+| Exact experimental selection | 11 pass, four failures, zero skips | 15 pass, zero failures/skips |
+
+The original selected failures are exactly the missing-header codename during
+the head/page comparison, the structured-field type change incorrectly saving,
+and the pointer editor's missing blank/select and missing 100 standard options.
+The parent's passing result alone is not the attribution; the row construction
+and original rule-cache conditions below explain the difference.
+
+## Cause and smallest correction
+
+The pinned original `card-1.110.0/lib/card/rule/cache.rb` selects only live
+rules whose left card is Set-typed and right card is Setting-typed. Its lookup
+key also requires the setting and pattern codenames. A matching compound name
+is insufficient. The selected production correctly enforces those conditions;
+the three older fixtures did not construct qualifying rules.
+
+- Head/page fixture: `*all` and `*layout` were Basic-typed, and no Setting type
+  existed. The layout rule is correctly excluded; the page then takes the
+  default layout, which references the absent `header` codename. Setup now
+  declares Cardtype/Set/Setting type anchors, Set-types `*all`, and Setting-types
+  `*layout`. It does not add `header` to hide the unintended layout fallback.
+- Type-event fixture: the `Widget+*right` set and `*structure` setting both
+  used arbitrary type ID 14. Setup now uses the existing standard fixture's
+  registered Set ID and declares/uses a registered Setting type for the tag.
+  The original structured-type refusal and create/update assertions remain.
+- Pointer fixture: the `*input type` tag had neither Setting type nor its
+  codename; `*self` had no pattern codename. Setup now supplies the Setting type
+  and relevant setting/pattern codenames, including correctly typed read/update
+  tags. It preserves the existing Set trunk, rule value, filler population,
+  selected value and exact 100-option/default-limit assertions.
+
+There is no production change or qualification exception. Test bodies from
+the first `describe(` to EOF are byte-identical to the exact parent in all
+three files; their hashes are retained in `compat176-assertion-custody.json`.
+
+The head fixture also carries the parent's existing explicit
+`new ModLoader(..., s.engine.views)` binding. This one line already exists in
+both root pins; it is not a new issue176 behavior change. The retained fixer
+branch lacked it. Intermediate executions using that older test setup produced
+six UnsupportedViewError failures; those logs remain diagnostic failures, not
+acceptance. Final controls pin all helpers and retain the root binding.
+
+## Qualification and security controls
+
+An additional unchanged, Git-pinned selection of eight rule test files executes
+36 cases through the exact experimental production. All pass with zero skips
+or failures. It covers Set/Setting rejection, setting/pattern codename mutation,
+requested cache keys with both stored-key fallback modes, receiving-engine
+pattern names, independent pattern boundaries, trash and ordinary-save
+revocation, and ten comparisons with actual original Ruby rule SQL/methods.
+
+The native comparisons use Ruby 3.4.11 and card 1.110.0 with the existing
+minimal SQLite-backed Card adapters. They do not boot Rails, ActiveRecord,
+mod registration or RSpec, and do not establish fresh native-framework or
+release acceptance. All ten source observations were retained; the original
+rule-cache source SHA-256 is
+`17a240a32aed7c2ea07c69df21bfb78190a4cd501583171f2b23403de1f7736d`.
+The original type validation and options/default-limit source were inspected
+directly; no live reference, VM, install or provider call was made.
+
+The temporary exact Git-pinned Ruby probe was removed after its bytes were
+verified against the experimental ref. Native observations were copied and
+byte-verified into retained evidence before their temporary output was removed.
+Each native fixture DB was closed and removed by the unchanged control. No
+fixture DB directory remained. No new checkout, build directory or server was
+created. Earlier issues 154/156/164/170/174 remain separate packages.
+
+## Reproducible receipts
+
+Retained under `.runtime/adapter123/`:
+
+- `compat176.config.mjs`: immutable-source loader, exact parent/experimental
+  pins, source receipts, and selection of the three working fixture files.
+  SHA-256 `c856bea7b372faa605cbb5030a1a092cdb3965a290dd82a788e338906b6f4bfb`.
+- `compat176-parent-original.log`: original parent 15-pass control.
+- `compat176-selected-original.log`: original four-failure reproduction.
+- `compat176-parent-final.log`: fixed parent 15-pass control.
+- `compat176-selected-final.log`: fixed exact experimental 15-pass control;
+  SHA-256 `b0bda76d497617226a3a2ab354409a35623e12037ca61cb899a0886fb44e2b01`.
+- `compat176-security.test.ts`: imports the eight unchanged controls, whose
+  source is loaded directly from the immutable experimental commit.
+- `compat176-pinned-security-controls.log`: 36-pass run;
+  SHA-256 `28349169382bb1598367f734a7d4f41d7dfd5b584ca2b142bbc0f9b1cadcf08a`.
+- `compat176-native-rule-observations.json`, `compat176-assertion-custody.json`,
+  and per-mode source-input JSONL receipts.
+- `compat176-typecheck-receipt.json`: checked native compiler status zero,
+  signal/error null; diagnostics empty. The compiler is its own invocation,
+  with no later shell command masking its result.
+- `compat176-platform-scan.log`: three explicit files, zero command landmines.
+
+The loader reads modules from Git with hidden subprocesses and disables the
+Vitest persistent module cache for these source comparisons. Compilation and
+OS caches may otherwise be warm; test outcomes are executed, not replayed.
+No model generated or graded results. No full gate was run. Independent
+selection and reattack of the exact fixture correction remain with the
+release owner.

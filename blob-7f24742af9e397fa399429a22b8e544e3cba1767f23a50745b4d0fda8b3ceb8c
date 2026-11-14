@@ -1,0 +1,39 @@
+{
+  "sourceSha256": "ca98301d98fe7cf6763a3909d656ecdca2952bc25663760a1aaa67f83cd5ca65",
+  "scope": "Actual pure release-check classifier/caller expression with synthetic inputs; no test stages or child processes started",
+  "partialSkipped": {
+    "result": "PASS",
+    "reason": "",
+    "failed": [],
+    "known": [],
+    "counts": {
+      "passed": 1,
+      "failed": 0,
+      "skipped": 3
+    }
+  },
+  "failedExit": {
+    "result": "PASS",
+    "reason": "",
+    "failed": [],
+    "known": [],
+    "counts": {
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "knownFailure": {
+    "result": "BASELINE",
+    "reason": "1 failing suite(s), all in KNOWN_FAILURES.md",
+    "failed": [],
+    "known": [
+      "tests/synthetic-known.test.ts"
+    ],
+    "counts": {
+      "passed": 1,
+      "failed": 1,
+      "skipped": 0
+    }
+  }
+}

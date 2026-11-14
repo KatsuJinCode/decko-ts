@@ -1,0 +1,745 @@
+[
+  {
+    "type": "test:enqueue",
+    "data": {
+      "nesting": 0,
+      "name": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "type": "test",
+      "testId": 1,
+      "parentId": 0,
+      "tags": [],
+      "line": 1,
+      "column": 1,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:dequeue",
+    "data": {
+      "nesting": 0,
+      "name": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "type": "test",
+      "testId": 1,
+      "parentId": 0,
+      "tags": [],
+      "line": 1,
+      "column": 1,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:stdout",
+    "data": {
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "message": "{\"evidence\":\"C:\\\\localProjects\\\\decko-ts-codex-area3-20261031\\\\.runtime\\\\area3\\\\issue216\\\\native\\\\full-host\\\\run-wna7mK\",\"owned\":\"C:\\\\localProjects\\\\decko-ts-codex-area3-20261031\\\\.runtime\\\\area3\\\\issue216\\\\native\\\\full-host-owned-nG8f2A\",\"subject\":\"assembled:2560d6e3b273af020bc57a72d3a4edd657224faea2dff2554fe108983d25d335\",\"preparation\":\"exact full entry and source-qualified runtime, actual SQLite\"}\n",
+      "entryFile": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:enqueue",
+    "data": {
+      "nesting": 0,
+      "name": "full staging host with real SQLite: ipc-clean",
+      "type": "test",
+      "testId": 1,
+      "parentId": 0,
+      "tags": [],
+      "line": 64,
+      "column": 3,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "entryFile": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:dequeue",
+    "data": {
+      "nesting": 0,
+      "name": "full staging host with real SQLite: ipc-clean",
+      "type": "test",
+      "testId": 1,
+      "parentId": 0,
+      "tags": [],
+      "line": 64,
+      "column": 3,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "entryFile": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:enqueue",
+    "data": {
+      "nesting": 0,
+      "name": "full staging host with real SQLite: ipc-incomplete",
+      "type": "test",
+      "testId": 2,
+      "parentId": 0,
+      "tags": [],
+      "line": 64,
+      "column": 3,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "entryFile": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:enqueue",
+    "data": {
+      "nesting": 0,
+      "name": "full staging host with real SQLite: http-clean",
+      "type": "test",
+      "testId": 3,
+      "parentId": 0,
+      "tags": [],
+      "line": 64,
+      "column": 3,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "entryFile": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:enqueue",
+    "data": {
+      "nesting": 0,
+      "name": "full staging host with real SQLite: http-incomplete",
+      "type": "test",
+      "testId": 4,
+      "parentId": 0,
+      "tags": [],
+      "line": 64,
+      "column": 3,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "entryFile": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:enqueue",
+    "data": {
+      "nesting": 0,
+      "name": "full staging host with real SQLite: file-clean",
+      "type": "test",
+      "testId": 5,
+      "parentId": 0,
+      "tags": [],
+      "line": 64,
+      "column": 3,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "entryFile": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:enqueue",
+    "data": {
+      "nesting": 0,
+      "name": "full staging host with real SQLite: file-incomplete",
+      "type": "test",
+      "testId": 6,
+      "parentId": 0,
+      "tags": [],
+      "line": 64,
+      "column": 3,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "entryFile": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:enqueue",
+    "data": {
+      "nesting": 0,
+      "name": "full staging host with real SQLite: ipc-file-error-clean",
+      "type": "test",
+      "testId": 7,
+      "parentId": 0,
+      "tags": [],
+      "line": 64,
+      "column": 3,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "entryFile": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:complete",
+    "data": {
+      "name": "full staging host with real SQLite: ipc-clean",
+      "nesting": 0,
+      "testNumber": 1,
+      "testId": 1,
+      "parentId": 0,
+      "details": {
+        "duration_ms": 519.2597,
+        "type": "test",
+        "passed": true
+      },
+      "tags": [],
+      "line": 64,
+      "column": 3,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "entryFile": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:start",
+    "data": {
+      "nesting": 0,
+      "name": "full staging host with real SQLite: ipc-clean",
+      "testId": 1,
+      "parentId": 0,
+      "tags": [],
+      "line": 64,
+      "column": 3,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "entryFile": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:pass",
+    "data": {
+      "name": "full staging host with real SQLite: ipc-clean",
+      "nesting": 0,
+      "testNumber": 1,
+      "testId": 1,
+      "parentId": 0,
+      "details": {
+        "duration_ms": 519.2597,
+        "type": "test"
+      },
+      "tags": [],
+      "line": 64,
+      "column": 3,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "entryFile": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:dequeue",
+    "data": {
+      "nesting": 0,
+      "name": "full staging host with real SQLite: ipc-incomplete",
+      "type": "test",
+      "testId": 2,
+      "parentId": 0,
+      "tags": [],
+      "line": 64,
+      "column": 3,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "entryFile": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:complete",
+    "data": {
+      "name": "full staging host with real SQLite: ipc-incomplete",
+      "nesting": 0,
+      "testNumber": 2,
+      "testId": 2,
+      "parentId": 0,
+      "details": {
+        "duration_ms": 5537.0851,
+        "type": "test",
+        "passed": true
+      },
+      "tags": [],
+      "line": 64,
+      "column": 3,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "entryFile": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:start",
+    "data": {
+      "nesting": 0,
+      "name": "full staging host with real SQLite: ipc-incomplete",
+      "testId": 2,
+      "parentId": 0,
+      "tags": [],
+      "line": 64,
+      "column": 3,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "entryFile": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:pass",
+    "data": {
+      "name": "full staging host with real SQLite: ipc-incomplete",
+      "nesting": 0,
+      "testNumber": 2,
+      "testId": 2,
+      "parentId": 0,
+      "details": {
+        "duration_ms": 5537.0851,
+        "type": "test"
+      },
+      "tags": [],
+      "line": 64,
+      "column": 3,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "entryFile": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:dequeue",
+    "data": {
+      "nesting": 0,
+      "name": "full staging host with real SQLite: http-clean",
+      "type": "test",
+      "testId": 3,
+      "parentId": 0,
+      "tags": [],
+      "line": 64,
+      "column": 3,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "entryFile": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:complete",
+    "data": {
+      "name": "full staging host with real SQLite: http-clean",
+      "nesting": 0,
+      "testNumber": 3,
+      "testId": 3,
+      "parentId": 0,
+      "details": {
+        "duration_ms": 584.9936,
+        "type": "test",
+        "passed": true
+      },
+      "tags": [],
+      "line": 64,
+      "column": 3,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "entryFile": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:start",
+    "data": {
+      "nesting": 0,
+      "name": "full staging host with real SQLite: http-clean",
+      "testId": 3,
+      "parentId": 0,
+      "tags": [],
+      "line": 64,
+      "column": 3,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "entryFile": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:pass",
+    "data": {
+      "name": "full staging host with real SQLite: http-clean",
+      "nesting": 0,
+      "testNumber": 3,
+      "testId": 3,
+      "parentId": 0,
+      "details": {
+        "duration_ms": 584.9936,
+        "type": "test"
+      },
+      "tags": [],
+      "line": 64,
+      "column": 3,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "entryFile": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:dequeue",
+    "data": {
+      "nesting": 0,
+      "name": "full staging host with real SQLite: http-incomplete",
+      "type": "test",
+      "testId": 4,
+      "parentId": 0,
+      "tags": [],
+      "line": 64,
+      "column": 3,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "entryFile": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:complete",
+    "data": {
+      "name": "full staging host with real SQLite: http-incomplete",
+      "nesting": 0,
+      "testNumber": 4,
+      "testId": 4,
+      "parentId": 0,
+      "details": {
+        "duration_ms": 5588.7755,
+        "type": "test",
+        "passed": true
+      },
+      "tags": [],
+      "line": 64,
+      "column": 3,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "entryFile": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:start",
+    "data": {
+      "nesting": 0,
+      "name": "full staging host with real SQLite: http-incomplete",
+      "testId": 4,
+      "parentId": 0,
+      "tags": [],
+      "line": 64,
+      "column": 3,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "entryFile": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:pass",
+    "data": {
+      "name": "full staging host with real SQLite: http-incomplete",
+      "nesting": 0,
+      "testNumber": 4,
+      "testId": 4,
+      "parentId": 0,
+      "details": {
+        "duration_ms": 5588.7755,
+        "type": "test"
+      },
+      "tags": [],
+      "line": 64,
+      "column": 3,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "entryFile": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:dequeue",
+    "data": {
+      "nesting": 0,
+      "name": "full staging host with real SQLite: file-clean",
+      "type": "test",
+      "testId": 5,
+      "parentId": 0,
+      "tags": [],
+      "line": 64,
+      "column": 3,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "entryFile": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:complete",
+    "data": {
+      "name": "full staging host with real SQLite: file-clean",
+      "nesting": 0,
+      "testNumber": 5,
+      "testId": 5,
+      "parentId": 0,
+      "details": {
+        "duration_ms": 468.829,
+        "type": "test",
+        "passed": true
+      },
+      "tags": [],
+      "line": 64,
+      "column": 3,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "entryFile": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:start",
+    "data": {
+      "nesting": 0,
+      "name": "full staging host with real SQLite: file-clean",
+      "testId": 5,
+      "parentId": 0,
+      "tags": [],
+      "line": 64,
+      "column": 3,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "entryFile": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:pass",
+    "data": {
+      "name": "full staging host with real SQLite: file-clean",
+      "nesting": 0,
+      "testNumber": 5,
+      "testId": 5,
+      "parentId": 0,
+      "details": {
+        "duration_ms": 468.829,
+        "type": "test"
+      },
+      "tags": [],
+      "line": 64,
+      "column": 3,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "entryFile": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:dequeue",
+    "data": {
+      "nesting": 0,
+      "name": "full staging host with real SQLite: file-incomplete",
+      "type": "test",
+      "testId": 6,
+      "parentId": 0,
+      "tags": [],
+      "line": 64,
+      "column": 3,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "entryFile": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:complete",
+    "data": {
+      "name": "full staging host with real SQLite: file-incomplete",
+      "nesting": 0,
+      "testNumber": 6,
+      "testId": 6,
+      "parentId": 0,
+      "details": {
+        "duration_ms": 5511.0334,
+        "type": "test",
+        "passed": true
+      },
+      "tags": [],
+      "line": 64,
+      "column": 3,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "entryFile": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:start",
+    "data": {
+      "nesting": 0,
+      "name": "full staging host with real SQLite: file-incomplete",
+      "testId": 6,
+      "parentId": 0,
+      "tags": [],
+      "line": 64,
+      "column": 3,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "entryFile": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:pass",
+    "data": {
+      "name": "full staging host with real SQLite: file-incomplete",
+      "nesting": 0,
+      "testNumber": 6,
+      "testId": 6,
+      "parentId": 0,
+      "details": {
+        "duration_ms": 5511.0334,
+        "type": "test"
+      },
+      "tags": [],
+      "line": 64,
+      "column": 3,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "entryFile": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:dequeue",
+    "data": {
+      "nesting": 0,
+      "name": "full staging host with real SQLite: ipc-file-error-clean",
+      "type": "test",
+      "testId": 7,
+      "parentId": 0,
+      "tags": [],
+      "line": 64,
+      "column": 3,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "entryFile": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:complete",
+    "data": {
+      "name": "full staging host with real SQLite: ipc-file-error-clean",
+      "nesting": 0,
+      "testNumber": 7,
+      "testId": 7,
+      "parentId": 0,
+      "details": {
+        "duration_ms": 542.3968,
+        "type": "test",
+        "passed": true
+      },
+      "tags": [],
+      "line": 64,
+      "column": 3,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "entryFile": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:start",
+    "data": {
+      "nesting": 0,
+      "name": "full staging host with real SQLite: ipc-file-error-clean",
+      "testId": 7,
+      "parentId": 0,
+      "tags": [],
+      "line": 64,
+      "column": 3,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "entryFile": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:pass",
+    "data": {
+      "name": "full staging host with real SQLite: ipc-file-error-clean",
+      "nesting": 0,
+      "testNumber": 7,
+      "testId": 7,
+      "parentId": 0,
+      "details": {
+        "duration_ms": 542.3968,
+        "type": "test"
+      },
+      "tags": [],
+      "line": 64,
+      "column": 3,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "entryFile": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:summary",
+    "data": {
+      "success": true,
+      "counts": {
+        "tests": 7,
+        "failed": 0,
+        "passed": 7,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "topLevel": 7,
+        "suites": 0
+      },
+      "duration_ms": 18756.1787,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "entryFile": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:complete",
+    "data": {
+      "name": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs",
+      "nesting": 0,
+      "testNumber": 1,
+      "testId": 1,
+      "parentId": 0,
+      "details": {
+        "duration_ms": 19270.0119,
+        "type": "test",
+        "passed": true
+      },
+      "tags": [],
+      "line": 1,
+      "column": 1,
+      "file": "C:\\localProjects\\decko-ts-codex-area3-20261031\\test-profiles\\assembled-host\\host-recovery.control.mjs"
+    }
+  },
+  {
+    "type": "test:plan",
+    "data": {
+      "nesting": 0,
+      "count": 7
+    }
+  },
+  {
+    "type": "test:diagnostic",
+    "data": {
+      "nesting": 0,
+      "message": "tests 7",
+      "level": "info"
+    }
+  },
+  {
+    "type": "test:diagnostic",
+    "data": {
+      "nesting": 0,
+      "message": "suites 0",
+      "level": "info"
+    }
+  },
+  {
+    "type": "test:diagnostic",
+    "data": {
+      "nesting": 0,
+      "message": "pass 7",
+      "level": "info"
+    }
+  },
+  {
+    "type": "test:diagnostic",
+    "data": {
+      "nesting": 0,
+      "message": "fail 0",
+      "level": "info"
+    }
+  },
+  {
+    "type": "test:diagnostic",
+    "data": {
+      "nesting": 0,
+      "message": "cancelled 0",
+      "level": "info"
+    }
+  },
+  {
+    "type": "test:diagnostic",
+    "data": {
+      "nesting": 0,
+      "message": "skipped 0",
+      "level": "info"
+    }
+  },
+  {
+    "type": "test:diagnostic",
+    "data": {
+      "nesting": 0,
+      "message": "todo 0",
+      "level": "info"
+    }
+  },
+  {
+    "type": "test:diagnostic",
+    "data": {
+      "nesting": 0,
+      "message": "duration_ms 19272.2001",
+      "level": "info"
+    }
+  },
+  {
+    "type": "test:summary",
+    "data": {
+      "success": true,
+      "counts": {
+        "tests": 7,
+        "failed": 0,
+        "passed": 7,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "topLevel": 7,
+        "suites": 0
+      },
+      "duration_ms": 19272.2001
+    }
+  }
+]

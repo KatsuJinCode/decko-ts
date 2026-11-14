@@ -1,0 +1,45 @@
+import {describe, expect, it} from "vitest";
+import {findRule} from "../../../src/card/rules/lookup.js";
+import {ruleCacheStatement, buildRuleLookupHash, type RuleCacheRow} from "../../../src/card/rules/rule-cache.js";
+import {createActionsTestStorage, seedStandardDeck, seedCard, CARDTYPE_ID, RICH_TEXT_ID, SET_TYPE_ID} from "./actions-test-storage.js";
+
+describe("registered automatic-name rule qualification", () => {
+  for (const mutation of ["valid", "wrong-setting-type", "wrong-set-type", "missing-setting-code"] as const) {
+    it(`matches the original cache SQL/key for ${mutation}`, async () => {
+      const storage = await createActionsTestStorage();
+      try {
+        await seedStandardDeck(storage);
+        await seedCard(storage, {id: 339, name: "Setting", codename: "setting", typeId: CARDTYPE_ID});
+        await seedCard(storage, {id: 340, name: "*autoname", codename: "autoname", typeId: 339});
+        await seedCard(storage, {id: 341, name: "*type", codename: "type"});
+        await seedCard(storage, {id: 342, leftId: RICH_TEXT_ID, rightId: 341, typeId: SET_TYPE_ID});
+        await seedCard(storage, {id: 343, leftId: 342, rightId: 340, dbContent: "auto001"});
+        expect(await storage.selectOne("SELECT type_id,codename FROM cards WHERE id=?", [340]))
+          .toEqual({type_id: 339, codename: "autoname"});
+        expect(await storage.selectOne("SELECT type_id,left_id,right_id FROM cards WHERE id=?", [342]))
+          .toEqual({type_id: SET_TYPE_ID, left_id: RICH_TEXT_ID, right_id: 341});
+        if (mutation === "wrong-setting-type") await storage.driver.query("UPDATE cards SET type_id=? WHERE id=?", [RICH_TEXT_ID, 340]);
+        if (mutation === "wrong-set-type") await storage.driver.query("UPDATE cards SET type_id=? WHERE id=?", [RICH_TEXT_ID, 342]);
+        if (mutation === "missing-setting-code") await storage.driver.query("UPDATE cards SET codename=NULL WHERE id=?", [340]);
+        storage.engine.resetCaches();
+        storage.engine.installNameEnvironment();
+        await storage.engine.codenames.ensureLoaded();
+        const setType = await storage.engine.codenames.id("set");
+        const settingType = await storage.engine.codenames.id("setting");
+        expect(setType).toBe(SET_TYPE_ID);
+        expect(settingType).toBe(339);
+        // Execute the existing port of original rule/cache.rb over the
+        // actual rows, including its codename-based key construction.
+        const statement = ruleCacheStatement(setType!, settingType!);
+        const raw = await storage.driver.query<RuleCacheRow>(statement.sql, statement.params);
+        const keys = buildRuleLookupHash(raw.rows, id => storage.engine.codenames.peekNameForId(id));
+        const expected = mutation === "valid" ? 343 : undefined;
+        expect(keys.get(`${RICH_TEXT_ID}+type+autoname`)).toBe(expected);
+        const selected = await findRule(storage.engine,
+          {name: "", isNew: true, typeId: RICH_TEXT_ID, typeName: "RichText"}, "*autoname");
+        expect(selected?.rule.id).toBe(expected);
+        expect(selected?.rule.dbContent).toBe(mutation === "valid" ? "auto001" : undefined);
+      } finally { storage.close(); }
+    });
+  }
+});

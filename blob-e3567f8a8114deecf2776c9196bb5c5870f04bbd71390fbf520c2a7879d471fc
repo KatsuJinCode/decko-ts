@@ -1,0 +1,181 @@
+{
+  "sourceCommit": "93800c488a3f473d782a4ff7a44f1193941af345",
+  "sourceRecord": "docs/reports/adversarial-issue193-native/issue193-current-root-after.json",
+  "consumers": [
+    {
+      "id": "positive",
+      "expected": 0,
+      "source": "import type {ModTagOptions,ModTagValue} from \"../../src/card/mod-loader/mod-manifest.js\";\nimport {defineMod} from \"../../src/card/mod-loader/mod-dsl.js\";\nconst value:ModTagValue={nested:[\"text\",2,null,{flag:false}]};\nconst options:ModTagOptions={title:value,class:{base:0,off:false},aria:{label:[\"text\",{active:true}]} };\nexport const mod=defineMod(\"portable_type_consumer\",({set})=>set(\"all/portable_type_consumer\",({format})=>format(\"html\",({wrapper})=>wrapper(\"portable\",\"div\",options))));\n",
+      "sourceSha256": "9f624640b1807e9b653a6198adfcae2f914b9c75c63f24cf9b4a7fa1440fac4c",
+      "diagnosticCodes": []
+    },
+    {
+      "id": "Date",
+      "expected": 1,
+      "source": "import type {ModTagOptions,ModTagValue} from \"../../src/card/mod-loader/mod-manifest.js\";\nimport {defineMod} from \"../../src/card/mod-loader/mod-dsl.js\";\nconst options:ModTagOptions={title:new Date(0)};\nexport const mod=defineMod(\"portable_type_consumer\",({set})=>set(\"all/portable_type_consumer\",({format})=>format(\"html\",({wrapper})=>wrapper(\"portable\",\"div\",options))));\n",
+      "sourceSha256": "19c52d60ccd7d8105427d3ad0ea36a2d3339b0ef6a1e8a53ab64a5c86fe660ad",
+      "diagnosticCodes": [
+        "TS2322"
+      ]
+    },
+    {
+      "id": "Map",
+      "expected": 1,
+      "source": "import type {ModTagOptions,ModTagValue} from \"../../src/card/mod-loader/mod-manifest.js\";\nimport {defineMod} from \"../../src/card/mod-loader/mod-dsl.js\";\nconst options:ModTagOptions={title:new Map<string,string>()};\nexport const mod=defineMod(\"portable_type_consumer\",({set})=>set(\"all/portable_type_consumer\",({format})=>format(\"html\",({wrapper})=>wrapper(\"portable\",\"div\",options))));\n",
+      "sourceSha256": "6d14d78e3a6afc8d257a0921a9b909504c305d66d422d977ff96dc11bbb6570c",
+      "diagnosticCodes": [
+        "TS2322"
+      ]
+    },
+    {
+      "id": "function",
+      "expected": 1,
+      "source": "import type {ModTagOptions,ModTagValue} from \"../../src/card/mod-loader/mod-manifest.js\";\nimport {defineMod} from \"../../src/card/mod-loader/mod-dsl.js\";\nconst options:ModTagOptions={title:()=>1};\nexport const mod=defineMod(\"portable_type_consumer\",({set})=>set(\"all/portable_type_consumer\",({format})=>format(\"html\",({wrapper})=>wrapper(\"portable\",\"div\",options))));\n",
+      "sourceSha256": "648007ef2e8d683f13fac7407e8a913f922728144b578c50629f33cd6e0add7d",
+      "diagnosticCodes": [
+        "TS2322"
+      ]
+    },
+    {
+      "id": "symbol",
+      "expected": 1,
+      "source": "import type {ModTagOptions,ModTagValue} from \"../../src/card/mod-loader/mod-manifest.js\";\nimport {defineMod} from \"../../src/card/mod-loader/mod-dsl.js\";\nconst options:ModTagOptions={title:Symbol(\"x\")};\nexport const mod=defineMod(\"portable_type_consumer\",({set})=>set(\"all/portable_type_consumer\",({format})=>format(\"html\",({wrapper})=>wrapper(\"portable\",\"div\",options))));\n",
+      "sourceSha256": "683a91da8b3f93b44cd07c989b6c11830f65b8d199474d05f408654fdda9c67c",
+      "diagnosticCodes": [
+        "TS2322"
+      ]
+    },
+    {
+      "id": "bigint",
+      "expected": 1,
+      "source": "import type {ModTagOptions,ModTagValue} from \"../../src/card/mod-loader/mod-manifest.js\";\nimport {defineMod} from \"../../src/card/mod-loader/mod-dsl.js\";\nconst options:ModTagOptions={title:1n};\nexport const mod=defineMod(\"portable_type_consumer\",({set})=>set(\"all/portable_type_consumer\",({format})=>format(\"html\",({wrapper})=>wrapper(\"portable\",\"div\",options))));\n",
+      "sourceSha256": "3bb1890b9e0074a1770f1672b9ed4d9e5c00d5bf1be4a39bc976b6957a8b3ba3",
+      "diagnosticCodes": [
+        "TS2322"
+      ]
+    },
+    {
+      "id": "undefined",
+      "expected": 1,
+      "source": "import type {ModTagOptions,ModTagValue} from \"../../src/card/mod-loader/mod-manifest.js\";\nimport {defineMod} from \"../../src/card/mod-loader/mod-dsl.js\";\nconst options:ModTagOptions={title:undefined};\nexport const mod=defineMod(\"portable_type_consumer\",({set})=>set(\"all/portable_type_consumer\",({format})=>format(\"html\",({wrapper})=>wrapper(\"portable\",\"div\",options))));\n",
+      "sourceSha256": "300efb4f0791ad26e036b409690ec9c26846917df967823c1e2634666b9c9973",
+      "diagnosticCodes": [
+        "TS2322"
+      ]
+    },
+    {
+      "id": "nested-Date",
+      "expected": 1,
+      "source": "import type {ModTagOptions,ModTagValue} from \"../../src/card/mod-loader/mod-manifest.js\";\nimport {defineMod} from \"../../src/card/mod-loader/mod-dsl.js\";\nconst options:ModTagOptions={title:{nested:[\"ok\",new Date(0)]}};\nexport const mod=defineMod(\"portable_type_consumer\",({set})=>set(\"all/portable_type_consumer\",({format})=>format(\"html\",({wrapper})=>wrapper(\"portable\",\"div\",options))));\n",
+      "sourceSha256": "17e5f3aab8e70cbeff5bddd470c8a0d74c2883aeb50acf2a94fcfc89c60ae3e2",
+      "diagnosticCodes": [
+        "TS2322"
+      ]
+    },
+    {
+      "id": "inline-wrapper-Date",
+      "expected": 1,
+      "source": "import type {ModTagOptions,ModTagValue} from \"../../src/card/mod-loader/mod-manifest.js\";\nimport {defineMod} from \"../../src/card/mod-loader/mod-dsl.js\";\nexport const mod=defineMod(\"bad_inline\",({set})=>set(\"all/bad_inline\",({format})=>format(\"html\",({wrapper})=>wrapper(\"bad\",\"div\",{title:new Date(0)}))));\n",
+      "sourceSha256": "54edd1389f73a31e399fd3faa11be03429699fac1b8508562422dea6ebbb1bb4",
+      "diagnosticCodes": [
+        "TS2322"
+      ]
+    },
+    {
+      "id": "contextual-data",
+      "expected": 0,
+      "source": "import type {ModTagOptions,ModTagDataAttributes,ModTagDataSerializer} from \"../../src/card/mod-loader/mod-manifest.js\";\nimport {defineMod} from \"../../src/card/mod-loader/mod-dsl.js\";\nconst payload:ModTagDataSerializer={toJSON(key){const typedKey:string=key;return {typedKey};}};\nconst options:ModTagOptions<{data:ModTagDataAttributes;title:string}>={title:\"typed\",data:{payload}};\nexport const mod=defineMod(\"context_types\",({set})=>set(\"all/context_types\",({format})=>format(\"html\",({wrapper})=>wrapper(\"tag\",\"div\",options))));\n",
+      "sourceSha256": "26066a3f463ecaf5831f72bab0101d081fca0684e7e67eaacb7d7fc42e014ca7",
+      "diagnosticCodes": []
+    },
+    {
+      "id": "inline-data",
+      "expected": 0,
+      "source": "import type {ModTagOptions,ModTagDataAttributes,ModTagDataSerializer} from \"../../src/card/mod-loader/mod-manifest.js\";\nimport {defineMod} from \"../../src/card/mod-loader/mod-dsl.js\";\n\nexport const mod=defineMod(\"context_types\",({set})=>set(\"all/context_types\",({format})=>format(\"html\",({wrapper})=>wrapper(\"tag\",\"div\",{title:\"typed\",data:{payload:{toJSON(key:string){return {key,n:1e-7};}}}}))));\n",
+      "sourceSha256": "6defc7ce079cde1c4f6ff45026889f94fc5b8b6465316864a3142b86a4f56855",
+      "diagnosticCodes": []
+    },
+    {
+      "id": "legacy-dynamic",
+      "expected": 0,
+      "source": "import type {ModTagOptions,ModTagDataAttributes,ModTagDataSerializer} from \"../../src/card/mod-loader/mod-manifest.js\";\nimport {defineMod} from \"../../src/card/mod-loader/mod-dsl.js\";\nconst options:Readonly<Record<string,unknown>>={title:new Date(0)};\nexport const mod=defineMod(\"context_types\",({set})=>set(\"all/context_types\",({format})=>format(\"html\",({wrapper})=>wrapper(\"tag\",\"div\",options))));\n",
+      "sourceSha256": "da8b43fc26f4c30b2211d9857bc5808c513ebe0f21646a880cbde76d849cfd87",
+      "diagnosticCodes": []
+    },
+    {
+      "id": "concrete-variable-Date",
+      "expected": 1,
+      "source": "import type {ModTagOptions,ModTagDataAttributes,ModTagDataSerializer} from \"../../src/card/mod-loader/mod-manifest.js\";\nimport {defineMod} from \"../../src/card/mod-loader/mod-dsl.js\";\nconst options={title:new Date(0)};\nexport const mod=defineMod(\"context_types\",({set})=>set(\"all/context_types\",({format})=>format(\"html\",({wrapper})=>wrapper(\"tag\",\"div\",options))));\n",
+      "sourceSha256": "9c2849f769420e44964344f365a93d7a336d0b1ae77e41d0d0342807e894e013",
+      "diagnosticCodes": [
+        "TS2345"
+      ]
+    },
+    {
+      "id": "contextual-title-Date",
+      "expected": 1,
+      "source": "import type {ModTagOptions,ModTagDataAttributes,ModTagDataSerializer} from \"../../src/card/mod-loader/mod-manifest.js\";\nimport {defineMod} from \"../../src/card/mod-loader/mod-dsl.js\";\nconst options:ModTagOptions<{data:ModTagDataAttributes;title:Date}>={data:{payload:1},title:new Date(0)};\nexport const mod=defineMod(\"context_types\",({set})=>set(\"all/context_types\",({format})=>format(\"html\",({wrapper})=>wrapper(\"tag\",\"div\",options))));\n",
+      "sourceSha256": "30dbbc1590983f7202a0454f09fcd6066bcb2de73034918ca4a7e1797f4dc94f",
+      "diagnosticCodes": [
+        "TS2322"
+      ]
+    },
+    {
+      "id": "inline-aria-Date",
+      "expected": 1,
+      "source": "import type {ModTagOptions,ModTagDataAttributes,ModTagDataSerializer} from \"../../src/card/mod-loader/mod-manifest.js\";\nimport {defineMod} from \"../../src/card/mod-loader/mod-dsl.js\";\n\nexport const mod=defineMod(\"context_types\",({set})=>set(\"all/context_types\",({format})=>format(\"html\",({wrapper})=>wrapper(\"tag\",\"div\",{aria:{label:new Date(0)}}))));\n",
+      "sourceSha256": "31cffb6b526c16c63e4ea743f31568c450d61bed77309bde14deb2f312c19b37",
+      "diagnosticCodes": [
+        "TS2322"
+      ]
+    },
+    {
+      "id": "nullable-context",
+      "expected": 0,
+      "source": "import type {ModTagOptions,ModTagValue,ModTagDataAttributes,ModTagDataSerializer} from \"../../src/card/mod-loader/mod-manifest.js\";\nimport {defineMod} from \"../../src/card/mod-loader/mod-dsl.js\";\nconst payload:ModTagDataSerializer={toJSON(key){const typedKey:string=key;return {typedKey};}};\nconst options:ModTagOptions<{title:string|null;data:ModTagDataAttributes}>={title:null,data:{payload}};\nexport const mod=defineMod(\"independent193\",({set})=>set(\"all/independent193\",({format})=>format(\"html\",({wrapper})=>wrapper(\"tag\",\"div\",options))));\n",
+      "sourceSha256": "8f5227b198e636595c5e8af018636cc695982925829b1714cc3a2b879ef22033",
+      "diagnosticCodes": []
+    },
+    {
+      "id": "portable-union-context",
+      "expected": 0,
+      "source": "import type {ModTagOptions,ModTagValue,ModTagDataAttributes,ModTagDataSerializer} from \"../../src/card/mod-loader/mod-manifest.js\";\nimport {defineMod} from \"../../src/card/mod-loader/mod-dsl.js\";\nconst payload:ModTagDataSerializer={toJSON(key){const typedKey:string=key;return {typedKey};}};\nconst options:ModTagOptions<{title:ModTagValue;data:ModTagDataAttributes}>={title:[\"x\",false,null],data:{payload}};\nexport const mod=defineMod(\"independent193\",({set})=>set(\"all/independent193\",({format})=>format(\"html\",({wrapper})=>wrapper(\"tag\",\"div\",options))));\n",
+      "sourceSha256": "1c14f9eafa3f58adb16abed58647cb46de32767fd5dbe238943681b0882ba771",
+      "diagnosticCodes": []
+    },
+    {
+      "id": "inline-data-Date",
+      "expected": 0,
+      "source": "import type {ModTagOptions,ModTagValue,ModTagDataAttributes,ModTagDataSerializer} from \"../../src/card/mod-loader/mod-manifest.js\";\nimport {defineMod} from \"../../src/card/mod-loader/mod-dsl.js\";\n\nexport const mod=defineMod(\"independent193\",({set})=>set(\"all/independent193\",({format})=>format(\"html\",({wrapper})=>wrapper(\"tag\",\"div\",{title:\"x\",data:{date:new Date(0)}}))));\n",
+      "sourceSha256": "088898c08c38757177ffd60604721d80ee37e18b827cea04a8196d753d77d344",
+      "diagnosticCodes": []
+    },
+    {
+      "id": "concrete-class",
+      "expected": 1,
+      "source": "import type {ModTagOptions,ModTagValue,ModTagDataAttributes,ModTagDataSerializer} from \"../../src/card/mod-loader/mod-manifest.js\";\nimport {defineMod} from \"../../src/card/mod-loader/mod-dsl.js\";\nclass HostValue {field=1;}\nconst options={title:new HostValue()};\nexport const mod=defineMod(\"independent193\",({set})=>set(\"all/independent193\",({format})=>format(\"html\",({wrapper})=>wrapper(\"tag\",\"div\",options))));\n",
+      "sourceSha256": "a46a7fc4b4ac6403bd915c85c9dc1f68304294deeb9658cdd9fe4b1abf82cc72",
+      "diagnosticCodes": [
+        "TS2345"
+      ]
+    },
+    {
+      "id": "ordinary-serializer",
+      "expected": 1,
+      "source": "import type {ModTagOptions,ModTagValue,ModTagDataAttributes,ModTagDataSerializer} from \"../../src/card/mod-loader/mod-manifest.js\";\nimport {defineMod} from \"../../src/card/mod-loader/mod-dsl.js\";\nconst payload:ModTagDataSerializer={toJSON(key){const typedKey:string=key;return {typedKey};}};\nconst options={title:payload};\nexport const mod=defineMod(\"independent193\",({set})=>set(\"all/independent193\",({format})=>format(\"html\",({wrapper})=>wrapper(\"tag\",\"div\",options))));\n",
+      "sourceSha256": "16c67386ee020ca173b919bc5f4a83d99e86fd3bc63ae51d09d7c00ef181d845",
+      "diagnosticCodes": [
+        "TS2345"
+      ]
+    },
+    {
+      "id": "union-Date",
+      "expected": 1,
+      "source": "import type {ModTagOptions,ModTagValue,ModTagDataAttributes,ModTagDataSerializer} from \"../../src/card/mod-loader/mod-manifest.js\";\nimport {defineMod} from \"../../src/card/mod-loader/mod-dsl.js\";\nconst options=Math.random()>0.5?{title:\"x\"}:{title:new Date(0)};\nexport const mod=defineMod(\"independent193\",({set})=>set(\"all/independent193\",({format})=>format(\"html\",({wrapper})=>wrapper(\"tag\",\"div\",options))));\n",
+      "sourceSha256": "2d9fbea299f0c82c2adf1688560209870a445f0ba60866ea0c0a26a10c8a1be4",
+      "diagnosticCodes": [
+        "TS2345"
+      ]
+    }
+  ]
+}

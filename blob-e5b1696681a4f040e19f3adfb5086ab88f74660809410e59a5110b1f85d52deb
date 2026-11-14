@@ -1,0 +1,319 @@
+{
+  "captures": {
+    "q1-full-rule-name.json": {
+      "forms": [
+        {
+          "action": "/update/Ada_Admin+*enabled_roles",
+          "fields": [
+            {
+              "cls": "",
+              "name": "utf8",
+              "type": "hidden",
+              "value": "\u2713"
+            },
+            {
+              "cls": "",
+              "name": "success[reload]",
+              "type": "hidden",
+              "value": "true"
+            },
+            {
+              "cls": "",
+              "name": "card[type_id]",
+              "type": "hidden",
+              "value": "481"
+            },
+            {
+              "cls": "d0-card-content form-control",
+              "name": "card[content]",
+              "type": "hidden",
+              "value": "Anyone Signed In\nAdministrator"
+            },
+            {
+              "cls": "pointer-checkbox-button _submit-on-change me-",
+              "name": "pointer_checkbox-ada_admin-Xenabled_role-2",
+              "type": "checkbox",
+              "value": "Anyone Signed In"
+            },
+            {
+              "cls": "pointer-checkbox-button _submit-on-change me-",
+              "name": "pointer_checkbox-ada_admin-Xenabled_role-3",
+              "type": "checkbox",
+              "value": "Administrator"
+            }
+          ]
+        },
+        {
+          "action": "/card/create",
+          "fields": [
+            {
+              "cls": "",
+              "name": "utf8",
+              "type": "hidden",
+              "value": "\u2713"
+            },
+            {
+              "cls": "",
+              "name": "success[mark]",
+              "type": "hidden",
+              "value": "_self"
+            },
+            {
+              "cls": "",
+              "name": "card[name]",
+              "type": "hidden",
+              "value": "Book_mvmvqpni+*type+*structure"
+            },
+            {
+              "cls": "",
+              "name": "card[type_id]",
+              "type": "hidden",
+              "value": "3"
+            },
+            {
+              "cls": "tinymce-textarea d0-card-content form-control",
+              "name": "card[subcards][+description][content]",
+              "type": "textarea",
+              "value": ""
+            },
+            {
+              "cls": "",
+              "name": "card[subcards][+description][type_id]",
+              "type": "hidden",
+              "value": "2"
+            }
+          ]
+        }
+      ],
+      "status": 200,
+      "url": "http://127.0.0.1:63843/new/Cardtype?card%5Bname%5D=Book_mvmvqpni%2B*type%2B*structure&card%5Bcontent%5D=%7B%7B%2Bauthor%7D%7D"
+    },
+    "q2-all-options.json": {
+      "formAction": "/update/D2_TypeChange_mvmvqpni",
+      "formFields": [
+        {
+          "name": "utf8",
+          "type": "hidden",
+          "value": "\u2713"
+        },
+        {
+          "name": "_method",
+          "type": "hidden",
+          "value": "patch"
+        },
+        {
+          "name": "card[type]",
+          "type": "select-one",
+          "value": "PlainText"
+        },
+        {
+          "name": "assign",
+          "type": "hidden",
+          "value": "true"
+        },
+        {
+          "name": "card[last_action_id_before_edit]",
+          "type": "hidden",
+          "value": "997"
+        },
+        {
+          "name": "card[content]",
+          "type": "textarea",
+          "value": "subject D2_TypeChange_mvmvqpni"
+        }
+      ],
+      "found": true,
+      "optionCount": 33,
+      "options": [
+        {
+          "sel": false,
+          "t": "RichText",
+          "v": "RichText"
+        },
+        {
+          "sel": true,
+          "t": "PlainText",
+          "v": "PlainText"
+        },
+        {
+          "sel": false,
+          "t": "Markdown",
+          "v": "Markdown"
+        },
+        {
+          "sel": false,
+          "t": "Phrase",
+          "v": "Phrase"
+        },
+        {
+          "sel": false,
+          "t": "HTML",
+          "v": "HTML"
+        },
+        {
+          "sel": false,
+          "t": "Number",
+          "v": "Number"
+        },
+        {
+          "sel": false,
+          "t": "Toggle",
+          "v": "Toggle"
+        },
+        {
+          "sel": false,
+          "t": "Date",
+          "v": "Date"
+        },
+        {
+          "sel": false,
+          "t": "URI",
+          "v": "URI"
+        },
+        {
+          "sel": false,
+          "t": "File",
+          "v": "File"
+        },
+        {
+          "sel": false,
+          "t": "Image",
+          "v": "Image"
+        },
+        {
+          "sel": false,
+          "t": "Brief",
+          "v": "Brief"
+        },
+        {
+          "sel": false,
+          "t": "Memo",
+          "v": "Memo"
+        },
+        {
+          "sel": false,
+          "t": "Note",
+          "v": "Note"
+        },
+        {
+          "sel": false,
+          "t": "Tag",
+          "v": "Tag"
+        },
+        {
+          "sel": false,
+          "t": "Topic",
+          "v": "Topic"
+        },
+        {
+          "sel": false,
+          "t": "List",
+          "v": "List"
+        },
+        {
+          "sel": false,
+          "t": "Pointer",
+          "v": "Pointer"
+        },
+        {
+          "sel": false,
+          "t": "Search",
+          "v": "Search"
+        },
+        {
+          "sel": false,
+          "t": "Link list",
+          "v": "Link list"
+        },
+        {
+          "sel": false,
+          "t": "Nest list",
+          "v": "Nest list"
+        },
+        {
+          "sel": false,
+          "t": "Notification template",
+          "v": "Notification template"
+        },
+        {
+          "sel": false,
+          "t": "Email template",
+          "v": "Email template"
+        },
+        {
+          "sel": false,
+          "t": "Cardtype",
+          "v": "Cardtype"
+        },
+        {
+          "sel": false,
+          "t": "User",
+          "v": "User"
+        },
+        {
+          "sel": false,
+          "t": "Role",
+          "v": "Role"
+        },
+        {
+          "sel": false,
+          "t": "Layout",
+          "v": "Layout"
+        },
+        {
+          "sel": false,
+          "t": "Skin",
+          "v": "Skin"
+        },
+        {
+          "sel": false,
+          "t": "CSS",
+          "v": "CSS"
+        },
+        {
+          "sel": false,
+          "t": "SCSS",
+          "v": "SCSS"
+        },
+        {
+          "sel": false,
+          "t": "JSON",
+          "v": "JSON"
+        },
+        {
+          "sel": false,
+          "t": "JavaScript",
+          "v": "JavaScript"
+        },
+        {
+          "sel": false,
+          "t": "CoffeeScript",
+          "v": "CoffeeScript"
+        }
+      ],
+      "submitControls": [
+        {
+          "cls": "submit-button me-3 _update-history-pills",
+          "tag": "BUTTON",
+          "text": "Save",
+          "type": "submit"
+        },
+        {
+          "cls": "submit-button me-3 _close-on-success _up",
+          "tag": "BUTTON",
+          "text": "Save and Close",
+          "type": "submit"
+        },
+        {
+          "cls": "cancel-button btn btn-secondary",
+          "tag": "BUTTON",
+          "text": "Cancel",
+          "type": "button"
+        }
+      ],
+      "value": "PlainText"
+    }
+  },
+  "leg": "ts",
+  "row": "type-select-all-options"
+}

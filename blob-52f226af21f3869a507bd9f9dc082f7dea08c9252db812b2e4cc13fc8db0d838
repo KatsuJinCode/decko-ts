@@ -1,0 +1,86 @@
+import {describe, expect, it} from "vitest";
+import {validateDeploymentLegacyAssets, DeploymentLegacyAssetsError, rewriteDeploymentLegacyAssetRevisions} from "../../src/server/deployment-legacy-assets.js";
+import {staticUglifyHarmonyStringLiteralRanges} from "../../src/card/assets/uglify-harmony-static.js";
+import {uglifyHarmonyStringLiteralRanges} from "../../src/card/assets/uglify-harmony-compile-engine.js";
+
+describe("deployment-owned legacy asset settings", () => {
+  it("uses the same exact literal ranges in the static and original Node VM parser", () => {
+    for (const source of ['const p="https://media.example/files/53/old.js";',
+      '/* "https://media.example/files/53/old.js" */ const p="https://outer.example/path\'https://media.example/files/53/old.js";',
+      'const unicode="😀"; const p=\'https://media.example/files/53/old.js?cache=1#fragment\';',
+      'const p="https:\\/\\/media.example/files/53/old.js";']) {
+      expect(staticUglifyHarmonyStringLiteralRanges(source)).toEqual(uglifyHarmonyStringLiteralRanges(source));
+    }
+  });
+  it("keeps absence distinct from explicit deployment content and returns an immutable independent snapshot", () => {
+    expect(validateDeploymentLegacyAssets(undefined)).toBeUndefined();
+    const raw = {version: 1, assetOrigin: "https://media.example/", stylesheetPath: "42/123.css", scriptPath: "53/456.js", revisions: {"42/old.css": "42/123.css"}};
+    const result = validateDeploymentLegacyAssets(raw)!;
+    expect(result.assetOrigin).toBe("https://media.example");
+    raw.revisions["42/old.css"] = "42/changed.css";
+    expect(result.revisions["42/old.css"]).toBe("42/123.css");
+    expect(Object.isFrozen(result)).toBe(true); expect(Object.isFrozen(result.revisions)).toBe(true);
+  });
+  it("rejects unsupported records, credentials and non-origin URLs", () => {
+    for (const raw of [null, [], {}, {version: 2, assetOrigin: "https://media.example"},
+      {version: 1, assetOrigin: "https://media.example", unknown: true}]) expect(() => validateDeploymentLegacyAssets(raw)).toThrow(DeploymentLegacyAssetsError);
+    for (const assetOrigin of ["javascript:alert(1)", "file:///data", "https://user:secret@media.example", "https://media.example/path", "https://media.example/?q=x", "https://media.example/#hash", " https://media.example", "https://media.example\n", "https://media'.example", 'https://media".example']) {
+      expect(() => validateDeploymentLegacyAssets({version: 1, assetOrigin})).toThrow(DeploymentLegacyAssetsError);
+    }
+  });
+  it("rejects traversal, wrong asset types and revision identity changes", () => {
+    const base = {version: 1, assetOrigin: "https://media.example"};
+    for (const stylesheetPath of ["../42/1.css", "/42/1.css", "42/../1.css", "42/1.css?token=x", "42/1.css\n", "42/1.js"]) {
+      expect(() => validateDeploymentLegacyAssets({...base, stylesheetPath})).toThrow(DeploymentLegacyAssetsError);
+    }
+    for (const revisions of [{"42/1.css": "43/2.css"}, {"42/1.css": "42/2.js"}, {"42/1.css": "42/2.css", "42/2.css": "42/3.css"}]) {
+      expect(() => validateDeploymentLegacyAssets({...base, revisions})).toThrow(DeploymentLegacyAssetsError);
+    }
+  });
+  it("rewrites complete asset tokens while preserving foreign path/query embeddings and suffixes", () => {
+    const origin = "https://media.example", revisions = {"53/old.js": "53/new.js"};
+    const rewrite = (value: string) => rewriteDeploymentLegacyAssetRevisions(value, origin, revisions);
+    expect(rewrite('<script src="https://media.example/files/53/old.js"></script>')).toBe('<script src="https://media.example/files/53/new.js"></script>');
+    expect(rewrite('<script>const path="https://media.example/files/53/old.js?cache=1#section";</script>')).toBe('<script>const path="https://media.example/files/53/new.js?cache=1#section";</script>');
+    for (const value of ['<a href="https://outer.example/prefixhttps://media.example/files/53/old.js">x</a>',
+      '<a href="https://outer.example/?next=https://media.example/files/53/old.js">x</a>',
+      '<a href="/relative?next=https://media.example/files/53/old.js">x</a>',
+      '<a href="https://outer.example/path\'https://media.example/files/53/old.js">x</a>',
+      '<a href="https://outer.example/?next=\'https://media.example/files/53/old.js">x</a>',
+      '<a href=\'https://outer.example/path"https://media.example/files/53/old.js\'>x</a>',
+      '<a href="/relative?next=\'https://media.example/files/53/old.js">x</a>',
+      '<script>const path="https://outer.example/path\'https://media.example/files/53/old.js";</script>',
+      '<script src="https://media.example/files/53/old.js.map"></script>',
+      '<script src=https://media.example/files/53/old.js></script>',
+      'prefixhttps://media.example/files/53/old.js', 'https://media.example/files/53/../53/old.js',
+      '<pre>Example https://media.example/files/53/old.js</pre>',
+      'url(https://media.example/files/53/old.js?cache=1#section)',
+      '<!-- <a href="https://media.example/files/53/old.js">example</a> -->',
+      '<noscript><a href="https://media.example/files/53/old.js">example</a></noscript>',
+      '<plaintext>example</plaintext><a href="https://media.example/files/53/old.js">still literal</a>']) expect(rewrite(value)).toBe(value);
+  });
+  it("reports unsupported inline scripts and preserves their bytes", () => {
+    const html = '<script>const path="https://media.example/files/53/old.js"; ???</script>', errors: unknown[] = [];
+    expect(rewriteDeploymentLegacyAssetRevisions(html, "https://media.example", {"53/old.js": "53/new.js"}, error => errors.push(error))).toBe(html);
+    expect(errors.length).toBe(1);
+  });
+  it("preserves script data blocks even when their contents parse as JavaScript", () => {
+    const origin = "https://media.example", revisions = {"53/old.js": "53/new.js"};
+    for (const attributes of ['type="application/json"', 'type="text/plain"', 'type="application/ld+json"',
+      'type="importmap"', 'type="speculationrules"', 'type="text/javascript; charset=utf-8"',
+      'type=" module "', 'language="json"', 'type="text/plain" type="text/javascript"',
+      'type="application&#47;json"', 'type="text&sol;plain"', 'type="text/javascript&#59; charset=utf-8"',
+      'type="text&#47;plain" type="text/javascript"']) {
+      const html = `<script ${attributes}>["${origin}/files/53/old.js"]</script>`, errors: unknown[] = [];
+      expect(rewriteDeploymentLegacyAssetRevisions(html, origin, revisions, error => errors.push(error))).toBe(html);
+      expect(errors).toEqual([]);
+    }
+    for (const attributes of ['', 'type="" language="json"', 'type="text/javascript"', 'type=" TEXT/JAVASCRIPT "',
+      'type="application/javascript"', 'type="module"', 'language="javascript"', 'type="text/javascript" type="text/plain"',
+      'type="text&#47;javascript"', 'type="text&sol;javascript"', 'type="&#109;odule"', 'language="java&#115;cript"',
+      'type="&#9;text/javascript&#10;"', 'type="text&#47;javascript" type="text/plain"']) {
+      const html = `<script ${attributes}>const path="${origin}/files/53/old.js";</script>`;
+      expect(rewriteDeploymentLegacyAssetRevisions(html, origin, revisions)).toBe(html.replace("53/old.js", "53/new.js"));
+    }
+  });
+});

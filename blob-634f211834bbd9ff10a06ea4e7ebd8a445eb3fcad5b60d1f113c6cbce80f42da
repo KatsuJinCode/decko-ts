@@ -1,0 +1,56 @@
+import {expect,it,vi} from 'vitest';
+import {createRenderTestStorage,seedCard,seedReference} from '../render/render-test-storage.js';
+import {ModLoader,modEngineHost} from '../../../src/card/mod-loader.js';
+import cardModHistory from '../../../src/card/mod-loader/mods/card-mod-history.js';
+import {ActWriter} from '../../../src/card/history/write-path.js';
+
+for(const broken of [false,true])it(`history preparation settles driver work and restores served memo: broken=${broken}`,async()=>{
+  const storage=await createRenderTestStorage(),loader=new ModLoader([{manifest:cardModHistory}]);
+  const spies:{mockRestore():void}[]=[];
+  let active=0,started=0;
+  try{
+    for(const row of [
+      {id:1,name:'Decko Bot',typeId:2},{id:2,name:'RichText'},
+      {id:8,name:'*type',codename:'type',typeId:14},
+      {id:10,name:'*all',codename:'all',typeId:13},
+      {id:11,name:'*self',codename:'self',typeId:14},
+      {id:12,name:'*update',codename:'update',typeId:14},
+      {id:13,name:'Set',codename:'set',typeId:13},
+      {id:14,name:'Setting',codename:'setting',typeId:14},
+      {id:15,name:'Anonymous',codename:'anonymous',typeId:14},
+      {id:16,name:'*read',codename:'read',typeId:14},
+      {id:17,name:'*all+*read',leftId:10,rightId:16,typeId:14,dbContent:'[[Anyone]]'},
+      {id:18,name:'Anyone',codename:'anyone',typeId:2},
+    ])await seedCard(storage,row);
+    await seedReference(storage,17,18,'anyone');
+    const created=await new ActWriter({driver:storage.counting,actorId:1,ipAddress:'127.0.0.1'})
+      .createCard({name:'Completion History',key:'completion_history',type_id:2,db_content:'Visible completed history.'});
+    if(broken){
+      await seedCard(storage,{id:700,name:'Draft Only',typeId:2});
+      await storage.counting.query('INSERT INTO card_actions(card_id,card_act_id,action_type,draft) VALUES(700,?,1,1)',[created.actId]);
+    }else await storage.counting.query('INSERT INTO card_actions(card_id,card_act_id,action_type,draft) VALUES(NULL,?,1,0)',[created.actId]);
+    loader.load();await loader.installInto(modEngineHost(storage.engine,storage.fetcher));storage.engine.modLoader=loader;
+    storage.fetcher.installNameEnvironment();await storage.fetcher.codenames.ensureLoaded();
+    const query=storage.counting.query.bind(storage.counting),batch=storage.counting.batch.bind(storage.counting);
+    const observe=async<T>(work:()=>Promise<T>)=>{
+      active++;started++;
+      try{await new Promise<void>(resolve=>setImmediate(resolve));return await work();}finally{active--;}
+    };
+    spies.push(vi.spyOn(storage.counting,'query').mockImplementation((sql,params)=>observe(()=>query(sql,params))));
+    spies.push(vi.spyOn(storage.counting,'batch').mockImplementation(statements=>observe(()=>batch(statements))));
+    const served=storage.engine.historyDiffMemo;
+    const pending=storage.engine.preparePageView('Completion History','history');
+    if(broken)await expect(pending).rejects.toThrow('last_change_on: card 700 has no create action');
+    else expect(await pending).toContain('history-view');
+    expect(started).toBeGreaterThan(0);
+    expect(active).toBe(0);
+    expect(storage.engine.historyDiffMemo).toBe(served);
+    expect(served.size,'discarded summaries do not populate served memo').toBe(0);
+    const settled=started;await new Promise<void>(resolve=>setImmediate(resolve));
+    expect(started).toBe(settled);expect(active).toBe(0);
+  }finally{
+    for(const spy of spies)spy.mockRestore();
+    expect(active,'close only after owned render work settles').toBe(0);
+    loader.reset();storage.close();
+  }
+});

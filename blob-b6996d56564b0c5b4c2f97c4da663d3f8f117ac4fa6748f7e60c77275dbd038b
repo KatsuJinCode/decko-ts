@@ -1,0 +1,249 @@
+// Test storage for the action-layer tests: an in-memory better-sqlite3
+// database (via the REAL LocalSqliteDriver) loaded with db/schema.sqlite.sql,
+// a FetchEngine over it, and synthetic fixture seeds. Seed cards are written
+// DIRECTLY as rows (plain INSERT) — the action layer under test is the only
+// code writing through the history machinery.
+//
+// All fixture content is synthetic (DATA RULE: no real reference-deck content).
+
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
+import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../../src/server/driver.js";
+import type { CardsRow } from "../../../src/server/schema.js";
+import { DeckoName } from "../../../src/card/name.js";
+import { FetchEngine } from "../../../src/card/fetch.js";
+import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
+import type { Actor } from "../../../src/card/actions/types.js";
+import { splitSqlStatements } from "../fetch/fetch-test-storage.js";
+
+export interface ActionsTestStorage {
+  driver: SQLDatabaseDriver;
+  engine: FetchEngine;
+  close(): void;
+  selectAll<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<T[]>;
+  selectOne<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<T | undefined>;
+  count(table: string): Promise<number>;
+}
+
+export async function createActionsTestStorage(): Promise<ActionsTestStorage> {
+  const driver = new LocalSqliteDriver({ path: ":memory:" });
+  const ddl = readFileSync(
+    fileURLToPath(new URL("../../../db/schema.sqlite.sql", import.meta.url)),
+    "utf8",
+  );
+  for (const statement of splitSqlStatements(ddl)) {
+    await driver.query(statement, []);
+  }
+  return {
+    driver,
+    engine: new FetchEngine(driver),
+    close: () => driver.close(),
+    selectAll: async <T>(sql: string, params: unknown[] = []) =>
+      (await driver.query<T>(sql, params)).rows,
+    selectOne: async <T>(sql: string, params: unknown[] = []) =>
+      (await driver.query<T>(sql, params)).rows[0],
+    count: async (table) => {
+      const r = await driver.query<{ n: number }>(`SELECT COUNT(*) AS n FROM ${table}`, []);
+      return Number(r.rows[0].n);
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+
+/** Deterministic clock: one writer operation = one second from T0. */
+const T0 = Date.parse("2026-09-20T08:00:00.000Z");
+export function fakeClock() {
+  let ticks = 0;
+  return () => new Date(T0 + ticks++ * 1000);
+}
+
+export const JOE: Actor = { id: 9, name: "Joe User" };
+export const ANON: Actor = { id: 2, name: "*anonymous" };
+export const IP = "192.0.2.7";
+
+/** A fresh engine bound to the fixture's clock. */
+export function actionEngine(
+  storage: ActionsTestStorage,
+  actor: Actor | null = JOE,
+  opts: { now?: () => Date; canWrite?: ConstructorParameters<typeof CardActionEngine>[1]["canWrite"] } = {},
+): CardActionEngine {
+  return new CardActionEngine(storage.engine, {
+    actor,
+    ipAddress: IP,
+    now: opts.now ?? fakeClock(),
+    canWrite: opts.canWrite,
+  });
+}
+
+export interface SeedOptions {
+  id?: number;
+  name?: string | null;
+  key?: string | null;
+  codename?: string | null;
+  leftId?: number | null;
+  rightId?: number | null;
+  typeId?: number;
+  dbContent?: string | null;
+  trash?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/** Insert one cards row DIRECTLY, mirroring the write path's column
+ *  conventions: simple cards carry name+key columns; compound cards carry
+ *  NULL name/key with left_id/right_id. */
+export async function seedCard(storage: ActionsTestStorage, opts: SeedOptions): Promise<CardsRow> {
+  const name = opts.name !== undefined && opts.name !== null ? DeckoName.parse(opts.name) : null;
+  const compound = opts.leftId !== undefined && opts.leftId !== null;
+  const row = {
+    id: opts.id,
+    name: compound ? null : (name?.s ?? null),
+    key: compound ? null : (opts.key ?? name?.key ?? null),
+    codename: opts.codename ?? null,
+    left_id: opts.leftId ?? null,
+    right_id: opts.rightId ?? null,
+    current_revision_id: null,
+    created_at: opts.createdAt ?? FIXED_TS,
+    updated_at: opts.updatedAt ?? FIXED_TS,
+    creator_id: 1,
+    updater_id: 1,
+    read_rule_class: null,
+    read_rule_id: null,
+    references_expired: null,
+    trash: opts.trash === true ? 1 : 0,
+    type_id: opts.typeId ?? RICH_TEXT_ID,
+    db_content: opts.dbContent ?? null,
+  };
+  const insert = await storage.driver.query(
+    `INSERT INTO cards
+       (id, name, key, codename, left_id, right_id, current_revision_id,
+        created_at, updated_at, creator_id, updater_id, read_rule_class,
+        read_rule_id, references_expired, trash, type_id, db_content)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      row.id,
+      row.name,
+      row.key,
+      row.codename,
+      row.left_id,
+      row.right_id,
+      row.current_revision_id,
+      row.created_at,
+      row.updated_at,
+      row.creator_id,
+      row.updater_id,
+      row.read_rule_class,
+      row.read_rule_id,
+      row.references_expired,
+      row.trash,
+      row.type_id,
+      row.db_content,
+    ],
+  );
+  const id =
+    row.id !== undefined
+      ? row.id
+      : // The insert's own result, not last_insert_rowid() in a later
+        // query: over a hosted HTTP database each request may run on a
+        // different connection, where last_insert_rowid() is 0.
+        (
+          await storage.selectOne<{ id: number }>("SELECT id FROM cards WHERE id = ?", [insert.lastInsertRowId])
+        )?.id;
+  const inserted = await storage.selectOne<CardsRow>("SELECT * FROM cards WHERE id = ?", [id]);
+  if (inserted === undefined) throw new Error("seedCard: insert lost");
+  return inserted;
+}
+
+export const FIXED_TS = "2026-09-01 00:00:00.000";
+export const RICH_TEXT_ID = 2;
+export const CARDTYPE_ID = 3;
+
+export interface StandardFixture {
+  storage: ActionsTestStorage;
+  /** The fetch/cache engine (for coherence assertions after actions). */
+  engine: FetchEngine;
+  /** RichText (codename basic, id RICH_TEXT_ID) and Cardtype rows. */
+  richText: CardsRow;
+  cardtype: CardsRow;
+  /** A non-codenamed live card to mutate. */
+  joeCard: CardsRow;
+}
+
+/** One card_references row (rule card -> party), the shape the who_can
+ *  batch (view-task-rules.ts viewTaskPermissionStatements) reads. */
+export async function seedReference(
+  storage: ActionsTestStorage,
+  refererId: number,
+  refereeId: number,
+  refereeKey: string,
+): Promise<void> {
+  await storage.driver.query(
+    `INSERT INTO card_references (referer_id, referee_key, referee_id, ref_type, is_present)
+     VALUES (?, ?, ?, 'L', NULL)`,
+    [refererId, refereeKey, refereeId],
+  );
+}
+
+/** Codename/set cards + the `*all` write-task fallback rules every real
+ *  deck bootstraps. Without them the deck is a partial seed and the write
+ *  gate denies — the fail-closed default: a rule card that is missing must
+ *  not read as "permitted". The fallbacks grant [[Anyone]]: every actor
+ *  passes through the Anyone arm, so mechanics-focused tests exercise
+ *  writes, not permission matrices. */
+export const SET_TYPE_ID = 300; // above every fixture's own id band (rule-content-walk owns 60-67)
+const RULE_PARTY = "anyone";
+
+/** Seed the synthetic minimum every action test needs: the type cards
+ *  (RichText/basic + Cardtype/cardtype), the `*all`/`*default` setting
+ *  cards, the `*all+*default` rule card whose type_id is the deck's default
+ *  type id, one plain content card, and the write-rule machinery (see
+ *  SET_TYPE_ID). */
+export async function seedStandardDeck(storage: ActionsTestStorage): Promise<StandardFixture> {
+  const richText = await seedCard(storage, {
+    id: RICH_TEXT_ID,
+    name: "RichText",
+    codename: "basic",
+    typeId: CARDTYPE_ID,
+  });
+  const cardtype = await seedCard(storage, {
+    id: CARDTYPE_ID,
+    name: "Cardtype",
+    codename: "cardtype",
+    typeId: CARDTYPE_ID,
+  });
+  const all = await seedCard(storage, { id: 7, name: "*all", codename: "all", typeId: SET_TYPE_ID });
+  const def = await seedCard(storage, {
+    id: 8,
+    name: "*default",
+    codename: "default",
+    typeId: CARDTYPE_ID,
+  });
+  // "*all+*default", type_id 2 (the basic type)
+  await seedCard(storage, { leftId: all.id, rightId: def.id, typeId: RICH_TEXT_ID });
+  const joeCard = await seedCard(storage, { id: 50, name: "Pudding", dbContent: "v1" });
+  // the write-rule machinery: Set codename card, *create/*update/*delete
+  // setting cards, Anyone, and the three *all fallbacks -> [[Anyone]].
+  await seedCard(storage, { id: SET_TYPE_ID, name: "Set", codename: "set" });
+  const createSetting = await seedCard(storage, { id: 301, name: "*create", codename: "create" });
+  const updateSetting = await seedCard(storage, { id: 302, name: "*update", codename: "update" });
+  const deleteSetting = await seedCard(storage, { id: 303, name: "*delete", codename: "delete" });
+  const anyone = await seedCard(storage, { id: 304, name: "Anyone", codename: RULE_PARTY });
+  const createRule = await seedCard(storage, {
+    id: 305, name: "*all+*create", leftId: all.id, rightId: createSetting.id,
+    typeId: SET_TYPE_ID, dbContent: "[[Anyone]]",
+  });
+  const updateRule = await seedCard(storage, {
+    id: 306, name: "*all+*update", leftId: all.id, rightId: updateSetting.id,
+    typeId: SET_TYPE_ID, dbContent: "[[Anyone]]",
+  });
+  const deleteRule = await seedCard(storage, {
+    id: 307, name: "*all+*delete", leftId: all.id, rightId: deleteSetting.id,
+    typeId: SET_TYPE_ID, dbContent: "[[Anyone]]",
+  });
+  await seedReference(storage, createRule.id, anyone.id, RULE_PARTY);
+  await seedReference(storage, updateRule.id, anyone.id, RULE_PARTY);
+  await seedReference(storage, deleteRule.id, anyone.id, RULE_PARTY);
+  return { storage, engine: storage.engine, richText, cardtype, joeCard };
+}

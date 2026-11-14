@@ -1,0 +1,154 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { mkdtempSync, writeFileSync, readFileSync, existsSync, rmSync, mkdirSync, copyFileSync, symlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { spawnSync } from "node:child_process";
+import { pathToFileURL } from "node:url";
+import { sourceGitEnvironment } from "../../runner/source-git-environment.mjs";
+
+function git(root, ...args) {
+  const result = spawnSync("git", ["-C", root, ...args], { windowsHide: true, encoding: "utf8", env: sourceGitEnvironment() });
+  assert.equal(result.status, 0, result.stderr);
+  return result.stdout.trim();
+}
+
+function fixture(t) {
+  const space = mkdtempSync(path.join(tmpdir(), "decko-capture-admission-"));
+  const root = path.join(space,"source");mkdirSync(root);
+  t.after(() => rmSync(space, { recursive: true, force: true }));
+  git(root, "init", "--quiet");
+  const files = ["reference-harness/browser/run-all.mjs", "reference-harness/browser/lib/journey-provenance.mjs", "reference-harness/browser/lib/comparison-artifacts.mjs", "reference-harness/runner/source-git-environment.mjs"];
+  for (const file of files) {
+    const dest = path.join(root, file);
+    mkdirSync(path.dirname(dest), { recursive: true });
+    copyFileSync(new URL(`../../../${file}`, import.meta.url), dest);
+  }
+  // Only dispatch boundaries are canaries. The actual admission/provenance
+  // modules above run unchanged against this real, isolated Git checkout.
+  const comparator = "reference-harness/browser/compare-journeys.mjs";
+  const cucumber = "reference-harness/browser/cucumber/run-features.mjs";
+  writeFileSync(path.join(root, comparator), "import fs from 'node:fs'; const file=process.argv[process.argv.indexOf('--report')+1]; fs.writeFileSync(file,JSON.stringify({verdict:'pass',evidenceValid:true,integrity:{problems:[]},journeys:{pass:1,graded:1,total:1},kinds:{},perJourney:[{id:'synthetic',status:'pass'}]}));\n");
+  mkdirSync(path.dirname(path.join(root,cucumber)), { recursive: true });
+  writeFileSync(path.join(root,cucumber), "import fs from 'node:fs'; fs.writeFileSync(new URL('../../../cucumber-started',import.meta.url),'started');\n");
+  files.push(comparator,cucumber);
+  writeFileSync(path.join(root,"identity.txt"),path.basename(space));
+  files.push("identity.txt");
+  writeFileSync(path.join(root,".gitignore"),"/output/\n/cucumber-started\n/other-child-finished\n");
+  files.push(".gitignore");
+  git(root, "add", "--", ...files);
+  git(root, "-c", "user.name=Synthetic Fixture", "-c", "user.email=fixture@example.invalid", "commit", "--quiet", "-m", "Synthetic capture admission fixture", "--", ...files);
+  return { root, space, out:path.join(space,"evidence"), script: path.join(root,"reference-harness/browser/run-all.mjs"), commit: git(root,"rev-parse","HEAD") };
+}
+
+function invoke(f, extra = [], env = process.env) {
+  const out = f.out;
+  const result = spawnSync(process.execPath,[f.script,"--out",out,"--build","0","--candidate",f.commit,
+    "--reference-target","fixture-must-never-contact-a-host",...extra],{windowsHide:true,encoding:"utf8",env});
+  // Invalid target plus an isolated runner tree prevent any regression here
+  // from reaching a real reference, browser or application.
+  return { ...result, out };
+}
+
+test("dirty capture is refused before output allocation and all downstream work", (t) => {
+  const f=fixture(t);
+  writeFileSync(path.join(f.root,"unreviewed-source.txt"),"synthetic change");
+  const result=invoke(f);
+  assert.notEqual(result.status,0);
+  assert.match(result.stderr,/Capture requires clean source/);
+  assert.equal(existsSync(result.out),false);
+});
+
+test("foreign clean Git overrides cannot hide dirty actual harness source", (t) => {
+  const actual=fixture(t), foreign=fixture(t);
+  writeFileSync(path.join(actual.root,"unreviewed-source.txt"),"synthetic change");
+  const result=invoke(actual,[],{...process.env,GIT_DIR:path.join(foreign.root,".git"),GIT_WORK_TREE:foreign.root,GIT_INDEX_FILE:path.join(foreign.root,".git/index")});
+  assert.match(result.stderr,/Capture requires clean source/);
+  assert.equal(existsSync(result.out),false);
+});
+
+test("foreign dirty Git overrides cannot disqualify a clean actual harness", (t) => {
+  const actual=fixture(t), foreign=fixture(t);
+  writeFileSync(path.join(foreign.root,"foreign-change.txt"),"synthetic change");
+  const result=invoke(actual,[],{...process.env,GIT_DIR:path.join(foreign.root,".git"),GIT_WORK_TREE:foreign.root});
+  assert.doesNotMatch(result.stderr,/Capture requires clean source/);
+  assert.match(result.stderr,/--reference-target must be vm or local/);
+  assert.equal(existsSync(result.out),true);
+});
+
+test("provenance names the actual harness checkout despite foreign Git identity", (t) => {
+  const actual=fixture(t), foreign=fixture(t);
+  const data=path.join(actual.root,"synthetic-data");mkdirSync(data);
+  const json=path.join(data,"fixture.json");writeFileSync(json,"{}");
+  const module=pathToFileURL(path.join(actual.root,"reference-harness/browser/lib/journey-provenance.mjs")).href;
+  const args={fixture:data,journeys:json,contracts:json,engine:json};
+  const code=`const m=await import(${JSON.stringify(module)}); console.log(JSON.stringify(m.captureProvenance(${JSON.stringify(args)},{name:'fixture'}).source));`;
+  const result=spawnSync(process.execPath,["--input-type=module","-e",code],{windowsHide:true,encoding:"utf8",env:{...process.env,GIT_DIR:path.join(foreign.root,".git"),GIT_WORK_TREE:foreign.root}});
+  assert.equal(result.status,0,result.stderr);
+  const source=JSON.parse(result.stdout);
+  assert.equal(source.commit,actual.commit);
+  assert.equal(source.dirty,true);
+});
+
+test("report-only never starts cucumber even when a decko path is supplied", (t) => {
+  const f=fixture(t);
+  const result=invoke(f,["--report-only","1","--reference-target","vm","--decko",path.join(f.root,"synthetic-decko")]);
+  assert.equal(result.status,0,result.stderr);
+  assert.match(result.stdout,/SKIPPED \(report-only mode\)/);
+  assert.equal(existsSync(path.join(f.root,"cucumber-started")),false);
+});
+
+test("in-source output is rejected even when Git-ignored", (t) => {
+  const f=fixture(t), out=path.join(f.root,"unignored-output");
+  const result=invoke(f,["--out",out]);
+  assert.notEqual(result.status,0);
+  assert.match(result.stderr,/Fresh capture evidence must be outside the source checkout/);
+  assert.equal(existsSync(out),false);
+});
+
+test("source root and an external alias back into source are rejected", (t) => {
+  const f=fixture(t);
+  const rootResult=invoke(f,["--out",f.root]);
+  assert.match(rootResult.stderr,/Fresh capture evidence must be outside the source checkout/);
+  for (const [name,target] of [["source-alias",f.root],["metadata-alias",path.join(f.root,".git")]]) {
+    const alias=path.join(f.space,name);
+    symlinkSync(target,alias,process.platform === "win32" ? "junction" : "dir");
+    const aliasResult=invoke(f,["--out",path.join(alias,"ignored-output")]);
+    assert.match(aliasResult.stderr,/Fresh capture evidence must be outside the source checkout/);
+  }
+  assert.equal(existsSync(path.join(f.root,"ignored-output")),false);
+  assert.equal(existsSync(path.join(f.root,".git/ignored-output")),false);
+});
+
+test("a failed shard waits for every other owned child before exiting", (t) => {
+  const f=fixture(t);
+  const runner="reference-harness/browser/run-journeys.mjs";
+  writeFileSync(path.join(f.root,runner),`import fs from 'node:fs';
+const engine=process.argv[process.argv.indexOf('--engine')+1];
+if(engine.endsWith('vm.json')) process.exit(1);
+await new Promise(resolve=>setTimeout(resolve,150));
+fs.writeFileSync(new URL('../../other-child-finished',import.meta.url),'finished');\n`);
+  git(f.root,"add","--",runner);
+  git(f.root,"-c","user.name=Synthetic Fixture","-c","user.email=fixture@example.invalid","commit","--quiet","-m","Synthetic child lifecycle fixture","--",runner);
+  const result=invoke(f,["--reference-target","vm","--shards","1","--ts-shards","1"]);
+  assert.notEqual(result.status,0);
+  assert.match(result.stderr,/Journey shard failed/);
+  assert.equal(existsSync(path.join(f.root,"other-child-finished")),true);
+  const report=JSON.parse(readFileSync(path.join(f.out,"report.json"),"utf8"));
+  assert.equal(report.evidenceValid,false,"a failed owned child cannot publish an otherwise passing retained comparison");
+});
+
+test("nonfinite shard counts are rejected before output or child creation", (t) => {
+  for (const value of ["Infinity","NaN","0","1.5"]) {
+    const f=fixture(t), result=invoke(f,["--ts-shards",value]);
+    assert.match(result.stderr,/--ts-shards must be a positive finite integer/);
+    assert.equal(existsSync(result.out),false);
+  }
+});
+
+test("source Git environment removes override families without changing the caller", () => {
+  const inherited={PATH:"synthetic-path",GIT_DIR:"foreign",git_work_tree:"foreign",GIT_CONFIG_COUNT:"1",GIT_CONFIG_KEY_0:"core.worktree",GIT_CONFIG_VALUE_0:"foreign",GIT_OBJECT_DIRECTORY:"foreign",DECKO_FIXTURE:"kept"};
+  const before={...inherited};
+  assert.deepEqual(sourceGitEnvironment(inherited),{PATH:"synthetic-path",DECKO_FIXTURE:"kept",GIT_OPTIONAL_LOCKS:"0"});
+  assert.deepEqual(inherited,before);
+});

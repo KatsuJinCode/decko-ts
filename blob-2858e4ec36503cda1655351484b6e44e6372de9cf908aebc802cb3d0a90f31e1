@@ -1,0 +1,25 @@
+{
+  "checkedAt": "2026-10-26T04:25:37.056Z",
+  "steps": [
+    {
+      "label": "library-first",
+      "status": 200,
+      "out": "C:\\localProjects\\decko-ts-demo-scratch-20261025\\tmp\\frontdoor-design-pass-20261026\\dark-check\\library-first-forced-dark.png"
+    },
+    {
+      "label": "editorial",
+      "status": 200,
+      "out": "C:\\localProjects\\decko-ts-demo-scratch-20261025\\tmp\\frontdoor-design-pass-20261026\\dark-check\\editorial-forced-dark.png"
+    },
+    {
+      "label": "product-grid",
+      "status": 200,
+      "out": "C:\\localProjects\\decko-ts-demo-scratch-20261025\\tmp\\frontdoor-design-pass-20261026\\dark-check\\product-grid-forced-dark.png"
+    },
+    {
+      "label": "three-doors",
+      "status": 200,
+      "out": "C:\\localProjects\\decko-ts-demo-scratch-20261025\\tmp\\frontdoor-design-pass-20261026\\dark-check\\three-doors-forced-dark.png"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "row": "smell-read-staging-isolate-probe",
+  "instrument": "C:/localProjects/brandonDojoTech/recovery/release/private-probes/private-tool-repairs-20261018/read-staging-isolate-probe.mjs",
+  "instrumentSha256": "1f9c38aef35fc12cbf5ef8db70303173478deeb458583c8b6068260fbef7cff5",
+  "at": "2026-10-25T04:47:30.000Z",
+  "command": "node read-staging-isolate-probe.mjs smell-read-staging-isolate-probe-20261024-r1",
+  "outcome": "ran",
+  "exit": 1,
+  "refusal": "Staging diagnostic is not armed/cache-disabled; no probe traffic sent",
+  "mechanism": "the staging script's own variable table carries the diagnostic switched off and the cache switched on, and the instrument's admission gate refuses before any probe traffic when those two are not in the required state.",
+  "verdict": "open",
+  "scope": "One read-only account API read of the staging script's metadata. No probe traffic was sent, no .com traffic, no deploy, no config change.",
+  "detail": {
+    "scriptId": 96895,
+    "hostname": "https://culturesmith-b-edge.bunny.run",
+    "gateSourceLine": 6,
+    "requiredState": { "DECKO_EDGE_ISOLATE_PROBE": "1", "DECKO_EDGE_CACHE": "0" },
+    "measuredState": { "DECKO_EDGE_ISOLATE_PROBE": "0", "DECKO_EDGE_CACHE": "1" },
+    "measuredAt": "2026-10-25T04:47:30.000Z",
+    "measuredBy": "the same read the instrument itself makes, one GET of api.bunny.net/compute/script/96895, with the account key read from the operator's secrets file and never printed",
+    "noReceiptWritten": "the instrument writes its receipt only after the gate, and the gate refused before that, so no label file was produced by design",
+    "probeRoutesThatWouldRun": [
+      "/_probe/cpu?n=5&reps=2",
+      "/_probe/db?n=3",
+      "/?owned_isolate=<nonce>-a",
+      "/?owned_isolate=<nonce>-b"
+    ],
+    "unblocksWhen": "the operator arms the two staging variables, after which the probe re-runs"
+  }
+}

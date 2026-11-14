@@ -1,0 +1,155 @@
+import { describe, expect, it } from "vitest";
+import { mkdirSync, mkdtempSync, readFileSync, unlinkSync, rmdirSync, statSync, existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { join } from "node:path";
+import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
+import { RenderEngine } from "../../../src/card/render.js";
+import { FetchEngine } from "../../../src/card/fetch.js";
+import { quietDenial } from "../../../src/card/permissions/index.js";
+import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
+import { splitSqlStatements } from "../fetch/fetch-test-storage.js";
+import { createActionsTestStorage, seedStandardDeck, seedCard, seedReference, type ActionsTestStorage } from "../actions/actions-test-storage.js";
+
+const ACTOR = { id: 450, name: "Joe User" };
+
+async function fixture(supplied?: ActionsTestStorage) {
+  const storage = supplied ?? await createActionsTestStorage();
+  await seedStandardDeck(storage);
+  await seedCard(storage, { id: 400, name: "*read", codename: "read" });
+  await seedCard(storage, { id: 401, name: "*self", codename: "self" });
+  await seedCard(storage, { id: 402, name: "Anonymous", codename: "anonymous" });
+  await seedCard(storage, { id: 403, name: "Anyone Signed In", codename: "anyone_signed_in" });
+  await seedCard(storage, { id: ACTOR.id, name: ACTOR.name });
+  await seedCard(storage, { id: 600, name: "Other Type", codename: "other_type", typeId: 3 });
+  const read = await seedCard(storage, { id: 404, leftId: 7, rightId: 400, dbContent: "[[Anyone]]" });
+  await seedReference(storage, read.id, 304, "anyone");
+  const writer = new CardActionEngine(storage.engine, { actor: ACTOR, ipAddress: "192.0.2.7" });
+  const render = new RenderEngine(storage.engine);
+  const subject = await writer.createCard({ name: "Rewrite Subject", content: "PRIVATE_REWRITE_MARKER" });
+  await writer.createCard({ name: "Rewrite Subject+*self", typeCode: "set" });
+  const rule = await writer.createCard({ name: "Rewrite Subject+*self+*read", content: "[[Anyone]]" });
+  await writer.updateCard({ cardId: subject.cardId, typeId: 600, content: "PRIVATE_REWRITE_MARKER ready" });
+  return { storage, writer, render, subject, rule };
+}
+
+async function snapshot(f: Awaited<ReturnType<typeof fixture>>) {
+  return {
+    rule: await f.storage.selectOne("SELECT id, db_content, type_id, left_id, right_id FROM cards WHERE id = ?", [f.rule.cardId]),
+    refs: await f.storage.selectAll("SELECT * FROM card_references WHERE referer_id = ? ORDER BY referee_id, ref_type", [f.rule.cardId]),
+    subject: await f.storage.selectOne("SELECT id, db_content, read_rule_id, read_rule_class FROM cards WHERE id = ?", [f.subject.cardId]),
+    history: await Promise.all(["card_acts", "card_actions", "card_changes"].map(table => f.storage.count(table))),
+    stamp: await f.storage.selectOne("SELECT version FROM deck_data_version WHERE id = 1"),
+  };
+}
+
+describe("issue 41: content-only read-rule rewrites on retained engines", () => {
+  for (const separate of [false, true]) it(`revokes and restores anonymous serving with ${separate ? "independent fetch/render engines" : "the writer's fetch engine"}`, async () => {
+    const f = await fixture();
+    try {
+      const reader = separate ? new RenderEngine(new FetchEngine(f.storage.driver)) : f.render;
+      for (let i = 0; i < 2; i++) expect(await reader.render("Rewrite Subject", "content")).toContain("PRIVATE_REWRITE_MARKER");
+      const before = await snapshot(f);
+      expect(before.subject?.read_rule_id).toBe(f.rule.cardId);
+      await f.writer.updateCard({ cardId: f.rule.cardId, content: "[[Anyone Signed In]]" });
+      const denied = await snapshot(f);
+      expect(denied.rule?.db_content).toBe("[[Anyone Signed In]]");
+      expect(denied.refs.map(row => row.referee_id)).toEqual([403]);
+      expect(denied.subject).toEqual(before.subject);
+      expect(Number(denied.stamp?.version)).toBeGreaterThan(Number(before.stamp?.version));
+      expect(await reader.render("Rewrite Subject", "content")).toBe(quietDenial());
+      expect(await reader.render("Rewrite Subject", "content")).not.toContain("PRIVATE_REWRITE_MARKER");
+      const member = new RenderEngine(new FetchEngine(f.storage.driver));
+      member.viewer = { signedIn: true, actorId: ACTOR.id };
+      expect(await member.render("Rewrite Subject", "content")).toContain("PRIVATE_REWRITE_MARKER");
+      const record = await reader.fetcher.fetchById(f.subject.cardId);
+      expect(record).toBeDefined();
+      expect(await reader.canReadCard(record!)).toBe(false);
+      await f.writer.updateCard({ cardId: f.rule.cardId, content: "[[Anyone]]" });
+      expect((await snapshot(f)).refs.map(row => row.referee_id)).toEqual([304]);
+      expect(await reader.render("Rewrite Subject", "content")).toContain("PRIVATE_REWRITE_MARKER");
+      console.log("ISSUE41_TRANSITION", JSON.stringify({ separate, before, denied, restored: await snapshot(f) }));
+    } finally { f.storage.close(); }
+  });
+
+  for (const initialPublic of [true, false]) it(`preserves ${initialPublic ? "public" : "restricted"} grants after a failed full save`, async () => {
+    const f = await fixture();
+    try {
+      if (!initialPublic) await f.writer.updateCard({ cardId: f.rule.cardId, content: "[[Anyone Signed In]]" });
+      const reader = new RenderEngine(new FetchEngine(f.storage.driver));
+      const expected = initialPublic ? "PRIVATE_REWRITE_MARKER" : quietDenial();
+      expect(await reader.render("Rewrite Subject", "content")).toContain(expected);
+      const before = await snapshot(f);
+      const failure = new Error("SyntheticReadRuleHistoryFailure");
+      const query = f.storage.driver.query.bind(f.storage.driver);
+      const batch = f.storage.driver.batch.bind(f.storage.driver);
+      let hits = 0;
+      const check = (sql: string) => {
+        if (/INSERT INTO card_changes/i.test(sql)) { hits++; throw failure; }
+      };
+      f.storage.driver.query = async (sql, params) => {
+        check(sql);
+        return query(sql, params);
+      };
+      f.storage.driver.batch = async statements => {
+        for (const statement of statements) check(statement.sql);
+        return batch(statements);
+      };
+      await expect(f.writer.updateCard({ cardId: f.rule.cardId,
+        content: initialPublic ? "[[Anyone Signed In]]" : "[[Anyone]]" })).rejects.toBe(failure);
+      f.storage.driver.query = query;
+      f.storage.driver.batch = batch;
+      expect(hits).toBe(1);
+      expect(await snapshot(f)).toEqual(before);
+      expect(await reader.render("Rewrite Subject", "content")).toContain(expected);
+    } finally { f.storage.close(); }
+  });
+
+  it("invalidates two warmed serving engines on independent SQLite connections after full rule saves", async () => {
+    mkdirSync(fileURLToPath(new URL("../../../.runtime/read-rule-rewrite41/", import.meta.url)), { recursive: true });
+    const directory = mkdtempSync(fileURLToPath(new URL("../../../.runtime/read-rule-rewrite41/connections-", import.meta.url)));
+    const database = join(directory, "synthetic.sqlite");
+    const driver = new LocalSqliteDriver({ path: database });
+    const storage: ActionsTestStorage = {
+      driver, engine: new FetchEngine(driver), close: () => driver.close(),
+      selectAll: async <T>(sql: string, params: unknown[] = []) => (await driver.query<T>(sql, params)).rows,
+      selectOne: async <T>(sql: string, params: unknown[] = []) => (await driver.query<T>(sql, params)).rows[0],
+      count: async table => Number((await driver.query<{ n: number }>(`SELECT COUNT(*) AS n FROM ${table}`, [])).rows[0]!.n),
+    };
+    let second: LocalSqliteDriver | undefined;
+    let third: LocalSqliteDriver | undefined;
+    try {
+      const schema = readFileSync(new URL("../../../db/schema.sqlite.sql", import.meta.url), "utf8");
+      for (const sql of splitSqlStatements(schema)) await driver.query(sql, []);
+      const f = await fixture(storage);
+      second = new LocalSqliteDriver({ path: database });
+      third = new LocalSqliteDriver({ path: database });
+      const readers = [new RenderEngine(new FetchEngine(second)), new RenderEngine(new FetchEngine(third))];
+      for (const reader of readers) {
+        expect(await reader.render("Rewrite Subject", "content")).toContain("PRIVATE_REWRITE_MARKER");
+        expect(await reader.render("Rewrite Subject", "content")).toContain("PRIVATE_REWRITE_MARKER");
+      }
+      await f.writer.updateCard({ cardId: f.rule.cardId, content: "[[Anyone Signed In]]" });
+      const denied = await snapshot(f);
+      expect(denied.rule?.db_content).toBe("[[Anyone Signed In]]");
+      expect(denied.refs.map(row => row.referee_id)).toEqual([403]);
+      expect(denied.subject?.read_rule_id).toBe(f.rule.cardId);
+      for (const [index, reader] of readers.entries()) {
+        if (index === 0) {
+          await reader.ensureFreshness();
+          const record = await reader.fetcher.fetchById(f.subject.cardId);
+          expect(await reader.canReadCard(record!)).toBe(false);
+        }
+        expect(await reader.render("Rewrite Subject", "content")).toBe(quietDenial());
+      }
+      await f.writer.updateCard({ cardId: f.rule.cardId, content: "[[Anyone]]" });
+      for (const reader of readers) expect(await reader.render("Rewrite Subject", "content")).toContain("PRIVATE_REWRITE_MARKER");
+      console.log("ISSUE41_CONNECTIONS", JSON.stringify({ independentConnections: 3, servingEngines: 2, denied, restored: await snapshot(f) }));
+    } finally {
+      third?.close(); second?.close(); storage.close();
+      const removedBytes = statSync(database).size;
+      unlinkSync(database); rmdirSync(directory);
+      expect(existsSync(directory)).toBe(false);
+      console.log("ISSUE41_CLEANUP", JSON.stringify({ removedDatabaseBytes: removedBytes, remainingFixtureDirectory: false }));
+    }
+  });
+});

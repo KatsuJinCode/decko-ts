@@ -1,0 +1,37 @@
+{
+  "what": "the held row mx-B-081 re-proven at the newest pushed tip: the row's surface is green on its own instrument and the named blocker is real, so the exact residual is recorded and the row stays held",
+  "row": "mx-B-081-cover-b-edit-editor-buttons-li",
+  "check": "E8 the nest image editor inserts a nest with view and size options",
+  "command": "node tools/edge-signed-in-exercise.mjs --only cover-b --case E8 --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 --out .runtime/held-mx-closeout-20261026/mx-B-081/report-r2.md",
+  "source": "86e147b676f95dba89f369a8d5ee97b4b8fe543e (port/held-mx-closeout-20261026, from port/d1d2-verify-20261025, the newest pushed tip of 654 refs by committer date; contains the canonical roll c29e4c3f; bundle SHA256 9b23a398c7c690dd867b153d1f51477c80e7b6f831e8702d14f82eee1595da46 rebuilt from this tree, byte-identical to the sibling row's slice run)",
+  "result": "PASS",
+  "runTotals": "6 / 6 checks passed; capability coverage 2 covered, 0 partial, 92 not covered, 1 disabled upstream, 1 out of scope (of 96); exit code 1 by the tool's own rule (tools/edge-signed-in-exercise.mjs:1931), not by any failure",
+  "startedAt": "2026-10-26T02:01:46.198Z",
+  "completedAt": "2026-10-26T02:02:07.077Z",
+  "evidence": {
+    "actor": "admin",
+    "actorId": 53041,
+    "image": { "id": 79, "name": "*logo" },
+    "wire": { "expected": "harness_imgbtn_mvom2go9-1", "actual": "harness_imgbtn_mvom2go9-1", "resolves": true },
+    "preview": "{{ *logo | view: titled; size: small }}",
+    "insertedHasSnippet": true,
+    "saveStatus": 200,
+    "storedHasSnippet": true,
+    "freshStatus": 200,
+    "src": "the deck's configured asset host; decoded true",
+    "cleanup": { "removed": 1, "remaining": 0, "baseline": 53052 },
+    "assetAudit": { "contexts": 1, "failures": 0 }
+  },
+  "blockerAdjudication": {
+    "named": "the guarded live deploy of the bundle that carries the multipart-upload fix to live 96867, blocked on arming the files-area pair (the roster row files-area-arming-decko-storage-pair-absent)",
+    "realAtThisTip": true,
+    "checks": [
+      "the row ledger (docs/registry/completeness-roster.json, roster timestamp 2026-10-25T22:35:52.211Z) holds files-area-arming-decko-storage-pair-absent at verdict BLOCKED: the DECKO_STORAGE_ZONE / DECKO_STORAGE_HOST / DECKO_STORAGE_PASSWORD values do not exist in the Bunny account, so the arm script has never fired",
+      "git grep over docs/reports at 86e147b6 for files-area and 96867 names only the 2026-10-20 and 2026-10-21 receipts that define and carry the blocker; no receipt records an armed pair or a landed guarded deploy",
+      "the branch contains the v23 candidate roll c29e4c3f, but a candidate is a branch, not a deployment; this lane made no deploy and no live request"
+    ]
+  },
+  "residual": "The row's DONE condition, the guarded live deploy of the bundle that carries the multipart-upload fix to live 96867, has never run because the files-area pair does not exist in the Bunny account (row files-area-arming-decko-storage-pair-absent, verdict BLOCKED: the DECKO_STORAGE_ZONE / DECKO_STORAGE_PASSWORD values are an operator account-side call that has not been made), so the deploy leg cannot be run by any lane.",
+  "rowState": "FAIL held, WORKING ON IT (port surface green at 86e147b6; the remaining blocker is the operator-side guarded deploy)",
+  "guardsHonored": "no live request, nothing deploys, no git reset/stash/clean/rm, the roster was not written"
+}

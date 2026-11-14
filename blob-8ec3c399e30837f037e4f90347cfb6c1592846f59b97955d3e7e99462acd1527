@@ -1,0 +1,175 @@
+# Strict-parity flags
+
+These five independent switches select the recorded Ruby paths listed below.
+There is no universal legacy-compatibility switch. They default OFF and do not
+establish whole-port compatibility, arbitrary mod support, migration, host
+configuration, media availability or equivalence outside their measured cases.
+The side-effects battery (`tools/parity-side-effects/scenarios.json`, run by
+`tests/tools/side-effects-scenario-battery.test.ts`) exercises the first four
+against its committed recording. The fifth has separate follow-rule tests and
+browser-journey evidence; it is absent from that battery.
+
+That named battery is distinct from the reference runner's
+`reference-harness/fixtures/synthetic-v1/ops/scenarios.json`. Synthetic-v1
+side-effect comparisons include notification mail, so the fifth switch's
+mail-link branch is relevant there: OFF appends `success[redirect]=soft`,
+while ON selects the bare reference link. A mail-byte comparison does not
+also prove the dashboard refusal or follow-rule permission branch. Do not
+describe the fifth switch as absent from every side-effect comparison.
+
+The retained synthetic-v1 diagnostic comparison for #111 identifies these
+seven notification-mail steps: `create-topic-with-fields-as-admin#1`,
+`update-content-adds-link#1`, `rename-referenced-tag#1`, `delete-note#1`,
+`delete-topic-with-fields#1`, `create-compound-on-new-left#1` and
+`update-then-render#1`. Its raw strict-mode mail objects equal the recorded
+expected objects; each raw default-mode object differs only by the encoded
+soft-redirect suffix. Both comparisons explicitly declare dirty-source
+diagnostic status, source qualification false and grader exit 2. These facts
+explain the selected mail behavior; they do not close #111 or qualify a release.
+The checker must independently admit the exact candidate source, fixture,
+reference and comparison configuration before those answers become candidate
+evidence. Enabling flags does not supply that admission or authorize changing
+expected answers, normalization or exemptions.
+
+The reference paths here target card **1.110.0** / Decko **0.20.0**, with the
+particular fixture, configuration and capture named by each instrument.
+Changing those pins or selecting all five switches requires a new comparison;
+it does not qualify a different Ruby version, deck or mod set.
+
+## The surface
+
+One setting per flag, read from the host's settings bag: the `DECKO_*`
+environment variables on a Node host, the same-named bindings/`[vars]` on the
+Cloudflare and Bunny edges (`WriteSurfaceFlags`,
+`deploy/bunny-worker-src/bunny-edge-signin-session-surface.ts`). Values are
+`on` or `off`, case-insensitive with surrounding whitespace ignored. Unset or
+blank strings mean OFF. Unsupported strings and defined non-string values
+throw an error naming the setting; the host owns startup/request error handling.
+All five live in one module (`src/card/parity/strict-parity-flags.ts`), read
+through `strictParityFlagsFromEnv` / `configureStrictParity`, the same
+arrangement the sign-in policy uses.
+An explicitly configured flag object takes precedence over process environment
+until `configureStrictParity(undefined)` clears it; changing environment
+variables alone does not replace that object.
+
+| Setting (`DECKO_STRICT_PARITY_` prefix) | OFF (default) | ON (selected reference path) | Recorded evidence |
+| --- | --- | --- | --- |
+| `SIGNIN_DETAILED_ERRORS` | Uniform failure wording and the unknown-address sent-reset redirect under the default sign-in policy; this wording is not a proof against timing leaks | Field-specific recorded sign-in/reset errors: "Unrecognized email.", "Wrong password", 422 "EMAIL: not recognized" | battery `signin-unknown`, `signin-wrong-password`, `reset-unknown-email` |
+| `REVISION_RESTORE_500` | The measured File/Image revision restore proceeds (303) | Selects the recorded crash path: 500 with the deck's `server_error` main slot and no stored change | battery `restore-file-revision` and location-history control `admin-deny-signup` |
+| `SKIN_CREATE_500` | The measured non-skin parent refuses with 422 "ABORT: not a valid theme ..." | Selects the recorded crash path: 500 with the deck's `server_error` main slot and no stored change | battery `admin-create-skin-bad-parent` |
+| `SCRIPT_BUNDLE_CLOCK_NAMES` | The compiled bundle's bytes determine its filename | Ruby's stand-in action id `Time.now.to_i` names the file by wall-clock second; repeated saves within that second can share a name | battery `get-home` and identical-byte re-stores `admin-update-current-skin-colors`, `admin-delete-script-card` |
+| `MAIL_UNFOLLOW_REFUSAL` | Notification mail appends `success[redirect]=soft`; the measured fixture's dashboard/follow-rule writes use the default path | Mail uses the bare reference link; the measured dashboard write refuses, and follow-rule creates check the trunk parts they materialize | `tests/card/actions/follow-rule-create-side-fold-switch.test.ts`; separate `unfollow-from-mail` and board journeys; synthetic-v1 mail comparisons; absent from `tools/parity-side-effects/scenarios.json` |
+
+To select all five recorded behaviours, set each of these host settings to
+`on`:
+
+```text
+DECKO_STRICT_PARITY_SIGNIN_DETAILED_ERRORS=on
+DECKO_STRICT_PARITY_REVISION_RESTORE_500=on
+DECKO_STRICT_PARITY_SKIN_CREATE_500=on
+DECKO_STRICT_PARITY_SCRIPT_BUNDLE_CLOCK_NAMES=on
+DECKO_STRICT_PARITY_MAIL_UNFOLLOW_REFUSAL=on
+```
+
+**Evidence limitations:** the [historical v29 roll receipt](runs/full-candidate-v29-lanes-roll-2026-10-27.md)
+at `83e50ad639dcf4e04efa90323f13fc7d9d5ac1af` is retained as history, not
+current release evidence. Its side-effects battery has no follow/unfollow
+notification case and cannot verify the fifth flag. Its strict `get-home`
+expectation includes a TS file-list pin for fixture-clock differences, which
+must not be described as raw Ruby file equality.
+
+That receipt's browser journey comparator masked calendar dates, durations
+and relative times. Its earlier pass figure is invalidated as strict-text
+evidence. The repaired
+`reference-harness/browser/lib/observe.mjs` preserves those values in title,
+body and main text; only whitespace and the local test origin are normalized
+there. Clock differences now remain differences. The structure and URL rules
+remain separate and unchanged.
+
+The corrected normalizer cannot recover text already replaced by `<time>`
+in saved observations. A fresh grade requires retained original rendered
+text for both sides or a new isolated capture. Running the comparator again
+on previously masked JSON does not verify this correction. No replacement
+journey score is claimed here. The focused tests below demonstrate that
+both literal-date and literal-duration counterexamples now fail strict text
+comparison with valid synthetic evidence; they do not rerun a real deck.
+
+**Crash-response scope:** the selected strict path must render the crash
+inside the deck's page layout, not return a bare error fragment. The recorded
+main-slot bytes, whole-page bytes, headers and persistence are distinct
+checks. Recorded head assets, root URLs and integrity attributes differ
+between configurations, so a matching main slot does not prove whole-page
+equality. The default-mode `strictErases` exemption must not hide strict-mode
+body failures. Keep the original bare-fragment counterexample and the
+comparator's actual declarations with each run.
+
+## Independent host settings
+
+These settings select separate axes; enabling the five behavior flags does
+not supply any of them.
+
+| Setting | Current Node meaning | What it does not prove |
+| --- | --- | --- |
+| `DECKO_DECK_PROFILE=stock` | In `vm-staging-server.mjs`, only the exact string `stock` selects the stock host path; unset and every other value select the legacy host path. This is not a validated two-value enum | DSL/mod completeness or compatibility with every older deck |
+| `DECKO_SERIALIZER_ERA=stock` or `live` | The Node host trims its environment string; unset/blank leaves the current configuration. Exact `stock` clears this axis, exact `live` selects it; other values throw. Separate from deck profile and shell | Reference-version provenance or rendering equality |
+| `DECKO_PUBLIC_PAGE_SHELL_FILE` | Deployment-owned public shell configuration | Engine semantic compatibility or source-backed permission to publish its content |
+| `DECKO_LEGACY_ASSETS_FILE` | Validated media origin, main asset paths and same-card revision map | Media existence or availability; arbitrary authored URL/text equivalence |
+
+The finite asset-parser/script-role counterexamples were independently
+accepted in #67 at `d4eefc8de35fc18376c584ba694198d190f1c812`; that acceptance
+does not establish universal HTML conformance, full-host configuration or media
+availability. Explicit Node deck-origin wiring remains separate
+work (#68); `DECKO_ORIGIN` is an existing account/mail setting, not a documented
+substitute for that rendering configuration. A deployment must pin its exact
+source, build, data, settings and reference before it claims a comparison.
+
+The parser also rejects defined non-string settings instead of silently
+treating them as OFF. The original failing control is retained in
+`.runtime/adversarial-repair/strict-switch-nonstring-before.log`; the corrected
+settings, sign-in, write-route, asset-naming and follow-rule controls are in
+`strict-switch-value-admission-controls.log`. These are local finite controls;
+independent adversarial review and current target acceptance remain separate.
+
+## Relationship to the sign-in policy switches
+
+`DECKO_SIGNIN_UNIFORM_FAILURE` (docs/SECURITY.md) keeps its own meaning beside
+the strict surface: `off` already restores the per-field messages. The strict
+switch wins while it is ON - it forces the uniform-failure policy off for the
+sign-in ladder and the forgot-password trigger alike, whatever
+`DECKO_SIGNIN_UNIFORM_FAILURE` says - so the recorded Ruby answers are
+reachable through one consistent name without disturbing the existing
+documented switch.
+
+The five flags do not configure password hashing, origin checks, sign-in
+throttling, session revocation or first-run setup tokens. Those independent
+policies retain the meanings and compatibility costs in [SECURITY.md](SECURITY.md).
+For example, a shared-engine migration needs its separately selected password
+policy: Ruby cannot verify a password written or upgraded to the port's default
+PBKDF2 format. Enabling the strict flags does not change that fact.
+
+The canonical TS reference adapter is a different configuration from a default
+host. `reference-harness/adapters/ts/adapter.ts` selects `legacy-sha1` by default
+through `DECKO_HARNESS_PASSWORD_HASH` (only exact `legacy-sha1` or `pbkdf2` is
+accepted) and unconditionally sets uniform sign-in failures, throttling and
+session revocation OFF. Its results must carry that configuration; they do not
+verify the default host's security policies. The five strict flags remain
+independent of these adapter overrides.
+
+## Tests
+
+- `tests/card/parity/strict-parity-flags.test.ts`: the settings bag, and the
+  sign-in flag's both modes against the recorded answers.
+- `tests/server/write-routes-strict-parity.test.ts`: the reset redirect, the
+  two crash 500s (status, the deck page around the "Wild Card!" block,
+  nothing stored), each in both modes at the HTTP write surface.
+- `tests/card/actions/asset-output-naming.test.ts`: the bundle name slot in
+  both modes (content-derived across deploys vs the wall clock).
+- `tests/card/actions/follow-rule-create-side-fold-switch.test.ts`: the fifth
+  switch's follow-rule trunk-part permission check in both modes.
+- `reference-harness/browser/test/observation-normalization.test.mjs` and
+  `reference-harness/browser/test/evidence-integrity.test.mjs`: literal dates,
+  durations and relative times survive observation normalization, and the
+  two review counterexamples fail the strict comparator's text item.
+- `tests/tools/side-effects-scenario-battery.test.ts`: the whole battery in
+  both modes against the committed recording, and in strict mode the two 500
+  rows' bodies graded on their bytes.

@@ -1,0 +1,34 @@
+{
+  "what": "the PORT side of the search whole count, measured fresh on the pinned deck, with the ORACLE side recorded from the 2026-10-16 measurement it belongs to",
+  "instrument": "tmp/measure-search-whole-count.mjs (builds the local deck on the engine schema, boots the local stack, signs in as the administrator, walks the search pages the way the 2026-10-16 measurement did)",
+  "run": ".runtime/mx-190-search-whole-count/receipt.json",
+  "source": {
+    "deck": "C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3",
+    "deckSha256": "in .runtime/mx-190-search-whole-count/receipt.json (source.deckSha256)",
+    "cardsCopied": 21676
+  },
+  "query": {
+    "route": "/*search",
+    "keyword": "news",
+    "pageSize": 20,
+    "sort": "relevance (the deck's *search card content: {\"match\":\"$keyword\",\"sort\":\"relevance\"})"
+  },
+  "actorScope": "the local seeded administrator (signed in)",
+  "port": {
+    "wholeCount": 317,
+    "pages": 16,
+    "note": "the count of the rendered result rows across the pages; the row selector is the port's own result-row markup (src/card/mod-loader/mods/card-mod-search.ts:653-657), not an unscoped data-card-name read."
+  },
+  "deckReference": {
+    "nameOrContentMatches": 317,
+    "note": "the deck's own case-folded name-or-content count for the same term (the deck, read directly, not through the search): the port returns exactly the rows the deck says carry the term."
+  },
+  "oracleRecorded": {
+    "count": 127,
+    "pages": 7,
+    "portCountOfTheSameMeasurement": 242,
+    "portPagesOfTheSameMeasurement": 13,
+    "provenance": "brandonDojoTech/recovery/release/brandon-bunny-deploy/demo-zero-list.md:160 (recorded 2026-10-16 15:50Z, live original site = stock Ruby decko): 'Port now answers 242 matches / 13 pages (was 105); original answers 127 / 7 pages'",
+    "freshOracleMeasurement": "not taken in this run: Decko's `match` raises on the sqlite adapter (card-1.110.0 config/initializers/02_patches/active_record.rb:80-83) and the MySQL rung's machine-local assets are absent on this machine (tools/oracle/boot-mysql-server.sh refuses without tools/oracle/portable-mariadb/mariadb-11.4.5-winx64, tools/oracle/mysql-server/my.ini, tools/oracle/mysql-client-scratch/lib)."
+  }
+}

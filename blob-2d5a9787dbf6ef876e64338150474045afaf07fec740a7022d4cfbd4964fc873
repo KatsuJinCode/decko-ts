@@ -1,0 +1,70 @@
+# Unicode history summary repair
+
+Issue 118. Source parent: 2eadeb563e0a6314c4fb3be821f6117f0c1a8429,
+whose content-diff module is unchanged from engine ec720020f. This change
+does not touch the event snapshot or runtime transaction/upload handling.
+
+## Required behavior and reproduction
+
+History summaries must count and cut strings as Ruby String#size/ranges do.
+Valid supplementary characters must not be split into lone UTF-16 surrogates.
+The original algorithm, truncation decisions and ASCII bytes remain the
+comparison contract; this does not substitute grapheme counting.
+
+The attacker's three files were copied unchanged from
+dc6258321d3a5063e5cf3725d0f9f6790ff3a46e:
+
+- adversarial-original-diff.test.ts, SHA-256
+  a84141b760f5c4412e5c06a59f57fab4790d9325c05d629540cc869fdad2e660;
+- original-diff-summary.json, SHA-256
+  10a6313896e8c3a498026b5517f5128b8bf17453bc5f027c37db008396a00075;
+- capture-original-diff-summary.rb, SHA-256
+  a6e50b2624871d58cf541ccf76d7ef1c580ba2ca76b58e311768541ccec5b2c4.
+
+Before repair, 23 cases pass and four fail: supplementary characters below
+the budget, mixed text at the budget, truncated supplementary text and a
+deletion/addition pair. The first case produces a lone high surrogate before
+the ellipsis. All twenty-two translated original diff examples pass already.
+An exact-parent source-load override reruns this unchanged fixture with the
+same 23-pass/four-failure result. Raw output, baseline source, config and
+JUnit remain locally under .runtime/unicode118; after.xml retains the complete
+passing four-suite result. No production source was reverted for that check.
+
+## Correction and checks
+
+Summary counts Unicode code points for chunks and the configured truncation
+marker. The final cut slices a character array rather than UTF-16 units.
+The remaining original algorithm and its declared replacement behavior are
+unchanged; no LCS change is included.
+
+The unchanged attacker suite now passes all 27 cases. Nine additional cases
+come from direct execution of the original vendored Ruby Summary, including
+combining characters, joined emoji, CJK, supplementary deletion and custom
+markers. The original diff.rb and summary.rb hashes independently match the
+attacker oracle's source hashes. No replacement Ruby algorithm is used.
+The extra output is retained in unicode-summary-boundaries.json with its
+capture source. The extra assertions also reject generated lone surrogates.
+
+The first save command continued after diff --check flagged CRLF line endings
+in both JSON oracle files. The raw bytes were retained locally before their
+repository copies were normalized to LF. Deep JSON equality was asserted for
+both files; test expectations and captured values are unchanged. The normalized
+attacker oracle has SHA-256
+8145013d14c7d4061f078a81132c8bc8c16157860c5b5bb894ef77e8ea6db795;
+its original raw SHA above remains available in the retained raw copy.
+The additional Ruby capture now uses binary stdout so regeneration emits
+canonical LF directly. Later save commands fail immediately if diff --check
+reports a problem. No Git settings or approval mechanisms were changed.
+
+Four focused suites report 86 passed, zero failed/skipped: both Unicode/diff
+suites plus existing card-mod-history and card-mod-history-views. Whole-tree
+TypeScript checking passes. These are local Ruby/SQLite/assertion executions;
+transform caches may be reused, not test verdicts. No model, hosted service,
+original site or deployment was used. Independent re-attack on the integrated
+candidate and full-port acceptance remain outstanding.
+
+Payload accounting before this report: seven source/test/oracle files replace
+22,721 tracked bytes with 36,783 bytes, net 14,062 added bytes. These are file
+contents, not allocated-disk measurements. No history, source or worktree was
+deleted. Own temporary fixture databases closed and their folders were removed;
+the ignored source/verification receipts remain needed for independent review.
