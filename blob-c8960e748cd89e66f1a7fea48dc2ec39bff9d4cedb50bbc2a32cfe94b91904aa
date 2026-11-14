@@ -1,0 +1,86 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import vm from 'node:vm';
+
+const source = readFileSync(new URL('../run-journeys.mjs', import.meta.url), 'utf8');
+const start = source.indexOf('async function signinResponseMetadata(');
+const end = source.indexOf('\nasync function assertSignedIn(', start);
+assert.ok(start >= 0 && end > start);
+const context = { createHash, Buffer };
+vm.createContext(context);
+vm.runInContext(source.slice(start, end) + '\nglobalThis.readMetadata = signinResponseMetadata;', context);
+
+const headers = { 'content-type': 'application/json', 'set-cookie': 'session=private-cookie-sentinel; HttpOnly; Secure' };
+const response = body => ({ status: () => 200, allHeaders: async () => headers, text: async () => body });
+
+test('unreadable body is unknown while observed HTTP and header metadata survive', async () => {
+  const input = response('unused');
+  input.text = async () => { throw Error('No resource with given identifier found'); };
+  const result = await context.readMetadata(input);
+  assert.equal(result.hasApplicationErrors, null);
+  assert.equal(result.observed, true);
+  assert.equal(result.status, 200);
+  assert.equal(result.contentType, 'application/json');
+  assert.equal(result.headerError, null);
+  assert.equal(result.bodyError, 'browser-response-body-unavailable');
+  assert.equal(result.bodyKind, 'unavailable');
+  assert.equal(result.bodySha256, null);
+  assert.equal(result.bodyBytes, null);
+  assert.equal(result.setCookies[0].name, 'session');
+  assert.equal(result.setCookies[0].httpOnly, true);
+  assert.equal(result.setCookies[0].secure, true);
+  assert.equal(JSON.stringify(result).includes('private-cookie-sentinel'), false);
+});
+
+test('non-JSON and unsupported JSON shapes do not report observed absence of errors', async () => {
+  for (const body of ['<html>private-body-sentinel</html>', '{malformed', '', 'null', 'true', '42', '"text"', '[]']) {
+    const result = await context.readMetadata(response(body));
+    assert.equal(result.hasApplicationErrors, null, body);
+    assert.equal(result.status, 200);
+    assert.equal(result.bodyError, null);
+    assert.equal(result.bodySha256, createHash('sha256').update(body).digest('hex'));
+    assert.equal(result.bodyBytes, Buffer.byteLength(body));
+    assert.equal(JSON.stringify(result).includes('private-body-sentinel'), false);
+  }
+});
+
+test('parsed error-free objects report observed false', async () => {
+  for (const body of ['{}', '{"ok":true}', '{"status":"accepted","result":null}']) {
+    const result = await context.readMetadata(response(body));
+    assert.equal(result.hasApplicationErrors, false);
+    assert.equal(result.bodyKind, 'json');
+    assert.equal(result.bodyError, null);
+  }
+});
+
+test('parsed error bodies report observed true and retain only a body digest', async () => {
+  for (const body of ['{"error":"private-error-sentinel"}', '{"errors":["private-error-sentinel"]}', '{"errors":{"email":["private-error-sentinel"]}}']) {
+    const result = await context.readMetadata(response(body));
+    assert.equal(result.hasApplicationErrors, true);
+    assert.equal(result.bodyKind, 'json');
+    assert.equal(result.bodySha256, createHash('sha256').update(body).digest('hex'));
+    assert.equal(JSON.stringify(result).includes('private-error-sentinel'), false);
+  }
+});
+
+test('present but empty error fields remain unknown rather than establishing absence', async () => {
+  for (const body of ['{"error":null}', '{"error":""}', '{"errors":[]}', '{"errors":{}}', '{"errors":false}']) {
+    assert.equal((await context.readMetadata(response(body))).hasApplicationErrors, null);
+  }
+});
+
+test('header read failure does not discard parsed body state or HTTP status', async () => {
+  for (const [body, state] of [['{}', false], ['{"error":"refusal"}', true], ['<html></html>', null]]) {
+    const input = response(body);
+    input.allHeaders = async () => { throw Error('synthetic headers unavailable'); };
+    const result = await context.readMetadata(input);
+    assert.equal(result.hasApplicationErrors, state);
+    assert.equal(result.status, 200);
+    assert.equal(result.headerError, 'Error');
+    assert.equal(result.contentType, null);
+    assert.equal(result.setCookies.length, 0);
+    assert.equal(result.bodySha256, createHash('sha256').update(body).digest('hex'));
+  }
+});

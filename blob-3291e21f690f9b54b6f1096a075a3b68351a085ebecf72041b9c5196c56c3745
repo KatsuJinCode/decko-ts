@@ -1,0 +1,64 @@
+// The data-slot nest_name carries the AUTHORED reference form, not the
+// resolved (absolutized) card name.
+//
+// Pins the format.ts#nest fix: the voo's nest_name is seeded from the
+// nest chunk's authored reference, verbatim (card-mod-content
+// lib/card/content/chunk/nest.rb:23 builds the chunk options with
+// `@options = interpret_options.merge nest_name: name,
+// nest_syntax: in_brackets` — `name` is the authored reference; the
+// resolved name only feeds the fetch and the slot's data-card-name).
+//
+// Observed nest_name values are authored bytes — "+tag", "+related",
+// "+Source Title", "+Organizer(s)", "_main", a name carrying a literal `$`
+// (kept intact), authored-underscore junction names — never the absolutized
+// forms the engine emitted before this fix.
+//
+// The pointer/list item path (views.ts#renderPointerListItem) keeps
+// passing the item's absolute name explicitly — the item slots'
+// nest_name is the absolute item name.
+//
+// Stock read substrate: the catch-all grants Anyone, so every card is
+// readable and the nest renders the titled child body.
+
+import { describe, it, expect, afterAll } from "vitest";
+import { createRenderTestStorage, seedCard, type RenderTestStorage } from "./render-test-storage.js";
+
+let storage: RenderTestStorage | undefined;
+
+afterAll(() => {
+  storage?.close();
+});
+
+describe("data-slot nest_name: authored reference form (raw oracle 9625 + live wire)", () => {
+  it("renders {{+Source Title}} with nest_name '+Source Title' and absolute data-card-name", async () => {
+    storage = await createRenderTestStorage();
+    // The referencing parent, its right-part card, and the junction
+    // child (decko convention: junction rows store the canonical key,
+    // parts seeded so the lexicon resolves left_id/right_id).
+    await seedCard(storage, {
+      id: 99200,
+      name: "Deferred Lane Parent",
+      typeId: 2,
+      dbContent: "<p>{{+Source Title}}</p>",
+    });
+    await seedCard(storage, { id: 99201, name: "Source Title", typeId: 2 });
+    await seedCard(storage, {
+      id: 99202,
+      name: "Deferred Lane Parent+Source Title",
+      leftId: 99200,
+      rightId: 99201,
+      typeId: 2,
+      dbContent: "<p>the source title body</p>",
+    });
+    const html = await storage.engine.render("Deferred Lane Parent", "content");
+
+    // The slot's own identity attrs stay absolute: data-card-name carries
+    // the resolved (absolutized) name.
+    expect(html).toContain('data-card-name="Deferred Lane Parent+Source Title"');
+    // nest_name + nest_syntax keep the AUTHORED reference bytes.
+    expect(html).toContain("&quot;nest_name&quot;:&quot;+Source Title&quot;");
+    expect(html).toContain("&quot;nest_syntax&quot;:&quot;+Source Title&quot;");
+    // The slot id is the safe key of the RESOLVED name (unchanged).
+    expect(html).toContain('id="deferred_lane_parent-source_title-titled-view"');
+  });
+});

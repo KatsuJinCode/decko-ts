@@ -1,0 +1,66 @@
+# Execute original card-1.110.0 receiver/module methods without a Rails boot.
+# This is a component control, not an ActiveRecord or full-application oracle.
+# Usage: ruby check-receiver-ancestry.rb <card-1.110.0 source directory>
+require "json"
+require "digest"
+
+root = File.expand_path(ARGV.fetch(0))
+class Card
+  module Subcards
+    module Args; end
+  end
+  module Set
+    class Event
+      module All
+        module SkipAndTrigger; end
+      end
+    end
+  end
+  class Director
+    module All
+      def self.delegate(*); end
+    end
+  end
+end
+
+sources = {}
+read_source = lambda do |relative|
+  source = File.read(File.join(root, relative))
+  sources[relative] = Digest::SHA256.hexdigest(source)
+  source
+end
+initialization = Module.new
+initialization.module_eval(read_source.call("mod/core/set/all/initialize.rb"))
+assignment = Module.new
+assignment.module_eval(read_source.call("mod/core/set/all/assign_attributes.rb"))
+eval(read_source.call("lib/card/set/pattern/all.rb"), TOPLEVEL_BINDING)
+eval(read_source.call("lib/card/director/all.rb"), TOPLEVEL_BINDING)
+eval(read_source.call("lib/card/set/event/all.rb"), TOPLEVEL_BINDING)
+
+old_type = Module.new
+new_type = Module.new
+receiver_class = Class.new do
+  include initialization
+  include assignment
+  include Card::Set::Pattern::All
+  include Card::Director::All
+  include Card::Set::Event::All
+  attr_accessor :type_id
+end
+# Minimal pattern lookup supplies two arbitrary modules. Module loading,
+# assignment refresh, phase preparation and event applicability are original.
+receiver_class.define_method(:set_modules) { [type_id == 3 ? old_type : new_type] }
+
+observations = [false, true].map do |loaded|
+  receiver = receiver_class.allocate
+  receiver.type_id = 3
+  receiver.include_set_modules if loaded
+  receiver.send(:assign_with_set_modules, {type_id: 2}) { receiver.type_id = 2 }
+  receiver.prepare_for_phases
+  old_applies = receiver.send(:set_condition_applies?, old_type, [:type])
+  new_applies = receiver.send(:set_condition_applies?, new_type, [:type])
+  raise "old receiver ancestry mismatch" unless old_applies == loaded
+  raise "assigned module missing" unless new_applies
+  { initially_loaded: loaded, old_changing_event: old_applies, new_changing_event: new_applies }
+end
+puts JSON.pretty_generate(ruby: RUBY_VERSION, scope: "original source methods; minimal receiver/pattern adapters", sources: sources, observations: observations)

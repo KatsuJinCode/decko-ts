@@ -1,0 +1,63 @@
+import { describe, expect, it } from "vitest";
+import { ActWriter } from "../../../src/card/history/write-path.js";
+import { sqliteToMysql } from "../../../src/server/drivers/mysql.js";
+import type { SQLDatabaseDriver } from "../../../src/server/driver.js";
+import { createHistoryTestStorage } from "../../card/history/history-test-storage.js";
+
+// Execute the production translation against a synthetic MySQL catalog on
+// SQLite. This checks SQL arithmetic and the actual card writer, not native
+// MySQL execution, metadata freshness or transaction/isolation guarantees.
+function fixture(nextId: number) {
+  const storage = createHistoryTestStorage();
+  const db = storage.driver.db as unknown as {
+    exec(sql: string): void;
+    function(name: string, fn: (...args: number[]) => number | string): void;
+    function(name: string, options: { varargs: boolean }, fn: (...args: number[]) => number): void;
+  };
+  db.function("DATABASE", () => "sequence_test");
+  db.function("GREATEST", { varargs: true }, (...values) => Math.max(...values));
+  db.exec("ATTACH DATABASE ':memory:' AS information_schema");
+  db.exec("CREATE TABLE information_schema.TABLES (TABLE_SCHEMA TEXT, TABLE_NAME TEXT, AUTO_INCREMENT INTEGER)");
+  storage.exec("INSERT INTO information_schema.TABLES VALUES ('sequence_test', 'cards', ?)", [nextId]);
+  const driver: SQLDatabaseDriver = {
+    query(sql, params) {
+      return storage.driver.query(sql.includes("sqlite_sequence") ? sqliteToMysql(sql) : sql, params);
+    },
+    batch(statements) { return storage.driver.batch(statements); },
+  };
+  return { storage, driver };
+}
+
+describe("MySQL sequence high-water translation", () => {
+  it.each([1, 2, 501])("exposes last allocated id for native next id %i", async (nextId) => {
+    const { storage, driver } = fixture(nextId);
+    try {
+      const result = await driver.query<{ seq: number }>("SELECT seq FROM sqlite_sequence WHERE name = 'cards'", []);
+      expect(result.rows).toEqual([{ seq: nextId - 1 }]);
+    } finally { storage.close(); }
+  });
+
+  it.each([
+    { orphanId: 500, expectedId: 501 },
+    { orphanId: 501, expectedId: 502 },
+    { orphanId: 502, expectedId: 503 },
+  ])("keeps history for deleted card $orphanId separate from new card $expectedId", async ({ orphanId, expectedId }) => {
+    const { storage, driver } = fixture(501);
+    try {
+      storage.exec(`INSERT INTO cards
+        (id, name, key, type_id, trash, created_at, updated_at, creator_id, updater_id)
+        VALUES (500, 'Deleted seed', 'deleted_seed', 1, 0, '2026-01-01', '2026-01-01', 7, 7)`);
+      storage.exec("DELETE FROM cards WHERE id = 500");
+      storage.exec("INSERT INTO card_acts (id, card_id, actor_id, acted_at) VALUES (1, ?, 7, '2026-01-01')", [orphanId]);
+      storage.exec("INSERT INTO card_actions (id, card_id, card_act_id, action_type, draft) VALUES (1, ?, 1, 0, 0)", [orphanId]);
+      storage.exec("INSERT INTO card_changes (card_action_id, field, value) VALUES (1, 0, 'Deleted card')");
+      const orphanBefore = storage.selectAll("SELECT * FROM card_actions WHERE card_id = ?", [orphanId]);
+      const writer = new ActWriter({ driver, actorId: 7, now: () => new Date("2026-10-30T00:00:00Z") });
+      const created = await writer.createCard({ name: "Fresh card", key: "fresh_card", type_id: 1, db_content: "Fresh content" });
+      expect(created.cardId).toBe(expectedId);
+      expect(storage.selectAll("SELECT * FROM card_actions WHERE card_id = ?", [orphanId])).toEqual(orphanBefore);
+      expect(storage.selectAll("SELECT action_type FROM card_actions WHERE card_id = ?", [created.cardId])).toEqual([{ action_type: 0 }]);
+      expect(storage.selectAll("SELECT * FROM card_changes WHERE card_action_id = ?", [created.actionId])).toEqual([]);
+    } finally { storage.close(); }
+  });
+});

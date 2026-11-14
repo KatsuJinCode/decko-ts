@@ -1,0 +1,96 @@
+# Release battery evidence repair
+
+Issue: [91](https://github.com/KatsuJinCode/decko-ts/issues/91).
+Status: implementation and local regression checks saved; independent
+adversarial review and full release battery remain pending.
+
+## Reproduced failure
+
+The former caller reduced process termination to whether a runner started.
+Its classifier consequently returned `PASS` for a process with exit 1 and
+passing counters, and for one passing assertion plus three skipped assertions.
+The aggregate also accepted `BASELINE` failures as a clean release check.
+The old stages omitted numerous Node suites and the actor-capture preflight.
+
+The actual old classifier/caller-expression results, using synthetic inputs
+without starting its expensive stages, are retained in
+[before.json](release-battery-evidence-2026-10-30.before.json). The old source
+SHA-256 is `ca98301d98fe7cf6763a3909d656ecdca2952bc25663760a1aaa67f83cd5ca65`.
+
+## Changed behavior
+
+The replacement retains exit, signal and spawn-error facts; machine reports,
+raw process output and selected source hashes remain separate evidence.
+Missing reports do not fall back to console text. Files and assertion counts
+must reconcile with the selected inventory. Failed, skipped, pending,
+interrupted or incomplete required evidence cannot pass. Historical failure
+attribution is retained, while any baseline failure prevents a passing battery.
+
+The plan comes from tracked and unignored checkout files and the existing
+import classifier. Node and Vitest each execute their selected file inventory
+once, with explicitly listed benchmark investigations excluded from this local
+battery. The actual CLI admission inventory is retained in
+[admission.json](release-battery-evidence-2026-10-30.admission.json); discovery
+does not mean those tests ran. An unsuccessful stage does not omit a later
+stage. Source bytes and capture inputs are checked for changes during a run.
+
+The actor-bound capture validator and independently supplied expectation file
+are required before the full battery starts. No such fresh qualified capture
+was supplied in this repair. The actual default CLI therefore returned exit 3,
+reported capture evidence `INCOMPLETE`, started neither framework stage and
+reported `batteryPassed: false`. Scoped preflight modes explicitly state that
+no test-battery verdict was produced.
+
+Standalone child launches remove the inherited `NODE_TEST_CONTEXT` field.
+An actual nested-runner fixture exposed a recursion warning and zero executed
+tests before this boundary correction. Another fixture exposed Windows
+file-URL loading through a CommonJS configuration lookup; the generated Vitest
+configuration now resolves its ESM entry. Both corrected paths were exercised
+by real local child processes, without browser windows or external requests.
+
+## Verification and limits
+
+The final focused Node invocation passed 56 assertions, failed 0, cancelled 0,
+skipped 0 and left 0 todo. These are checker regression assertions, not a port
+completion score. The raw TAP is retained in
+[node-tests.tap](release-battery-evidence-2026-10-30.node-tests.tap).
+It includes actual failing/spawn-error children, byte-preserving output,
+actual Node pass/partial-skip reports, an actual Vitest pass report, missing
+machine reports, later-stage execution, inventory discovery and refusal to
+start a full battery without capture admission.
+
+TypeScript checking exited 0. The scoped platform-command scanner inspected
+the four changed runner/test modules and found zero platform-specific command
+hits. Exact source hashes, tool versions, raw platform output, CLI output and
+the cache/retry/model boundary are retained in
+[checks.json](release-battery-evidence-2026-10-30.checks.json).
+Temporary test fixtures were removed after their child processes exited and
+each fixture's absence was asserted. Registered `.runtime` diagnostics remain
+available; no native database, reference host or deployment was changed.
+
+This package does not validate the full Node/Vitest inventory, qualify a Ruby
+reference capture, establish runtime/backend parity, or prove migration,
+privacy, recovery or optimization. Independent review must challenge the
+frozen checker and its dependencies before any release verdict is quoted.
+Issue 91 remains open until that review and the applicable full run are
+recorded. The wider acceptance requirements in decision 0013 remain open.
+
+## Independent review qualification
+
+MiniMax Code reviewer1212 independently confirmed the original false passes
+are corrected using the real installed Vitest and Node runners. Its six
+remaining findings are tracked on issue91. The retained admission artifact
+above was generated before the correction commit on a dirty tree: its
+`sourceCommit` identifies the parent, while `sourceStatus` and checker hashes
+identify the changed bytes. It is a local diagnostic refusal, not evidence that
+the parent commit passed a release battery. The saved hashes were subsequently
+verified against the correction commit; that does not retroactively make the
+earlier execution a clean-commit run.
+
+The first report's interruption wording also needs this qualification: the
+installed Vitest 5.0.1 JSON reporter does not emit `wasInterrupted`,
+`numRuntimeErrorTestSuites` or `openHandles`. Optional guards do not measure
+those facts in its native reports. Nonzero exit, signal, spawn failure and
+missing/incomplete reports independently prevent passing in the exercised
+cases. A follow-up source-pinned package addresses the remaining review
+findings; this historical raw evidence is preserved unchanged.

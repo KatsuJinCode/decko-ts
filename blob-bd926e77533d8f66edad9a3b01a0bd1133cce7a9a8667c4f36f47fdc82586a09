@@ -1,0 +1,38 @@
+{
+  "renderedAt": "2026-10-26T03:17:07.703Z",
+  "baseUrl": "http://127.0.0.1:3118",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "fullPage": true,
+  "headless": true,
+  "executablePath": "C:/Program Files/Google/Chrome/Application/chrome.exe",
+  "assetHostMapped": "production-storage.r1.cdn.objectstore.example",
+  "failedRequests": [
+    {
+      "url": "https://kit.fontawesome.com/1366963381.js",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "https://kit.fontawesome.com/1366963381.js",
+      "error": "net::ERR_ABORTED"
+    }
+  ],
+  "steps": [
+    {
+      "label": "Direction 1, Product grid",
+      "url": "http://127.0.0.1:3118/Culturesmith%2BProduct%20Grid%20Door",
+      "status": 200,
+      "skinLive": true,
+      "out": "C:\\localProjects\\decko-ts-demo-scratch-20261025\\tmp\\frontdoor-directions-b-20261026\\product-grid.png"
+    },
+    {
+      "label": "Direction 2, Three doors",
+      "url": "http://127.0.0.1:3118/Culturesmith%2BThree%20Doors",
+      "status": 200,
+      "skinLive": true,
+      "out": "C:\\localProjects\\decko-ts-demo-scratch-20261025\\tmp\\frontdoor-directions-b-20261026\\three-doors.png"
+    }
+  ]
+}

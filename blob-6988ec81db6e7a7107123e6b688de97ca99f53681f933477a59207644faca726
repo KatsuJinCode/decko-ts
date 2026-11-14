@@ -1,0 +1,131 @@
+import { spawn } from "node:child_process";
+import { createHash } from "node:crypto";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { createServer } from "node:net";
+import path from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { beforeAll, expect, it } from "vitest";
+import { ensureStagingServerDist } from "../card/auth/staging-server-dist-bootstrap.js";
+
+const root = fileURLToPath(new URL("../../", import.meta.url));
+const fixture = path.join(root, "reference-harness/fixtures/synthetic-v1/deck/deck.sqlite3");
+const digest = (file: string): string => createHash("sha256").update(readFileSync(file)).digest("hex");
+const configuredOrigin = "https://render-origin.example:8443";
+const accountOrigin = "https://account-origin.example";
+
+beforeAll(async () => { await ensureStagingServerDist(); }, 60_000);
+
+async function port(): Promise<number> {
+  const server = createServer();
+  await new Promise<void>((resolve, reject) => { server.once("error", reject); server.listen(0, "127.0.0.1", resolve); });
+  const address = server.address();
+  if (address === null || typeof address === "string") throw Error("Missing owned ephemeral port");
+  const result = address.port;
+  await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+  return result;
+}
+
+async function host(options: { profile: "stock" | "legacy"; origin?: string; missingDatabase?: boolean }) {
+  const scratch = path.join(root, ".runtime");
+  mkdirSync(scratch, { recursive: true });
+  const work = mkdtempSync(path.join(scratch, "node-deck-origin-"));
+  const database = path.join(work, "deck.sqlite3");
+  if (!options.missingDatabase) copyFileSync(fixture, database);
+  const base = `http://127.0.0.1:${await port()}`;
+  const env: NodeJS.ProcessEnv = { ...process.env };
+  for (const key of Object.keys(env)) if (/^(DECKO_|HARNESS_)/.test(key) || key === "COMPILED_ASSETS_DIR") delete env[key];
+  Object.assign(env, { DECKO_DECK_PROFILE: options.profile, DECKO_ORIGIN: accountOrigin,
+    DECKO_WRITE_PATH: "0", DECKO_ASSET_REFRESH: "never", DECKO_FILES_DIR: path.join(work, "files") });
+  if (options.origin !== undefined) env.DECKO_DECK_ORIGIN = options.origin;
+  const child = spawn(process.execPath, ["--import", pathToFileURL(path.join(root, "tests/support/loopback-fetch-only.mjs")).href,
+    path.join(root, "vm-staging-server.mjs"), database, new URL(base).port],
+  { cwd: root, env, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
+  let output = "", listening = false;
+  const exited = new Promise<{code: number | null; signal: NodeJS.Signals | null}>((resolve, reject) => {
+    child.once("error", reject);
+    child.once("exit", (code, signal) => resolve({ code, signal }));
+  });
+  const ready = new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => reject(Error(`Owned Node host did not announce listening\n${output}`)), 30_000);
+    child.stdout.on("data", bytes => {
+      output += String(bytes);
+      if (!listening && output.includes("listening on")) { listening = true; clearTimeout(timer); resolve(); }
+    });
+    child.stderr.on("data", bytes => { output += String(bytes); });
+    child.once("error", error => { clearTimeout(timer); reject(error); });
+    child.once("exit", code => { if (!listening) { clearTimeout(timer); reject(Error(`Node host exited ${code}\n${output}`)); } });
+  });
+  // Invalid configuration expects a native exit rather than listening.
+  // Keep the rejected readiness promise observed in that path too.
+  void ready.catch(() => {});
+  return { base, child, ready, exited, database, output: () => output, async close() {
+    let confirmedExit = false;
+    try {
+      if (child.exitCode === null && child.signalCode === null) {
+        const response = await fetch(base + "/_shutdown", { method: "POST", headers: { origin: base },
+          redirect: "manual", signal: AbortSignal.timeout(10_000) });
+        expect(response.status).toBe(200);
+      }
+      const result = await exited;
+      confirmedExit = true;
+      console.log(JSON.stringify({ profile: options.profile, configured: options.origin !== undefined,
+        pid: child.pid, windowsHide: true, exit: result }));
+      return result;
+    } finally {
+      if (!confirmedExit && child.exitCode === null && child.signalCode === null) {
+        // Exact Node process launched above, no shell or other agent process.
+        expect(child.spawnfile).toBe(process.execPath);
+        expect(child.spawnargs).toContain(path.join(root, "vm-staging-server.mjs"));
+        process.kill(child.pid!, 0);
+        child.kill("SIGTERM");
+        await exited;
+        confirmedExit = true;
+      }
+      expect(confirmedExit || child.exitCode !== null || child.signalCode !== null).toBe(true);
+      expect(path.dirname(work)).toBe(path.resolve(root, ".runtime"));
+      expect(path.basename(work).startsWith("node-deck-origin-")).toBe(true);
+      rmSync(work, { recursive: true });
+    }
+  } };
+}
+
+for (const profile of ["stock", "legacy"] as const) {
+  for (const configured of [false, true]) {
+    it(`actual ${profile} host renders ${configured ? "explicit deck origin" : "unchanged relative defaults"} independently of account origin`, async () => {
+      const original = digest(fixture);
+      const instance = await host({ profile, ...(configured ? { origin: configuredOrigin + "/" } : {}) });
+      try {
+        await instance.ready;
+        for (const route of ["/Home", "/Home?view=url"]) {
+          const response = await fetch(instance.base + route, { redirect: "manual", signal: AbortSignal.timeout(10_000) });
+          expect(response.status).toBe(200);
+          const body = await response.text();
+          expect(body).toContain(`decko.rootUrl='${configured ? configuredOrigin : ""}/';`);
+          expect(body).not.toContain(`decko.rootUrl='${accountOrigin}/';`);
+          if (configured && route.includes("view=url")) expect(body).toContain(configuredOrigin + "/Home");
+        }
+      } finally {
+        expect(await instance.close()).toEqual({ code: 0, signal: null });
+        expect(digest(fixture)).toBe(original);
+      }
+    }, 45_000);
+  }
+}
+
+it.each(["", "https://render-origin.example/path", "javascript:alert(1)", "https://render%27.example"])(
+  "actual host refuses malformed configured origin before accessing a nonexistent database: %j", async origin => {
+    const instance = await host({ profile: "stock", origin, missingDatabase: true });
+    try {
+      const result = await Promise.race([
+        instance.exited,
+        instance.ready.then(() => { throw Error("Malformed deck origin reached a listening host"); }),
+      ]);
+      expect(result.code).not.toBe(0);
+      expect(instance.output()).toContain("DeploymentDeckOriginError");
+      expect(instance.output()).toContain("Invalid DECKO_DECK_ORIGIN");
+      expect(instance.output()).not.toContain("listening on");
+      expect(instance.output()).not.toMatch(/SQLITE_CANTOPEN|unable to open database|database does not exist/i);
+      expect(existsSync(instance.database)).toBe(false);
+    } finally { await instance.close(); }
+  }, 45_000,
+);

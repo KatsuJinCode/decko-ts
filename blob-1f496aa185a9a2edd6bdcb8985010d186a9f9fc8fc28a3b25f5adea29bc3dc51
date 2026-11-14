@@ -1,0 +1,75 @@
+import { afterEach, expect, it } from "vitest";
+import { createRenderTestStorage, seedCard, seedReference, type RenderTestStorage } from "../card/render/render-test-storage.js";
+import { RenderEngine } from "../../src/card/render.js";
+import { SessionStore } from "../../src/card/auth/session-store.js";
+import { runAuthMigrations } from "../../src/card/auth/migrations.js";
+import { handleAttachmentRoute } from "../../src/server/file-routes.js";
+import { MemoryBlobDriver } from "../../src/blob/memory.js";
+import { BlobAttachmentStore } from "../../src/card/attachments/attachment-store.js";
+
+let storage: RenderTestStorage | undefined;
+afterEach(() => storage?.close());
+
+// Synthetic bytes, real SQLite, session lookup, read rules and attachment route.
+// The cache is a deliberately small RFC 9111 public/max-age/Vary consumer.
+// No CDN, provider, user account or real recording is contacted.
+async function fixture() {
+  const s = storage = await createRenderTestStorage();
+  const d = s.counting;
+  const codeId = async (code: string) => Number((await d.query<{ id: number }>("SELECT id FROM cards WHERE codename = ?", [code])).rows[0]!.id);
+  const read = await codeId("read");
+  const set = await codeId("set");
+  await seedCard(s, { id: 8006, name: "*self", codename: "self", typeId: 2 });
+  await seedCard(s, { id: 8001, name: "Review Member", typeId: 2 });
+  await seedCard(s, { id: 8002, name: "Anyone Signed In", codename: "anyone_signed_in", typeId: 2 });
+  await seedCard(s, { id: 8003, name: "Private Recording", typeId: 2, dbContent: "~8003/9000.mp4", readRuleId: 8005, readRuleClass: "*self" });
+  await seedCard(s, { id: 8004, name: "Private Recording+*self", leftId: 8003, rightId: await codeId("self"), typeId: set });
+  await seedCard(s, { id: 8005, name: "Private Recording+*self+*read", leftId: 8004, rightId: read, typeId: 2, dbContent: "[[Anyone Signed In]]" });
+  await seedReference(s, 8005, 8002, "anyone_signed_in");
+  await runAuthMigrations(d);
+  const sessions = new SessionStore({ driver: d });
+  const { token } = await sessions.createSession(8001);
+  const blobs = new MemoryBlobDriver();
+  await blobs.put("8003/9000.mp4", new TextEncoder().encode("SYNTHETIC PRIVATE RECORDING"));
+  const attachmentStore = new BlobAttachmentStore(blobs);
+  let originReads = 0;
+  const origin = async (request: Request) => {
+    originReads++;
+    const cookie = request.headers.get("cookie") ?? "";
+    const actor = await sessions.lookupSession(cookie.replace(/^decko_ts_session=/, ""));
+    const render = new RenderEngine(s.fetcher);
+    render.viewer = { signedIn: actor !== undefined && actor !== null, actorId: actor?.id };
+    return (await handleAttachmentRoute(request, {
+      driver: d, fetchEngine: s.fetcher, attachmentStore,
+      createEngine() { throw new Error("read must not create a write engine"); },
+      canReadCard: async id => {
+        const record = await s.fetcher.fetchById(id);
+        return record !== undefined && await render.canReadCard(record);
+      },
+    }))!;
+  };
+  return { origin, token, get originReads() { return originReads; } };
+}
+
+for (const route of ["/files/~8003/9000.mp4", "/Private_Recording.mp4"]) {
+  it(`${route}: a guest never receives a member's private bytes from a shared cache`, async () => {
+    const f = await fixture();
+    const url = `https://review.example.invalid${route}`;
+    const member = new Request(url, { headers: { cookie: `decko_ts_session=${f.token}` } });
+    const guest = new Request(url);
+    const directGuest = await f.origin(guest);
+    expect(directGuest.status).toBe(404);
+    expect(await directGuest.text()).not.toContain("SYNTHETIC PRIVATE RECORDING");
+    const authorized = await f.origin(member);
+    expect(authorized.status).toBe(200);
+    expect(await authorized.clone().text()).toBe("SYNTHETIC PRIVATE RECORDING");
+    const cc = authorized.headers.get("cache-control") ?? "";
+    const vary = authorized.headers.get("vary") ?? "";
+    const publicFresh = /(?:^|,)\s*public\b/.test(cc) && /max-age=[1-9][0-9]*/.test(cc);
+    const privateResponse = /(?:^|,)\s*(?:private|no-store)\b/.test(cc);
+    const variesByIdentity = /(?:^|,)\s*(?:cookie|\*)\s*(?:,|$)/i.test(vary);
+    const cached = publicFresh && !privateResponse && !variesByIdentity ? authorized.clone() : undefined;
+    const guestResponse = cached ?? await f.origin(guest);
+    expect(await guestResponse.text(), `member Cache-Control=${cc}; Vary=${vary}; origin requests=${f.originReads}`).not.toContain("SYNTHETIC PRIVATE RECORDING");
+  });
+}

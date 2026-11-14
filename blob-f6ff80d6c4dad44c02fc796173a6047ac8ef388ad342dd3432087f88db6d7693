@@ -1,0 +1,160 @@
+[
+  {
+    "tag": "children:open",
+    "arms": {
+      "UNSET": {
+        "verdict": "FAIL",
+        "delta": 1627,
+        "normSha": "107fd879002b77cf"
+      },
+      "ONLY:scriptIntegrityBySrc": {
+        "verdict": "FAIL",
+        "delta": 1627,
+        "normSha": "107fd879002b77cf"
+      },
+      "ONLY:mainStylesheetRevisionDigits": {
+        "verdict": "FAIL",
+        "delta": 1627,
+        "normSha": "107fd879002b77cf"
+      },
+      "ONLY:footerDeckoVersion": {
+        "verdict": "FAIL",
+        "delta": 1627,
+        "normSha": "107fd879002b77cf"
+      },
+      "ONLY:recaptchaSiteKey": {
+        "verdict": "FAIL",
+        "delta": 1627,
+        "normSha": "107fd879002b77cf"
+      },
+      "ONLY:deckoRootUrl": {
+        "verdict": "FAIL",
+        "delta": 1627,
+        "normSha": "107fd879002b77cf"
+      },
+      "ONLY:defaultHtmlViewNest": {
+        "verdict": "FAIL",
+        "delta": 53,
+        "normSha": "897c87898934f19a"
+      },
+      "PRESET(all)": {
+        "verdict": "FAIL",
+        "delta": 53,
+        "normSha": "897c87898934f19a"
+      }
+    },
+    "baseSha": "107fd879002b77cf",
+    "presetSha": "897c87898934f19a",
+    "presetDiffersFromUnset": true,
+    "armsThatMoveBytesAlone": [
+      "ONLY:defaultHtmlViewNest"
+    ],
+    "armsThatReproducePreset": [
+      "ONLY:defaultHtmlViewNest"
+    ]
+  },
+  {
+    "tag": "Guns:open",
+    "arms": {
+      "UNSET": {
+        "verdict": "FAIL",
+        "delta": 3132,
+        "normSha": "85d8d97fedf3072c"
+      },
+      "ONLY:scriptIntegrityBySrc": {
+        "verdict": "FAIL",
+        "delta": 3132,
+        "normSha": "85d8d97fedf3072c"
+      },
+      "ONLY:mainStylesheetRevisionDigits": {
+        "verdict": "FAIL",
+        "delta": 3132,
+        "normSha": "85d8d97fedf3072c"
+      },
+      "ONLY:footerDeckoVersion": {
+        "verdict": "FAIL",
+        "delta": 3132,
+        "normSha": "85d8d97fedf3072c"
+      },
+      "ONLY:recaptchaSiteKey": {
+        "verdict": "FAIL",
+        "delta": 3132,
+        "normSha": "85d8d97fedf3072c"
+      },
+      "ONLY:deckoRootUrl": {
+        "verdict": "FAIL",
+        "delta": 3132,
+        "normSha": "85d8d97fedf3072c"
+      },
+      "ONLY:defaultHtmlViewNest": {
+        "verdict": "FAIL",
+        "delta": 20,
+        "normSha": "2a83c5b45a2605e1"
+      },
+      "PRESET(all)": {
+        "verdict": "FAIL",
+        "delta": 20,
+        "normSha": "2a83c5b45a2605e1"
+      }
+    },
+    "baseSha": "85d8d97fedf3072c",
+    "presetSha": "2a83c5b45a2605e1",
+    "presetDiffersFromUnset": true,
+    "armsThatMoveBytesAlone": [
+      "ONLY:defaultHtmlViewNest"
+    ],
+    "armsThatReproducePreset": [
+      "ONLY:defaultHtmlViewNest"
+    ]
+  },
+  {
+    "tag": "*all plus:open",
+    "arms": {
+      "UNSET": {
+        "verdict": "PASS",
+        "delta": 0,
+        "normSha": "a22d18b1b0db9758"
+      },
+      "ONLY:scriptIntegrityBySrc": {
+        "verdict": "PASS",
+        "delta": 0,
+        "normSha": "a22d18b1b0db9758"
+      },
+      "ONLY:mainStylesheetRevisionDigits": {
+        "verdict": "PASS",
+        "delta": 0,
+        "normSha": "a22d18b1b0db9758"
+      },
+      "ONLY:footerDeckoVersion": {
+        "verdict": "PASS",
+        "delta": 0,
+        "normSha": "a22d18b1b0db9758"
+      },
+      "ONLY:recaptchaSiteKey": {
+        "verdict": "PASS",
+        "delta": 0,
+        "normSha": "a22d18b1b0db9758"
+      },
+      "ONLY:deckoRootUrl": {
+        "verdict": "PASS",
+        "delta": 0,
+        "normSha": "a22d18b1b0db9758"
+      },
+      "ONLY:defaultHtmlViewNest": {
+        "verdict": "PASS",
+        "delta": 0,
+        "normSha": "a22d18b1b0db9758"
+      },
+      "PRESET(all)": {
+        "verdict": "PASS",
+        "delta": 0,
+        "normSha": "a22d18b1b0db9758"
+      }
+    },
+    "baseSha": "a22d18b1b0db9758",
+    "presetSha": "a22d18b1b0db9758",
+    "presetDiffersFromUnset": false,
+    "armsThatMoveBytesAlone": [],
+    "armsThatReproducePreset": []
+  }
+]

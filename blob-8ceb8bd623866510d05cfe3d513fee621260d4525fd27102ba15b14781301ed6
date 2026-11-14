@@ -1,0 +1,71 @@
+import { afterEach, describe, expect, it } from "vitest";
+import { ModLoader, setDefaultModLoader } from "../../../src/card/mod-loader.js";
+import type { ModSetModuleFile } from "../../../src/card/mod-loader/mod-manifest.js";
+import { superView } from "../../../src/card/mod-loader/mod-view-helpers.js";
+import { createRenderTestStorage, seedCard } from "../render/render-test-storage.js";
+
+const cleanup: Array<() => void> = [];
+afterEach(() => { while (cleanup.length) cleanup.pop()!(); setDefaultModLoader(undefined); });
+const body = (label: string) => ({ views: [{ view: "nested_probe", config: { perms: "none" as const }, viewFn: () => label }] });
+async function fixture(files: ModSetModuleFile[]) {
+  const storage = await createRenderTestStorage();
+  await seedCard(storage, { id: 2, name: "RichText", codename: "basic" });
+  await seedCard(storage, { id: 500, name: "Home", typeId: 2 });
+  const loader = new ModLoader([{ manifest: { name: "nested_order", setModules: files } }], {});
+  cleanup.push(() => { loader.reset(); storage.close(); });
+  loader.load(); storage.engine.modLoader = loader; setDefaultModLoader(loader);
+  return { storage, loader };
+}
+
+describe("issues 83/84: native nested format attachment order", () => {
+  it("includes a later nested body even when the exact anchor has its own body", async () => {
+    const { storage, loader } = await fixture([
+      { setPath: "abstract/a_provider", formats: { html: body("PROVIDER") } },
+      { setPath: "type/basic", includeSets: [{ setPath: "abstract/a_provider" }], formats: { html: body("ROOT") } },
+      { setPath: "type/basic/z_nested", formats: { html: body("NESTED") } },
+    ]);
+    expect(await storage.engine.render("Home", "nested_probe")).toBe("NESTED");
+    expect(loader.viewChain("ALL TYPE-basic", "nested_probe").map(entry => entry.setModule))
+      .toEqual(["Type::Basic::ZNested", "Type::Basic", "Abstract::AProvider"]);
+  });
+  it("lets the later nested owner's included body override the earlier root's included body", async () => {
+    const { storage } = await fixture([
+      { setPath: "abstract/a_provider", formats: { html: body("A") } },
+      { setPath: "abstract/b_provider", formats: { html: body("B") } },
+      { setPath: "type/basic", includeSets: [{ setPath: "abstract/a_provider" }] },
+      { setPath: "type/basic/z_nested", includeSets: [{ setPath: "abstract/b_provider" }] },
+    ]);
+    expect(await storage.engine.render("Home", "nested_probe")).toBe("B");
+  });
+  it("applies a later restrictive included permission helper with no body of its own", async () => {
+    const { storage, loader } = await fixture([
+      { setPath: "abstract/a_provider", formats: { html: {
+        methods: [{ name: "nested_allowed?", fn: () => true }],
+        views: [{ view: "nested_probe", config: { perms: "nested_allowed?" }, viewFn: () => "PRIVATE_BODY" }],
+      } } },
+      { setPath: "abstract/b_provider", formats: { html: { methods: [{ name: "nested_allowed?", fn: () => false }] } } },
+      { setPath: "type/basic", includeSets: [{ setPath: "abstract/a_provider" }] },
+      { setPath: "type/basic/z_nested", includeSets: [{ setPath: "abstract/b_provider" }] },
+    ]);
+    expect(loader.formatMethodForCard("ALL TYPE-basic", "nested_allowed?")?.({} as never)).toBe(false);
+    expect(await storage.engine.render("Home", "nested_probe")).not.toContain("PRIVATE_BODY");
+  });
+  it("interleaves a later included provider above an earlier owner's own body", async () => {
+    const { storage } = await fixture([
+      { setPath: "abstract/a_provider", formats: { html: body("A") } },
+      { setPath: "abstract/b_provider", formats: { html: { views: [{ view: "nested_probe", config: { perms: "none" },
+        viewFn: ctx => `B:${superView(ctx, "Abstract::BProvider", "nested_probe")}` }] } } },
+      { setPath: "type/basic", includeSets: [{ setPath: "abstract/a_provider" }], formats: { html: body("ROOT") } },
+      { setPath: "type/basic/z_nested", includeSets: [{ setPath: "abstract/b_provider" }] },
+    ]);
+    expect(await storage.engine.render("Home", "nested_probe")).toBe("B:ROOT");
+  });
+  it("does not move a shared ancestor ahead of the earlier owner's own body", async () => {
+    const { storage } = await fixture([
+      { setPath: "abstract/a_provider", formats: { html: body("A") } },
+      { setPath: "type/basic", includeSets: [{ setPath: "abstract/a_provider" }], formats: { html: body("ROOT") } },
+      { setPath: "type/basic/z_nested", includeSets: [{ setPath: "abstract/a_provider" }] },
+    ]);
+    expect(await storage.engine.render("Home", "nested_probe")).toBe("ROOT");
+  });
+});

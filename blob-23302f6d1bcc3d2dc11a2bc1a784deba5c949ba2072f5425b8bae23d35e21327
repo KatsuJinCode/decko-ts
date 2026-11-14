@@ -1,0 +1,48 @@
+# Failed driver setup teardown (issue 150)
+
+Base: `b0a5699b34e18903c5243dc9884b4ec1c960f4cd`.
+Scope: shared conformance lifecycle and its inert regression only. No driver,
+rollback, provider, authentication, renderer or source-identity code changes.
+
+The suite assigns its handle only after the factory resolves. When startup
+throws or rejects, afterAll still runs, and `handle.dispose?.()` dereferences
+the uninitialized handle before optional access can help. It adds
+`TypeError: Cannot read properties of undefined (reading 'dispose')` to the
+real setup error. The handle type now includes undefined and teardown uses
+`await handle?.dispose?.()`. Setup still rejects with its original error;
+an actual returned handle's disposer is still awaited and may still fail.
+
+The new control transforms and executes the real conformance module using
+the existing Vite/Oxc transformer, with inert registration hooks. It invokes
+the actual beforeAll/afterAll callbacks without running SQL bodies or starting
+a provider. Five cases cover thrown startup, rejected startup, no disposer,
+awaited single disposal and visible disposer failure. Both failed-startup
+cases assert the identical original error and no disposal of an unreturned
+resource. Before repair: two failed, three passed, zero skipped; both failures
+are the exact undefined-handle dispose TypeError. After repair: all five pass.
+The first baseline used Node type stripping; the final control reuses the
+project's existing transformer. Its lifecycle assertions are unchanged.
+
+Final focused verification: 16 tests pass in three files, zero failed/skipped:
+the five inert controls plus the existing file-backed LocalSqliteDriver six
+tests and @libsql/client file-backed cross-check five tests. Ordinary transform
+caches may be used; local database checks execute on isolated fresh files.
+Typecheck exits zero. Named-file platform scanner: zero command hits.
+Whitespace check passes. No new model call, installation, binary fetch,
+native MySQL probe or server was started. Missing-provider failures and
+exclusions remain unchanged; native/provider acceptance is not established.
+
+Retained full outputs under `.runtime/adapter123/`:
+
+- `conformance150-before.log`: SHA-256
+  `f888b31058323b561762ae7f381c3bbadd22cdab4b18c423948ae58111d4a373`.
+- `conformance150-final.log`: SHA-256
+  `e93a665bd5c3a1f05c124713d7b284104575ba4e8c4bcd063ab54a1722baefb0`.
+- `conformance150-final-typecheck.log`: empty stdout/stderr, exit zero.
+
+The Area4 path named in the assignment, `provider-native-unavailable.xml`,
+currently contains a later authentication-refusals suite rather than the
+original conformance startup failure. It is not used as this repair's baseline;
+the complete inert before/after evidence above independently reproduces the
+shared lifecycle defect. Original native-provider evidence remains Area4's
+responsibility. Independent review and integration remain with the release owner.

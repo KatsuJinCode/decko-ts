@@ -1,0 +1,381 @@
+import { afterAll, afterEach, expect, test } from "vitest";
+import { spawn, type ChildProcess } from "node:child_process";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { scratchDir, removeScratchDir } from "../support/scratch-dir.mjs";
+
+const directories: string[] = [];
+const children = new Set<ChildProcess>();
+const finishers = new Set<() => void>();
+const childReceipts: {pid: number | undefined; code: number | null; signal: string | null; stdout: string; stderr: string}[] = [];
+const compilerReceipts: {pid:number;code:number;absence:string}[]=[];
+const orphanReceipts: {pid:number;role:string;absence:string}[]=[];
+afterAll(() => console.info(JSON.stringify({fixture: "dist-lock-owned-Node-only", childReceipts, compilerReceipts,orphanReceipts})));
+afterEach(async () => {
+  // Release the fixture compiler before waiting for its parent. Killing only
+  // the parent would orphan the compiler if an assertion failed at the barrier.
+  for (const directory of directories) {
+    rmSync(join(directory,"hold-build"),{force:true});
+    rmSync(join(directory,"hold-orphan-build"),{force:true});
+  }
+  for (const finish of finishers) finish();
+  await Promise.all([...children].map(child => new Promise<void>(resolve => {
+    if (child.exitCode !== null || child.signalCode !== null) return resolve();
+    child.once("close", () => resolve());
+  })));
+  children.clear();
+  finishers.clear();
+  for (const directory of directories) {
+    const orphan=join(directory,"orphan-compiler");
+    if(existsSync(orphan)){
+      const pid=JSON.parse(readFileSync(orphan,"utf8")).pid;
+      await expect.poll(()=>{try{process.kill(pid,0);return "live";}catch(error){return (error as NodeJS.ErrnoException).code;}},{timeout:10000}).toBe("ESRCH");
+      orphanReceipts.push({pid,role:"held-writer",absence:"ESRCH"});
+      const wrapper=JSON.parse(readFileSync(join(directory,"orphan-wrapper"),"utf8")).pid;
+      await expect.poll(()=>{try{process.kill(wrapper,0);return "live";}catch(error){return (error as NodeJS.ErrnoException).code;}},{timeout:10000}).toBe("ESRCH");
+      orphanReceipts.push({pid:wrapper,role:"compiler-wrapper",absence:"ESRCH"});
+    }
+    const receipts=join(directory,"compiler-receipts");
+    if(!existsSync(receipts))continue;
+    for(const line of readFileSync(receipts,"utf8").trim().split(/\r?\n/)){
+      const receipt=JSON.parse(line);
+      let absence="unknown";
+      try {process.kill(receipt.pid,0);}catch(error){absence=(error as NodeJS.ErrnoException).code??"unknown";}
+      compilerReceipts.push({...receipt,absence});
+      expect(absence,"fixture compiler must have exited before scratch cleanup").toBe("ESRCH");
+    }
+  }
+  for (const directory of directories.splice(0)) removeScratchDir(directory);
+});
+
+function fixture() {
+  const root = scratchDir("dist-build-lock-"); directories.push(root);
+  const put = (file: string, body: string) => {
+    const target = join(root, file); mkdirSync(join(target, ".."), { recursive: true }); writeFileSync(target, body);
+  };
+  put("package.json", '{"type":"module"}');
+  put("tsconfig.json", "{}");
+  put("src/server/drivers/local-sqlite.ts", "export default {};");
+  put("src/card/transitive.ts", "export default {};");
+  put("vm-staging-server.mjs", 'import x from "./dist/src/server/drivers/local-sqlite.js";');
+  put("tests/card/auth/staging-server-dist-bootstrap.ts", "");
+  copyFileSync(new URL("../card/auth/staging-server-dist-bootstrap.ts", import.meta.url), join(root, "tests/card/auth/staging-server-dist-bootstrap.ts"));
+  put("tools/dist/build-lock.mjs", "");
+  copyFileSync(new URL("../../tools/dist/build-lock.mjs", import.meta.url), join(root, "tools/dist/build-lock.mjs"));
+  // This lock fixture simulates a compiler with a Node program; native launch
+  // and installed package identity have separate direct-compiler controls.
+  put("tools/platform/native-typescript-compiler.mjs", `
+import {spawnSync} from 'node:child_process';import path from 'node:path';
+export const spawnNativeTypeScript=(root,args,options)=>spawnSync(process.execPath,[path.join(root,'node_modules/typescript/bin/tsc'),...args],{...options,windowsHide:true,shell:false});
+`);
+  put("tools/dist/runtime-assets.mjs", `
+import fs from 'node:fs'; import path from 'node:path';
+export const runtimeAssetReadiness = root => fs.existsSync(path.join(root,'dist/asset')) ? [] : ['asset'];
+export function copyRuntimeAssets(root) {
+  if(!fs.existsSync(path.join(root,'dist/.tsc-build-lock'))) throw Error('assets copied outside lock');
+  const names=fs.readdirSync(path.join(root,'dist/.tsc-build-lock'));
+  if(!names.some(name=>name.startsWith('build-active-')))throw Error('assets copied outside build activity barrier');
+  fs.appendFileSync(path.join(root,'events'),'copy\\n'); fs.writeFileSync(path.join(root,'dist/asset'),'ready');
+}`);
+  put("node_modules/typescript/bin/tsc", `
+import fs from 'node:fs'; import path from 'node:path';
+import {spawn} from 'node:child_process';import {fileURLToPath} from 'node:url';
+process.on('exit',code=>fs.appendFileSync('compiler-receipts',JSON.stringify({pid:process.pid,code})+'\\n'));
+if(fs.existsSync('hold-orphan-build')&&process.argv[2]!=='owned-detached-writer'){
+ const writer=spawn(process.execPath,[fileURLToPath(import.meta.url),'owned-detached-writer'],
+  {cwd:process.cwd(),windowsHide:true,detached:true,stdio:'ignore'});
+ fs.writeFileSync('orphan-wrapper',JSON.stringify({pid:process.pid,parentPid:process.ppid,writerPid:writer.pid}));
+ const result=await new Promise((resolve,reject)=>{writer.once('error',reject);writer.once('exit',code=>resolve(code));});
+ process.exit(result);
+}
+if(!fs.existsSync('dist/.tsc-build-lock')) throw Error('compile outside lock');
+const ownerName=fs.readdirSync('dist/.tsc-build-lock').find(name=>name.startsWith('owner-'));
+const ownerRecord=JSON.parse(fs.readFileSync(path.join('dist/.tsc-build-lock',ownerName)));
+if(ownerRecord.format==='decko-dist-build-lock/2'&&!fs.existsSync(path.join('dist/.tsc-build-lock','build-active-'+ownerRecord.token+'.json')))throw Error('compiler started before build activity barrier');
+fs.appendFileSync('events','build\\n'); fs.writeFileSync('build-started',JSON.stringify({pid:process.pid,parentPid:process.ppid}));
+const orphanHeld=fs.existsSync('hold-orphan-build')&&!fs.existsSync('orphan-compiler');
+if(orphanHeld)fs.writeFileSync('orphan-compiler',JSON.stringify({pid:process.pid,parentPid:process.ppid}));
+while(fs.existsSync('hold-build')||(orphanHeld&&fs.existsSync('hold-orphan-build'))) await new Promise(r=>setTimeout(r,20));
+if(fs.existsSync('mutate-lock')){
+ const name=fs.readdirSync('dist/.tsc-build-lock').find(name=>name.startsWith('owner-'));
+ const file=path.join('dist/.tsc-build-lock',name),owner=JSON.parse(fs.readFileSync(file));
+ fs.writeFileSync(file,JSON.stringify({...owner,processStartedAt:'1970-01-01T00:00:00.000Z'}));
+}
+if(fs.existsSync('fail-build')) { console.log('fixture TS2322: narrowing failed'); throw Error('fixture compilation failed'); }
+for(const name of ['server/drivers/local-sqlite.js','server/write-routes.js','card/render.js','server/libsass-wasm.js']) {
+ if(fs.existsSync('omit-entry') && name==='server/drivers/local-sqlite.js') continue;
+ const file=path.join('dist/src',name); fs.mkdirSync(path.dirname(file),{recursive:true}); fs.writeFileSync(file,'export default {};');
+}`);
+  put("run.mjs", `
+import fs from 'node:fs';
+import {ensureStagingServerDist} from './tests/card/auth/staging-server-dist-bootstrap.ts';
+fs.writeFileSync('runner-'+process.argv[2],'');
+if(process.argv[5]==='unknown-liveness') process.kill=()=>{throw Object.assign(Error('fixture EPERM'),{code:'EPERM'});};
+await ensureStagingServerDist(process.argv[3]==='native' ? undefined : ()=>fs.existsSync('force-stale'),
+  process.argv[4]==='probe' ? {waitMs:0} : undefined);
+`);
+  put("owner.mjs", `
+import {acquireDistBuildLock} from './tools/dist/build-lock.mjs';
+import path from 'node:path';
+const lock=await acquireDistBuildLock({lockDir:path.resolve('dist/.tsc-build-lock')});
+process.on('message', command=>{
+  if(command==='activate'){lock.markBuildActive();process.send('active');return;}
+  try {if(command==='release')lock.release();else if(command!=='abandon')throw Error('unknown fixture command');}
+  catch(error){console.error(error);process.exitCode=1;}
+  process.disconnect();
+});
+process.send(lock.owner);
+`);
+  const track = (child: ChildProcess) => {
+    children.add(child); let output = "",stdout="",stderr="";
+    child.stdout!.on("data", data => {output += data;stdout+=data;}); child.stderr!.on("data", data => {output += data;stderr+=data;});
+    const done = new Promise<{ code: number | null; signal: string | null; pid: number | undefined; output: string }>((resolve, reject) => {
+      child.once("error", reject); child.once("close", (code,signal) => {
+        children.delete(child);childReceipts.push({pid:child.pid,code,signal,stdout,stderr});resolve({ code,signal,pid:child.pid,output });
+      });
+    });
+    return done;
+  };
+  const run = (id: string, native = false, probe = false, unknownLiveness = false) => track(
+    spawn(process.execPath, ["run.mjs",id,native?"native":"override",probe?"probe":"wait",unknownLiveness?"unknown-liveness":"native-liveness"],
+      {cwd:root,windowsHide:true,stdio:["ignore","pipe","pipe"]}));
+  const own = async () => {
+    const child=spawn(process.execPath,["owner.mjs"],{cwd:root,windowsHide:true,stdio:["ignore","pipe","pipe","ipc"]});
+    const done=track(child);
+    const finish=()=>{if(child.connected)child.send("release");};finishers.add(finish);
+    const owner=await new Promise<Record<string, unknown>>((resolve,reject)=>{
+      child.once("message",message=>resolve(message as Record<string,unknown>));
+      child.once("error",reject);child.once("exit",()=>reject(Error("fixture owner exited before ready")));
+    });
+    return {child,owner,done,finish:(command="release")=>{finishers.delete(finish);if(child.connected)child.send(command);}};
+  };
+  const orphanParent=()=>{
+    const child=spawn(process.execPath,["run.mjs","orphan-parent","override","wait","native-liveness"],{cwd:root,windowsHide:true,stdio:["ignore","pipe","pipe"]});
+    return {child,done:track(child)};
+  };
+  const events = () => readFileSync(join(root, "events"), "utf8").trim().split(/\r?\n/);
+  return { root, put, run, own, orphanParent, events };
+}
+
+test("cold endpoint and battery builds share one compiler and publish assets under the same lock", async () => {
+  const f = fixture(); f.put("hold-build", "");
+  const first = f.run("endpoint");
+  await expect.poll(() => existsSync(join(f.root, "build-started")), { timeout: 10000 }).toBe(true);
+  const second = f.run("battery");
+  await expect.poll(() => existsSync(join(f.root, "runner-battery")), { timeout: 10000 }).toBe(true);
+  expect(existsSync(join(f.root, "dist/.staging-server-dist-built"))).toBe(false);
+  rmSync(join(f.root, "hold-build"));
+  const results = await Promise.all([first, second]);
+  for (const result of results) expect(result.code, result.output).toBe(0);
+  expect(f.events()).toEqual(["build", "copy"]);
+  expect(existsSync(join(f.root, "dist/.tsc-build-lock"))).toBe(false);
+}, 20000);
+
+test("actual bootstrap retains an old live owner's lock without the default wait", async () => {
+  const f=fixture(),held=await f.own();
+  const lockDir=join(f.root,"dist/.tsc-build-lock"),name=`owner-${held.owner.token}.json`;
+  const before=readFileSync(join(lockDir,name));utimesSync(lockDir,100,100);
+  const blocked=await f.run("old-live",false,true);
+  expect(blocked.code,blocked.output).not.toBe(0);expect(blocked.output).toContain("build lock retained (live:");
+  expect(readFileSync(join(lockDir,name))).toEqual(before);
+  expect(existsSync(join(f.root,"build-started"))).toBe(false);
+  process.kill(held.child.pid!,0);
+  held.finish();const exited=await held.done;expect(exited.code,exited.output).toBe(0);expect(exited.signal).toBeNull();
+  expect(existsSync(lockDir)).toBe(false);
+});
+
+test("fresh positively dead-owned lock is reclaimed and actual bootstrap finishes", async () => {
+  const f=fixture(),held=await f.own();held.finish("abandon");const exited=await held.done;
+  expect(exited.code,exited.output).toBe(0);expect(exited.signal).toBeNull();
+  expect(()=>process.kill(held.child.pid!,0)).toThrowError();
+  const built=await f.run("dead-owner");expect(built.code,built.output).toBe(0);
+  expect(f.events()).toEqual(["build","copy"]);
+  expect(existsSync(join(f.root,"dist/.tsc-build-lock"))).toBe(false);
+  expect(readdirSync(join(f.root,"dist")).some(name=>name.includes("retired-")||name.includes("candidate-"))).toBe(false);
+});
+
+test("actual acquisition retains the lock after its parent exited while a compiler remains alive",async()=>{
+  const f=fixture();f.put("hold-orphan-build","");const parent=f.orphanParent();
+  await expect.poll(()=>existsSync(join(f.root,"orphan-compiler")),{timeout:10000}).toBe(true);
+  const compiler=JSON.parse(readFileSync(join(f.root,"orphan-compiler"),"utf8"));
+  const wrapper=JSON.parse(readFileSync(join(f.root,"orphan-wrapper"),"utf8"));
+  expect(wrapper.parentPid).toBe(parent.child.pid);expect(compiler.parentPid).toBe(wrapper.pid);expect(compiler.pid).toBe(wrapper.writerPid);
+  // Simulate a crash only through this newly spawned fixture's retained native
+  // child handle, after checking its exact command. Never an existing process.
+  expect(parent.child.spawnfile).toBe(process.execPath);
+  expect(parent.child.spawnargs).toEqual([process.execPath,"run.mjs","orphan-parent","override","wait","native-liveness"]);
+  expect(parent.child.exitCode).toBeNull();process.kill(parent.child.pid!,0);
+  expect(parent.child.kill("SIGTERM")).toBe(true);const exited=await parent.done;
+  expect(exited.signal===null?Number.isInteger(exited.code)&&exited.code!==0:exited.signal==="SIGTERM",exited.output).toBe(true);
+  let parentAbsence="unknown";
+  try{process.kill(parent.child.pid!,0);}catch(error){parentAbsence=(error as NodeJS.ErrnoException).code??"unknown";}
+  expect(parentAbsence).toBe("ESRCH");process.kill(compiler.pid,0);
+  const lockDir=join(f.root,"dist/.tsc-build-lock");
+  const snapshot=()=>Object.fromEntries(readdirSync(lockDir).map(name=>[name,readFileSync(join(lockDir,name),"utf8")]));
+  const before=snapshot(),probe=await f.run("orphan-probe",false,true);
+  process.kill(compiler.pid,0);
+  console.info(JSON.stringify({orphanObservation:{parentPid:parent.child.pid,parentExit:exited.code,parentSignal:exited.signal,parentAbsence,wrapperPid:wrapper.pid,compilerPid:compiler.pid,compilerAlive:true,probeExit:probe.code}}));
+  expect(probe.code,probe.output).not.toBe(0);
+  expect(probe.output).toContain("build lock retained (unknown:");expect(snapshot()).toEqual(before);
+  expect(f.events()).toEqual(["build"]);
+  rmSync(join(f.root,"hold-orphan-build"));
+  await expect.poll(()=>{try{process.kill(compiler.pid,0);return "live";}catch(error){return (error as NodeJS.ErrnoException).code;}},{timeout:10000}).toBe("ESRCH");
+  // A dead direct compiler still does not establish arbitrary orphan absence.
+  const after=f.run("orphan-finished-probe",false,true),retained=await after;
+  expect(retained.code,retained.output).not.toBe(0);expect(snapshot()).toEqual(before);
+});
+
+test("dead-owner contenders serialize the actual build and do not reclaim a replacement owner", async () => {
+  const f=fixture(),held=await f.own();held.finish("abandon");expect((await held.done).code).toBe(0);
+  f.put("hold-build","");
+  const first=f.run("reaper-one"),second=f.run("reaper-two");
+  await expect.poll(()=>existsSync(join(f.root,"build-started")),{timeout:10000}).toBe(true);
+  rmSync(join(f.root,"hold-build"));
+  for(const result of await Promise.all([first,second]))expect(result.code,result.output).toBe(0);
+  expect(f.events()).toEqual(["build","copy"]);
+  expect(existsSync(join(f.root,"dist/.tsc-build-lock"))).toBe(false);
+});
+
+for(const kind of ["missing","malformed","ambiguous","foreign-machine","reused-live-pid","unreadable-liveness","recovery-in-progress","oversized","invalid-pid","legacy-parent-only","partial-build-marker"]){
+  test(`actual bootstrap preserves ${kind} ownership`,async()=>{
+    const f=fixture(),lockDir=join(f.root,"dist/.tsc-build-lock");
+    const held=await f.own();held.finish("abandon");expect((await held.done).code).toBe(0);
+    const name=`owner-${held.owner.token}.json`,file=join(lockDir,name);
+    if(kind==="missing")rmSync(file);
+    if(kind==="malformed")writeFileSync(file,"{unreadable");
+    if(kind==="ambiguous")writeFileSync(join(lockDir,"unclassified-owner"),"retained");
+    if(kind==="recovery-in-progress")writeFileSync(join(lockDir,`reclaim-${held.owner.token}.json`),"unknown recovery owner");
+    if(kind==="oversized")writeFileSync(file,"x".repeat(8193));
+    if(kind==="invalid-pid")writeFileSync(file,JSON.stringify({...held.owner,pid:[held.owner.pid]}));
+    if(kind==="legacy-parent-only")writeFileSync(file,JSON.stringify({...held.owner,format:"decko-dist-build-lock/1"}));
+    if(kind==="partial-build-marker")writeFileSync(join(lockDir,`build-active-${held.owner.token}.json`),"{partial");
+    if(kind==="foreign-machine")writeFileSync(file,JSON.stringify({...held.owner,machine:"foreign-machine"}));
+    if(kind==="reused-live-pid")writeFileSync(file,JSON.stringify({...held.owner,pid:process.pid,processStartedAt:"1970-01-01T00:00:00.000Z"}));
+    utimesSync(lockDir,100,100);
+    const snapshot=()=>Object.fromEntries(readdirSync(lockDir).map(entry=>[entry,readFileSync(join(lockDir,entry),"utf8")]));
+    const before=snapshot(),blocked=await f.run(kind,false,true,kind==="unreadable-liveness");
+    expect(blocked.code,blocked.output).not.toBe(0);expect(blocked.output).toContain("build lock retained (");
+    expect(blocked.output).toContain(kind==="reused-live-pid"?"(live:":"(unknown:");
+    expect(snapshot()).toEqual(before);expect(existsSync(join(f.root,"build-started"))).toBe(false);
+  });
+}
+
+test("owner release refuses changed metadata and preserves it for diagnosis",async()=>{
+  const f=fixture(),held=await f.own(),file=join(f.root,"dist/.tsc-build-lock",`owner-${held.owner.token}.json`);
+  const changed=JSON.stringify({...held.owner,processStartedAt:"1970-01-01T00:00:00.000Z"});writeFileSync(file,changed);
+  held.finish();const exited=await held.done;
+  expect(exited.code).not.toBe(0);expect(exited.signal).toBeNull();expect(exited.output).toContain("release refused");
+  expect(readFileSync(file,"utf8")).toBe(changed);
+});
+
+test("owner release refuses changed build activity and preserves both records",async()=>{
+  const f=fixture(),held=await f.own();
+  const activated=new Promise(resolve=>held.child.once("message",resolve));held.child.send("activate");expect(await activated).toBe("active");
+  const lockDir=join(f.root,"dist/.tsc-build-lock"),file=join(lockDir,`build-active-${held.owner.token}.json`);
+  writeFileSync(file,"{unverified build activity");held.finish();const exited=await held.done;
+  expect(exited.code).not.toBe(0);expect(exited.output).toContain("build activity changed");
+  expect(readdirSync(lockDir)).toHaveLength(2);expect(readFileSync(file,"utf8")).toBe("{unverified build activity");
+});
+
+test("compiler failure and changed-owner release failure both remain visible",async()=>{
+  const f=fixture();f.put("fail-build","");f.put("mutate-lock","");
+  const result=await f.run("failed-build-and-release");
+  expect(result.code).not.toBe(0);expect(result.signal).toBeNull();
+  expect(result.output).toContain("fixture TS2322: narrowing failed");
+  expect(result.output).toContain("fixture compilation failed");
+  expect(result.output).toContain("owned lock release was refused");
+  expect(existsSync(join(f.root,"dist/.staging-server-dist-built"))).toBe(false);
+  const lockDir=join(f.root,"dist/.tsc-build-lock");
+  expect(readdirSync(lockDir)).toHaveLength(2);
+  expect(readFileSync(join(lockDir,readdirSync(lockDir).find(name=>name.startsWith("owner-"))!),"utf8")).toContain("1970-01-01");
+});
+
+test("a battery freshness request rebuilds warm output; a failed rebuild invalidates the sentinel and releases its lock", async () => {
+  const f = fixture(); expect((await f.run("initial")).code).toBe(0);
+  f.put("force-stale", ""); f.put("fail-build", "");
+  const failed = await f.run("failed"); expect(failed.code).not.toBe(0);
+  expect(failed.output).toContain("fixture compilation failed");
+  expect(failed.output).toContain("tsc -p tsconfig.json failed");
+  expect(failed.output).toContain("fixture TS2322: narrowing failed");
+  expect(failed.output).not.toContain("dist modules still missing");
+  expect(existsSync(join(f.root, "dist/.staging-server-dist-built"))).toBe(false);
+  expect(existsSync(join(f.root, "dist/.tsc-build-lock"))).toBe(false);
+  rmSync(join(f.root, "fail-build"));
+  const recovered = await f.run("recovered"); expect(recovered.code, recovered.output).toBe(0);
+  expect(f.events()).toEqual(["build", "copy", "build", "build", "copy"]);
+}, 20000);
+
+test("current dist is reused by the default currency gate", async () => {
+  const f = fixture();
+  for (const id of ["cold", "warm"]) {
+    const result = await f.run(id, true); expect(result.code, result.output).toBe(0);
+  }
+  expect(f.events()).toEqual(["build", "copy"]);
+});
+
+test("a newer sentinel does not bless an imported module older than its source", async () => {
+  const f = fixture(); expect((await f.run("initial", true)).code).toBe(0);
+  // Deterministic old timestamps avoid filesystem resolution and clock races.
+  const timestamp = (name: string, seconds: number) => utimesSync(join(f.root, name), seconds, seconds);
+  timestamp("dist/src/server/drivers/local-sqlite.js", 100);
+  timestamp("src/server/drivers/local-sqlite.ts", 200);
+  const result = await f.run("stale-module", true); expect(result.code, result.output).toBe(0);
+  expect(f.events()).toEqual(["build", "copy", "build", "copy"]);
+});
+
+test("stale but complete dist cannot hide a failed compilation behind old output", async () => {
+  const f = fixture(); expect((await f.run("initial", true)).code).toBe(0);
+  utimesSync(join(f.root, "dist/src/server/drivers/local-sqlite.js"), 100, 100);
+  utimesSync(join(f.root, "src/server/drivers/local-sqlite.ts"), 200, 200);
+  f.put("fail-build", "");
+  const result = await f.run("stale-failure", true);
+  expect(result.code).not.toBe(0);
+  expect(result.output).toContain("tsc -p tsconfig.json failed");
+  expect(result.output).toContain("fixture TS2322: narrowing failed");
+  expect(result.output).toContain("fixture compilation failed");
+  expect(result.output).not.toContain("dist modules still missing");
+  expect(existsSync(join(f.root, "dist/.staging-server-dist-built"))).toBe(false);
+  expect(existsSync(join(f.root, "dist/.tsc-build-lock"))).toBe(false);
+});
+
+for (const input of ["src/card/transitive.ts", "tsconfig.json"]) {
+  test(`default currency gate rebuilds when ${input} changes after the build`, async () => {
+    const f = fixture(); expect((await f.run("initial", true)).code).toBe(0);
+    // Keep the imported output newer than its own source, isolating the
+    // transitive/config-to-sentinel check from the direct module check.
+    utimesSync(join(f.root, "src/server/drivers/local-sqlite.ts"), 100, 100);
+    for (const name of ["src/card/transitive.ts", "vm-staging-server.mjs", "tsconfig.json"]) {
+      utimesSync(join(f.root, name), 100, 100);
+    }
+    utimesSync(join(f.root, "dist/src/server/drivers/local-sqlite.js"), 200, 200);
+    utimesSync(join(f.root, "dist/.staging-server-dist-built"), 300, 300);
+    utimesSync(join(f.root, input), 400, 400);
+    const result = await f.run("changed-input", true); expect(result.code, result.output).toBe(0);
+    expect(f.events()).toEqual(["build", "copy", "build", "copy"]);
+  });
+}
+
+test("a cold compiler failure reports compiler output without a missing-module inventory", async () => {
+  const f = fixture(); f.put("fail-build", "");
+  const result = await f.run("cold-failure", true);
+  expect(result.code).not.toBe(0);
+  expect(result.output).toContain("tsc -p tsconfig.json failed");
+  expect(result.output).toMatch(/--- tsc stdout ---\r?\nfixture TS2322: narrowing failed/);
+  expect(result.output).toContain("--- tsc stderr ---");
+  expect(result.output).toContain("fixture compilation failed");
+  expect(result.output).not.toContain("dist modules still missing");
+  expect(result.output).not.toContain("dist/vendor/");
+  expect(f.events()).toEqual(["build"]);
+  expect(existsSync(join(f.root, "dist/.staging-server-dist-built"))).toBe(false);
+  expect(existsSync(join(f.root, "dist/.tsc-build-lock"))).toBe(false);
+});
+
+test("a successful compiler with missing output reports an output failure", async () => {
+  const f = fixture(); f.put("omit-entry", "");
+  const result = await f.run("missing-output", true);
+  expect(result.code).not.toBe(0);
+  expect(result.output).toContain("tsc succeeded but dist output is missing/empty");
+  expect(result.output).toContain(join("dist", "src", "server", "drivers", "local-sqlite.js"));
+  expect(result.output).not.toContain("tsc -p tsconfig.json failed");
+  expect(existsSync(join(f.root, "dist/.staging-server-dist-built"))).toBe(false);
+});

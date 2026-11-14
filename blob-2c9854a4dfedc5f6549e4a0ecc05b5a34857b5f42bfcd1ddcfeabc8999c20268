@@ -1,0 +1,58 @@
+import { expect, it } from "vitest";
+import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
+import type { AttachmentStore, AttachmentStoreInput } from "../../../src/card/attachments/attachment-store.js";
+import { configureStrictParity, strictParityFlags } from "../../../src/card/parity/strict-parity-flags.js";
+import { createActionsTestStorage, seedCard, seedStandardDeck, JOE } from "./actions-test-storage.js";
+
+it("definite database rollback does not authorize overwriting a newer external file during automatic cleanup", async () => {
+  const storage = await createActionsTestStorage();
+  try {
+    await seedStandardDeck(storage);
+    for (const row of [
+      { id: 400, name: "Pointer", codename: "pointer" }, { id: 401, name: "File", codename: "file" },
+      { id: 402, name: "Bootswatch skin", codename: "bootswatch_skin" },
+      { id: 410, name: "*style", codename: "style" }, { id: 411, name: "*asset input", codename: "asset_input" },
+      { id: 412, name: "*asset output", codename: "asset_output" }, { id: 420, name: "Recovery Skin", typeId: 402 },
+      { id: 430, name: "*all+*style", leftId: 7, rightId: 410, typeId: 400, dbContent: "Other Skin" },
+      { id: 431, name: "*all+*style+*asset output", leftId: 430, rightId: 412, typeId: 401, dbContent: "previous.css" },
+    ]) await seedCard(storage, row);
+    configureStrictParity({ ...strictParityFlags(), scriptBundleClockNames: true });
+    const date = new Date("2026-10-29T12:00:00Z");
+    const target = `431/${Math.floor(date.getTime() / 1000)}.css`;
+    const encode = (text: string) => new TextEncoder().encode(text);
+    const files = new Map<string, Uint8Array>([[target, encode("previous output")]]);
+    await storage.driver.query("UPDATE cards SET db_content=? WHERE id=?", [`~${target}`, 431]);
+    const key = (input: Pick<AttachmentStoreInput, "cardId" | "actionId" | "ext">) => `${input.cardId}/${input.actionId}${input.ext}`;
+    let failedStore = false, laterWriteLanded = false;
+    const store: AttachmentStore = {
+      read: async (cardId, actionId, ext) => files.get(key({ cardId, actionId, ext }))?.slice(),
+      store: async input => {
+        files.set(key(input), input.bytes.slice());
+        if (key(input) === target && !failedStore) {
+          failedStore = true;
+          throw new Error("injected partial output replacement");
+        }
+        return { identifier: `~${key(input)}`, size: input.bytes.length };
+      },
+      discard: async input => { files.delete(key(input)); },
+    };
+    const transaction = storage.driver.transaction!.bind(storage.driver);
+    storage.driver.transaction = async work => {
+      try { return await transaction(work); }
+      catch (error) {
+        // The real SQLite transaction has rolled back and released its gate.
+        // A separate external writer can now finish before engine cleanup.
+        await store.store({ cardId: 431, actionId: Math.floor(date.getTime() / 1000), ext: ".css", bytes: encode("later writer output") });
+        laterWriteLanded = true;
+        throw error;
+      }
+    };
+    const engine = new CardActionEngine(storage.engine, { actor: JOE, now: () => date, attachmentStore: store,
+      scssCompiler: async () => ".replacement{}" });
+    await expect(engine.updateCard({ cardId: 430, content: "Recovery Skin" })).rejects.toThrow();
+    expect(failedStore && laterWriteLanded).toBe(true);
+    expect((await storage.selectOne<{ db_content: string }>("SELECT db_content FROM cards WHERE id=430"))?.db_content).toBe("Other Skin");
+    expect(new TextDecoder().decode(files.get(target)), "database rollback gives no custody over a later object-store write").toBe("later writer output");
+    expect([...files.entries()].some(([name, bytes]) => name !== target && new TextDecoder().decode(bytes) === "previous output")).toBe(true);
+  } finally { configureStrictParity(undefined); storage.close(); }
+});

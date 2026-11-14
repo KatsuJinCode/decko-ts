@@ -1,0 +1,79 @@
+{
+  "contract": "The sign-in form asks for an email and a password, and a submission that leaves either one blank is refused with no session.",
+  "facts": {
+    "abort_unless_body": "abort :failure, t(\"account_#{error_key}\") unless value",
+    "abort_unless_method": "def abort_unless value, error_key",
+    "authenticate_or_abort_email": "abort_unless email, :email_missing",
+    "authenticate_or_abort_method": "def authenticate_or_abort email, pword",
+    "authenticate_or_abort_password": "abort_unless pword, :password_missing",
+    "before_core": "before :core do",
+    "edit_structure": "voo.edit_structure = [signin_field(:email), signin_field(:password)]",
+    "email_missing_message": "email can't be blank",
+    "password_missing_message": "password can't be blank",
+    "signin_validate_body": "authenticate_or_abort field_content(:email), field_content(:password)",
+    "signin_validate_event": "event :signin, :validate, on: :update do"
+  },
+  "gem_home": "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
+  "oracle": {
+    "abort_unless": {
+      "file_sha256": "47dc33c5360b851d617faa27b324ad661601ad31baaf1aebd72ef3a8cbf99b58",
+      "first_line": 62,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 64,
+      "marker": "def abort_unless value, error_key",
+      "marker_line": 62,
+      "path": "set/self/signin.rb",
+      "source": "def abort_unless value, error_key\n  abort :failure, t(\"account_#{error_key}\") unless value\nend"
+    },
+    "authenticate_or_abort": {
+      "file_sha256": "47dc33c5360b851d617faa27b324ad661601ad31baaf1aebd72ef3a8cbf99b58",
+      "first_line": 45,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 49,
+      "marker": "def authenticate_or_abort email, pword",
+      "marker_line": 45,
+      "path": "set/self/signin.rb",
+      "source": "def authenticate_or_abort email, pword\n  abort_unless email, :email_missing\n  abort_unless pword, :password_missing\n  authenticate_and_signin(email, pword) || failed_signin(email)\nend"
+    },
+    "before_core": {
+      "file_sha256": "47dc33c5360b851d617faa27b324ad661601ad31baaf1aebd72ef3a8cbf99b58",
+      "first_line": 115,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 117,
+      "marker": "before :core do",
+      "marker_line": 115,
+      "path": "set/self/signin.rb",
+      "source": "  before :core do\n    voo.edit_structure = [signin_field(:email), signin_field(:password)]\n  end"
+    },
+    "email_missing_locale": {
+      "file_sha256": "882fbc5e01921a5cb9ffa1625fd7070737b7ee8b502fc69bba3cf3217d17c85b",
+      "first_line": 5,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 5,
+      "marker": "account_email_missing:",
+      "marker_line": 5,
+      "path": "config/locales/en.yml",
+      "source": "  account_email_missing: email can't be blank"
+    },
+    "password_missing_locale": {
+      "file_sha256": "882fbc5e01921a5cb9ffa1625fd7070737b7ee8b502fc69bba3cf3217d17c85b",
+      "first_line": 27,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 27,
+      "marker": "account_password_missing:",
+      "marker_line": 27,
+      "path": "config/locales/en.yml",
+      "source": "  account_password_missing: password can't be blank"
+    },
+    "signin_validate_event": {
+      "file_sha256": "47dc33c5360b851d617faa27b324ad661601ad31baaf1aebd72ef3a8cbf99b58",
+      "first_line": 10,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 12,
+      "marker": "event :signin, :validate, on: :update do",
+      "marker_line": 10,
+      "path": "set/self/signin.rb",
+      "source": "event :signin, :validate, on: :update do\n  authenticate_or_abort field_content(:email), field_content(:password)\nend"
+    }
+  }
+}

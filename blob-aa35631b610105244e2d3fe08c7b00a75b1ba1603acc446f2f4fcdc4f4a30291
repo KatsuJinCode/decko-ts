@@ -1,0 +1,121 @@
+import { describe, expect, it } from "vitest";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+// Row: smell-analyze-feedback-duration.
+//
+// The probe analyze-feedback-duration.mjs lives outside this repo, at
+// recovery/release/private-probes/private-tool-repairs-20261018/ in the
+// evidence repo. It reads its stage telemetry from a run-scoped capture
+// directory and its wait-site figures by listing the .mjs files of one
+// tools/edge-signed-in-exercise checkout, named as an absolute machine path
+// (C:/localProjects/decko-edge-verification-b00a4503). That checkout was
+// deleted, so the probe dies on its second read - but the checks it measures
+// were never in that checkout alone. They are tracked here.
+//
+// What is asserted below is the half of the row that is a property of THIS
+// tree: the scan root survives in the port, so the wait-site half of the
+// analysis is reproducible from the tree that owns the checks, without
+// resurrecting a disposable worktree. The telemetry half reads capture
+// directories that live outside this repo; it is verified in the lane record,
+// and a dead machine path is named here as a path nothing below depends on.
+
+const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
+const scanRoot = path.join(repo, "tools", "edge-signed-in-exercise");
+
+// The scan root the probe names as an absolute machine path. This file
+// deliberately never reads it. That checkout was restored on 2026-10-22, which
+// is this row's own stated unblock, so the assertion below is no longer "it is
+// absent": it is "the measurement still reads this tree's own copy and never
+// the restored checkout", which is the property that actually matters.
+const deadPinnedCheckout = "C:/localProjects/decko-edge-verification-b00a4503";
+
+// Line 14 of the probe, verbatim: a literal wait sum over the top-level .mjs
+// files. The probe labels the result "static call sites, not measured executed
+// time", so this is a source figure and never claimed as a duration.
+function literalWaitSites(): { file: string; callSites: number; literalMs: number }[] {
+  const waits: { file: string; callSites: number; literalMs: number }[] = [];
+  for (const file of readdirSync(scanRoot).filter((name) => name.endsWith(".mjs"))) {
+    const text = readFileSync(path.join(scanRoot, file), "utf8");
+    const numbers = [...text.matchAll(/\.waitForTimeout\((\d+)\)/g)].map((m) => Number(m[1]));
+    if (numbers.length) {
+      waits.push({
+        file,
+        callSites: numbers.length,
+        literalMs: numbers.reduce((a, b) => a + b, 0),
+      });
+    }
+  }
+  return waits.sort((a, b) => (a.file < b.file ? -1 : 1));
+}
+
+// Measured on this tree, by running the probe's own scan over the port's copy
+// of the scan root. These are the eleven files that carry literal waits, and
+// the sum of those waits. The tenth is checks-capability-legs.mjs, which the
+// branch's own measurement (at 8aa2de33, nine files) did not have in the tree
+// it was taken on. The eleventh is checks-account-signup.mjs, the signed-in
+// sign-up module the capability-inventory tranche 5 added (two literal waits,
+// 2500 ms); the other ten files' sums moved with the tranche's own edits to
+// the shared check modules. The file list and the sum below are re-measured
+// on the v8 merged tree: 181000 -> 198900. The twelfth is
+// checks-w4-follow-views.mjs, the W4 follow-views module the
+// port/w4-follow-probe-20261025 lane added (nine literal waits, 11400 ms);
+// re-measured on the v9 merged tree: 198900 -> 211800. The thirteenth is
+// checks-search-anonymous-filter.mjs, the enumeration-audit gap 24 module the
+// port/gapbatch-8-20261025 lane added (two literal waits, 3000 ms); the sum
+// is re-measured on the lane's tree: 211800 -> 214800.
+const recordedFiles = [
+  "checks-account-signup.mjs",
+  "checks-capability-legs.mjs",
+  "checks-catalog-edit-create.mjs",
+  "checks-content-flows.mjs",
+  "checks-cover-b.mjs",
+  "checks-delete-edit-race.mjs",
+  "checks-permission-rules.mjs",
+  "checks-role-checkbox-and-plus-right-creation.mjs",
+  "checks-search-anonymous-filter.mjs",
+  "checks-upload-image-change.mjs",
+  "checks-w4-follow-views.mjs",
+  "checks-widget-interactions.mjs",
+  "live-mode.mjs",
+];
+const recordedLiteralMs = 214800;
+
+describe("the scan root analyze-feedback-duration.mjs measures survives in the port tree", () => {
+  it("carries the tools/edge-signed-in-exercise .mjs set the probe reads", () => {
+    expect(existsSync(scanRoot)).toBe(true);
+    const modules = readdirSync(scanRoot).filter((name) => name.endsWith(".mjs"));
+    expect(modules.length).toBeGreaterThan(0);
+    // An emptied scan root returns an empty list, which the probe would then
+    // write out as a zero-wait analysis indistinguishable from a clean one.
+    // The checks are the evidence, so their absence must be a red result.
+    expect(modules.filter((name) => name.startsWith("checks-")).length).toBeGreaterThanOrEqual(10);
+    expect(existsSync(path.join(repo, "tools", "edge-signed-in-exercise", "capabilities.json"))).toBe(true);
+  });
+
+  it("reproduces the probe's literal wait-site sum with no dead checkout involved", () => {
+    const waits = literalWaitSites();
+    expect(waits.length).toBeGreaterThan(0);
+    expect(waits.map((wait) => wait.file)).toEqual(recordedFiles);
+    for (const wait of waits) {
+      expect(wait.literalMs).toBeGreaterThanOrEqual(wait.callSites);
+    }
+    const total = waits.reduce((sum, wait) => sum + wait.literalMs, 0);
+    // A floor, not an equality: a check may legitimately gain waits, and only
+    // their removal is evidence loss this row would have to hear about.
+    expect(total).toBeGreaterThanOrEqual(recordedLiteralMs);
+  });
+
+  it("names the probe's machine pin as a path nothing here reads", () => {
+    // The row's probe reads its wait-site figures from an absolute machine
+    // path. That checkout was restored on 2026-10-22, so what is asserted
+    // here is the property that survives the restore: the measurement reads
+    // this tree's own copy, and the restored checkout is a different path, so
+    // the recovery cannot quietly depend on it.
+    expect(existsSync(path.join(repo, "tools", "edge-signed-in-exercise"))).toBe(true);
+    expect(path.resolve(scanRoot)).not.toBe(
+      path.resolve(deadPinnedCheckout, "tools", "edge-signed-in-exercise"),
+    );
+  });
+});

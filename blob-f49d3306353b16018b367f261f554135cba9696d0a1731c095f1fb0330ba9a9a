@@ -1,0 +1,30 @@
+// bunny-edge-build-identity.ts — the build identity of this Bunny edge script.
+//
+// The bundle tools stamp the git commit the script was built from, and whether
+// tracked files were modified at build time, with esbuild `define`
+// (tools/hosted-build-guard/build-stamp.mjs). /_status reports the stamp so the
+// hosted-run guard (tools/hosted-build-guard/) can prove that the deployed
+// build equals the commit a run claims to test.
+//
+// A script built without the stamp (for example a test import, or a bundle
+// deployed before stamping existed) has no identity: both fields are null, and
+// the guard refuses it.
+
+declare const __DECKO_BUILD_COMMIT__: string;
+declare const __DECKO_BUILD_TREE_DIRTY__: boolean;
+
+export interface BuildIdentity {
+  /** Full git commit SHA the bundle was built from, or null when unstamped. */
+  commit: string | null;
+  /** True when tracked files differed from that commit at build time. */
+  tree_dirty: boolean | null;
+}
+
+export function buildIdentity(): BuildIdentity {
+  // `typeof` on an undeclared identifier is safe: it yields "undefined" when no
+  // define was applied at build time.
+  if (typeof __DECKO_BUILD_COMMIT__ !== "string" || typeof __DECKO_BUILD_TREE_DIRTY__ !== "boolean") {
+    return { commit: null, tree_dirty: null };
+  }
+  return { commit: __DECKO_BUILD_COMMIT__, tree_dirty: __DECKO_BUILD_TREE_DIRTY__ };
+}

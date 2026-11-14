@@ -1,0 +1,1 @@
+[["42",true],[" 42 ",true],["-1.5",true],["1e3",true],["1_000",true],["1__0",false],[".5",true],["5.",false],["0x1A",true],["-0x1a",true],["abc",false],["",false],["  ",false],["1e",false],["+7",true],["1.2.3",false],["Infinity",false],["NaN",false],["0b101",false],["07",true],["1,000",false],["12abc",false],["\t3\n",true],["1_",false],["_1",false],["0x",false]]

@@ -1,0 +1,126 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {existsSync,mkdirSync,readFileSync,writeFileSync} from 'node:fs';
+import {join,resolve} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {scratchDir,removeScratchDir} from '../support/scratch-dir.mjs';
+import {classifyStage} from '../../scripts/release-check-evidence.mjs';
+import {CHECKER_SOURCE_FILES,captureAdmission,conflictMarkers,executePlan,inspectSource,observeRevision,parseOptions,projectFiles,runCommand,runReleaseCheck,testPlan} from '../../scripts/release-check.mjs';
+
+const root=fileURLToPath(new URL('../..',import.meta.url));
+async function fixture(body){const dir=scratchDir('release-evidence-');try{return await body(dir);}finally{removeScratchDir(dir);assert.equal(existsSync(dir),false,'own fixture must be retired after its child exits');}}
+
+test('real failed child retains exit and cannot pass through printed success',()=>fixture(async dir=>{
+  const result=await runCommand(process.execPath,['-e','console.log("synthetic pass counters"); process.exitCode=1;'],{cwd:dir});
+  assert.equal(result.code,1);assert.equal(result.signal,null);assert.equal(result.error,null);
+  const verdict=classifyStage({counts:{passed:1,failed:0,skipped:0},failedFiles:[],reporterSuccess:true},result);
+  assert.notEqual(verdict.result,'PASS');assert.match(verdict.reason,/exit: 1/);
+}));
+test('real spawn failure retains its error instead of becoming a running stage',()=>fixture(async dir=>{
+  const result=await runCommand(join(dir,'nonexistent-executable'),[],{cwd:dir});
+  assert.equal(result.error.code,'ENOENT');assert.notEqual(result.code,0);
+}));
+test('raw process output retains non-UTF8 bytes instead of replacing them',()=>fixture(async dir=>{
+  const result=await runCommand(process.execPath,['-e','process.stdout.write(Buffer.from([0xff,0xe2,0x84,0xb9]));process.stderr.write(Buffer.from([0xfe]));'],{cwd:dir});
+  assert.equal(result.code,0);assert.deepEqual(result.stdout,Buffer.from([0xff,0xe2,0x84,0xb9]));assert.deepEqual(result.stderr,Buffer.from([0xfe]));
+}));
+test('the actual Node machine runner covers a selected passing file',()=>fixture(async dir=>{
+  writeFileSync(join(dir,'owned.test.mjs'),'import test from "node:test"; test("own synthetic case",()=>{});\n');
+  const out=join(dir,'out');
+  const rows=await executePlan({root:dir,out,plan:{node:['owned.test.mjs'],vitest:[]}});
+  assert.equal(rows[0].result,'PASS',JSON.stringify({rows,stderr:readFileSync(join(out,'node.stderr.txt'),'utf8'),stdout:readFileSync(join(out,'node.stdout.txt'),'utf8')}));assert.equal(rows[0].sourceUnchanged,true);
+  const report=JSON.parse(readFileSync(join(out,'node.json'),'utf8'));
+  assert.equal(report.filesExecuted,1);assert.equal(report.summary.counts.passed,1);
+}));
+test('the actual Node machine runner cannot qualify a partial skip',()=>fixture(async dir=>{
+  writeFileSync(join(dir,'owned.test.mjs'),'import test from "node:test"; test("pass",()=>{}); test.skip("missing prerequisite",()=>{});\n');
+  const out=join(dir,'out');mkdirSync(out);
+  const rows=await executePlan({root:dir,out,plan:{node:['owned.test.mjs'],vitest:[]}});
+  assert.equal(rows[0].result,'INCOMPLETE');assert.equal(rows[0].counts?.skipped,1,JSON.stringify({rows,stderr:readFileSync(join(out,'node.stderr.txt'),'utf8'),stdout:readFileSync(join(out,'node.stdout.txt'),'utf8')}));
+}));
+test('the actual Vitest runner reconciles selected files and passing assertions',()=>fixture(async dir=>{
+  writeFileSync(join(dir,'owned.test.ts'),'import {it,expect} from "vitest"; it("own",()=>expect(1).toBe(1));\n');
+  const out=join(dir,'out');mkdirSync(out);
+  const rows=await executePlan({root:dir,out,plan:{node:[],vitest:['owned.test.ts']}});
+  assert.equal(rows[0].result,'PASS',JSON.stringify({rows,stderr:readFileSync(join(out,'vitest.stderr.txt'),'utf8')}));
+  assert.equal(rows[0].counts.passed,1);
+}));
+test('a failed stage launch does not conceal a later stage',()=>fixture(async dir=>{
+  writeFileSync(join(dir,'v.test.ts'),'import {it} from "vitest";');
+  writeFileSync(join(dir,'n.test.mjs'),'import test from "node:test";');
+  const out=join(dir,'out');mkdirSync(out);const attempts=[];
+  const rows=await executePlan({root:dir,out,plan:{node:['n.test.mjs'],vitest:['v.test.ts']},execute:async(_file,args)=>{attempts.push(args);throw Error('synthetic launch error');}});
+  assert.equal(attempts.length,2);assert.deepEqual(rows.map(row=>row.result),['INCOMPLETE','INCOMPLETE']);
+}));
+test('a missing first-stage source does not omit the later Node stage',()=>fixture(async dir=>{
+  writeFileSync(join(dir,'n.test.mjs'),'import test from "node:test"; test("own",()=>{});');
+  const out=join(dir,'out');mkdirSync(out);
+  const rows=await executePlan({root:dir,out,plan:{node:['n.test.mjs'],vitest:['absent.test.ts']}});
+  assert.deepEqual(rows.map(row=>row.result),['INCOMPLETE','PASS']);
+}));
+test('an absent machine report is not reconstructed from passing console text',()=>fixture(async dir=>{
+  writeFileSync(join(dir,'owned.test.mjs'),'import test from "node:test";');
+  const out=join(dir,'out');mkdirSync(out);
+  const rows=await executePlan({root:dir,out,plan:{node:['owned.test.mjs'],vitest:[]},execute:async()=>({code:0,signal:null,error:null,stdout:'pass 999',stderr:''})});
+  assert.equal(rows[0].result,'INCOMPLETE');assert.match(rows[0].invalidEvidence,/ENOENT/);
+}));
+test('marker scanning names real markers and propagates unreadable/missing evidence',()=>fixture(async dir=>{
+  writeFileSync(join(dir,'a.md'),['ordinary','<<<<<<< branch','=======','>>>>>>> other'].join('\n'));
+  assert.deepEqual(conflictMarkers(dir,['a.md']),['a.md:2','a.md:3','a.md:4']);
+  assert.throws(()=>conflictMarkers(dir,['absent.md']));
+}));
+test('the current checkout inventory includes Node suites omitted by the old runner',()=>{
+  const plan=testPlan(root,projectFiles(root));
+  assert.ok(plan.node.includes('tests/tools/api-key-view-capture-evidence.test.mjs'));
+  assert.ok(plan.node.includes('tests/card/mod-loader/mod-event-dirty-conditions.source.test.mjs'));
+  assert.ok(plan.node.includes('reference-harness/browser/test/capture-admission.test.mjs'));
+  const selected=[...plan.node,...plan.vitest];assert.equal(new Set(selected).size,selected.length);
+});
+
+test('the inventory-deciding source and shared grammar are retained checker inputs',()=>{
+  assert.ok(CHECKER_SOURCE_FILES.includes('tools/test-gates.mjs'));
+  assert.ok(CHECKER_SOURCE_FILES.includes('tools/test-file-inventory.mjs'));
+  assert.ok(CHECKER_SOURCE_FILES.includes('scripts/release-toolchain-evidence.mjs'));
+  assert.ok(CHECKER_SOURCE_FILES.includes('.test-results/.gitignore'));
+});
+
+test('revision observation retains the actual current Git identity and working state',()=>{
+  const value=observeRevision(root);
+  assert.match(value.commit,/^[a-f0-9]{40}$/);assert.equal(typeof value.status,'string');
+});
+
+test('a new undeclared test surface is refused before selecting its runner',()=>{
+  assert.throws(()=>testPlan(root,['tests/undeclared/new.test.cts']),/No declared test gate/);
+});
+test('unknown, repeated or conflicting CLI scopes refuse admission',()=>{
+  for(const args of [['--unknown'],['--out'],['--out','a','--out','b'],['--markers-only','--admission-only']])assert.throws(()=>parseOptions(args));
+});
+test('invalid provided capture keeps exact input identities and cannot pass',()=>fixture(async dir=>{
+  const capture=join(dir,'capture.json'),expected=join(dir,'expected.json');
+  writeFileSync(capture,'null');writeFileSync(expected,'{}');
+  const row=captureAdmission({'--api-key-capture':capture,'--api-key-expected':expected});
+  assert.equal(row.result,'INCOMPLETE');assert.equal(row.inputs.length,2);
+  assert.equal(row.inputs[0].bytes,4);assert.match(row.inputs[0].sha256,/^[a-f0-9]{64}$/);
+}));
+test('default battery refuses missing capture evidence before starting test stages',()=>fixture(async dir=>{
+  let launches=0;
+  const {report,exitCode}=await runReleaseCheck({'--out':join(dir,'admission')},{root,execute:async()=>{launches++;throw Error('A test stage must not start');}});
+  assert.equal(exitCode,3);assert.equal(report.mode,'battery');assert.equal(report.batteryPassed,false);assert.equal(launches,0);
+  assert.equal(report.rows.find(row=>row.stage==='api-key-capture').result,'INCOMPLETE');
+  assert.deepEqual(report.notRun,['source-inventory','test-inventory','framework-execution']);
+  assert.equal(report.inventory,undefined,'missing evidence must refuse before parsing every test');
+  assert.deepEqual(report.sourceQualification.problems,['Battery did not run because admission was incomplete']);
+}));
+
+test('a preflight with refused source still records its lack of qualification',()=>fixture(async dir=>{
+  const {report}=await runReleaseCheck({'--out':join(dir,'preflight'),'--markers-only':true},{root:dir});
+  assert.equal(report.batteryPassed,false);assert.equal(report.sourceQualified,false);
+  assert.match(report.sourceQualification.problems.join('; '),/Preflight only/);
+}));
+
+test('one source observation retains both byte identities and actual conflict markers',()=>fixture(async dir=>{
+  writeFileSync(join(dir,'source.mjs'),'<<<<<<< branch\nconst value=1;\n=======\n>>>>>>> other\n');
+  const result=inspectSource(dir,['source.mjs'],{scanMarkers:true});
+  assert.deepEqual(result.markers,['source.mjs:1','source.mjs:3','source.mjs:4']);
+  assert.equal(result.manifest.length,1);assert.match(result.manifest[0].sha256,/^[a-f0-9]{64}$/);
+}));

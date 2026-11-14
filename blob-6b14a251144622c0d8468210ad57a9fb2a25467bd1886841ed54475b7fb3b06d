@@ -1,0 +1,58 @@
+import {afterEach,expect,it} from 'vitest';
+import {defineMod} from '../../../src/card/mod-loader/mod-dsl.js';
+import {ModLoader} from '../../../src/card/mod-loader.js';
+import {createRenderTestStorage,seedCard} from '../render/render-test-storage.js';
+
+const cleanup:Array<()=>void>=[];afterEach(()=>{while(cleanup.length)cleanup.pop()!();});
+async function fixture(defaults:Readonly<Record<string,unknown>>,options:Readonly<Record<string,unknown>>){
+ const s=await createRenderTestStorage();cleanup.push(()=>s.close());await seedCard(s,{id:2,name:'RichText',codename:'basic'});await seedCard(s,{id:500,name:'Independent Serialization',typeId:2});
+ const manifest=defineMod('independent_serialization',({set})=>set('all/independent_serialization',({format})=>format('html',({wrapper,view})=>{
+  wrapper('probe','div',defaults);view('probe',{perms:'none'},ctx=>ctx.fmt.callFormatMethod('wrap_with_probe','cake',options) as string);
+ })));
+ const loader=new ModLoader([{manifest}],{});cleanup.push(()=>loader.reset());loader.load();s.engine.modLoader=loader;
+ return ()=>s.engine.render('Independent Serialization','probe');
+}
+
+it.each(['00','1e0','+1','-0','١','4294967295'])('rejects noncanonical own array key %s',async key=>{
+ const array=['first'];Object.defineProperty(array,key,{value:'extra',enumerable:true});
+ const run=await fixture({}, {class:array});
+ await expect(run()).rejects.toMatchObject({name:'UnsupportedModTagAttributeError',message:'Unsupported tag attribute value: class'});
+});
+it('rejects inherited indices and a huge sparse length, while accepting dense own indices',async()=>{
+ const inherited:string[]=[];inherited.length=2;inherited[0]='first';
+ Object.setPrototypeOf(inherited,Object.create(Array.prototype,{'1':{value:'inherited',enumerable:true}}));
+ await expect((await fixture({}, {class:inherited}))()).rejects.toMatchObject({name:'UnsupportedModTagAttributeError'});
+ const huge:string[]=[];huge.length=4294967295;
+ await expect((await fixture({}, {class:huge}))()).rejects.toMatchObject({name:'UnsupportedModTagAttributeError'});
+ expect(await (await fixture({}, {class:['first','second']}))()).toBe('<div class="first second">cake</div>');
+});
+it('preserves data-map getter receiver and one getter/serializer call per reused render',async()=>{
+ const trace:string[]=[];let data:Record<string,unknown>;
+ const payload={toJSON(key:string){trace.push(`call:${key}:${this===payload}`);return {n:1e-7,literal:'1e-7'};}};
+ data=Object.defineProperty({},'payload',{enumerable:true,get(){trace.push(`get:${this===data}`);return payload;}});
+ const run=await fixture({}, {data});expect(trace).toEqual([]);
+ const expected='<div data-payload="{&quot;n&quot;:1.0e-07,&quot;literal&quot;:&quot;1e-7&quot;}">cake</div>';
+ expect(await run()).toBe(expected);expect(trace).toEqual(['get:true','call::true']);
+ expect(await run()).toBe(expected);expect(trace).toEqual(['get:true','call::true','get:true','call::true']);
+});
+it('never reads shadowed data entries and distinguishes null output from omission',async()=>{
+ let reads=0;const defaults=Object.defineProperty({},'unused',{enumerable:true,get(){reads++;throw Error('shadowed getter executed');}});
+ const run=await fixture({data:defaults},{data:{directNull:null,serializedNull:{toJSON(){return null;}},omitted:{toJSON(){return undefined;}},functionResult:{toJSON(){return ()=>0;}}}});
+ expect(await run()).toBe('<div data-serializedNull="null">cake</div>');expect(reads).toBe(0);
+});
+it('preserves thrown serializer getter identity and does not replay it',async()=>{
+ const error=new Error('independent serializer getter failure');let reads=0;
+ const payload=Object.defineProperty({},'toJSON',{get(){reads++;throw error;}});
+ const run=await fixture({}, {data:{payload}});
+ await expect(run()).rejects.toBe(error);expect(reads).toBe(1);
+});
+it('preserves non-Error thrown values without replay',async()=>{
+ const marker=Object.freeze({reason:'independent serializer failure'});let calls=0;
+ const run=await fixture({}, {data:{payload:{toJSON(){calls++;throw marker;}}}});
+ await expect(run()).rejects.toBe(marker);expect(calls).toBe(1);
+});
+it('does not call a toJSON on the returned root object a second time',async()=>{
+ const calls:string[]=[];
+ const run=await fixture({}, {data:{payload:{toJSON(){calls.push('outer');return {toJSON(){calls.push('returned');return 'wrong';},n:1e-7};}}}});
+ expect(await run()).toBe('<div data-payload="{&quot;n&quot;:1.0e-07}">cake</div>');expect(calls).toEqual(['outer']);
+});

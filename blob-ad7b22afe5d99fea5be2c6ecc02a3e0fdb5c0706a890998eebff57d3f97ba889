@@ -1,0 +1,40 @@
+{
+  "format": "decko-ts-promised-deliverable-capture/1",
+  "row": "pd-6",
+  "family": "promised-deliverable",
+  "capturedAt": "2026-10-25T20:54:50.556Z",
+  "instrument": "tools/edge-signed-in-exercise.mjs",
+  "command": "node tools/edge-signed-in-exercise.mjs --engine-bundle deploy/dist/bunny-edge-engine.bundle.js --engine-bundle-sha256 a498c1606240007268e8201ad31886439500e6de6649355285d2d443efc84b1e --engine-source a25329a805202bf4ee5879f084fd028c90058215 --out <report>",
+  "source": "a25329a805202bf4ee5879f084fd028c90058215",
+  "sourceFilesClean": true,
+  "workingTreeDirty": false,
+  "engineArtifact": {
+    "path": "deploy/dist/bunny-edge-engine.bundle.js",
+    "sha256": "a498c1606240007268e8201ad31886439500e6de6649355285d2d443efc84b1e",
+    "bytes": 7312278,
+    "builtBy": "node tools/bundle-bunny-edge-engine.mjs"
+  },
+  "executedBundleSha256": "a498c1606240007268e8201ad31886439500e6de6649355285d2d443efc84b1e",
+  "sourceDeckSha256": "6aebb6546a0620f3c61efad28cd01023e104d47ffd583272ce18036038f73b78",
+  "host": "loopback, booted by this run (the harness serves a local HTTPS origin; no hosted edge was contacted)",
+  "writeMode": "full (the locally booted stack)",
+  "checks": { "total": 242, "passed": 242, "failed": 0, "skippedByWriteMode": 0 },
+  "capabilityCoverage": {
+    "covered": 38,
+    "partial": 16,
+    "notCovered": 39,
+    "disabledUpstream": 1,
+    "outOfScope": 1,
+    "total": 95
+  },
+  "productionAcceptance": false,
+  "exitCode": 1,
+  "exitReason": "the run's own capability-acceptance line: complete capability acceptance is incomplete or failed (unrun capabilities are never credited). Every check the exercise ran passed (242 of 242).",
+  "captureOfRecord": "docs/runs/workbatch-h-2026-10-25/pd-6/report.md",
+  "caveatsFromTheCapture": [
+    "Harness source differs from the engine artifact: the source claim is caller-declared, the artifact bytes are verified.",
+    "Runtime: deployed bundle on local Node/SDK shim; deployed Bunny acceptance is false.",
+    "Providers: loopback database and object storage; the capture does not inherit live provider credentials.",
+    "Deck source is a local copy, never Bunny."
+  ]
+}

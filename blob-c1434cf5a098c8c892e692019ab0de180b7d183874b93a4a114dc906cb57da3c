@@ -1,0 +1,39 @@
+require "json"
+require "digest"
+STDOUT.binmode
+
+class Card
+  class Content
+    class Diff
+      def self.delegate(*)
+      end
+    end
+  end
+end
+
+root = File.expand_path("../../..", __dir__)
+diff = File.join(root, "prototype/lib/card/content/diff.rb")
+summary = File.join(root, "prototype/lib/card/content/diff/summary.rb")
+load diff
+load summary
+cases = [
+  {name: "supplementary joint cuts by character", length: 4, joint: "💠", actions: [["add", "🚀" * 6]]},
+  {name: "combining joint has two characters", length: 5, joint: "e\u0301", actions: [["add", "abcdefgh"]]},
+  {name: "combining sequence exceeds one character", length: 1, actions: [["add", "e\u0301"]]},
+  {name: "combining sequence fits three characters", length: 3, actions: [["add", "a\u0301b"]]},
+  {name: "joined emoji counts its code points", length: 3, actions: [["add", "👩‍🚀"]]},
+  {name: "joined emoji exceeds a two character budget", length: 2, actions: [["add", "👩‍🚀"]]},
+  {name: "supplementary omission marker", length: 4, joint: "💠", actions: [["add", "🚀🚀🚀"], ["omit", nil], ["add", "x"]]},
+  {name: "supplementary deletion and joint", length: 5, joint: "💠", actions: [["delete", "🚀" * 8]]},
+  {name: "CJK exact character boundary", length: 4, actions: [["add", "甲乙丙丁"]]}
+]
+rows = cases.map do |entry|
+  object = Card::Content::Diff::Summary.new(length: entry[:length], joint: entry[:joint])
+  entry[:actions].each do |action, text|
+    action == "omit" ? object.omit : object.public_send(action, text)
+  end
+  entry.merge(rendered: object.rendered, omits_content: !!object.omits_content?)
+end
+puts JSON.pretty_generate({ruby: RUBY_DESCRIPTION,
+  sources: {"diff.rb" => Digest::SHA256.file(diff).hexdigest,
+            "diff/summary.rb" => Digest::SHA256.file(summary).hexdigest}, rows: rows}, ascii_only: true)

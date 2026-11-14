@@ -1,0 +1,32 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { normText, normalizeObservation } from "../lib/observe.mjs";
+
+for (const [name, expected, actual] of [
+  ["literal deadline", "Your deadline is 2026-10-27.", "Your deadline is 2026-11-27."],
+  ["membership duration", "Membership lasts 1 year.", "Membership lasts 9 years."],
+  ["named calendar date", "Starts Oct 27, 2026", "Starts Nov 27, 2026"],
+  ["day-first calendar date", "Starts 27 October 2026", "Starts 28 October 2026"],
+  ["slash date", "Expires 10/27/2026", "Expires 11/27/2026"],
+  ["timestamp", "Saved 2026-10-27T10:01:02Z", "Saved 2026-10-27T10:01:03Z"],
+  ["relative age", "Published 3 minutes ago", "Published 9 minutes ago"],
+]) {
+  test(`${name} remains distinguishable in every normalized text field`, () => {
+    assert.notEqual(normText(expected), normText(actual));
+    const observation = text => normalizeObservation({ title: text, text, mainText: text });
+    const reference = observation(expected);
+    const target = observation(actual);
+    for (const field of ["title", "text", "mainText"]) {
+      assert.notEqual(reference[field], target[field], field);
+      assert.equal(reference[field], expected, field);
+      assert.equal(target[field], actual, field);
+    }
+  });
+}
+
+test("identical time content stays equal across whitespace and local host differences", () => {
+  assert.equal(
+    normText("  Deadline 2026-10-27.\nMembership lasts 1 year. http://127.0.0.1:3100/  "),
+    normText("Deadline 2026-10-27. Membership lasts 1 year. http://127.0.0.1:4200/"),
+  );
+});

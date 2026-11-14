@@ -1,0 +1,255 @@
+{
+  "schema": "r2-era-denominators/1",
+  "measuredAt": "2026-10-04T21:33:18.780Z",
+  "corpusRoot": "C:\\localProjects\\decko-ts-lane-pageera-2026-10-04\\tmp\\pageera\\scratch-corpus",
+  "countRule": "tools/oracle/dual-lane-shard-entry-weights.mjs countLaneEntries (view: +1 per record-bearing line +1 per views key; page: +1 per page_html/error line)",
+  "viewEntries": 10274,
+  "pageEntries": 6588,
+  "total": 16862,
+  "viewRenderKeys": 3686,
+  "viewLines": 6588,
+  "pageLines": 6588,
+  "malformed": 0,
+  "perShard": {
+    "recapture-raw-shard-000000.jsonl": {
+      "page": 231,
+      "lines": 231,
+      "sha256": "93700efc38db679124ec3924a291986db88330238bf364f18e293d338160cea0"
+    },
+    "recapture-raw-shard-000001.jsonl": {
+      "page": 166,
+      "lines": 166,
+      "sha256": "27b40a53228961dd77262deaef1752cf0c29d49f4122dcab9a3933f4a3dce1e9"
+    },
+    "recapture-raw-shard-000002.jsonl": {
+      "page": 184,
+      "lines": 184,
+      "sha256": "ddb80000b5bda77a158aacb24e03cf021e6cc39160351d3f5c3eea40d3349a5c"
+    },
+    "recapture-raw-shard-000003.jsonl": {
+      "page": 245,
+      "lines": 245,
+      "sha256": "ed7fff4d3ab2f29d9492a9924de313ce4de210caa1fae458d7be8e14373fbc5d"
+    },
+    "recapture-raw-shard-000004.jsonl": {
+      "page": 291,
+      "lines": 291,
+      "sha256": "cc957de62d1c23bca07abcb35628070acc12237f78dbc1c5c156bc5da8beefe0"
+    },
+    "recapture-raw-shard-000005.jsonl": {
+      "page": 240,
+      "lines": 240,
+      "sha256": "c8f71bf564cf7b1442185280fc9040debed6c4d929311fafe37137184ccbc80d"
+    },
+    "recapture-raw-shard-000006.jsonl": {
+      "page": 140,
+      "lines": 140,
+      "sha256": "dc5a896bf8d4f17f6004d00ad1fa18e1d03d9cd5306bb6d9f7fbea87ca7e9c9d"
+    },
+    "recapture-raw-shard-000007.jsonl": {
+      "page": 123,
+      "lines": 123,
+      "sha256": "2d44e83161ce6c0b4d3fab284269401da62faa8b8cc5ec073fcaa9a15fd1c633"
+    },
+    "recapture-raw-shard-000008.jsonl": {
+      "page": 85,
+      "lines": 85,
+      "sha256": "5fef31ad04421714402aa5f08234c05d9b0a2d65dc8fd8e387f1d2e57f4b3456"
+    },
+    "recapture-raw-shard-000009.jsonl": {
+      "page": 223,
+      "lines": 223,
+      "sha256": "a3ae1997b2cafc2f95275ddf0e2438c3c69087527a5a7444be7bbf3f5909536e"
+    },
+    "recapture-raw-shard-000010.jsonl": {
+      "page": 137,
+      "lines": 137,
+      "sha256": "243f56e7b5803701c7c70b05816e6352fbf3d63b91100a36514d8fe46691ce40"
+    },
+    "recapture-raw-shard-000011.jsonl": {
+      "page": 126,
+      "lines": 126,
+      "sha256": "63d06111b271178ad5dd807713e04b0d3d295782d157abb2a857413516ac92a9"
+    },
+    "recapture-raw-shard-000012.jsonl": {
+      "page": 140,
+      "lines": 140,
+      "sha256": "a692b3aa7d0d47730807de26fbe513723bdeb2c2f996d587cd57155145446a3e"
+    },
+    "recapture-raw-shard-000013.jsonl": {
+      "page": 195,
+      "lines": 195,
+      "sha256": "56f463a21c323381e4d53ce5a5f9f6d41f7af4376187a7e687222a391b572bde"
+    },
+    "recapture-raw-shard-000014.jsonl": {
+      "page": 130,
+      "lines": 130,
+      "sha256": "0f411eaa12cc5f0d599c1dde6b2be143361a90aa13c475a58f0a40548bb825a5"
+    },
+    "recapture-raw-shard-000015.jsonl": {
+      "page": 57,
+      "lines": 57,
+      "sha256": "46f02e19d6a6113b03341b1474a0c6d1a9996b5b37c6525b6a755021e6a72459"
+    },
+    "recapture-raw-shard-000016.jsonl": {
+      "page": 142,
+      "lines": 142,
+      "sha256": "705e3c8f34991524dd2afc1092af11bbd2539ee3233f8df58779383164c0f0e0"
+    },
+    "recapture-raw-shard-000017.jsonl": {
+      "page": 146,
+      "lines": 146,
+      "sha256": "051aa199fd78cd9087694ff817646ecfdb15b20da048f42c07ef8c80f59c45e7"
+    },
+    "recapture-raw-shard-000018.jsonl": {
+      "page": 158,
+      "lines": 158,
+      "sha256": "521f5daa9286a47d686338faf9964acc2ef4df82119c1ccf317c6877eec345d9"
+    },
+    "recapture-raw-shard-000019.jsonl": {
+      "page": 110,
+      "lines": 110,
+      "sha256": "bdce71c08056030f83d5ae8b6b9de51795ca0eeb43ef85014f9d1bf5de365cee"
+    },
+    "recapture-raw-shard-000020.jsonl": {
+      "page": 122,
+      "lines": 122,
+      "sha256": "71a146bb1705bb09336c5b2c4ed3a3e6e91a0bd6c8011e25faf4421cd67e8256"
+    },
+    "recapture-raw-shard-000021.jsonl": {
+      "page": 150,
+      "lines": 150,
+      "sha256": "4a514011b9157807ddf7f7d492a139ffb1f3f4c705abc1b0dd8a2b392c2aa768"
+    },
+    "recapture-raw-shard-000022.jsonl": {
+      "page": 125,
+      "lines": 125,
+      "sha256": "c51d77f37a030f6c30d9037442033787a89c3a055658ade52c2d07c333d00c04"
+    },
+    "recapture-raw-shard-000023.jsonl": {
+      "page": 118,
+      "lines": 118,
+      "sha256": "202997b222d6506ad973d1b3839c48ce7fe02cb634738d02fcad0673c55336e2"
+    },
+    "recapture-raw-shard-000024.jsonl": {
+      "page": 141,
+      "lines": 141,
+      "sha256": "a265267ed09fd42824d252fed7885a15990dcab856a8e5423059fabbf2b52c11"
+    },
+    "recapture-raw-shard-000025.jsonl": {
+      "page": 129,
+      "lines": 129,
+      "sha256": "c48aabfbaeee44a6c8fdf93cf4bd789ae37d4e928d616efdc6e338ff7bb2924e"
+    },
+    "recapture-raw-shard-000026.jsonl": {
+      "page": 129,
+      "lines": 129,
+      "sha256": "d2c4965590c622e568c06af6fff7500ef37fc37dbf69b4666c146f02d0d416c5"
+    },
+    "recapture-raw-shard-000027.jsonl": {
+      "page": 121,
+      "lines": 121,
+      "sha256": "827136ce3d9e19a9d8bd14ec2123da4e8212f3e2b1711e4207c52cea142d2e6f"
+    },
+    "recapture-raw-shard-000028.jsonl": {
+      "page": 135,
+      "lines": 135,
+      "sha256": "996069206aadae1b540c40b99533140730a0f43f6297a46d481b78273a17ab07"
+    },
+    "recapture-raw-shard-000029.jsonl": {
+      "page": 175,
+      "lines": 175,
+      "sha256": "4086028db01bdf71bdd18fb26875d4f3d8e20dc333c1f46716b895b4400b588a"
+    },
+    "recapture-raw-shard-000030.jsonl": {
+      "page": 146,
+      "lines": 146,
+      "sha256": "18b023aed7e661001c075e4ef678f88c267bd999cfa0e6bb725282bf3213e555"
+    },
+    "recapture-raw-shard-000031.jsonl": {
+      "page": 135,
+      "lines": 135,
+      "sha256": "fdb06951a76345eb7884cd80c2be9a6da7c730865e1fd8b4a3bfb27de701a9fc"
+    },
+    "recapture-raw-shard-000032.jsonl": {
+      "page": 148,
+      "lines": 148,
+      "sha256": "29c1395f9ce007c78b0317f6725dc937b8bf8f8625ddcb84d38050622c3b1d3e"
+    },
+    "recapture-raw-shard-000033.jsonl": {
+      "page": 137,
+      "lines": 137,
+      "sha256": "7114ebc412d95e8146f832120a7a427f58a6c3d1295955bcfc753c971feee009"
+    },
+    "recapture-raw-shard-000034.jsonl": {
+      "page": 101,
+      "lines": 101,
+      "sha256": "48ed4b1f248a3b9190780230cf4e4c7f5a54f875636a659c80423aff0ea69d2b"
+    },
+    "recapture-raw-shard-000035.jsonl": {
+      "page": 93,
+      "lines": 93,
+      "sha256": "52cbc0e9fd3531b68e006e671bd552ca04fc1b8139b4ab5f31c101d94b16c08e"
+    },
+    "recapture-raw-shard-000036.jsonl": {
+      "page": 87,
+      "lines": 87,
+      "sha256": "da3792fb3349202bbcd7f62ae1d04d19f4b60e5a881e8becb8fc2cefb4f6b14a"
+    },
+    "recapture-raw-shard-000037.jsonl": {
+      "page": 99,
+      "lines": 99,
+      "sha256": "671f7b15888da5ca1549a9f180883a7589f8f994f588d9dbab03b30f1258dc19"
+    },
+    "recapture-raw-shard-000038.jsonl": {
+      "page": 88,
+      "lines": 88,
+      "sha256": "dec5d311bca1a48ec2bbc2d7b478a16929d1247833b15d3a1a9b9544d5c46a1e"
+    },
+    "recapture-raw-shard-000039.jsonl": {
+      "page": 203,
+      "lines": 203,
+      "sha256": "30a9602e373e8ab13f88040687660cef0b3641086f349e13c546a73368f0562d"
+    },
+    "recapture-raw-shard-000040.jsonl": {
+      "page": 87,
+      "lines": 87,
+      "sha256": "43a424e66b00ba16d8e847167f683969114feac36206ce1b572aef27ad2e5fe9"
+    },
+    "recapture-raw-shard-000041.jsonl": {
+      "page": 90,
+      "lines": 90,
+      "sha256": "4a091a3cea73042218bc3ee30e13bdca9675b2697e8a529350e0d3fa2a15825b"
+    },
+    "recapture-raw-shard-000042.jsonl": {
+      "page": 92,
+      "lines": 92,
+      "sha256": "2e579e3b4b4394edf9f98c9a7e4a9e5dc2a8cc24085498cad959443d2c5ca091"
+    },
+    "recapture-raw-shard-000043.jsonl": {
+      "page": 114,
+      "lines": 114,
+      "sha256": "065e56ea9bc9d070e55195a41668058164d62207b5524114b024a3bede3515ac"
+    },
+    "recapture-raw-shard-000044.jsonl": {
+      "page": 109,
+      "lines": 109,
+      "sha256": "bba7346166aa0a3925c583392909c4a779ef415daece1eed07e386d2cf574d4d"
+    },
+    "recapture-raw-shard-000045.jsonl": {
+      "page": 103,
+      "lines": 103,
+      "sha256": "aa027600df150a6fc3cf07aebb8b3bfe746d544b208b5a235266c6d871ada541"
+    },
+    "recapture-raw-shard-000046.jsonl": {
+      "page": 96,
+      "lines": 96,
+      "sha256": "645bacef85b0425daf829e05ebfb3d6cb3efc3027f87e3847b07814b9218036f"
+    },
+    "recapture-raw-shard-000047.jsonl": {
+      "page": 46,
+      "lines": 46,
+      "sha256": "2ecbfc32387eb6ab3e81710bf14e032c880ee58cddd03074a87ffe88f341a86c"
+    }
+  }
+}

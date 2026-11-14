@@ -1,0 +1,50 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import http from 'node:http';
+import {spawn} from 'node:child_process';
+import {once} from 'node:events';
+import {fileURLToPath,pathToFileURL} from 'node:url';
+const dir=path.dirname(fileURLToPath(import.meta.url));
+test('real stop-file failure after IPC begins drain must not disappear into a clean exit',{timeout:15000},async()=>{
+ const source=fs.readFileSync(path.join(dir,'subject/vm-staging-server.mjs'),'utf8');
+ const begin=source.indexOf('let shutdownStarted = false;'),end=source.indexOf('\ninstallDemoShutdownReceiver(beginShutdown);',begin),watchStart=source.indexOf('const stopWatch = watchDirectory('),watchEnd=source.indexOf('\n// End stop-file lifecycle.',watchStart);
+ assert.ok(begin>=0&&end>begin&&watchStart>=0&&watchEnd>watchStart);
+ const root=path.join(dir,'cross-control-final');if(fs.existsSync(root))throw Error('Preserve existing native control');fs.mkdirSync(root);
+ const stop=path.join(root,'vm-staging.stop'),marker=path.join(root,'driver-closed'),program=path.join(root,'owned-child.mjs');
+ const helper=pathToFileURL(path.join(dir,'subject/scripts/demo-scratch-copy/demo-child-lifecycle.mjs')).href;
+ const code=`import http from 'node:http';
+import promises from 'node:fs/promises';
+import markerFs,{watch as watchDirectory} from 'node:fs';
+import path from 'node:path';
+import {installDemoShutdownReceiver} from ${JSON.stringify(helper)};
+const STOP_FILE=${JSON.stringify(stop)};
+const fs={...promises,async unlink(...args){try{return await promises.unlink(...args);}catch(error){console.log('observed-unlink:'+error.code);throw error;}}};
+const driver={close(){markerFs.writeFileSync(${JSON.stringify(marker)},'closed')}};
+const authDriver={close(){markerFs.writeFileSync(${JSON.stringify(path.join(root,'auth-closed'))},'closed')}};
+const server=http.createServer((req,res)=>{res.writeHead(200);res.write('holding:');req.resume();req.on('end',()=>res.end('finished'));});
+${source.slice(begin,end)}
+installDemoShutdownReceiver(beginShutdown);
+${source.slice(watchStart,watchEnd)}
+server.listen(0,'127.0.0.1',()=>console.log('ready:'+server.address().port));
+`;
+ fs.writeFileSync(program,code);
+ const child=spawn(process.execPath,[program],{cwd:root,windowsHide:true,stdio:['ignore','pipe','pipe','ipc']});
+ let stdout='',stderr='';child.stdout.on('data',b=>{stdout+=b;});child.stderr.on('data',b=>{stderr+=b;});
+ const closed=new Promise((resolve,reject)=>{child.once('error',reject);child.once('close',(code,signal)=>resolve({code,signal}));});
+ const observed=pattern=>new Promise((resolve,reject)=>{const check=()=>{const m=pattern.exec(stdout);if(m){child.stdout.off('data',check);resolve(m);}};child.stdout.on('data',check);child.once('error',reject);child.once('close',()=>reject(Error('closed before observation:'+stdout+stderr)));check();});
+ let request;
+ try{
+  const port=Number((await observed(/ready:(\d+)/))[1]);assert.notEqual(port,3142);await observed(/observed-unlink:ENOENT/);
+  request=http.request(`http://127.0.0.1:${port}/hold`,{method:'POST',headers:{'transfer-encoding':'chunked',connection:'close'}});request.on('error',()=>{});const response=once(request,'response');request.write('owned');const [incoming]=await response;let body='';incoming.on('data',b=>{body+=b;});const finished=new Promise(resolve=>incoming.once('end',()=>resolve(body)));
+  await new Promise((resolve,reject)=>child.send({type:'decko-demo-shutdown'},e=>e?reject(e):resolve()));await observed(/demo launcher control received, shutting down/);
+  // A directory at the file marker yields an actual local unlink error.
+  fs.mkdirSync(stop);const failure=(await observed(/observed-unlink:(EISDIR|EPERM|EACCES)/))[1];request.end();
+  const exit=await closed,receipt={pid:child.pid,args:child.spawnargs,hidden:true,port,filesystemError:failure,exit,response:await finished,driverClosed:fs.existsSync(marker),authClosed:fs.existsSync(path.join(root,'auth-closed')),stdout,stderr};
+  fs.writeFileSync(path.join(root,'receipt.json'),JSON.stringify(receipt,null,2));assert.throws(()=>process.kill(child.pid,0),{code:'ESRCH'});
+  assert.equal(receipt.authClosed,true,'auth collaborator actually closes');assert.equal(receipt.driverClosed,true);assert.equal(exit.code,1,'a real stop-file consumption error during an existing drain must remain visible');
+  assert.match(stderr,/staging-shutdown-failed|staging-shutdown-incomplete/);
+  assert.match(stderr,/EISDIR|EPERM|EACCES/);
+ }finally{request?.end();if(child.exitCode===null)await closed;}
+});

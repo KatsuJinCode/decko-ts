@@ -1,0 +1,35 @@
+# Persistence structure fixture qualification
+
+Issue #273 concerns the synthetic `set_default_content` action test. Its
+`*structure` row had no Setting type or registered Setting card, so the rule
+lookup correctly excluded the fixture's template. The Ruby rule cache SQL in
+`card-1.110.0/lib/card/rule/cache.rb` requires `settings.type_id = SettingID`;
+the TypeScript `ruleCacheStatement` and `qualifiedRule` preserve that condition.
+The installed Ruby source SHA-256 read for this comparison was
+`17a240a32aed7c2ea07c69df21bfb78190a4cd501583171f2b23403de1f7736d`.
+This is a source comparison, not execution of Ruby or Rails.
+
+At parent `a1353b321eede37b9f1b0ce29230ed9c74d4f1b5`, the original three-case
+file failed only `set_default_content`: the template-backed card stored an
+empty string instead of `{{+description|content}}`. The other two cases passed.
+The fixture correction registers a synthetic Setting card at id 409 and types
+the structure setting with its id. All three original case identities and expected
+stored-state assertions remain intact; no production code changes.
+
+Validation used the existing installed runtime, without installs, aliases,
+reference captures, model grading, retry, or hosted requests:
+
+```text
+node node_modules/vitest/vitest.mjs run tests/card/actions/persistence-parity.test.ts --reporter=default --no-cache
+Before: 2 passed, 1 failed; native exit 1.
+
+node node_modules/vitest/vitest.mjs run tests/card/actions/persistence-parity.test.ts tests/card/rules/lookup-qualification.test.ts --reporter=default --no-cache
+After: 10 passed in 2 files, zero failures/skips; native exit 0.
+```
+
+The existing lookup qualification tests remain the negative controls for
+unqualified rules. Result caching was disabled; compiler and OS caches may be
+warm. Raw outputs are retained in the lead's machine receipt folder as
+`lead-273-before.log` and `lead-273-after.log`. This finite fixture result is not
+the full suite, qualified whole-source comparison, release, or handover
+acceptance. Independent exact-head review remains required before merge.

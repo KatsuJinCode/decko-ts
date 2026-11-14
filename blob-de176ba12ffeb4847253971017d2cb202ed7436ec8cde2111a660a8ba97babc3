@@ -1,0 +1,124 @@
+import { afterEach, beforeEach, expect, it } from 'vitest';
+import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { LocalSqliteDriver } from '../../../src/server/drivers/local-sqlite.js';
+import { openSameDatabase } from '../../../src/server/same-database.js';
+import { FetchEngine } from '../../../src/card/fetch.js';
+import { CardActionEngine } from '../../../src/card/actions/card-action-engine.js';
+import { actorBot } from '../../../src/card/auth/actor.js';
+import { defaultDeckLoader } from '../../../src/card/mod-loader/default-mod-deck.js';
+import { observedModEventRuntime } from '../../../src/server/write-routes.js';
+import { ModLoader } from '../../../src/card/mod-loader.js';
+import cardModRecaptcha, { recaptchaModEventPredicates } from '../../../src/card/mod-loader/mods/card-mod-recaptcha.js';
+import { ruleContentForCard } from '../../../src/card/actions/rule-content-walk.js';
+import { scratchDir } from '../../support/scratch-dir.mjs';
+
+// Synthetic local validation tests. No live challenge is solved, no external
+// service is contacted, and the fake verifier rejects every request.
+// Product API names below identify the existing integration being tested.
+// Native probe executes original SQL and Rule::All on the same SQLite file.
+// It supplies minimal Card/ORM adapters, not Rails, RSpec or a native backend.
+let driver: LocalSqliteDriver, fetcher: FetchEngine, admin: CardActionEngine;
+let dir: string, database: string, book: number;
+const observations: unknown[] = [];
+const observationDir = scratchDir('rule163-action-observations-');
+beforeEach(async () => {
+  observations.push({ test: expect.getState().currentTestName });
+  mkdirSync(resolve('tmp'), { recursive: true });
+  dir = mkdtempSync(resolve('tmp/security-rule163-'));
+  database = resolve(dir, 'deck.sqlite3');
+  copyFileSync(resolve('reference-harness/fixtures/synthetic-v1/deck/deck.sqlite3'), database);
+  driver = new LocalSqliteDriver({ path: database });
+  await openSameDatabase(driver); defaultDeckLoader();
+  fetcher = new FetchEngine(driver); fetcher.installNameEnvironment();
+  admin = new CardActionEngine(fetcher, { actor: await actorBot(driver), modEvents: await observedModEventRuntime({ driver, fetcher }) });
+  book = (await admin.createCard({ name: 'Rule163 Book', typeName: 'Cardtype' })).cardId;
+  const createRule = await fetcher.fetchByName('*all+*create');
+  await admin.updateCard({ cardId: createRule!.id!, content: '[[Anyone]]' });
+});
+afterEach(() => {
+  driver?.close();
+  if (dir) rmSync(dir, { recursive: true });
+  writeFileSync(resolve(observationDir, 'native.json'), JSON.stringify(observations, null, 2) + '\n');
+});
+function native(setting = 'captcha') {
+  const result = spawnSync('ruby', [resolve('tests/card/rules/original-rule-storage-probe.rb'),
+    'C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems', database,
+    JSON.stringify({ mode: setting === 'captcha' ? 'captcha' : 'rule', keys: [`${book}+type`, 'all'], setting })], { windowsHide: true, encoding: 'utf8' });
+  expect(result.status, result.stderr).toBe(0);
+  const value = JSON.parse(result.stdout); observations.push(value);
+  const pins: Record<string, string> = {
+    'card-1.110.0/lib/card/rule.rb': 'cf4abacfda1503083d372642071c29743abd0abcd796485752e2e438cabcd7ec',
+    'card-1.110.0/lib/card/rule/cache.rb': '17a240a32aed7c2ea07c69df21bfb78190a4cd501583171f2b23403de1f7736d',
+    'card-1.110.0/lib/card/rule/preference_cache.rb': 'cb5739e2321b09eb1b8b79a785e0028080e5afa7664898b52a932ec23908a605',
+    'card-1.110.0/lib/card/rule/all.rb': 'ebfa3e7538ee22937c941e8ec0b07cb3ccc4e04e1debefb5fa67dd3051d40b49',
+    'card-mod-recaptcha-0.20.0/set/all/recaptcha.rb': 'bad7bfc37977a5bdd91d043c0d582bedb48af58fa1e039bb4de071f7324e98b8',
+  };
+  for (const [source, hash] of Object.entries(value.sources)) {
+    const relative = source.replace('C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/', '');
+    expect(hash, relative).toBe(pins[relative]);
+  }
+  return value.result.value;
+}
+async function rules(specific: string, global: string, setting = 'captcha') {
+  const globalName = `*all+*${setting}`;
+  const existing = await fetcher.fetchByName(globalName);
+  if (existing) await admin.updateCard({ cardId: existing.id!, content: global });
+  else await admin.createCard({ name: globalName, content: global });
+  await admin.createCard({ name: `Rule163 Book+*type+*${setting}`, content: specific });
+}
+async function save() {
+  const loader = new ModLoader([{ manifest: cardModRecaptcha }]);
+  loader.resolveOrder({ gemMods: ['recaptcha'] });
+  loader.load();
+  let calls = 0;
+  const engine = new CardActionEngine(fetcher, {
+    actor: null, ipAddress: '192.0.2.7',
+    modEvents: { registry: loader.eventRegistry(), predicates: recaptchaModEventPredicates },
+    recaptcha: { siteKey: 'synthetic', secretKey: 'synthetic', verify: async () => { calls++; return JSON.stringify({ success: false }); } },
+  });
+  let error: unknown;
+  try { await engine.createCard({ name: 'Rule163 attempted save', typeName: 'Rule163 Book', content: 'synthetic', recaptchaToken: 'synthetic' }); }
+  catch (caught) { error = caught; }
+  const stored = (await driver.query<{ id: number }>(
+    'SELECT id FROM cards WHERE name=? AND trash=0', ['Rule163 attempted save'],
+  )).rows;
+  const result = { calls, stored: stored.length === 1, error: error instanceof Error ? error.message : null };
+  observations.push({ action: result }); return result;
+}
+it('synthetic local validation: valid specific off takes precedence over global on', async () => {
+  await rules('0', '1'); expect(native()).toBe('0');
+  expect(await save()).toEqual({ calls: 0, stored: true, error: null });
+});
+it('synthetic local validation: valid specific on rejects the save with the fake verifier', async () => {
+  await rules('1', '0'); expect(native()).toBe('1');
+  const result = await save(); expect(result.calls).toBe(1); expect(result.stored).toBe(false); expect(result.error).toMatch(/human/);
+});
+it('synthetic local validation: retyped specific rule must retain the global validation requirement', async () => {
+  await rules('0', '1');
+  const trunk = await fetcher.fetchByName('Rule163 Book+*type');
+  await admin.updateCard({ cardId: trunk!.id!, typeName: 'RichText' });
+  fetcher.resetCaches();
+  expect((await fetcher.fetchById(trunk!.id!))?.typeId).toBe(await fetcher.codenames.id('basic'));
+  expect(native()).toBe('1');
+  const result = await save(); expect(result.calls).toBe(1); expect(result.stored).toBe(false);
+});
+it('synthetic local validation: original lookup excludes a SQL-retyped Setting', async () => {
+  await rules('1', '1');
+  await driver.query('UPDATE cards SET type_id=? WHERE codename=?', [await fetcher.codenames.id('basic'), 'captcha']);
+  fetcher.resetCaches(); expect(native()).toBe(null);
+  const result = await save(); expect(result.calls).toBe(0); expect(result.stored).toBe(true);
+});
+it('synthetic local validation: missing setting codename disables both lookup and guard', async () => {
+  await rules('1', '1');
+  await driver.query('UPDATE cards SET codename=NULL WHERE codename=?', ['captcha']);
+  fetcher.resetCaches(); expect(native()).toBe(null);
+  expect(await save()).toEqual({ calls: 0, stored: true, error: null });
+});
+it('synthetic local validation: empty follow falls through at helper scope only', async () => {
+  await rules('', '1', 'follow'); expect(native('follow')).toBe('1');
+  const actual = await ruleContentForCard(fetcher, { name: 'Rule163 attempted save', isNew: true, typeId: book, typeName: 'Rule163 Book' }, 'follow');
+  observations.push({ helper: 'ruleContentForCard(follow)', actual });
+  expect(actual).toBe('1');
+});

@@ -1,0 +1,144 @@
+import test, { after } from "node:test";
+import assert from "node:assert/strict";
+import path from "node:path";
+import { readFileSync, writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { gradeRun } from "../../reference-harness/runner/grade-lib.mjs";
+import {
+  SYNTHETIC_CANDIDATE,
+  copyDir,
+  gradeCli,
+  makeCapturedFixture,
+  readJson,
+  scratch,
+  writeJson,
+} from "../../reference-harness/runner/test/helpers.mjs";
+
+const repository = fileURLToPath(new URL("../../", import.meta.url));
+const testPath = "tests/tools/source-qualification-grade.test.mjs";
+let capturedSeed;
+let capturedSeedOwner;
+after(() => capturedSeedOwner?.cleanup());
+
+function capturedFixture(t) {
+  if (!capturedSeed) {
+    capturedSeedOwner = scratch();
+    capturedSeed = makeCapturedFixture(capturedSeedOwner.dir);
+  }
+  const owned = scratch();
+  t.after(() => owned.cleanup());
+  return {
+    ...capturedSeed,
+    actual: copyDir(capturedSeed.actual, path.join(owned.dir, "actual")),
+    root: owned.dir,
+  };
+}
+
+function comparisonOptions(fixture) {
+  return { fixture: fixture.fixture, actual: fixture.actual, candidateCommit: SYNTHETIC_CANDIDATE };
+}
+
+function refuseCandidateGrade(fixture, label) {
+  const reportPath = path.join(fixture.root, `${label}.json`);
+  const command = gradeCli([
+    "--fixture", fixture.fixture,
+    "--actual", fixture.actual,
+    "--report", reportPath,
+  ]);
+  assert.equal(command.status, 2, command.stdout);
+  assert.match(command.stdout, /NOT A GRADE/);
+  assert.doesNotMatch(command.stdout, /verdict: pass|\d(?:\.\d+)?%/);
+  const report = readJson(reportPath);
+  assert.equal(report.verdict, "invalid", "the command's JSON cannot advertise a candidate pass");
+  assert.equal(report.source_qualification.qualified, false);
+  for (const summary of Object.values(report.summary)) {
+    assert.equal(summary.rate, null, "an unqualified command report must not publish a pass rate");
+  }
+  return report;
+}
+
+test("the source qualification regression runs in correctness with Node", async () => {
+  const { classify } = await import("../../tools/test-gates.mjs");
+  const { testRunner } = await import("../../tools/node-test-runners.mjs");
+  assert.equal(classify(testPath), "correctness");
+  assert.equal(testRunner(repository, testPath), "node");
+});
+
+test("a bound synthetic capture still receives a candidate grade", t => {
+  const fixture = capturedFixture(t);
+  const report = gradeRun(comparisonOptions(fixture));
+  assert.equal(report.verdict, "pass");
+  assert.equal(report.source_qualification.qualified, true);
+  const command = gradeCli(["--fixture", fixture.fixture, "--actual", fixture.actual]);
+  assert.equal(command.status, 0, command.stdout);
+  assert.match(command.stdout, /verdict: pass/);
+});
+
+test("each missing execution witness preserves comparison and refuses a candidate grade", t => {
+  const fixture = capturedFixture(t);
+  const metadataPath = path.join(fixture.actual, "run-meta.json");
+  const original = readJson(metadataPath);
+  for (const kind of Object.keys(original.runs)) {
+    const metadata = structuredClone(original);
+    delete metadata.runs[kind].source_binding;
+    writeJson(metadataPath, metadata);
+    const report = gradeRun(comparisonOptions(fixture));
+    assert.equal(report.verdict, "pass", `${kind}: matching bytes remain comparable`);
+    assert.deepEqual(report.problems, []);
+    assert.equal(report.source_qualification.qualified, false);
+    const commandReport = refuseCandidateGrade(fixture, `missing-${kind}`);
+    assert.equal(commandReport.comparison_verdict, "pass");
+    assert.ok(commandReport.warnings.some(warning => warning.includes(`${kind} Missing executed-source binding`)));
+  }
+});
+
+test("a malformed witness cannot qualify otherwise matching bytes", t => {
+  const fixture = capturedFixture(t);
+  const metadataPath = path.join(fixture.actual, "run-meta.json");
+  const metadata = readJson(metadataPath);
+  metadata.runs.render.source_binding.format = "not-an-execution-witness";
+  writeJson(metadataPath, metadata);
+  const report = gradeRun(comparisonOptions(fixture));
+  assert.equal(report.verdict, "invalid", "supplied contradictory evidence remains invalid");
+  assert.equal(report.source_qualification.qualified, false);
+  refuseCandidateGrade(fixture, "malformed-witness");
+});
+
+test("unwitnessed byte differences remain failed comparisons rather than invalid observations", t => {
+  const fixture = capturedFixture(t);
+  const metadataPath = path.join(fixture.actual, "run-meta.json");
+  const metadata = readJson(metadataPath);
+  for (const run of Object.values(metadata.runs)) delete run.source_binding;
+  writeJson(metadataPath, metadata);
+  const resultPath = path.join(fixture.actual, "render.jsonl");
+  const results = readFileSync(resultPath, "utf8").trim().split("\n").map(JSON.parse);
+  results[0].result.html += "<p>Changed literal content.</p>";
+  writeFileSync(resultPath, results.map(JSON.stringify).join("\n") + "\n");
+  const report = gradeRun(comparisonOptions(fixture));
+  assert.equal(report.verdict, "fail");
+  assert.equal(report.source_qualification.qualified, false);
+  assert.equal(refuseCandidateGrade(fixture, "changed-bytes").comparison_verdict, "fail");
+});
+
+test("diagnostic comparison remains available without publishing candidate pass rates", t => {
+  const fixture = capturedFixture(t);
+  const metadataPath = path.join(fixture.actual, "run-meta.json");
+  const metadata = readJson(metadataPath);
+  for (const run of Object.values(metadata.runs)) delete run.source_binding;
+  writeJson(metadataPath, metadata);
+  const report = gradeRun({ fixture: fixture.fixture, actual: fixture.actual, diagnostic: true });
+  assert.equal(report.verdict, "diagnostic-pass");
+  assert.equal(report.source_qualification.qualified, false);
+  const reportPath = path.join(fixture.root, "diagnostic.json");
+  const command = gradeCli([
+    "--fixture", fixture.fixture, "--actual", fixture.actual,
+    "--diagnostic", "--report", reportPath,
+  ]);
+  assert.equal(command.status, 2, command.stdout);
+  assert.match(command.stdout, /NOT A GRADE/);
+  assert.doesNotMatch(command.stdout, /verdict: pass|\d(?:\.\d+)?%/);
+  const saved = readJson(reportPath);
+  assert.equal(saved.source_qualification.mode, "diagnostic");
+  assert.equal(saved.source_qualification.qualified, false);
+  for (const summary of Object.values(saved.summary)) assert.equal(summary.rate, null);
+});

@@ -1,0 +1,125 @@
+require "json"
+require "digest"
+require "rubygems"
+require "uri"
+require "bigdecimal"
+
+gems = File.expand_path(ARGV.fetch(0))
+Gem.use_paths File.dirname(gems)
+require "active_support"
+require "active_support/core_ext/object/blank"
+require "active_support/core_ext/object/try"
+require "active_support/core_ext/hash/reverse_merge"
+require "active_support/core_ext/array/wrap"
+require "active_support/json"
+require "action_view"
+
+root = File.join(gems, "card-1.110.0")
+definition = File.join(root, "lib/card/set/format/abstract_format/wrapper.rb")
+runtime = File.join(root, "lib/card/format/wrapper.rb")
+naming = File.join(root, "lib/card/set/format.rb")
+content = File.join(root, "lib/card/format/content.rb")
+html = File.join(gems, "card-mod-format-0.20.0/set/all/html/wrap.rb")
+voo_api = File.join(root, "lib/card/view/options/voo_api.rb")
+class Card
+  module Set
+    module Format
+      module AbstractFormat; end
+    end
+  end
+  class Format; end
+  module Layout
+    def self.card_layout?(_name) = false
+  end
+end
+load definition
+load runtime
+load content
+lines = File.readlines(naming)
+start = lines.index { |line| line.strip == "def wrapper_method_name wrapper" }
+raise "Pinned wrapper naming method missing" unless start
+Card::Set::Format.singleton_class.class_eval(lines[start, 3].join, naming, start + 1)
+
+class TagProbeOptions
+  attr_accessor :interior
+  attr_reader :format
+  def initialize(format)
+    @format = format
+    @live_options = {}
+  end
+  def requested_view = :probe
+  def ok_view = :probe
+  def wrap = @live_options[:wrap]
+  def prepare
+    @live_options = {}
+    process_view_wrappers
+  end
+end
+lines = File.readlines(voo_api)
+start = lines.index { |line| line.strip == "def process_view_wrappers" }
+finish = lines.index { |line| line.include? "# merge the options of the main nest" }
+raise "Pinned view-wrapper setting method missing" unless start && finish
+TagProbeOptions.class_eval(lines[start...finish].join, voo_api, start + 1)
+
+class TagProbeFormat
+  extend Card::Set::Format::AbstractFormat::Wrapper
+  include Card::Format::Wrapper
+  include Card::Format::Content
+  include ActionView::Helpers::TagHelper
+  include ActionView::Helpers::CaptureHelper
+  include ActionView::Helpers::OutputSafetyHelper
+  attr_reader :voo
+  def initialize
+    @voo = TagProbeOptions.new(self)
+  end
+  def interior = voo.interior
+  def view_setting(_setting, _view) = @wrap_setting
+  def wrapped(wrap, body)
+    @wrap_setting = wrap
+    voo.prepare
+    @rendered = body
+    wrap_with_wrapper
+  end
+end
+def format(_name, &body)
+  TagProbeFormat.class_eval(&body)
+end
+load html
+TagProbeFormat.class_eval do
+  wrapper :cream, :div, class: "creamy"
+  wrapper :cherry, :div, class: "cherry"
+  wrapper :choc, :div, class: "choc"
+  wrapper :attributes, :section, class: "base", title: "A&B", data: { flavor: "vanilla" }
+  wrapper(:plain) { "cream_#{interior}_cream" }
+end
+f = TagProbeFormat.new
+opts = { class: "white", title: "override" }
+cases = [
+  { id: "tag-block", body: f.wrap_with_cream { "cake" } },
+  { id: "tag-content", body: f.wrap_with_cream("cake") },
+  { id: "tag-class-options", body: f.wrap_with_choc("cake", opts), options: opts },
+  { id: "tag-tuple-view", body: f.wrapped([:cherry, [:choc, { class: "white" }]], "cake") },
+  { id: "tag-hash-view", body: f.wrapped({ cherry: { class: "sour" }, choc: { class: "white" } }, "cake") },
+  { id: "tag-markup", body: f.wrap_with_cream("<em>A&B</em>") },
+  { id: "tag-attributes", body: f.wrap_with_attributes("cake", id: 'a"b', data: { flavor: "cherry & cream" }) },
+  { id: "tag-class-dedup", body: f.wrap_with_cream("cake", class: ["creamy", "extra", "creamy"]) },
+  { id: "tag-array-content", body: f.wrap_with_cream(["a", nil, ["b", "c"]]) },
+  { id: "tag-nil-content", body: f.wrap_with_cream(nil) },
+  { id: "tag-boolean-data", body: f.wrap_with_cream("cake", hidden: true, disabled: false,
+      data: { count: 2, flags: ["a", "b"], empty: nil }, aria: { hidden: false }) },
+  { id: "function-tuple", body: f.wrapped([[:plain, {}]], "cake") }
+]
+begin
+  f.wrapped([:unknown, { opts: :x }], "cake")
+  raise "Expected malformed-wrapper refusal"
+rescue ArgumentError => error
+  cases << { id: "wrong-arguments", error: { class: error.class.name, message: error.message } }
+end
+sources = [definition, runtime, naming, content, html, voo_api,
+  File.join(gems, "actionview-7.2.4/lib/action_view/helpers/tag_helper.rb")]
+puts JSON.pretty_generate({
+  scope: "Native wrapper declaration/runtime, Decko HTML wrapping and ActionView tag builder; synthetic format/voo, no Rails application/DB/mod registration",
+  runtime: RUBY_DESCRIPTION,
+  sources: sources.to_h { |file| [file.delete_prefix("#{gems}/"), Digest::SHA256.file(file).hexdigest] },
+  cases: cases
+})

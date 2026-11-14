@@ -1,0 +1,40 @@
+import { copyFileSync, mkdtempSync, mkdirSync, rmSync } from "node:fs";
+import { resolve } from "node:path";
+import { expect, it } from "vitest";
+import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
+import { FetchEngine } from "../../../src/card/fetch.js";
+import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
+import { actorBot } from "../../../src/card/auth/actor.js";
+import { openSameDatabase } from "../../../src/server/same-database.js";
+import { observedModEventRuntime } from "../../../src/server/write-routes.js";
+import { ModEventRegistry } from "../../../src/card/mod-loader/mod-event-registry.js";
+
+it.each(["before", "", null])("integration retains current and prior content when prior=%s", async previous => {
+  mkdirSync(resolve("tmp"), { recursive: true });
+  const dir=mkdtempSync(resolve("tmp/update-integrate-content-"));
+  let driver: LocalSqliteDriver | undefined;
+  try {
+    copyFileSync(resolve("reference-harness/fixtures/synthetic-v1/deck/deck.sqlite3"),resolve(dir,"deck.sqlite3"));
+    driver=new LocalSqliteDriver({path:resolve(dir,"deck.sqlite3")});
+    await openSameDatabase(driver);
+    const actor=await actorBot(driver);
+    const initialFetch=new FetchEngine(driver);
+    const initial=new CardActionEngine(initialFetch,{actor,modEvents:await observedModEventRuntime({driver,fetcher:initialFetch})});
+    const created=await initial.createCard({name:"Integration Content Probe",typeName:"RichText",content:"seed"});
+    await driver.query("UPDATE cards SET db_content=? WHERE id=?",[previous,created.cardId]);
+    const fetcher=new FetchEngine(driver);
+    const runtime=await observedModEventRuntime({driver,fetcher});
+    const registry=new ModEventRegistry();
+    for(const event of runtime.registry.all()) registry.register(event);
+    const seen: unknown[]=[];
+    registry.register({event:"observe_integrated_content",at:"integrate",on:["update"],
+      setPath:"all/integration_probe",modName:"integration_probe",fn:card=>{
+        if(card.id===created.cardId) seen.push({current:card.dbContent,previous:card.dbContentBeforeAct,type:card.typeId});
+      }});
+    const engine=new CardActionEngine(fetcher,{actor,modEvents:{...runtime,registry}});
+    await engine.updateCard({cardId:created.cardId,content:"after",typeName:"Phrase"});
+    const stored=(await driver.query<{db_content:string;type_id:number}>("SELECT db_content,type_id FROM cards WHERE id=?",[created.cardId])).rows[0]!;
+    expect(seen).toEqual([{current:stored.db_content,previous,type:stored.type_id}]);
+    expect(stored.db_content).toBe("after");
+  } finally {driver?.close();rmSync(dir,{recursive:true});}
+});

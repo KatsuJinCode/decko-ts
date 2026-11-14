@@ -1,0 +1,157 @@
+# Test policy
+
+This is the single testing policy for this repository. Every agent session
+follows it. The test lead owns it and is the only one who may change it.
+
+## Test lead
+
+Current authority: Julian's 2026-11-01 message relayed by Alfred assigns this
+session sole hosted-test approval/execution authority and supersedes the earlier
+consumer-lead usage hold. Hosted testing is not paused. Historical reports retain
+their original observations; they do not impose current restrictions. Before
+carrying an operational hold into a current status, check its governing source
+against this policy and the latest operator instruction. Record supersession
+here so workers do not have to reconstruct authority from old run reports.
+
+- Test lead: the port lead Codex session `01a183a1-54c7-7690-92a0-51acbf130576`
+  (Codex desktop thread, worktree
+  `C:\Users\jpswi\.codex\worktrees\decko-port-integration-recovery\decko-ts`).
+- Interim backup test lead: Codex in
+  `C:\localProjects\decko-ts-zc-fix-paths-20261101` (Relay 1358), branch
+  `fleet/review-b-20261101`. It acts only if the primary test lead is unreachable
+  for over an hour. Alfred's later 2026-11-01 instruction supersedes the initial
+  MiniMax backup while that harness's control port is unavailable. A busy
+  primary is not an absent primary.
+- Only the test lead approves and runs hosted Bunny tests (any request that
+  reaches Bunny's hosted Edge Scripting, Database, CDN or storage).
+- Worker sessions never run hosted tests. They submit a request to
+  `C:\localProjects\decko-fleet-20261101\HOSTED-TEST-QUEUE.md` and keep working
+  locally. Waiting on a hosted run is never a reason for a worker to stop.
+
+The shared queue above is outside every worktree and is the single request
+authority. [The repository queue pointer](runs/hosted-test-queue.md) is not a
+second queue. Fleet ownership and conduct are defined in
+`C:\localProjects\decko-fleet-20261101\FLEET-RULES.md`. Only the primary
+integration lead merges or pushes the integration branch. Workers push their
+own fleet branches; review and merge them in batches, with one complete
+correctness run per integrated batch.
+
+## Local first
+
+- Run everything that can run locally first: Vitest, Node tests, native
+  Worker controls, the local Bunny deployment selection, local Ruby, local
+  SQLite/libSQL/MySQL. A hosted run is only for what local runs cannot show.
+- Passing tests close tasks. Never delete, skip or weaken a test to get a pass.
+  Any change to an existing test's assertions is called out in the commit
+  message and gets independent review.
+
+## Hosted Bunny tests cost real money
+
+Published prices (from [cost-model.md](cost-model.md), read 2026-10-14):
+$0.20 per started million Edge Scripting requests, $0.02 per started 1,000
+CPU-seconds, $0.30 per billion Database rows read, $0.01 per GB CDN bandwidth,
+and a $1.00 account minimum.
+
+Measured cost per run: the test lead records the real charge of every hosted
+run in the log below, from Bunny's billing/usage view or the account's past
+charges, before and after the run. Until a measured figure exists, estimate
+from the published prices above and say so. Hosted Bunny charges were under
+investigation on 2026-11-01; the test lead reconciles them first and records
+the measured per-run cost here. Reconciliation records unknown attribution as
+unknown; it does not pause authorized essential testing. The prior first-pair
+run has no independently attributable before/after billing measurement yet.
+
+Before any hosted run, the run first proves that the deployed build equals the
+commit under test. Every tool that sends requests to a hosted copy calls
+`tools/hosted-build-guard/assert-hosted-build-matches-commit.mjs` first: it reads
+the deployed build's identity from the host's `/_status` (one GET) and refuses
+with exit 1, before any test request, when that identity is missing, unreadable,
+built from uncommitted changes, or not the commit the run claims to test. The
+deploy step stamps the commit into each bundle (`tools/hosted-build-guard/build-stamp.mjs`),
+so a bundle without a stamp cannot pass.
+
+## What qualifies as an essential hosted run
+
+A hosted run is essential only when all of these hold:
+
+1. It checks something no local test can (real Bunny runtime, real hosted
+   database, real CDN behavior, or the Ruby-vs-Bunny comparison on shared data).
+2. The code or configuration it checks changed since the last hosted run of
+   the same test, or it has never run. No feel-good repeats.
+3. Its result changes a decision (accept or reject a fix, or release).
+
+## Batching and reruns
+
+- Batch: collect queued requests and run them together in the fewest runs.
+  The full Ruby-vs-Bunny comparison runs once, as one planned run, after the
+  pending fixes land.
+- Never rerun the same hosted test without a code change that justifies it;
+  name the commit in the log.
+- Money is never a reason to stop work. If hosted testing looks too
+  expensive, the tests are wasteful: make them cheaper, batched or local.
+
+## Hosted run log
+
+| Date (PT) | Run | Commit | Requests batched | Why essential | Estimated cost | Measured cost |
+|---|---|---|---|---|---|---|
+| 2026-11-01 | Historical first controlled Ruby/Bunny title pair, release1197225 | Latest-source continuity unproven; see fragment242 report | One paired page observation; complete setup/provider request count not established | First actual shared-selected-data comparison; found an added LF | Not retrospectively derived from wall time or account totals | Unknown: no attributable before/after billing pair was captured |
+| 2026-11-01 | Requested shared-data batch: preflight failed, awaiting triage | ff3ab5fd6fad6688a73cdfcfd48a2a17d9ec62c0 | Three management GETs retained; zero application requests; 1,439 anonymous reads planned per engine | Explicit current order starts the existing planned batch at the merged PR275 head; actual hosted runtime/source/data continuity remains required | Scripting planning scenario $1.08 if all 1,439 pages each use the documented nominal 30 CPU seconds, with whole account increments; database, asset storage and CDN charges additional and unmeasured | Unknown; account-wide before observation retained, after observation and attributable usage still pending |
+
+The current batch supersedes the earlier instruction to wait for every pending
+fix. It does not authorize a second comparison batch or a repeat of failed
+application requests. The test lead performs no package install, pruning, dependency rebuild or
+change inside node_modules for this run. Local preparation belongs to the
+separately assigned comparison agent; it does not grant that agent hosted
+execution authority.
+
+The directly retrieved [Scripting pricing](https://docs.bunny.net/scripting/pricing.md)
+and [runtime limits](https://docs.bunny.net/scripting/limits) supply the scenario
+above. Thirty CPU seconds is the nominal per-request limit, and the provider
+explicitly tolerates occasional spikes, so $1.08 is a planning scenario rather
+than a guaranteed bill cap. Account increments aggregate across scripts.
+
+At the before observation on 2026-11-01 at 15:11 PT, account-wide November
+charges were $0.57055432093426, including Scripting $0.44. This is a starting
+account total, not this run's cost. Its private raw response SHA-256 is
+`e5fe50725f573441c8413f487b72376db3e685c748ea7741de775dc0b8efc077`.
+Three read-only management responses cover billing, script metadata and script
+code. The inspected historical staging script 96895 still reports
+CurrentReleaseId 1197225 and LastModified 2026-10-19T16:33:41; its 7,126,714
+code bytes hash to
+`45d1ead3c8c203c6e39cfcdf8789de95e78d064dbbd9cd9d461a59ee9e35fd9e`.
+These observations do not bind its deployed code or data to the requested
+ff3ab5fd6 source. No anonymous page has been fetched for this batch and no
+account resource has been changed. Raw provider responses and the explicit
+unqualified-source result remain private in the test lead's existing runtime
+evidence directory. The next step is to qualify an existing artifact and the
+exact shared dataset before collecting the planned application responses.
+
+One project packaging attempt then used the existing compiler, without an npm
+package command or requested write inside node_modules. It stopped at the
+runtime-import check with `Unresolved runtime imports`, native exit 1. No
+package directory was written and no application request followed. The original
+tool-delivered output and exact packaging source are retained in
+`docs/runs/hosted-comparison-preflight-2026-11-01/`. The first triage cut at
+`c4d01bb7` authorized no failure fix. The subsequent decision at `0e8b5f46b`
+classifies this checker as TEST BUG and permits import detection correction
+only. That correction passes author regressions and stays unmerged pending
+fresh-full-clone proof and exact-head independent ACCEPT. No package rerun or
+hosted result is supplied by these local checks.
+
+Billing reconciliation, fresh account read 2026-11-01 at 09:09 PT: the account
+reports November charges of $0.443740482529569, including Scripting $0.34
+($0.20 request component plus $0.14 CPU), storage $0.102037326259568 and
+regional traffic components totalling $0.00170315627. Database charges report
+$0. The November 1 monthly usage record is $6.4676887046109455 for the preceding
+usage month; it is not a new charge caused by the first-pair test. These are
+account-wide observations from one successful billing GET, with no model,
+automatic retry or result-cache verdict; provider aggregation/lag and unrelated
+traffic prevent assigning them to individual runs. They do not establish a
+measured per-run cost. The test lead must retain attributable run measurements
+when available and otherwise explicitly record that limitation. No zero-cost
+claim is inferred from a rounded or unchanged bill.
+
+Before the planned complete comparison, capture this billing baseline again
+as part of that one run and retain the matching after-read, response hashes,
+actual request counts and available per-script usage. Keep billing credentials
+and raw account responses local; record sanitized amounts and attribution here.

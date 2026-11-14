@@ -1,0 +1,76 @@
+# Complete parity acceptance
+
+Status: active. Continue implementation and verification until the supported
+Decko contract is met. A reviewed repair batch or a partial score does not
+complete the port. Optimization follows established parity and must preserve it.
+
+For current execution, [the shared-data comparison decision](2026-10-31-shared-data-engine-comparison.md)
+requires our existing Ruby copy and TypeScript/Bunny to use the same controlled
+data. A newer private live-site export and historical serving ancestry are not
+prerequisites for general engine completion. The retained consumer walk below
+remains history and downstream cutover evidence; it must not create a circular
+dependency between the engine and its consumer.
+
+## Immediate evidence
+
+The consuming project's retained walk has 57 paired observations, identified by
+request, path, capture and backend in its private evidence file. Its input
+SHA-256 is `5078c06ac881b9cf0052b12a13785910e828df4886911680f6babcfee571a937`.
+These observations are distinct from the synthetic 51-journey instrument.
+The current source, installed copy, database snapshot and checker identities
+must be recorded separately. An older deployed bundle is not evidence about
+the repaired source, and a newer source test is not deployed acceptance.
+
+All retained mismatches remain in the report. Attribute each to an engine
+behavior, serving configuration, missing or changed data, an intentional
+consumer change, or an unresolved cause. Under the operator's site-comparison
+decisions of 2026-10-29 and 2026-10-30, content-only differences from the
+September snapshot count as cutover matches without another proof round.
+Retain the raw difference and its content classification. Rendering and
+behavior differences remain repair work, including wrong navigation targets,
+scripts, handlers, markup, statuses, sign-in and forms. Load the newer backup
+when available and compare again. Intended privacy-scrub differences remain
+separately identified, and public copies keep the scrubbed data set. This rule
+does not convert such a page into a strict byte-equality observation or
+qualify a different backend. Other attribution alone never grants a match.
+Conditional comparisons that remove additional bytes are
+diagnostics, not accepted parity. Do not alter authored content or remove
+protection solely to improve a score.
+
+## Completion conditions
+
+- Every observed failure has a causal reproduction, a correction at its owning
+  source, and an appropriate regression or differential case. Preserve original
+  failures and their raw evidence.
+- The checked source and actual installed implementations are reconciled.
+  Existing deployment/publication approvals remain required for their exact
+  packages; prepare and verify those packages before requesting approval.
+- Compare the Ruby implementation, local TypeScript and edge TypeScript against
+  the named reference on equivalent versioned data/configuration. Preserve raw
+  body, status, relevant headers, resulting state and captured side effects.
+  Do not replay production writes or duplicate external effects.
+- Cover rendering, semantics, persistence and side effects separately across
+  the supported runtime/backend matrix, including the DSL and nonlegacy mods,
+  migration, recovery and deployment behavior in the architecture contract.
+  Explicitly identify unsupported dependencies and legacy exclusions.
+- Independently challenge each checker before using its result. Publish the
+  denominator and pass/fail/skipped/pending entries; missing evidence prevents
+  a complete verdict. No subset or normalized content exception qualifies
+  whole-port completion.
+- Measure optimization on equivalent inputs after parity, keeping cold/warm
+  behavior and provider costs distinct. Preserve behavioral checks around each
+  improvement; unmeasured public performance/cost/energy claims stay pending.
+
+## Current work ownership
+
+The port lead owns source/copy reconciliation and engine route/rendering
+failures. The existing reference-sign-in diagnostic continues as a separate
+lane. An independent reviewer challenges the retained-walk comparison and
+content-classification instrument. The consuming project's Claude Code lead
+owns its site data, live comparison integration and deployment coordination.
+Coordinate edits and preserve their current work; the general engine contains
+no consuming-site content.
+
+The reference-version investigation is not a reason to suspend unrelated work:
+decision 0012 identifies the existing reference. Record blocking external
+dependencies precisely while continuing independent repairs and validation.

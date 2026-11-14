@@ -1,0 +1,24 @@
+import { expect, it } from "vitest";
+import { DeckoName } from "../../../src/card/name.js";
+import { applyDeckInflections, resetDeckInflections } from "../../../src/card/name/inflect.js";
+
+it("clears keys after an explicit stabilization-mode reset without replacing deck inflections", () => {
+  const prior = DeckoName.stabilize;
+  try {
+    applyDeckInflections({ singular: [[/^portbirds$/, "sparrow"]] });
+    DeckoName.stabilize = false;
+    DeckoName.clearParseMemo();
+    expect(DeckoName.parse("matthias").key).toBe("matthias");
+    expect(DeckoName.parse("portbirds").key).toBe("sparrow");
+    DeckoName.stabilize = true;
+    DeckoName.clearParseMemo();
+    expect(DeckoName.parse("matthias").key).toBe("matthium");
+    expect(DeckoName.parse("portbirds").key).toBe("sparrow");
+    DeckoName.stabilize = false;
+    DeckoName.clearParseMemo();
+    expect(DeckoName.parse("matthias").key).toBe("matthias");
+  } finally {
+    DeckoName.stabilize = prior;
+    resetDeckInflections();
+  }
+});

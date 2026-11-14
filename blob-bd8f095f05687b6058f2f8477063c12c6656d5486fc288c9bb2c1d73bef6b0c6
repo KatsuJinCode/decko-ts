@@ -1,0 +1,6 @@
+import { setRaiseAllRenderingErrors } from "../../src/card/render/format.js";
+
+/** Shared SDK/direct-host boot: match Ruby's production rendering rescues. */
+export function initializeBunnyServingRenderPolicy(): void {
+  setRaiseAllRenderingErrors(false);
+}

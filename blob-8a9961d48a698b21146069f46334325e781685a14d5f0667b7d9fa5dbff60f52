@@ -1,0 +1,52 @@
+{
+  "captures": {
+    "outcome.json": {
+      "book": "Book_mvmv7ega",
+      "bookId": 912,
+      "isBook": false,
+      "name": "D5_TypeChange_mvmv7ega",
+      "ownership": {
+        "formAction": "/update/D5_TypeChange_mvmv7ega",
+        "formFields": [
+          "utf8",
+          "_method",
+          "card[type]",
+          "assign",
+          "card[last_action_id_before_edit]",
+          "card[content]"
+        ],
+        "formsInModal": [
+          {
+            "action": "/update/D5_TypeChange_mvmv7ega",
+            "fields": [
+              "utf8",
+              "_method",
+              "card[type]",
+              "assign",
+              "card[last_action_id_before_edit]",
+              "card[content]"
+            ]
+          },
+          {
+            "action": "/card/create",
+            "fields": [
+              "utf8",
+              "card[name]",
+              "card[comment]"
+            ]
+          }
+        ],
+        "selectFormOwnerViaFormAttr": null,
+        "selectInForm": true
+      },
+      "posts": [],
+      "seen": {
+        "error": "TimeoutError: page.waitForResponse: Timeout 30000ms exceeded while waiting for event \"response\""
+      },
+      "storedTypeId": 37,
+      "valueAfter": "Book_mvmv7ega"
+    }
+  },
+  "leg": "ts",
+  "row": "select-owner-form"
+}
