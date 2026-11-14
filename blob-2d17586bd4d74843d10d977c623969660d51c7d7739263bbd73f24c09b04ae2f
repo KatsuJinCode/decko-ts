@@ -1,0 +1,593 @@
+// view-dispatch-flat-record-format-scope-census.test.ts - the FLAT-RECORD
+// format-scope census: the anchored-scope port's census method
+// (view-dispatch-anchored-cross-format-collision-census.test.ts) applied to
+// the LAST format-blind dispatch surface that port recorded outside its
+// scope - the flat last-wins record (mod-loader.ts registration seam, the
+// `views.register` the engine's HTML_VIEWS object receives) - plus the
+// empty-setKeys (abstract pseudo-pattern) chain arm's measured spans.
+//
+// Ruby ground truth: a bare `format do` block resolves format_class_name
+// (:base) -> Card::Format (format/registration.rb:27-30) and an all-set
+// module's block is filed under THAT resolved class
+// (register_all_set_format, set/format.rb:137-139 ->
+// Set.modules[:base_format][format_class]); process_base_format_modules
+// (registrar.rb:79-84) mixes each class's list into the class ITSELF, so
+// an html-keyed all-set module lands on HtmlFormat and a base-keyed one on
+// Card::Format, the root every format inherits (format_ancestry,
+// registration.rb:35-39). A foreign-keyed all-set module
+// (email_text/email_html/json/js/...) lands on ITS class ONLY - an html
+// render never sees it (HtmlFormat's ancestry holds no
+// EmailTextFormat/JsonFormat/JsFormat) and subclass modules never
+// back-propagate (EmailHtmlFormat < HtmlFormat, card-mod-email lib/card/
+// format/email_html_format.rb:6). The port's flat record is the engine's
+// HTML-VISIBLE table (render.ts `this.views = HTML_VIEWS` - the same
+// object the ModLoader constructor receives), so admitting a foreign key
+// there served that format's bytes to html renders that chain-missed -
+// measured live on four green pins before the format filter landed:
+// card-mod-email.test.ts's A/B :last_action ("edited" through the
+// email_text arm), card-mod-search.test.ts's :select2_option (json bytes),
+// card-mod-tinymce_editor.test.ts's :change_create_to_update and
+// :open_nest_editor (js bytes). Ruby raises unsupported-view for every one
+// (render.rb#view_method - the html class lacks the method); those pins
+// now hold both directions (html rejects, own format renders the same
+// bytes through its own class).
+//
+// THE CENSUS (this file): walk every ported mod manifest in the deck's
+// oracle bundle order (default-mod-deck.ts, the same registration surface
+// mod-loader.ts's phase-2 walk feeds) and enumerate, for the NON-nonbase
+// set paths the flat seam admits (kindOfSetPath: "all" -> base,
+// "abstract" -> abstract), every (set module, view, format key) row.
+// RESULT on this codebase (measured): 168 flat-feeding rows - 143 base +
+// 25 abstract - over keys {html, base, json, email_html, email_text, js};
+// exactly 8 foreign rows (4 views' worth), 5 views whose flat feeders
+// span more than one key, and 5 views whose empty-setKeys fallback set
+// spans more than one key (18 further views span KINDS - the abstract
+// pseudo-pattern arm's second dimension, reachable only from the
+// viewChain("") test probes, never from src: safeSetKeys always carries
+// the ALL token, registry.ts `applies: () => true`).
+//
+// The probes below pin that measured shape: a future mod that lands a new
+// foreign-keyed all-set view (or widens any span) FAILS here and names
+// the mod/set/view/key - the re-adjudication signal for both surfaces.
+
+import { describe, expect, it } from "vitest";
+import { defaultDeckSources, defaultDeckLoader } from "../../../src/card/mod-loader/default-mod-deck.js";
+import { setModuleShortname, setPathPattern } from "../../../src/card/mod-loader/mod-registrar.js";
+import type { DeckoModManifest, ModSetModuleFile } from "../../../src/card/mod-loader/mod-manifest.js";
+
+/** mod-loader.ts kindOfSetPath: "all" -> base, "abstract" -> abstract,
+ *  everything else nonbase. The flat seam admits the first two. */
+function kindOfSetPath(setPath: string): "base" | "abstract" | "nonbase" {
+  const pattern = setPathPattern(setPath);
+  if (pattern === "all") return "base";
+  if (pattern === "abstract") return "abstract";
+  return "nonbase";
+}
+
+interface CensusEntry {
+  readonly mod: string;
+  readonly setPath: string;
+  readonly shortname: string;
+  readonly kind: "base" | "abstract" | "nonbase";
+  readonly formatKey: string;
+  readonly view: string;
+}
+
+/** The full registration surface of the composed deck, walked exactly the
+ *  way mod-loader.ts's phase-2 walk walks it (file.formats x
+ *  formatBlock.views, shortname via setModuleShortname). */
+function censusEntries(): CensusEntry[] {
+  const out: CensusEntry[] = [];
+  for (const source of defaultDeckSources()) {
+    const manifest: DeckoModManifest = source.manifest;
+    for (const file of manifest.setModules ?? [] as readonly ModSetModuleFile[]) {
+      const shortname = setModuleShortname(file.setPath);
+      const kind = kindOfSetPath(file.setPath);
+      for (const [formatKey, formatBlock] of Object.entries(file.formats ?? {})) {
+        for (const view of formatBlock?.views ?? []) {
+          out.push({
+            mod: manifest.name,
+            setPath: file.setPath,
+            shortname,
+            kind,
+            formatKey,
+            view: view.view,
+          });
+        }
+      }
+    }
+  }
+  return out;
+}
+
+describe("flat-record format-scope census (composed deck)", () => {
+  const entries = censusEntries();
+  const flatFeeders = entries.filter((e) => e.kind !== "nonbase");
+
+  it("census is non-vacuous: the composed deck registers all-set+abstract views", () => {
+    // A broken walk (empty deck, wrong filter) must not read as "zero
+    // foreign rows". Measured: 147 base + 29 abstract rows. The abstract
+    // count moved 25 -> 28 when the surface-queue fold (1ab8318) landed
+    // the list mod's select/multiselect/autocomplete editor registrations
+    // (three all-set abstract-kind rows); base moved 143 -> 144 when the
+    // mod-porting wave-1 lane (2026-10-03) registered :board_act on the
+    // all-set all/history_board module (cache: never); 144/28 -> 145/29
+    // at the style family's own commit (8b56256, the abstract/style_group
+    // stylesheet_include_tag raising-arm row - the census re-bump that
+    // receipt's "net run in flight" never landed); base moved 145 -> 147
+    // when wave-1's follow family registered :subedit_notice + :follower
+    // on the all-set all/notify/base_views module (base key); abstract
+    // moved 29 -> 30 when wave-1's account family registered :account_tab
+    // on the abstract-set abstract/account_holder module; base moved
+    // 147 -> 153 when the mod-completion-100 lane (2026-10-03) registered
+    // the six census chrome views (nest_editor, modal_nest_editor,
+    // nest_content, nest_image, modal_nest_image, new_image) on the
+    // all-set reference_editor modules (html key - admitted, not foreign).
+    // 153 -> 149 (semantics parity, 2026-10-07): the all-set carrierwave fold
+    // module and its four views moved to the Type::File/Type::Image sets;
+    // 149 -> 151: All::Html's :type and All::Html::Views' :labeled.
+    // 151 -> 152: All::Html::Error's :debug_server_error, registered by the
+    // same branch and measured on the integrated tree (2026-10-08).
+    // 152 -> 153: All::Html::Error's production :server_error — the
+    // semantics-part3 lane's error-page ruling (4b7b1338), measured on the
+    // merged tree (2026-10-08).
+    // 153 -> 154 (composed-mod view gaps, 2026-10-09): All::Error's html
+    // table registers :mini_unknown explicitly (html/error.rb:21-23, the
+    // icon-only createable link) alongside :unknown's html arm.
+    // Abstract 30 -> 33, the same branch: Abstract::Items' :nav_item,
+    // Abstract::List's :radio and Abstract::Script's :javascript_include_tag.
+    // 154 -> 158 (the miscpins lane's notification-views round, 2026-10-11):
+    // All::Notify::BaseViews registers :list_of_changes and :subedits on
+    // base, and All::Notify::HtmlViews registers both on html — four more
+    // base-kind rows. Measured on the merged tree.
+    // 160 -> 169 (non-html format dispatch, 2026-10-15): all/base's
+    // base-block views (22) and all/content's three base-block views join
+    // the base key alongside all/error's two; the csv/file/js/yaml rows
+    // are foreign-keyed, not base-kind. Measured on this tree.
+    // 169 -> 183 (json/data format views, 2026-10-15): the data and json
+    // views are all-set modules under their own format keys. Measured on this tree.
+    // set/all/css.rb adds its five format-specific all-set views.
+    // rss.rb adds nine non-XML all-set views and aliases.
+    // text.rb adds its one TextFormat core override.
+    // abstract 33 -> 35 (the mods-first-half lane, 2026-10-19): collection's
+    // abstract/paging/paging_views registers :paging_urls under its json AND
+    // jsonld format blocks (paging_views.rb:86-93/:106-120, 50017d73) - two
+    // abstract-kind rows, the deck's first jsonld-keyed registration. Base
+    // stays 198: the same lane's four html rows (account self/signin :open,
+    // assets right/group_remote :core, the two manifest-group :core
+    // includers) are nonbase-kind, invisible to both flat-feeder counts.
+    // abstract 35 -> 36 (the mods-tranche3 lane, 2026-10-20): email's
+    // abstract/test_context registers the gem file's SECOND format block,
+    // `format :email_html do view :core do process_content render_raw end`
+    // (card-mod-email-0.20.0 set/abstract/test_context.rb:21-25) - one
+    // abstract-kind row under the email_html key, the abstract's first
+    // email_html-keyed view. Base stays 198. Measured on this tree.
+    // Measured on the merged tree.
+    // Tranche 6: three JSON-LD errors plus two JSON history export rows.
+    // 203 -> 228 (register row 17, card-mod-format, 2026-10-25): the html
+    // slot modules' seats. all/html/head (the five head views moved from
+    // the invented all/head path to the gem-faithful one, plus
+    // :meta_tags/:universal_edit_button/:rss_links; :page_title's row
+    // moves html key -> base key), all/html/header (:header,
+    // :header_title), all/html/menu (:menu_block :menu :edit_link
+    // :edit_button :full_page_link :board_link :help_link), all/html
+    // (:type_info), all/html/views (:content_with_title, :content_panel),
+    // all/html/error (:conflict), all/error (:format_unsupported,
+    // jsonld key), all/csv (:body, csv key), all/rss (:feed :feed_body
+    // :feed_item, rss key), all/text (:text_without_nests, base key),
+    // all/title (:title, :title_no_link). Twenty-five rows: twenty-four
+    // seatings plus :header's second registration (the csv-keyed one on
+    // all/csv is the csv format's own :header).
+    // Actual base and JSON denial registrations backed by the native probe.
+    // Six error.rb declarations: two base and four JSON additions.
+    // base 236 -> 239 (mods-formats, 2026-11-03): all/error's jsonld
+    // :errors/:server_error (error.rb:88-90, :96) and card-mod-follow's json
+    // :follow_status (follow_link_views.rb:11-14).
+    // base 239 -> 240 (mods-one-line, 2026-11-03): all/error's html
+    // :not_found (html/error.rb:67-73).
+    expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(240);
+    // abstract 36 -> 37 (the mods-tranche3 lane, 2026-10-20): list's
+    // abstract/01_list/other_views registers the json block's :links
+    // (card-mod-list-0.20.0 set/abstract/01_list/other_views.rb:59-61,
+    // `[]`), the abstract module's first json-keyed view. Base stays 198.
+    // abstract 37 -> 38 (the mods-tranche6 lane, 2026-10-20): script's
+    // abstract/00_script registers the gem file's `format :js do` block's
+    // :compressed (00_script.rb:9-12). Base stays 203.
+    // abstract 38 -> 40 (register row 28, 2026-10-25): search's
+    // abstract/0_search/views registers :name_complete / :name_match
+    // (views.rb:37-45, json).
+    // Measured on this tree.
+    expect(flatFeeders.filter((e) => e.kind === "abstract")).toHaveLength(40);
+  });
+
+  it("the foreign-key flat rows include the stock TextFormat override", () => {
+    // The rows the format filter refuses (mod-loader.ts registration
+    // seam): kind admitted, key not html/base. Ruby files each under its
+    // own format class, invisible to HtmlFormat (header citations). A
+    // NINTH foreign row lands here and names itself: the signal to
+    // re-adjudicate the flat seam (and, for an all-set module, to check
+    // whether the owning mod meant html).
+    const foreign = flatFeeders.filter(
+      (e) => e.formatKey !== "html" && e.formatKey !== "base",
+    );
+    // 8 -> 16: all/csv :header/:row/:titled/:unknown, all/file :core/:style,
+    // all/js :source and all/yaml :core are the format-block views of the
+    // non-html formats, each keyed under its own format class
+    // (csv_format.rb, file_format.rb, js_format.rb, yaml_format.rb).
+    // 47 -> 48 (the mods-tranche3 lane, 2026-10-20): email's
+    // abstract/test_context :core joins as a foreign row, email_html keyed
+    // (test_context.rb:21-25). Like the paging_urls pair, it does NOT
+    // flat-register: the seam's filter admits only html/base, so the flat
+    // table holds no email_html core row and the CHAIN walk owns it (plus
+    // the loader-less twin at render/views.ts#emailScopedCoreView, which
+    // answers email_html renders on the engine's flat record).
+    // 45 -> 47 (the mods-first-half lane, 2026-10-19): collection's
+    // abstract/paging/paging_views :paging_urls pair joins as foreign rows -
+    // json + jsonld keyed (paging_views.rb:86-93/:106-120, 50017d73); jsonld
+    // is the deck's first jsonld key. NEITHER arm flat-registers (the seam's
+    // filter admits only html/base), so the flat table holds no paging_urls
+    // row at all - the chain walk owns both arms.
+    // 48 -> 49 (the mods-tranche3 lane, 2026-10-20): list's
+    // abstract/01_list/other_views :links joins as a foreign row, json
+    // keyed (other_views.rb:59-61). Like the paging_urls pair and the
+    // email_html core above it does NOT flat-register — the seam's filter
+    // admits only html/base — so the chain walk owns it.
+    // 54 -> 55 (the mods-tranche6 lane, 2026-10-20): script's
+    // abstract/00_script :compressed joins as a foreign row, js keyed
+    // (00_script.rb:9-12, the gem file's only `format :js do` block). Like
+    // the rows above it does NOT flat-register, so the chain walk owns it:
+    // the row answers a js chain and is invisible to html.
+    // 55 -> 60 (register row 17, card-mod-format, 2026-10-25): the slot
+    // modules' foreign seats - all/csv :body (csv.rb:26-28), all/error
+    // :format_unsupported (error.rb:91-95, the jsonld block), all/rss
+    // :feed/:feed_body/:feed_item (rss.rb:14-31/40-46/52-59). Each keyed
+    // under its own format class like every foreign row above.
+    // foreign 60 -> 62 (register row 28, 2026-10-25): search's
+    // abstract/0_search/views :name_complete / :name_match join as foreign
+    // json rows (views.rb:37-45), like 00_script's :compressed.
+    // foreign 67 -> 70 (mods-formats, 2026-11-03): the same three rows,
+    // jsonld- and json-keyed.
+    expect(foreign).toHaveLength(70);
+    expect(
+      foreign
+        .map(
+          (e) => `${e.mod} ${e.setPath} :${e.view} key=${e.formatKey}`,
+        )
+        .sort(),
+    ).toEqual([
+      "collection abstract/paging/paging_views :paging_urls key=json",
+      "collection abstract/paging/paging_views :paging_urls key=jsonld",
+      "email abstract/test_context :core key=email_html",
+      "email all/email_html :compact_missing key=email_html",
+      "email all/email_html :unknown key=email_html",
+      "email all/email_text :compact_missing key=email_text",
+      "email all/email_text :last_action key=email_text",
+      "email all/email_text :unknown key=email_text",
+      "follow all/follow/follow_link_views :follow_status key=json",
+      "format all/css :content key=css",
+      "format all/css :import key=css",
+      "format all/css :titled key=css",
+      "format all/css :unknown key=css",
+      "format all/css :url key=css",
+      "format all/csv :body key=csv",
+      "format all/csv :header key=csv",
+      "format all/csv :row key=csv",
+      "format all/csv :titled key=csv",
+      "format all/csv :unknown key=csv",
+      "format all/data :ancestors key=data",
+      "format all/data :atom key=data",
+      "format all/data :cast key=data",
+      "format all/data :content key=data",
+      "format all/data :core key=data",
+      "format all/data :items key=data",
+      "format all/data :links key=data",
+      "format all/data :molecule key=data",
+      "format all/data :nucleus key=data",
+      "format all/data :pod key=data",
+      "format all/error :bad_address key=json",
+      "format all/error :denial key=json",
+      "format all/error :denial key=jsonld",
+      "format all/error :errors key=json",
+      "format all/error :errors key=jsonld",
+      "format all/error :format_unsupported key=jsonld",
+      "format all/error :not_found key=json",
+      "format all/error :not_found key=jsonld",
+      "format all/error :server_error key=json",
+      "format all/error :server_error key=jsonld",
+      "format all/error :test key=jsonld",
+      "format all/file :core key=file",
+      "format all/file :style key=file",
+      "format all/js :source key=js",
+      "format all/json :items key=json",
+      "format all/json :molecule key=json",
+      "format all/json :page key=json",
+      "format all/json :status key=json",
+      "format all/rss :closed key=rss",
+      "format all/rss :comment_box key=rss",
+      "format all/rss :content key=rss",
+      "format all/rss :feed key=rss",
+      "format all/rss :feed_body key=rss",
+      "format all/rss :feed_description key=rss",
+      "format all/rss :feed_item key=rss",
+      "format all/rss :feed_item_description key=rss",
+      "format all/rss :feed_title key=rss",
+      "format all/rss :menu key=rss",
+      "format all/rss :open key=rss",
+      "format all/rss :open_content key=rss",
+      "format all/text :core key=text",
+      "format all/yaml :core key=yaml",
+      "history all/history/export :actions key=json",
+      "history all/history/export :history key=json",
+      "list abstract/01_list/other_views :links key=json",
+      "script abstract/00_script :compressed key=js",
+      "search abstract/0_search/views :name_complete key=json",
+      "search abstract/0_search/views :name_match key=json",
+      "search all/autocomplete :select2_option key=json",
+      "tinymce_editor all/reference_editor/nest_image :change_create_to_update key=js",
+      "tinymce_editor all/reference_editor/nest_image :open_nest_editor key=js",
+    ]);
+  });
+
+  it("flat feeders span more than one key for the measured cross-format views", () => {
+    // Where the flat record's last-wins ORDER picks between formats at
+    // all. The winners after the filter are Ruby's html/base arms (the
+    // loader-level probe below pins them by identity).
+    const byView = new Map<string, CensusEntry[]>();
+    for (const e of flatFeeders) {
+      const list = byView.get(e.view) ?? [];
+      list.push(e);
+      byView.set(e.view, list);
+    }
+    const spanning = [...byView.entries()]
+      .filter(([, list]) => new Set(list.map((e) => e.formatKey)).size > 1)
+      .map(([view, list]) => `${view}: ${list.map((e) => `${e.shortname}:${e.formatKey}`).join(" | ")}`)
+      .sort();
+    expect(spanning).toEqual([
+      "bad_address: All::Error:json | All::Error:base | All::Error:html",
+      "comment_box: All::Rss:rss | All::Comment:html",
+      "compact_missing: All::Error:base | All::Error:html | All::EmailHtml:email_html | All::EmailText:email_text",
+      "content: All::Base:base | All::Css:css | All::Data:data | All::Rss:rss",
+      "core: All::Base:base | All::Data:data | All::File:file | All::Text:text | All::Yaml:yaml | Abstract::TestContext:email_html",
+      "count: All::Item:html | Abstract::Search:base | Abstract::Search:html",
+      "denial: All::Error:json | All::Error:jsonld | All::Error:base | All::Error:html",
+      "errors: All::Error:json | All::Error:jsonld | All::Error:html",
+      // register row 17 (2026-10-25): All::Html::Header's html :header
+      // (header.rb:5-7) joins the csv format's own :header (csv.rb:31-33)
+      // across the keys.
+      "header: All::Csv:csv | All::Html::Header:html",
+      "history: All::History::Export:json | All::History::Views:html",
+      "items: All::Data:data | All::Json:json",
+      "labeled: All::Base:base | All::Html::Views:html",
+      "last_action: All::EmailText:email_text | All::History::Views:html",
+      "last_action_verb: All::History::Views:html | All::Notify::BaseViews:base",
+      // the mods-tranche3 lane (2026-10-20): list's
+      // abstract/01_list/other_views :links (json) joins the data format's
+      // general all/links :links (data) — the override pair, each keyed
+      // under its own format class (other_views.rb:59-61 overriding
+      // card-mod-format's set/all/data.rb:74-82).
+      "links: All::Data:data | Abstract::List::OtherViews:json",
+      "list_of_changes: All::Notify::BaseViews:base | All::Notify::HtmlViews:html",
+      // register row 17 (2026-10-25): All::Html::Menu's html :menu
+      // (menu.rb:8-14, the engine's menuView) joins the rss format's
+      // blank-arm :menu (rss.rb:71) across the keys.
+      "menu: All::Html::Menu:html | All::Rss:rss",
+      "molecule: All::Data:data | All::Json:json",
+      // +paging_urls (the mods-first-half lane, 2026-10-19): the json/jsonld
+      // pair on the abstract paging module (50017d73) - the FIRST key-
+      // spanning view whose spanning is entirely foreign (neither key is
+      // html/base, so the flat record carries neither arm).
+      "not_found: All::Error:json | All::Error:jsonld | All::Error:base | All::Error:html",
+      "paging_urls: Abstract::Paging::PagingViews:json | Abstract::Paging::PagingViews:jsonld",
+      "server_error: All::Error:json | All::Error:jsonld | All::Error:html | All::Html::Error:html",
+      "subedits: All::Notify::BaseViews:base | All::Notify::HtmlViews:html",
+      // register row 17 (2026-10-25): all/title seats Ruby's two :title
+      // blocks - the base standard_title arm (title.rb:2-4) and the html
+      // show_view? arm (title.rb:12-14) - one row per key.
+      "title: All::Title:base | All::Title:html",
+      "titled: All::Css:css | All::Csv:csv",
+      "type: All::Base:base | All::Html:html",
+      "unknown: All::Css:css | All::Csv:csv | All::Error:base | All::Error:html | All::EmailHtml:email_html | All::EmailText:email_text",
+      "url: All::Base:base | All::Css:css",
+    ]);
+  });
+
+  it("the empty-setKeys fallback set spans more than one key for the measured cross-format views", () => {
+    // Surface 2 (the abstract pseudo-pattern arm, mod-loader.ts
+    // viewChain's tokens.length === 0 branch): the arm returns EVERY
+    // module that registered the view - any kind, any format key. Over
+    // the composed deck the key-spanning fallback sets are these five
+    // (all within kind base; the html+email_html+email_text trio of
+    // compact_missing/unknown and the html-vs-email_text last_action are
+    // the foreign-key reaches the flat-record filter removed from the
+    // flat table but the arm still lists).
+    const byView = new Map<string, CensusEntry[]>();
+    for (const e of entries) {
+      const list = byView.get(e.view) ?? [];
+      list.push(e);
+      byView.set(e.view, list);
+    }
+    const spanning = [...byView.entries()]
+      .filter(([, list]) => new Set(list.map((e) => e.formatKey)).size > 1)
+      .map(([view]) => view)
+      .sort();
+    expect(spanning).toEqual([
+      "bad_address",
+      "comment_box",
+      "compact_missing",
+      "content",
+      "core",
+      "count",
+      "denial",
+      "errors",
+      // mods-formats (2026-11-03): card-mod-follow's json :follow_status
+      // joins right/follow's html :follow_status.
+      "follow_status",
+      // register row 17 (2026-10-25): the html slot modules' seats - the
+      // html :header (header.rb:5-7) joins the csv :header's key, and the
+      // html :menu (menu.rb:8-14) joins the rss :menu's key.
+      "header",
+      "history",
+      "items",
+      "labeled",
+      "last_action",
+      "last_action_verb",
+      // the mods-tranche3 lane (2026-10-20): list's
+      // abstract/01_list/other_views :links (json) — the abstract module's
+      // first json-keyed view, joining the override span.
+      "links",
+      "list_of_changes",
+      "menu",
+      "molecule",
+      "not_found",
+      "open",
+      "open_content",
+      // +paging_urls (the mods-first-half lane, 2026-10-19): the empty-
+      // setKeys arm lists every module that registered the view regardless
+      // of key, so the json/jsonld pair widens the fallback set too
+      // (50017d73).
+      "paging_urls",
+      "raw",
+      "server_error",
+      "source",
+      "status",
+      "subedits",
+      // register row 17 (2026-10-25): all/title seats :title in the base
+      // and html blocks (title.rb:2-4, :12-14).
+      "title",
+      "titled",
+      "titled_content",
+      "type",
+      "unknown",
+      "url",
+      "url_link",
+    ]);
+  });
+
+  it("the empty-setKeys fallback set spans more than one kind for exactly thirty-five views", () => {
+    // The arm's SECOND dimension: abstract modules (Ruby: nonbase
+    // registration, reachable only via include_set) mix with base and
+    // nonbase modules in one chain. Unobservable from src (safeSetKeys
+    // always carries ALL - registry.ts `applies: () => true`; the only
+    // viewChain("") calls are the abstract-pseudo-pattern probes in
+    // card-mod-content/default-mod-deck/view-dispatch-superview tests) -
+    // pinned here so a widening registration names itself. Eighteen
+    // views at the surface-queue fold; +stylesheet_include_tag at the
+    // style family's own commit (8b56256, the abstract/style_group
+    // raising-arm row, census re-bump folded here); +errors at wave-1's
+    // follow family (the type_plus_right/user/follow :errors registration
+    // joining the format mod's all-set :errors row); +new +new_buttons at wave-1's
+    // account family (the signup :new / :new_buttons registrations joining
+    // the edit mod's all-set rows of the same names); +content_formgroups
+    // at the mod-completion-100 lane (the signup :content_formgroups
+    // registration joining the edit mod's all-set row - the walk arms the
+    // lane ported into the edit mod's contentFormgroupsView); +nav_item
+    // +nav_link_in_dropdown at the edge view-registry lane (Abstract::Items'
+    // dropdown :nav_item and Self::DropdownDivider's two views joining
+    // card-mod-layout's all-set rows); +navbar_links at the semantics lane
+    // (card-mod-layout's Type::Html override joining the all-set row).
+    const byView = new Map<string, CensusEntry[]>();
+    for (const e of entries) {
+      const list = byView.get(e.view) ?? [];
+      list.push(e);
+      byView.set(e.view, list);
+    }
+    const kindSpanning = [...byView.entries()]
+      .filter(([, list]) => new Set(list.map((e) => e.kind)).size > 1)
+      .map(([view]) => view)
+      .sort();
+    expect(kindSpanning).toEqual([
+      "bar_middle",
+      "content",
+      "content_formgroups",
+      "core",
+      "count",
+      "customize_button",
+      "edit",
+      "edit_buttons",
+      "edit_inline",
+      "errors",
+      // mods-formats (2026-11-03): the json :follow_status (all-set, base)
+      // beside right/follow's html :follow_status (nonbase).
+      "follow_status",
+      "help_text",
+      "input",
+      "javascript_include_tag",
+      "links",
+      "nav_item",
+      "nav_link_in_dropdown",
+      "navbar_links",
+      "new",
+      "new_buttons",
+      "not_found",
+      "one_line_content",
+      "open",
+      "open_content",
+      "overlay_title",
+      "raw",
+      "raw_one_line_content",
+      "source",
+      "status",
+      "stylesheet_include_tag",
+      "titled",
+      "titled_content",
+      "type",
+      "url_link",
+      "view_list",
+    ]);
+  });
+
+  it("after a full-deck load the flat table holds only html/base arms and the chains still dispatch the foreign arms", () => {
+    // The fix's teeth on the real deck. Before the format filter,
+    // viewsTable()["select2_option"] was the json arm and
+    // viewsTable()["compact_missing"/"unknown"] were the email_text arms
+    // (last-registered wins); every html chain-miss dispatched those
+    // bytes. After it the flat table carries Ruby's html/base arms and
+    // the foreign arms remain reachable ONLY through their own format's
+    // chain walk.
+    const loader = defaultDeckLoader();
+    const table = loader.viewsTable();
+    // foreign keys no longer flat-register at all
+    expect(table["select2_option"]).toBeUndefined();
+    expect(table["change_create_to_update"]).toBeUndefined();
+    expect(table["open_nest_editor"]).toBeUndefined();
+    // the measured winners are the Ruby html/base arms
+    expect(table["compact_missing"]).toBe(
+      loader.viewChainTable().viewFor("All::Error", "compact_missing"),
+    );
+    expect(table["unknown"]).toBe(
+      loader.viewChainTable().viewFor("All::Error", "unknown"),
+    );
+    expect(table["last_action"]).toBe(
+      loader.viewChainTable().viewFor("All::History::Views", "last_action"),
+    );
+    expect(table["last_action_verb"]).toBe(
+      loader.viewChainTable().viewFor("All::Notify::BaseViews", "last_action_verb"),
+    );
+    expect(table["count"]).toBe(
+      loader.viewChainTable().viewFor("Abstract::Search", "count"),
+    );
+    // the foreign arms still dispatch through their OWN format's chain
+    expect(
+      loader.viewChain("ALL", "last_action", "email_text")[0]!.setModule,
+    ).toBe("All::EmailText");
+    expect(
+      loader.viewChain("ALL", "select2_option", "json")[0]!.setModule,
+    ).toBe("All::Autocomplete");
+    expect(
+      loader.viewChain(
+        "ALL",
+        "change_create_to_update",
+        "js",
+      )[0]!.setModule,
+    ).toBe("All::ReferenceEditor::NestImage");
+    // the abstract pseudo-pattern arm's measured mixing, on the live
+    // loader: one view, three format classes' modules in one chain
+    // (kind base all three; keys html+email_html+email_text) - the arm's
+    // retained blindness, unreachable from src (safeSetKeys always
+    // carries ALL).
+    const emptyKeys = loader.viewChain("", "compact_missing").map((e) => e.setModule);
+    // Literal empty-key inventory has both base and HTML declarations;
+    // this census is not acceptance of Ruby super ancestry for that path.
+    expect(emptyKeys).toEqual(["All::Error", "All::Error", "All::EmailHtml", "All::EmailText"]);
+  });
+});

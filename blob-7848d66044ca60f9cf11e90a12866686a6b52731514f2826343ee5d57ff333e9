@@ -1,0 +1,28 @@
+import {describe,expect,it} from 'vitest';
+import cardModRules from '../../../src/card/mod-loader/mods/card-mod-rules.js';
+import type {ViewContext,ViewFn} from '../../../src/card/render/format.js';
+
+function renderGroups(createableTypes:string[]){
+ let grouped:ViewFn|undefined;
+ for(const module of cardModRules.setModules??[])
+  for(const format of Object.values(module.formats??{}))
+   for(const view of format.views??[])
+    if(view.view==='grouped_list')grouped=view.viewFn;
+ if(!grouped)throw Error('Cardtype grouped_list registration missing');
+ const context={fmt:{
+  card:{name:{key:'cardtype'}},
+  createableTypes:()=>createableTypes,
+  engine:{fetchRenderCard:()=>undefined},
+  nest:()=>'',
+ }} as unknown as ViewContext;
+ return grouped(context);
+}
+
+describe('independent Cardtype group separator mapping',()=>{
+ it('keeps the nil-group separator when Custom is empty, as Ruby map/flatten/join does',()=>{
+  expect(renderGroups([])).toContain('</p>\n\n<h5>Organize</h5>');
+ });
+ it('renders the Custom group between Upload and Organize when it has an item',()=>{
+  expect(renderGroups(['Custom type'])).toContain('<h5>Custom</h5>\n<p><div class="item-bar"></div></p>\n<h5>Organize</h5>');
+ });
+});

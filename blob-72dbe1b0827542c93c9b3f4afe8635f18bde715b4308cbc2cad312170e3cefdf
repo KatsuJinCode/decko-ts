@@ -1,0 +1,4 @@
+# reg-dsl-B21: closed on the declared and pinned parity surface
+- docs/decisions/0010-cql-sql-text-parity-surface.md: the declaration, with
+- tests/cql/sql-text-parity-surface.test.ts: the mechanical pin of the
+- npx vitest run tests/cql/sql-text-parity-surface.test.ts: 4 tests passed.

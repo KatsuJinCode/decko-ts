@@ -1,0 +1,27 @@
+import fs from "node:fs";
+import path from "node:path";
+import {spawnSync} from "node:child_process";
+
+function supportedPlatform() {
+  if (process.platform === "win32" || process.platform === "linux") return process.platform;
+  const error = new Error(`Artifact link fixtures are not implemented for ${process.platform}`);
+  error.name = "ArtifactLinkFixturePlatformError";
+  throw error;
+}
+export function createArtifactFixtureDirectoryLink(target, link) {
+  const platform = supportedPlatform();
+  fs.symlinkSync(path.resolve(target), link, platform === "win32" ? "junction" : "dir");
+}
+export function removeArtifactFixtureDirectoryLink(link) {
+  const platform = supportedPlatform();
+  const stat = fs.lstatSync(link, {throwIfNoEntry: false});
+  if (stat === undefined) return;
+  if (!stat.isSymbolicLink()) throw Error(`Refusing to unlink a non-link fixture path: ${link}`);
+  if (platform === "win32") {
+    if (/["%!&|<>^\r\n]/.test(link)) throw Error("Unsupported shell character in owned fixture link path");
+    const result = spawnSync("cmd.exe", ["/d", "/c", "rmdir", path.resolve(link)], {windowsHide: true, encoding: "utf8"});
+    if (result.error) throw result.error;
+    if (result.status !== 0) throw Error(`Fixture junction unlink failed: ${result.stderr}`);
+  } else fs.unlinkSync(link);
+  if (fs.lstatSync(link, {throwIfNoEntry: false}) !== undefined) throw Error("Fixture link still exists after unlink");
+}

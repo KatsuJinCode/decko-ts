@@ -1,0 +1,111 @@
+import assert from 'node:assert/strict';
+import { delimiter, join } from 'node:path';
+import test from 'node:test';
+import {
+  NativeCommandPlatformError,
+  nativeCommandFallbackDirectories,
+  requiredNativeCommands,
+  resolveNativeCommands,
+} from './native-command-provider.mjs';
+
+const systemRoot = join('C:', 'WINDOWS');
+const localAppData = join('C:', 'Users', 'tester', 'AppData', 'Local');
+const packages = join(localAppData, 'Microsoft', 'WinGet', 'Packages');
+const winlibsName = 'BrechtSanders.WinLibs.POSIX.UCRT_Microsoft.Winget.Source_8wekyb3d8bbwe';
+const winlibsBin = join(packages, winlibsName, 'mingw64', 'bin');
+const powershellDir = join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0');
+const nodeDir = join('C:', 'ProgramData', 'nodejs');
+const gitDir = join('C:', 'Program Files', 'Git', 'cmd');
+const gateEnv = {
+  PATH: [nodeDir, gitDir, join(systemRoot, 'System32'), systemRoot].join(delimiter),
+  SystemRoot: systemRoot,
+  LOCALAPPDATA: localAppData,
+};
+const listing = (entries) => () => entries;
+const present = (files) => (file) => files.includes(file);
+
+test('PowerShell is found in its SystemRoot directory when PATH lacks it, and that directory is appended', () => {
+  const exists = present([join(powershellDir, 'powershell.exe'), join(winlibsBin, 'gcc.exe'), join(winlibsBin, 'g++.exe')]);
+  const result = resolveNativeCommands({ env: gateEnv, platform: 'win32', exists, listDirectory: listing([winlibsName]) });
+  assert.deepEqual(result.missing, []);
+  assert.deepEqual(result.resolved.powershell, { file: join(powershellDir, 'powershell.exe'), source: 'fallback' });
+  assert.ok(result.added.includes(powershellDir));
+  assert.equal(result.childPath, [...gateEnv.PATH.split(delimiter), ...result.added].join(delimiter), 'existing PATH entries keep their order and the additions come last');
+});
+
+test('gcc and g++ are found in the WinLibs package when PATH lacks them', () => {
+  const exists = present([join(powershellDir, 'powershell.exe'), join(winlibsBin, 'gcc.exe'), join(winlibsBin, 'g++.exe')]);
+  const result = resolveNativeCommands({ env: gateEnv, platform: 'win32', exists, listDirectory: listing([winlibsName]) });
+  assert.deepEqual(result.resolved.gcc, { file: join(winlibsBin, 'gcc.exe'), source: 'fallback' });
+  assert.deepEqual(result.resolved['g++'], { file: join(winlibsBin, 'g++.exe'), source: 'fallback' });
+  assert.equal(result.added.filter(dir => dir === winlibsBin).length, 1, 'the WinLibs directory is appended once');
+});
+
+test('a tool already on PATH is used as it is and its directory is not appended', () => {
+  const pathGcc = join(nodeDir, 'gcc.exe');
+  const env = { ...gateEnv, PATH: [...gateEnv.PATH.split(delimiter), nodeDir].join(delimiter) };
+  const exists = present([pathGcc, join(powershellDir, 'powershell.exe'), join(winlibsBin, 'g++.exe')]);
+  const result = resolveNativeCommands({ env, platform: 'win32', exists, listDirectory: listing([winlibsName]) });
+  assert.deepEqual(result.resolved.gcc, { file: pathGcc, source: 'PATH' });
+  assert.equal(result.added.includes(winlibsBin), true, 'g++ still comes from the fallback');
+  assert.equal(result.resolved.powershell.source, 'fallback');
+});
+
+test('a tool missing from PATH and every fallback is named, and nothing is invented for it', () => {
+  const exists = present([join(powershellDir, 'powershell.exe')]);
+  const result = resolveNativeCommands({ env: gateEnv, platform: 'win32', exists, listDirectory: listing([]) });
+  assert.deepEqual(result.missing, ['gcc', 'g++']);
+  assert.equal(result.resolved.gcc, undefined);
+  assert.equal(result.resolved['g++'], undefined);
+  assert.deepEqual(result.added, [powershellDir]);
+});
+
+test('an unreadable WinGet package directory is recorded as a problem and does not throw', () => {
+  const exists = present([join(powershellDir, 'powershell.exe')]);
+  const listDirectory = () => { const error = new Error('denied'); error.code = 'EPERM'; throw error; };
+  const result = resolveNativeCommands({ env: gateEnv, platform: 'win32', exists, listDirectory });
+  assert.deepEqual(result.missing, ['gcc', 'g++']);
+  assert.match(result.problems.join('\n'), /EPERM/);
+});
+
+test('Windows fallback directories hold PowerShell and no WinLibs directory when no WinLibs package is installed', () => {
+  const { directories, problems } = nativeCommandFallbackDirectories({ env: gateEnv, platform: 'win32', listDirectory: listing(['Other.Package']) });
+  assert.deepEqual(directories, [powershellDir]);
+  assert.deepEqual(problems, []);
+});
+
+test('a missing SystemRoot or LOCALAPPDATA is reported, not guessed', () => {
+  const { directories, problems } = nativeCommandFallbackDirectories({ env: {}, platform: 'win32', listDirectory: listing([]) });
+  assert.deepEqual(directories, []);
+  assert.equal(problems.length, 2);
+  assert.match(problems[0], /SystemRoot/);
+  assert.match(problems[1], /LOCALAPPDATA/);
+});
+
+test('Windows environment names match case-insensitively, as a copied environment object keeps its original spelling', () => {
+  const copied = { Path: gateEnv.PATH, SYSTEMROOT: systemRoot, LocalAppData: localAppData };
+  const exists = present([join(powershellDir, 'powershell.exe'), join(winlibsBin, 'gcc.exe'), join(winlibsBin, 'g++.exe')]);
+  const result = resolveNativeCommands({ env: copied, platform: 'win32', exists, listDirectory: listing([winlibsName]) });
+  assert.deepEqual(result.missing, []);
+  assert.deepEqual(result.problems, []);
+  assert.deepEqual(result.resolved.powershell, { file: join(powershellDir, 'powershell.exe'), source: 'fallback' });
+  assert.equal(result.childPath, [...gateEnv.PATH.split(delimiter), ...result.added].join(delimiter));
+});
+
+test('Linux declares only the C compilers and searches no fallback directory', () => {
+  assert.deepEqual(requiredNativeCommands('linux'), ['gcc', 'g++']);
+  const exists = present([]);
+  const result = resolveNativeCommands({ env: { PATH: '/usr/bin' }, platform: 'linux', exists, listDirectory: () => { throw new Error('must not list on linux'); } });
+  assert.deepEqual(result.missing, ['gcc', 'g++']);
+  assert.deepEqual(result.added, []);
+  assert.equal(result.childPath, '/usr/bin');
+});
+
+test('Windows requires PowerShell as well as both compilers', () => {
+  assert.deepEqual(requiredNativeCommands('win32'), ['powershell', 'gcc', 'g++']);
+});
+
+test('a platform without declared rules fails with a named error', () => {
+  assert.throws(() => requiredNativeCommands('sunos'), NativeCommandPlatformError);
+  assert.throws(() => nativeCommandFallbackDirectories({ env: {}, platform: 'sunos', listDirectory: listing([]) }), NativeCommandPlatformError);
+});

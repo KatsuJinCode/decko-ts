@@ -1,0 +1,160 @@
+# mx-B-072: a checkbox pointer input can be checked and stored (the card shows the checked value)
+
+The roster row `mx-B-072-cover-b-create-pointer-inputs-` (surface "cover-b.
+create: pointer inputs (checkbox, select) (C16, C18)") reads "C16 a
+checkbox pointer input can be checked and stored (card shows the checked
+value)", verdict PASS, bucket DONE. The registry's ledger entry for the row
+($DECKO_COVERAGE_MATRIX,
+action ACT-072, check_ids ["B-072"], capability C16) records the
+live-acceptance-lane entry as unmeasured ("added to source after the last
+live run"), the native whole-harness entry as unmeasured ("present in
+harness source; no row under this name in the 2026-10-16 19:17Z native
+run (cover-b adaptation still pending per the debrief); no pass/fail
+inferred"), and a further native-local-bundle entry as pass (the
+search-form-profile probe of 2026-10-17T23-10-04, source b10c80da, note:
+"Existing checkbox Pointer form: actual choice, stored value, fresh
+rendered value; new-card creation is a separate action"). This receipt is
+the family's own adjudication of the row at this tip, where the whole
+exercise's named check for it exists and is graded.
+
+## What the row is
+
+A pointer card whose right's `*input type` rule says "checkbox" renders
+its options as checkboxes. A person checks one, submits, and the choice is
+stored on the card and shown on the card's own page. The row also covers
+the reverse: an unchecked choice disappears and stays gone.
+
+## The instrument
+
+The cover-b module's own check (tools/edge-signed-in-exercise/checks-cover-b.mjs:362-388):
+the fixture builder creates the option type, the option cards and the
+right's `*right+<content_options>` rule, then the `*input type` rule with
+the content "checkbox" (:341-360); the check opens the pointer's edit
+form (:367), reads the checkboxes the form offers (:368) and picks the
+one whose value names the second option (:369), CHECKS that box (:374),
+submits (:375), reads the stored row back out of the owned database
+(:376), visits the pointer's page (:377) and records PASS only when the
+write answered under 400 AND the stored content carries the chosen value
+AND the page shows it (:378-380). The same check then removes the choice
+again and rereads it (:381-387), recorded as the sibling check "a
+checkbox choice can be unchecked and removal persists on a fresh page".
+
+The check runs inside the whole exercise with no extra wiring: the module
+is one of the `checks-*.mjs` files the loader picks up
+(tools/edge-signed-in-exercise/lib/check-modules.mjs:36-37) and declares
+its capability ids, C16 among them
+(tools/edge-signed-in-exercise/checks-cover-b.mjs:1384-1387), with one
+runner-contract entry that runs the module's body (:1398-1403).
+
+## The oracle
+
+RUBY'S OWN CHECKBOX INPUT VIEW. The checkbox widget is Ruby's
+card-mod-list checkbox editor: the view is registered beside the other
+input views (card-mod-list-0.20.0/set/abstract/01_list/html_views.rb:56-58)
+and rendered by `checkbox_input` (:64-65), whose template is
+card-mod-list-0.20.0/set/abstract/01_list/html_views/checkbox_input.haml:1-8:
+the wrapper class is `pointer-checkbox-list` (:1), each option's element id
+is `pointer-checkbox-#{option_name.to_name.key}` (:3), the checked state
+comes from the card's own item names (:4), and the input is
+`check_box_tag "pointer_checkbox-#{unique_id}", option_name, checked,
+id: id, class: "pointer-checkbox-button ..."` (:6-7).
+
+RUBY'S OWN RULE SAYS CHECKBOX IS AN OFFERED INPUT TYPE. The input type
+right answers `supports_content_option_view?` for checkbox and radio
+(card-mod-edit-0.20.0/set/right/input_type.rb:39-41), and the list type
+offers the checkbox input among its content options
+(card-mod-edit-0.20.0/set/type/list.rb:1-3).
+
+RUBY'S OWN FEATURE IS THE BEHAVIOURAL SPECIFICATION. Ruby's own
+pointer-inputs feature carries the checkbox scenario
+(decko-0.20.0/features/pointer_inputs.feature:27-38): create the
+`friends+*right+*input type` rule with the content "checkbox" (:28), go to
+the pointer card (:29), check a value (:30), submit (:31), and the card
+shows the checked value (:32-33); then edit it (:34), uncheck it (:35),
+save and close (:36), and the card no longer shows it (:37-38). The
+harness's check is that scenario, driven through the port.
+
+THE PORT RENDERS THE SAME WIDGET. src/card/mod-loader/mods/card-mod-list.ts:626-646
+is the port's checkboxInputHtml: the wrapper is `<div
+class='pointer-checkbox-list'>`, each option's id is
+`pointer-checkbox-${key}` where key is the option name's key, the input is
+`<input type="checkbox" name="pointer_checkbox-${uniqueId}" id="${id}"
+value="${option}" class="pointer-checkbox-button ">` and the checked
+attribute rides the card's own item names, with the option's label beside
+it. The input type is dispatched from the card's `*input_type` rule
+(card-mod-list.ts:467-478, the checkbox arm at :474).
+
+## What is oracle-matched and what is not, stated plainly
+
+Oracle-matched: the widget's identity is the one Ruby's checkbox editor
+renders (the `pointer-checkbox-list` wrapper, the
+`pointer-checkbox-<key>` element id, the `pointer_checkbox-<unique id>`
+input name, the `pointer-checkbox-button` class, the checked state from
+the card's item names: Ruby checkbox_input.haml:1-8, the port
+card-mod-list.ts:626-646); the behaviour is the one Ruby's own feature
+specifies, including the uncheck arm (pointer_inputs.feature:27-38); and
+the choice is STORED and shown on the card's own page, which the check
+reads from the database and the rendered page (:376-380).
+
+NOT oracle-matched, and stated rather than glossed over: the fixture the
+check builds (the option type, the option cards, the `*right+
+<content_options>` rule and the `*input type` rule) is the harness's own,
+because Ruby's feature starts from its own fixture names; the registry's
+native entry for this row is still unmeasured, and its own note for the
+one native pass says "new-card creation is a separate action", so this
+receipt claims the port's behaviour on the local bundle and not the
+native engine's; and no live request was made by this lane.
+
+## The measurement at this tip
+
+    node tools/edge-signed-in-exercise.mjs \
+      --deck $DECKO_SOURCE_DECK \
+      --out .runtime/signed-in-exercise-round13-20261026/rows-r1/report.md
+
+    source acd0cd4cb24d3627981fa383619f5fea94731066, started
+    2026-10-26T06:31:53.510Z, completed 2026-10-26T06:59:33.454Z,
+    the source files clean
+    bundle 3dc9c9baebe05b9aa04935592cbb636de90cfc712da367c8008176f544678748
+    (the expected and the executed sha256), deck
+    6aebb6546a0620f3c61efad28cd01023e104d47ffd583272ce18036038f73b78
+    verdict: PASS
+
+The named check in this run:
+
+    C16 a checkbox pointer input can be checked and stored (card shows the checked value)
+        {"writeStatus":200,"stored":"Harness_CB_Pick_Two",
+         "checkboxes":[{"name":"pointer_checkbox-harness_cb_boxy-harness_cb_role-1",
+                        "value":"Harness_CB_Pick_One",
+                        "id":"pointer-checkbox-harness_cb_pick_one"},
+                       {"name":"pointer_checkbox-harness_cb_boxy-harness_cb_role-2",
+                        "value":"Harness_CB_Pick_Two",
+                        "id":"pointer-checkbox-harness_cb_pick_two"}],
+         "afterStatus":200,"showsPickTwo":true}
+
+and the removal arm of the same check:
+
+    a checkbox choice can be unchecked and removal persists on a fresh page
+        {"status":200,"stored":"","freshStatus":200,"removed":true}
+
+The element ids and input names in the evidence are the ones Ruby's
+checkbox editor renders (checkbox_input.haml:3, :6), read out of the port's
+own form.
+
+The run's capability coverage records capability C16 as covered with its
+check verified, and the run as a whole graded 251 of 253 checks passed.
+The two failures are E10 "a plain-input card can be edited and saved (the
+new content shows on the card)" (the write answered no status inside that
+attempt's window, while the card's own page answered 200 and showed the
+new content) and the page-time budget row "no signed-in page exceeded 3 s
+of server time" (three pages over the 3000 ms budget, each carrying a
+contention charge of 2745, 1582 and 912 ms of measured machine contention
+against 221, 1251 and 967 ms of the engine's own database CPU time).
+Neither failure is this row.
+
+## What this receipt does NOT claim
+
+- The row's port side is what the instrument grades, and it is green.
+  This receipt does not claim anything about the live deployment: no
+  live request was made by the lane, and nothing deploys.
+- The row's DONE condition in the roster is not changed by this
+  receipt; this receipt adds the family's own evidence for the row.

@@ -1,0 +1,358 @@
+/**
+ * The card a lookup ANSWERS, when more than one row could answer it: the
+ * native identity, and the index-proofness of that answer.
+ *
+ * THE NATIVE RULES (pinned Ruby, exact sources):
+ *
+ *  - A SIMPLE name is looked up by its FOLDED key. `Card::Lexicon.lex_query`
+ *    (card-1.110.0 lib/card/lexicon.rb:57-63) builds `{ key: lex.to_name.key }`
+ *    for a simple lex, and the key form is FOLDED: `Cardname#generate_key` /
+ *    `#simple_key` (cardname-1.110.0 lib/cardname.rb:101-116) runs
+ *    `decoded.underscore...`, so "Root" and "ROOT" both fold to "root". Native's
+ *    statement carries NO explicit COLLATE: `Card.where(key: ...)` compares with
+ *    the COLUMN's collation, which is the collation the deck's UNIQUE key index
+ *    is built on (card-1.110.0 db/schema.rb:81, `t.index ["key"], unique: true`)
+ *    - MySQL's `utf8mb3_unicode_ci` on the production reference, BINARY on the
+ *    SQLite deck the port serves beside. Either way the comparison is the one
+ *    the unique index serves, so AT MOST ONE row can carry a folded key, and
+ *    `Card.where(key: ...).pluck(:id).first` (lexicon.rb:125-133) is that row.
+ *
+ *  - A COMPOUND name is looked up by its PAIR: `lex_to_id` asks
+ *    `Card.where(left_id:, right_id:, trash: false).pluck(:id).first`
+ *    (lexicon.rb:125-133). The ORIGINAL schema has NO unique pair index
+ *    (schema.rb:82,85 - separate left_id and right_id indexes only), so a
+ *    pair CAN carry several live rows, and native answers the FIRST one.
+ *    On that schema every candidate plan returns the pair's rows in
+ *    (key, rowid) index order - i.e. ASCENDING ID - so the native answer is
+ *    the LOWEST live id of the pair. A trashed row of the same pair is not
+ *    an answer at all (the `trash: false` filter).
+ *
+ *  - The card cache is LAST-WRITE-WINS (`Card::Cache#write`, card-1.110.0
+ *    lib/card/cache.rb:55-60), and the lexicon's pair entry is too
+ *    (card-1.110.0 lib/card/lexicon.rb:83-86).
+ *
+ * THE PORT'S SHAPES (src/card/fetch/card-read-shapes.ts,
+ * src/card/render/wave-read-statements.ts) - now native-explicit:
+ *  - `CARD_ID_BY_KEY_SQL` compares the folded key with the column's own
+ *    collation. The served database is Ruby's deck (src/server/same-database.ts
+ *    opens the same file), and Ruby's key index is BINARY, so a deck MAY hold
+ *    both "root" and "ROOT" - and an explicit `COLLATE NOCASE` would match
+ *    both, with the winner decided by the query PLAN. The port's own DDL
+ *    (db/schema.sqlite.sql:68) carries a NOCASE-unique key index, so the
+ *    port's own test databases cannot reproduce that deck; the served Ruby
+ *    deck can.
+ *  - `CARD_ID_BY_JUNCTION_SQL` asks for the pair's LOWEST live id explicitly
+ *    (`ORDER BY id LIMIT 1`), the answer the index-ordered scan gives.
+ *  - The wave's batch selects the pair's answer row
+ *    (`rowsMatchingPointIdentity`), so the wave and the point lookup cannot answer
+ *    different cards for the same pair.
+ *
+ * ⇒ The answer does not depend on the plan. The corrections that preserve
+ * native identity are the explicit ones: the folded key compared by the
+ * column's own collation, and the lowest live id of a pair - never "whatever
+ * the plan returned first".
+ *
+ * WHAT IS NOT CLAIMED HERE: MySQL's and PostgreSQL's orderings for a pair
+ * are NOT executed and NOT asserted. Only the executed SQLite original schema
+ * is measured. The index configurations below are the ones that can change a
+ * plan: the serving path's NOCASE key index (src/server/same-database.ts:49),
+ * the pair index the r5 timeout needs (the root's transactional probe adds
+ * nonunique(left_id,right_id,trash)), and both together.
+ */
+
+import { describe, expect, it } from "vitest";
+import { FetchEngine } from "../../../src/card/fetch.js";
+import { composeCardRecord } from "../../../src/card/fetch/card-record.js";
+import {
+  CARD_ID_BY_JUNCTION_SQL,
+  CARD_ID_BY_KEY_SQL,
+  LIVE_CARD_ID_BY_KEY_FOLDED_SQL,
+} from "../../../src/card/fetch/card-read-shapes.js";
+import {
+  rowsMatchingPointIdentity,
+  waveJunctionStatement,
+  waveKeysStatement,
+} from "../../../src/card/render/wave-read-statements.js";
+import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
+import type { CardsRow } from "../../../src/server/schema.js";
+
+/**
+ * The ORIGINAL Ruby deck's cards table and indexes, transcribed from
+ * card-1.110.0 db/schema.rb:64-88. The point of this DDL is what it does
+ * NOT carry: there is no unique (left_id,right_id) index (schema.rb:82,85
+ * are separate single-column indexes) and the key index is UNIQUE and
+ * BINARY (schema.rb:81).
+ */
+const RUBY_CARDS_DDL = [
+  `CREATE TABLE cards (
+     id INTEGER PRIMARY KEY,
+     name TEXT,
+     "key" TEXT,
+     codename TEXT,
+     left_id INTEGER,
+     right_id INTEGER,
+     created_at TEXT NOT NULL,
+     updated_at TEXT NOT NULL,
+     creator_id INTEGER NOT NULL,
+     updater_id INTEGER NOT NULL,
+     read_rule_class TEXT,
+     read_rule_id INTEGER,
+     trash INTEGER NOT NULL,
+     type_id INTEGER NOT NULL,
+     db_content TEXT
+   )`,
+  `CREATE INDEX "cards_codename_index" ON "cards" ("codename")`,
+  `CREATE INDEX "cards_created_at_index" ON "cards" ("created_at")`,
+  `CREATE UNIQUE INDEX "cards_key_index" ON "cards" ("key")`,
+  `CREATE INDEX "cards_left_id_index" ON "cards" ("left_id")`,
+  `CREATE INDEX "cards_name_index" ON "cards" ("name")`,
+  `CREATE INDEX "cards_read_rule_id_index" ON "cards" ("read_rule_id")`,
+  `CREATE INDEX "cards_right_id_index" ON "cards" ("right_id")`,
+  `CREATE INDEX "cards_type_id_index" ON "cards" ("type_id")`,
+  `CREATE INDEX "cards_updated_at_index" ON "cards" ("updated_at")`,
+];
+
+/** The index the serving path adds (src/server/same-database.ts:49). */
+const D839_NOCASE_INDEX =
+  `CREATE INDEX IF NOT EXISTS "cards_key_nocase_trash_index" ON "cards" ("key" COLLATE NOCASE, "trash")`;
+
+/**
+ * The pair index the r5 timeout needs (the root's transactional probe adds
+ * nonunique(left_id,right_id,trash) and all 93 pending statements complete).
+ * It is here to show that the answer must not depend on it.
+ */
+const PAIR_INDEX =
+  `CREATE INDEX IF NOT EXISTS "cards_pair_probe_index" ON "cards" ("left_id", "right_id", "trash")`;
+
+interface Seed {
+  id: number;
+  name: string | null;
+  key: string | null;
+  leftId: number | null;
+  rightId: number | null;
+  trash?: number;
+}
+
+/**
+ * EXACT SYNTHETIC ROWS.
+ *
+ * The simple cards carry FOLDED keys, as native writes them. The pair
+ * (20,30) carries TWO live rows - 400 and 500 - which the original schema
+ * allows (no unique pair index) and which native answers with the LOWEST
+ * live id, 400. The pair (20,40) carries one live row (700) and one TRASHED
+ * row (600): native's `trash: false` filter means the live row is the
+ * answer.
+ */
+const SEEDS: readonly Seed[] = [
+  { id: 1, name: "Decko Bot", key: "decko_bot", leftId: null, rightId: null },
+  { id: 20, name: "Root", key: "root", leftId: null, rightId: null },
+  { id: 30, name: "Field", key: "field", leftId: null, rightId: null },
+  { id: 40, name: "Tail", key: "tail", leftId: null, rightId: null },
+  { id: 400, name: null, key: null, leftId: 20, rightId: 30 },
+  { id: 500, name: null, key: null, leftId: 20, rightId: 30 },
+  { id: 600, name: null, key: null, leftId: 20, rightId: 40, trash: 1 },
+  { id: 700, name: null, key: null, leftId: 20, rightId: 40 },
+];
+
+async function seedDeck(extraIndexes: readonly string[] = []): Promise<LocalSqliteDriver> {
+  const driver = new LocalSqliteDriver({ path: ":memory:" });
+  for (const statement of RUBY_CARDS_DDL) await driver.query(statement, []);
+  for (const statement of extraIndexes) await driver.query(statement, []);
+  for (const seed of SEEDS) {
+    await driver.query(
+      `INSERT INTO cards (id, name, "key", codename, left_id, right_id, created_at, updated_at,
+        creator_id, updater_id, trash, type_id, db_content)
+       VALUES (?, ?, ?, NULL, ?, ?, '2026-01-01', '2026-01-01', 1, 1, ?, 2, ?)`,
+      [
+        seed.id,
+        seed.name,
+        seed.key,
+        seed.leftId,
+        seed.rightId,
+        seed.trash ?? 0,
+        `row-${seed.id}`,
+      ],
+    );
+  }
+  return driver;
+}
+
+/** The row the deck that holds BOTH "root" and "ROOT" carries: Ruby's BINARY
+ *  unique key index permits it (schema.rb:81) and MySQL's utf8mb3_unicode_ci
+ *  would not. The row's id is LOWER than the "root" row's, so a comparison
+ *  that is not the folded key's would answer it. */
+const DRIFTED_ROW_ID = 5;
+
+async function insertDriftedKeyRow(driver: LocalSqliteDriver): Promise<void> {
+  await driver.query(
+    `INSERT INTO cards (id, name, "key", codename, left_id, right_id, created_at, updated_at,
+      creator_id, updater_id, trash, type_id, db_content)
+     VALUES (?, 'ROOT', 'ROOT', NULL, NULL, NULL, '2026-01-01', '2026-01-01', 1, 1, 0, 2, 'row-5')`,
+    [DRIFTED_ROW_ID],
+  );
+}
+
+/**
+ * The card the wave leaves in the cache for a pair.
+ *
+ * This component control uses production SQL and identity admission, then
+ * composes/cache-writes its answer. Actual RenderEngine branch coverage lives
+ * in wave-native-identity-integration.test.ts; this is not that execution.
+ */
+async function waveCachedAnswer(
+  driver: LocalSqliteDriver,
+): Promise<{ order: number[]; seated: number[]; answered: number | undefined }> {
+  const statement = waveJunctionStatement(["root"], ["field"]);
+  const wave = await driver.query<CardsRow>(statement.sql, statement.params);
+  const order = wave.rows.map((row) => row.id);
+  // The wave's per-pair selection: the pair's answer row only.
+  const answerIds = new Set((await rowsMatchingPointIdentity(driver, wave.rows)).map(row => row.id));
+  const seated = wave.rows.filter((row) => answerIds.has(row.id)).map((row) => row.id);
+  const engine = new FetchEngine(driver);
+  engine.installNameEnvironment();
+  for (const row of wave.rows) {
+    if (!answerIds.has(row.id)) continue;
+    const record = await composeCardRecord(row, engine.lexicon);
+    if (record.name === undefined) continue;
+    if (row.left_id !== null && row.left_id !== undefined && row.right_id !== null && row.right_id !== undefined) {
+      engine.lexicon.write(record.id as number, record.name as never, [row.left_id, row.right_id]);
+    }
+    engine.writeToCache(record);
+  }
+  const answered = (await engine.fetchByName("Root+Field"))?.id;
+  return { order, seated, answered };
+}
+
+describe("native identity for a lookup that can match more than one row", () => {
+  it("a pair with two live rows answers the LOWEST live id (native: pluck(:id).first over the index-ordered scan)", async () => {
+    const driver = await seedDeck();
+    try {
+      const rows = await driver.query<CardsRow>(CARD_ID_BY_JUNCTION_SQL, [20, 30]);
+      expect(rows.rows.map((row) => row.id)).toEqual([400]);
+    } finally {
+      driver.close();
+    }
+  });
+
+  it("the pair's answer does not depend on the pair index the r5 timeout needs", async () => {
+    const withIndex = await seedDeck([PAIR_INDEX]);
+    try {
+      const rows = await withIndex.query<CardsRow>(CARD_ID_BY_JUNCTION_SQL, [20, 30]);
+      expect(rows.rows.map((row) => row.id)).toEqual([400]);
+    } finally {
+      withIndex.close();
+    }
+  });
+
+  it("a trashed row of the pair is not an answer (native's trash: false filter)", async () => {
+    const driver = await seedDeck();
+    try {
+      const rows = await driver.query<CardsRow>(CARD_ID_BY_JUNCTION_SQL, [20, 40]);
+      expect(rows.rows.map((row) => row.id)).toEqual([700]);
+    } finally {
+      driver.close();
+    }
+  });
+
+  it("the wave leaves the pair's native card in the cache, and agrees with the point lookup", async () => {
+    // The wave's batch returns BOTH live rows of the pair (the original schema
+    // has no unique pair index), and they compose to the same name. The wave
+    // seats the pair's answer row - the point lookup's row - so the card the
+    // name answers is the deck's, not the batch's.
+    const driver = await seedDeck();
+    try {
+      const pointLookup = await driver.query<CardsRow>(CARD_ID_BY_JUNCTION_SQL, [20, 30]);
+      const { order, seated, answered } = await waveCachedAnswer(driver);
+      expect(order.length).toBeGreaterThan(1);
+      expect(seated).toEqual([pointLookup.rows[0]?.id]);
+      expect(answered).toBe(400);
+    } finally {
+      driver.close();
+    }
+  });
+
+  it("the wave's answer does not depend on the serving-path NOCASE index", async () => {
+    const bare = await seedDeck();
+    const indexed = await seedDeck([D839_NOCASE_INDEX]);
+    try {
+      const withoutIndex = await waveCachedAnswer(bare);
+      const withIndex = await waveCachedAnswer(indexed);
+      expect(withIndex.answered).toBe(withoutIndex.answered);
+      expect(withIndex.answered).toBe(400);
+    } finally {
+      bare.close();
+      indexed.close();
+    }
+  });
+
+  it("a simple name answers the row whose key IS the folded key, and no index reorders it", async () => {
+    // A deck that holds BOTH "root" and "ROOT" - which Ruby's BINARY unique
+    // key index permits (schema.rb:81) and MySQL's utf8mb3_unicode_ci would
+    // not. Native compares the FOLDED key, so the answer is the "root" row
+    // (id 20) even though the "ROOT" row has the LOWER id: native never
+    // answers a row whose key is not the folded key.
+    const rowsFor = async (driver: LocalSqliteDriver): Promise<number[]> => {
+      await insertDriftedKeyRow(driver);
+      const result = await driver.query<CardsRow>(CARD_ID_BY_KEY_SQL, ["root"]);
+      return result.rows.map((row) => row.id);
+    };
+    const bare = await seedDeck();
+    const indexed = await seedDeck([D839_NOCASE_INDEX]);
+    try {
+      const withoutIndex = await rowsFor(bare);
+      const withIndex = await rowsFor(indexed);
+      expect(withoutIndex).toEqual([20]);
+      expect(withIndex).toEqual(withoutIndex);
+    } finally {
+      bare.close();
+      indexed.close();
+    }
+  });
+
+  it("the Lexicon's identity read answers the row whose key IS the folded key", async () => {
+    // The Lexicon's own read (lib/card/lexicon.rb:57-63, 125-133), through the
+    // port's engine. Native looks a name up by its FOLDED key, so "Root" and
+    // "ROOT" are the SAME lookup and both answer the "root" row - the drifted
+    // row, whose stored key is not the folded key, answers nothing.
+    const driver = await seedDeck();
+    try {
+      await insertDriftedKeyRow(driver);
+      const engine = new FetchEngine(driver);
+      engine.installNameEnvironment();
+      expect(await engine.lexicon.id("Root")).toBe(20);
+      expect(await engine.lexicon.id("ROOT")).toBe(20);
+    } finally {
+      driver.close();
+    }
+  });
+
+  it("the wave's simple-name read answers the row whose key IS the folded key", async () => {
+    const driver = await seedDeck();
+    try {
+      await insertDriftedKeyRow(driver);
+      const statement = waveKeysStatement(["root"]);
+      const rows = await driver.query<CardsRow>(statement.sql, statement.params);
+      expect(rows.rows.map((row) => row.id)).toEqual([20]);
+    } finally {
+      driver.close();
+    }
+  });
+
+  it("the uniqueness guard still sees a drifted stored key (the port's own protection)", async () => {
+    // The guard is not an identity read: a name whose computed key differs
+    // from a stored key only by case is still TAKEN, so the guard keeps a
+    // folded read of its own (LIVE_CARD_ID_BY_KEY_FOLDED_SQL). Native's guard
+    // calls the identity read, and native's comparison is the column's
+    // collation - MySQL's utf8mb3_unicode_ci column matches the drifted key,
+    // the BINARY SQLite deck does not. The port keeps the guard strict on
+    // every driver.
+    const driver = await seedDeck();
+    try {
+      await insertDriftedKeyRow(driver);
+      const guard = await driver.query<CardsRow>(LIVE_CARD_ID_BY_KEY_FOLDED_SQL, ["root"]);
+      expect(guard.rows.map((row) => row.id)).toEqual([DRIFTED_ROW_ID]);
+    } finally {
+      driver.close();
+    }
+  });
+});

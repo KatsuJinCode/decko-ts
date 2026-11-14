@@ -1,0 +1,126 @@
+// Decides which test files run in a fresh process of their own (the
+// "isolated" Vitest project, `isolate: true`) and which share a worker process
+// with other files (the "shared-process" project, `isolate: false`); both
+// projects are declared in vitest.config.ts.
+//
+// Sharing a worker process skips the per-file cost of a new process: starting
+// Node, Vitest's runtime and every package from node_modules. A shared file
+// still gets fresh copies of the project's own modules
+// (tests/support/fresh-modules-per-file-setup.ts), so module-level state never
+// crosses files. Process-wide state cannot be reset that way, so a file that
+// changes it runs isolated. The file's own text decides, through
+// PROCESS_STATE_PATTERNS: a new test file that mocks a module or sets an
+// environment variable is routed to the isolated project with no list to
+// update. A file that leaks in a way no pattern can see is named in
+// ISOLATED_BY_OBSERVATION with the reason.
+import { readdirSync, readFileSync } from "node:fs";
+import { join, relative, sep } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
+
+// Vitest's default test-file name pattern, **/*.{test,spec}.?(c|m)[jt]s?(x).
+const TEST_FILE_NAME = /\.(?:test|spec)\.[cm]?[jt]sx?$/;
+
+// Directories that never hold a collected suite (vitest.config.ts excludes
+// them), skipped so the scan reads only what Vitest could collect.
+const SKIPPED_DIRECTORIES = new Set(["node_modules", ".git", "dist", "tmp", ".runtime", ".test-results"]);
+
+const ASSIGN = String.raw`\s*(?:=(?!=)|\?\?=|\|\|=|&&=)`;
+
+export const PROCESS_STATE_PATTERNS = [
+  {
+    reason: "replaces a module with vi.mock (the mock registry is shared by every file in a worker process)",
+    pattern: /\bvi\.(?:mock|doMock|unmock|doUnmock)\s*\(/,
+  },
+  {
+    reason: "changes process.env",
+    pattern: new RegExp(String.raw`process\.env(?:\.[A-Za-z_$][\w$]*|\[[^\]]+\])` + ASSIGN
+      + String.raw`|delete\s+process\.env\b|process\.env` + ASSIGN + String.raw`|Object\.assign\(\s*process\.env\b`),
+  },
+  {
+    reason: "assigns or deletes a global",
+    pattern: new RegExp(String.raw`\b(?:globalThis|global|window)(?:\.[A-Za-z_$][\w$]*|\[[^\]]+\])` + ASSIGN
+      + String.raw`|delete\s+(?:globalThis|global|window)\b|Object\.(?:defineProperty|defineProperties|assign)\(\s*(?:globalThis|global|window)\b`),
+  },
+  {
+    reason: "patches a built-in prototype or static",
+    pattern: new RegExp(String.raw`\.prototype\.[A-Za-z_$][\w$]*` + ASSIGN
+      + String.raw`|Object\.defineProperty\(\s*[A-Za-z_$][\w$.]*\.prototype\b`
+      + String.raw`|\b(?:Date\.now|Math\.random|Error\.prepareStackTrace|Error\.stackTraceLimit|console\.[a-z]+|process\.(?:stdout|stderr)\.write|process\.exitCode|process\.emitWarning)` + ASSIGN),
+  },
+  {
+    reason: "uses fake timers or a fake system clock",
+    pattern: /\bvi\.(?:useFakeTimers|setSystemTime)\s*\(/,
+  },
+  {
+    reason: "changes the process's directory, umask or listeners",
+    pattern: /\bprocess\.(?:chdir|umask|setMaxListeners|on|once|addListener|prependListener|prependOnceListener|removeAllListeners|setUncaughtExceptionCaptureCallback)\s*\(|\bsetGlobalDispatcher\s*\(/,
+  },
+  {
+    reason: "stubs a global or an environment variable without vi.unstubAllGlobals/vi.unstubAllEnvs",
+    pattern: /\bvi\.(?:stubGlobal|stubEnv)\s*\(/,
+    unless: /\bvi\.unstubAll(?:Globals|Envs)\s*\(/,
+  },
+];
+
+// Files that leak in a way no pattern above can see, each with its reason.
+export const ISOLATED_BY_OBSERVATION = new Map([
+]);
+
+function listTestFiles(root) {
+  const files = [];
+  const walk = directory => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        if (!SKIPPED_DIRECTORIES.has(entry.name)) walk(join(directory, entry.name));
+      } else if (entry.isFile() && TEST_FILE_NAME.test(entry.name)) {
+        files.push(relative(root, join(directory, entry.name)).split(sep).join("/"));
+      }
+    }
+  };
+  walk(root);
+  return files.sort();
+}
+
+// The reasons a test file's text gives for running in a process of its own.
+export function processStateReasons(source) {
+  return PROCESS_STATE_PATTERNS
+    .filter(({ pattern, unless }) => pattern.test(source) && !(unless && unless.test(source)))
+    .map(({ reason }) => reason);
+}
+
+// Globs that match exactly these file paths, for a Vitest exclude list. The
+// paths are joined into brace alternations ("{a,b,c}") rather than given one
+// glob each: Vitest's file search tests every path against every exclude glob,
+// and a thousand separate globs cost about two seconds on every run, against a
+// few milliseconds for a handful of alternations. Each alternation stays well
+// under picomatch's 64 KiB pattern limit.
+export function globsMatchingExactly(files, maxPatternLength = 16_000) {
+  const escaped = files.map(file => file.replace(/[\\()[\]{}!*?+@,]/g, "\\$&"));
+  const groups = [];
+  let group = [];
+  let length = 0;
+  for (const path of escaped) {
+    if (group.length && length + path.length + 1 > maxPatternLength) { groups.push(group); group = []; length = 0; }
+    group.push(path);
+    length += path.length + 1;
+  }
+  if (group.length) groups.push(group);
+  return groups.map(paths => paths.length === 1 ? paths[0] : `{${paths.join(",")}}`);
+}
+
+// Splits every test file under the root: `isolated` maps each file that must
+// run in a process of its own to its reasons; `shared` lists the rest.
+export function splitTestFilesByIsolation(root = REPO_ROOT) {
+  const isolated = new Map();
+  const shared = [];
+  for (const file of listTestFiles(root)) {
+    const reasons = processStateReasons(readFileSync(join(root, file), "utf8"));
+    const observed = ISOLATED_BY_OBSERVATION.get(file);
+    if (observed) reasons.push(observed);
+    if (reasons.length) isolated.set(file, reasons);
+    else shared.push(file);
+  }
+  return { isolated, shared };
+}

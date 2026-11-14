@@ -1,0 +1,106 @@
+# Notification unsubscribe links: an earlier comparison failure and its correction
+
+This document records a comparison failure found in earlier versions of the
+port, the correction made for it, and the latest comparison result. The
+reference runtime is Ruby 3.2.3 on the project's Linux VM (Decko 0.20.0 /
+card 1.110.0), and the fixture's committed recorded Ruby outputs for
+synthetic-v1 were captured there on 2026-11-03. The earlier failure and the
+first two passing results below were graded against the recording those
+outputs replaced, a 2026-10-08 capture taken on Windows with Ruby 3.3.12; the
+two differ only in class-token order (rule N3) and random slot ids (rule N1).
+The exact source of this package is named by sourceCommit and
+engineCommit in HANDOVER-MANIFEST.json, which is generated at export. The
+results below describe their named development snapshots, not an automatic
+grade of a combined source or exported artifact.
+
+## Latest result
+
+The current recorded SQLite synthetic-v1 comparison passes rendering
+1754/1754, semantics 2389/2389, persistence 16/16 and side effects 19/19 on
+the source snapshot listed in EVIDENCE.md. The native MySQL main-fixture
+comparison also passes all four categories against a fresh stock Ruby 3.2.3
+reference capture. These results retain the notification-link correction.
+The renamed synthetic-v2 comparison now passes too: its 24 previously
+differing email-page answers reproduce Ruby's actual missing-codename errors;
+they are not 24 remaining mismatches.
+
+The complete mod-write probe still fails on persistence, side effects and
+other-table changes. That separate work requires fixes before full mod-write
+compatibility or release readiness is claimed; the corrected notification
+links and passing main fixture do not close it. Current source/runtime/fixture
+records and failure counts are in [EVIDENCE.md](EVIDENCE.md).
+
+### Historical passing checks
+
+On 2026-11-02 an earlier development tree passed the complete synthetic-v1
+comparison: rendering 1754 / 1754, semantics 2389 / 2389, persistence 16 / 16
+and side effects 19 / 19, with read writes 8 / 8 and normalization N1/N2/N3.
+On that tree the notification unsubscribe links matched the recorded Ruby
+bytes. On 2026-11-03 a later development tree passed the same comparison
+with the same tallies. Later on 2026-11-03, after the recapture, a
+development tree passed the comparison against the Ruby 3.2.3 capture with
+the same tallies, including the notification unsubscribe links. Each of
+these compares the port with recorded Ruby output for the fixture; none is a
+fresh Ruby run or acceptance of the whole port.
+Separately, with the five `DECKO_STRICT_PARITY_*` switches at their defaults,
+and the test settings the harness's port launcher applies (listed in
+EVIDENCE.md), an earlier development tree matched a live Ruby 3.2.3 reference
+on 51 of 51 browser journeys, signed-in and anonymous. The measured source tree, configuration, date, reference and
+summary output for both results are in [EVIDENCE.md](EVIDENCE.md).
+
+## The earlier failure
+
+An earlier exported version of the port failed the synthetic-v1 comparison
+on seven side-effect answers. The runner and grader ran on
+Windows x64 with Node v24.22.1 and npm 11.19.1, after the locked dependencies
+were installed offline with install scripts disabled and the package was
+built. No retry was used, and no live service or real deployed deck was
+contacted. Dependency packages came from the npm cache;
+the test answers themselves were executed, not cached.
+
+That run's tallies: rendering 1754 pass, 0 fail; semantics 2389 pass, 0 fail;
+persistence 16 pass, 0 fail; side effects 12 pass, 7 fail. The grader also
+reported 8 of 8 read-write checks and 12 of 12 other-table write checks
+passing. Normalization was N1, N2 and N3. Scenario render and ask answers
+overlap the category totals, so the categories must not be summed into one
+coverage number. The grade exited with status 1.
+
+All seven failing answers differed at the same place. The port built an
+unsubscribe link ending in `&success%5Bredirect%5D=soft`; the recorded Ruby
+answer ends before that suffix. The grader neither declared nor masked the
+difference.
+
+Affected steps:
+
+- create-topic-with-fields-as-admin#1
+- update-content-adds-link#1
+- rename-referenced-tag#1
+- delete-note#1
+- delete-topic-with-fields#1
+- create-compound-on-new-left#1
+- update-then-render#1
+
+A later version was checked the same way from a source-only package, using an
+already installed dependency tree with nothing downloaded or installed. Its
+build, a card render, the local health and Home pages, and an orderly shutdown
+all passed. The grader refused a full grade because it requires an exact
+Git commit, which the source-only run did not supply, so it was run in its
+diagnostic mode, with checker format decko-byte-checker/1. It reported the same category counts and the
+same seven link mismatches, with the verdict diagnostic-fail. No expectation,
+strict setting or engine behaviour was changed to hide them. A diagnostic run
+is not a full grade.
+
+## The correction
+
+The seven differences were the port's own success-envelope suffix on the
+unsubscribe link, and nothing else. The reference's view posts no success
+envelope, so the port now posts none either, and the link carries the
+reference's bytes in every configuration (src/card/notify/follow-mail-views.ts).
+
+A targeted test replays the seven affected steps on the synthetic-v1 deck and
+compares the mail the engine sends, byte for byte, with the recorded Ruby
+answer. The redistributable test is included at
+`tests/card/notify/notification-unfollow-link-parity.test.ts`. All seven failed
+before the change with exactly the suffix above, and all seven passed after
+it. That test checks those seven answers only; the whole-fixture results are
+the comparisons under "Latest result".

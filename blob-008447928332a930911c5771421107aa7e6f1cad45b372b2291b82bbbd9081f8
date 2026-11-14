@@ -1,0 +1,107 @@
+// no-external-project-paths.test.mjs - this repository stands on its own.
+//
+// WHAT THIS GUARDS. No tracked file may name another project's folder on a
+// developer machine: neither the unrelated project whose working folder some
+// tools once read secrets, credentials and data from, nor any other
+// C:\localProjects\<project> folder. A tool that needs an outside file takes
+// its location from a named environment variable with no default
+// (tools/required-environment-path.mjs), so a fresh checkout never reaches
+// into someone else's project.
+//
+// WHAT COUNTS. Two shapes, matched case-insensitively in every tracked text
+// file that git can read:
+//   - the other project's name (brandon + dojo + tech, with or without
+//     separators) or its dashboard's name;
+//   - a path segment `localProjects/<name>` or `localProjects\<name>` whose
+//     <name> is not a Decko folder. Folders whose name starts with "decko"
+//     (this repository's own checkouts and the Ruby reference it is measured
+//     against) belong to this project and are not counted.
+//
+// THE EXCEPTIONS are listed below by file, each with its reason: the scanners
+// whose job is to find the name. An exception that no longer contains a match
+// fails the test, so the list cannot outlive its reason.
+
+import test from "node:test";
+import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+
+const repo = fileURLToPath(new URL("../..", import.meta.url));
+
+// Scanner inputs carry a '^' break so this source never holds the other
+// project's name or a machine path itself; unmask() restores the exact value.
+const unmask = (text) => text.replaceAll("^", "");
+
+const PROJECT_NAME = new RegExp(unmask("bran^don[-_ ]?dojo[-_ ]?tech|bran^don-dashboard"), "i");
+const FOLDER = /localprojects[\\/]+([A-Za-z0-9_.-]+)/gi;
+const OWN_PROJECT_FOLDER = /^decko/i;
+
+// Files whose purpose is to find or replace the name, so they must spell it.
+const SCANNERS_THAT_NAME_THE_PATTERN = [
+  "tests/tools/no-external-project-paths.test.mjs",
+  "tools/hygiene/genericize-source-identity.mjs",
+  "tools/hygiene/scan-secrets-and-leaks.mjs",
+];
+
+const EXCEPTIONS = new Set(SCANNERS_THAT_NAME_THE_PATTERN);
+
+/** The reasons one line of text is refused, or an empty list. */
+export function refusalsInLine(text) {
+  const refusals = [];
+  if (PROJECT_NAME.test(text)) refusals.push("names the other project");
+  for (const match of text.matchAll(FOLDER)) {
+    if (!OWN_PROJECT_FOLDER.test(match[1])) refusals.push(`names the folder localProjects/${match[1]}`);
+  }
+  return refusals;
+}
+
+/** Every tracked file line git grep finds for either shape, as {file, line, text}. */
+function candidateLines() {
+  const result = spawnSync(
+    "git",
+    ["grep", "-z", "-n", "-I", "-i", "-E", unmask("bran^don[-_ ]?dojo[-_ ]?tech|bran^don-dashboard|localprojects[\\\\/]+")],
+    { cwd: repo, encoding: "utf8", windowsHide: true, maxBuffer: Infinity, timeout: 120_000 },
+  );
+  if (result.error) throw new Error(`git grep could not run: ${result.error.message}`);
+  // git grep exits 1 when nothing matches; anything else is a failure to search.
+  if (result.status === 1) return [];
+  if (result.status !== 0) throw new Error(`git grep failed with status ${result.status}: ${result.stderr}`);
+  const rows = [];
+  for (const record of result.stdout.split("\n")) {
+    if (record === "") continue;
+    const [file, line, ...rest] = record.split("\0");
+    if (file === undefined || line === undefined || rest.length === 0) {
+      throw new Error(`unreadable git grep record: ${JSON.stringify(record.slice(0, 200))}`);
+    }
+    rows.push({ file, line: Number(line), text: rest.join("\0") });
+  }
+  return rows;
+}
+
+test("the detector refuses the other project's folders and accepts this project's own", () => {
+  assert.deepEqual(refusalsInLine(unmask("const S = 'C^:/localProjects/decko-ts-turn-on-editing/tmp/x.sqlite3';")), []);
+  assert.deepEqual(refusalsInLine(unmask("C^:\\\\localProjects\\\\decko-ruby-oracle-gems\\\\ruby")), []);
+  assert.deepEqual(refusalsInLine("no path here"), []);
+  assert.ok(refusalsInLine(unmask("C^:/localProjects/bran^donDojoTech/library/data/secrets.env")).length > 0);
+  assert.ok(refusalsInLine(unmask('"path": "C^:\\\\localProjects\\\\bran^donDojoTech\\\\recovery"')).length > 0);
+  assert.ok(refusalsInLine(unmask("see the bran^don-dashboard deploy")).length > 0);
+  assert.ok(refusalsInLine(unmask("python -I C^:/localProjects/disk^Steward/agent/create_worktree.py")).length > 0);
+  assert.ok(refusalsInLine("/mnt/c/localProjects/juc-relay/tools/x.mjs").length > 0);
+});
+
+test("no tracked file outside the listed exceptions names another project's folder", () => {
+  const offenders = [];
+  const exceptionsWithMatches = new Set();
+  for (const { file, line, text } of candidateLines()) {
+    const refusals = refusalsInLine(text);
+    if (refusals.length === 0) continue;
+    if (EXCEPTIONS.has(file)) {
+      exceptionsWithMatches.add(file);
+      continue;
+    }
+    offenders.push(`${file}:${line}: ${refusals.join("; ")}`);
+  }
+  assert.deepEqual(offenders, [], `files name another project's folder; take the location from an environment variable instead:\n${offenders.join("\n")}`);
+  const stale = [...EXCEPTIONS].filter((file) => !exceptionsWithMatches.has(file));
+  assert.deepEqual(stale, [], `these exceptions no longer contain a match; remove them from the list:\n${stale.join("\n")}`);
+});

@@ -1,0 +1,23 @@
+import { lstatSync, realpathSync, unlinkSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import path from 'node:path';
+
+export function unlinkDirectoryLink(link, target) {
+  if (!path.isAbsolute(link) || !path.isAbsolute(target)) throw Error('DirectoryLinkNeedsAbsolutePaths');
+  // Windows cmd treats forward-slash path segments as option switches.
+  link = path.resolve(link);
+  target = path.resolve(target);
+  const same = (left, right) => path.relative(left, right) === '';
+  if (!lstatSync(link).isSymbolicLink() || !same(realpathSync(link), realpathSync(target))) {
+    throw Error('DirectoryLinkOwnershipChanged: ' + link);
+  }
+  if (process.platform === 'win32') {
+    if (/[&|<>^%!"\r\n]/.test(link)) throw Error('DirectoryLinkUnsafeWindowsPath: ' + link);
+    const result = spawnSync('cmd.exe', ['/d', '/c', 'rmdir', link], { windowsHide: true, encoding: 'utf8' });
+    if (result.error || result.status !== 0) throw Error('DirectoryLinkUnlinkFailed: ' + (result.error?.message ?? result.stderr));
+  } else if (process.platform === 'linux') unlinkSync(link);
+  else throw Error('DirectoryLinkUnsupportedPlatform: ' + process.platform);
+  try { lstatSync(link); }
+  catch (error) { if (error.code === 'ENOENT') return; throw error; }
+  throw Error('DirectoryLinkStillPresent: ' + link);
+}

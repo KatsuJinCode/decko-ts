@@ -1,0 +1,151 @@
+"""Fault the actual producer tail; no app, remote host or deletion runs."""
+import ast
+import base64
+import binascii
+import errno
+import hashlib
+import io
+import json
+import pathlib
+import types
+import unittest
+
+SOURCE = pathlib.Path(__file__).resolve().parents[2] / 'tools/same-database/platform/ruby-comparison-linux.py'
+
+
+class SpoolCustody(unittest.TestCase):
+    def exercise(self, fault=None, complete=True, responses=None, child_exit=0):
+        tree = ast.parse(SOURCE.read_text())
+        position = next(i for i, node in enumerate(tree.body) if isinstance(node, ast.Try))
+        producer = tree.body[position]
+        if responses is None:
+            body = producer.finalbody
+        else:
+            qualification = next(node for node in producer.body if isinstance(node, ast.If))
+            definitions = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'complete_response_evidence']
+            body = definitions + [ast.Try(body=[qualification], handlers=producer.handlers, orelse=[], finalbody=producer.finalbody)]
+        tail = ast.Module(body=body + tree.body[position + 1:], type_ignores=[])
+        events = []
+
+        class Root:
+            removed = False
+            def rglob(self, _): return []
+            def exists(self): return not self.removed
+            def __truediv__(self, _): return types.SimpleNamespace(exists=lambda: True, read_text=lambda **kwargs: json.dumps({'responses': responses}))
+        root = Root()
+
+        class Output(io.StringIO):
+            def write(self, value):
+                if fault == 'write': raise OSError(errno.ENOSPC, 'controlled write refusal')
+                if fault == 'short-write': return 0
+                return super().write(value)
+            def flush(self): events.append('flush')
+            def fileno(self): return 11
+            def __exit__(self, *args): return False
+
+        output = Output()
+        class Spool:
+            parent = 'owned-result-parent'
+            def open(self, *args, **kwargs):
+                events.append('open')
+                if fault in ('open', 'exists', 'access'):
+                    code = {'exists': errno.EEXIST, 'access': errno.EACCES}.get(fault, errno.ENOSPC)
+                    raise OSError(code, 'controlled open refusal')
+                return output
+            def read_bytes(self):
+                events.append('verify-read')
+                if fault == 'read': raise OSError(errno.EIO, 'controlled read refusal')
+                value = output.getvalue().encode()
+                if fault == 'type-corrupt':
+                    return value.replace(b'"originalEvidenceComplete": true', b'"originalEvidenceComplete": 1')
+                return b'{}' if fault == 'corrupt' else value
+            def __str__(self): return 'owned-result.json'
+
+        def sync(fd):
+            events.append('sync-file' if fd == 11 else 'sync-parent')
+            if fault == 'sync' or (fault == 'parent-sync' and fd == 12):
+                raise OSError(errno.ENOSPC, 'controlled sync refusal')
+
+        def retire(_):
+            events.append('retire-original')
+            root.removed = True
+
+        record = {'capture': {'responses': ['complete owned result']}, 'originalEvidenceComplete': complete if responses is None else False, 'processEnded': True, 'exit': child_exit}
+        if fault == 'serialize': record['unserializable'] = object()
+        scope = {'root': root, 'record': record, 'shutil': types.SimpleNamespace(rmtree=retire),
+                 'result_file': Spool(), 'json': json, 'hashlib': hashlib, 'base64': base64, 'binascii': binascii, 'run_id': 'owned-run',
+                 'result': types.SimpleNamespace(returncode=child_exit), 'payload': {'plan': {'requests': [{'id': 'owned'}]}},
+                 'os': types.SimpleNamespace(fsync=sync, open=lambda *args: 12, close=lambda fd: events.append('close-parent'), O_RDONLY=0, O_DIRECTORY=0),
+                 'print': lambda value: events.append('control-receipt')}
+        error = None
+        try: exec(compile(ast.fix_missing_locations(tail), str(SOURCE), 'exec'), scope)
+        except (OSError, TypeError, ValueError) as failure: error = failure
+        return root, events, error
+
+    def test_spool_failures_keep_original_evidence(self):
+        for fault in ('open', 'exists', 'access', 'write', 'short-write', 'serialize', 'sync', 'parent-sync', 'read', 'corrupt', 'type-corrupt'):
+            with self.subTest(fault=fault):
+                root, events, error = self.exercise(fault)
+                self.assertIsNotNone(error)
+                self.assertFalse(root.removed, events)
+                self.assertNotIn('control-receipt', events)
+
+    def test_retirement_requires_synced_verified_result(self):
+        root, events, error = self.exercise()
+        self.assertIsNone(error)
+        self.assertTrue(root.removed)
+        for phase in ('flush', 'sync-file', 'sync-parent', 'verify-read'):
+            self.assertLess(events.index(phase), events.index('retire-original'))
+        self.assertLess(events.index('retire-original'), events.index('control-receipt'))
+
+    def test_incomplete_capture_keeps_original_even_after_successful_spooling(self):
+        root, events, error = self.exercise(complete=False)
+        self.assertIsNone(error)
+        self.assertFalse(root.removed, events)
+        self.assertIn('control-receipt', events)
+
+    def test_process_log_representation_preserves_exact_bytes(self):
+        tree = ast.parse(SOURCE.read_text())
+        function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'process_output')
+        scope = {'base64': base64, 'hashlib': hashlib}
+        exec(compile(ast.Module(body=[function], type_ignores=[]), str(SOURCE), 'exec'), scope)
+        for raw in (b'ordinary UTF-8\n', b'\xff\xfe\x00\n'):
+            record = scope['process_output'](types.SimpleNamespace(read_bytes=lambda: raw))
+            restored = record['text'].encode('utf-8') if record['losslessText'] else base64.b64decode(record['rawBase64'])
+            self.assertEqual(restored, raw)
+            self.assertEqual(record['sha256'], hashlib.sha256(raw).hexdigest())
+
+    def response(self, status=200, body=b'complete response'):
+        return {'id': 'owned', 'status': status, 'bodyComplete': True, 'bodyBase64': base64.b64encode(body).decode(),
+                'bodyBytes': len(body), 'bodySha256': hashlib.sha256(body).hexdigest()}
+
+    def test_actual_qualification_refuses_errors_and_incomplete_or_corrupt_bodies(self):
+        rows = [{'id': 'owned', 'error': {'name': 'IOError', 'message': 'controlled interrupted body'}},
+                {'id': 'owned', 'status': 200, 'bodyComplete': False}, None]
+        for key, value in [('error', {}), ('bodyComplete', 'true'), ('bodyBase64', '%%%'), ('bodyBytes', -1),
+                           ('bodyBytes', True), ('bodySha256', 'wrong'), ('status', '200'), ('status', 0)]:
+            rows.append({**self.response(), key: value})
+        for key in ('bodyComplete', 'bodyBase64', 'bodyBytes', 'bodySha256'):
+            row = self.response(); del row[key]; rows.append(row)
+        for row in rows:
+            with self.subTest(response=row):
+                root, events, error = self.exercise(responses=[row])
+                self.assertIsNone(error)
+                self.assertFalse(root.removed, events)
+                self.assertNotIn('retire-original', events)
+
+    def test_complete_http_errors_and_empty_bodies_are_valid_evidence(self):
+        for status, body in [(200, b'ok'), (403, b'denied'), (404, b'missing'), (422, b'invalid'), (500, b'error'), (204, b''), (304, b'')]:
+            with self.subTest(status=status):
+                root, events, error = self.exercise(responses=[self.response(status, body)])
+                self.assertIsNone(error)
+                self.assertTrue(root.removed, events)
+
+    def test_response_integrity_does_not_override_failed_child_or_wrong_identity(self):
+        root, events, error = self.exercise(responses=[self.response()], child_exit=1)
+        self.assertIsNone(error); self.assertFalse(root.removed, events)
+        root, events, error = self.exercise(responses=[{**self.response(), 'id': 'other'}])
+        self.assertIsNone(error); self.assertFalse(root.removed, events)
+
+
+if __name__ == '__main__': unittest.main()

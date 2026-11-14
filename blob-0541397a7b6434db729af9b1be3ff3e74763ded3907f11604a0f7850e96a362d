@@ -1,0 +1,128 @@
+import {describe, expect, it} from "vitest";
+import fs from "node:fs";
+import path from "node:path";
+import {ViewRegistrationTable} from "../../../src/card/mod-loader/mod-registrar.js";
+import {ModLoader} from "../../../src/card/mod-loader.js";
+import {HTML_VIEWS} from "../../../src/card/render/views.js";
+import {RenderEngine} from "../../../src/card/render.js";
+import {FetchEngine} from "../../../src/card/fetch.js";
+import {LocalSqliteDriver} from "../../../src/server/drivers/local-sqlite.js";
+import {ensureFreshnessStamp} from "../../../src/server/freshness-stamp.js";
+import {UnsupportedViewError, type ViewFn} from "../../../src/card/render/format.js";
+
+describe("shared mutable view record ownership", () => {
+  for (const existing of [false, true]) for (const sameFunction of [false, true]) for (const order of [["a", "b"], ["b", "a"]] as const) {
+    it(`retires ${order.join(" then ")}, original=${existing}, same function=${sameFunction}`, () => {
+      const original: ViewFn = () => "original", aFn: ViewFn = () => "a", bFn: ViewFn = sameFunction ? aFn : () => "b";
+      const record: Record<string, ViewFn> = existing ? {probe: original} : {};
+      const originalDescriptor = Object.getOwnPropertyDescriptor(record, "probe");
+      const owners = {a: new ViewRegistrationTable(record), b: new ViewRegistrationTable(record)};
+      owners.a.register("probe", aFn); owners.b.register("probe", bFn);
+      expect(record.probe).toBe(bFn);
+      owners[order[0]].unregisterAll();
+      expect(record.probe).toBe(order[0] === "a" ? bFn : aFn);
+      owners[order[1]].unregisterAll();
+      expect(Object.getOwnPropertyDescriptor(record, "probe")).toEqual(originalDescriptor);
+      owners.a.unregisterAll(); owners.b.unregisterAll();
+      expect(Object.getOwnPropertyDescriptor(record, "probe")).toEqual(originalDescriptor);
+    });
+  }
+  it("keeps re-registration order and never revives an owner retired below another", () => {
+    const original: ViewFn = () => "original", a1: ViewFn = () => "a1", a2: ViewFn = () => "a2", b: ViewFn = () => "b";
+    const record = {probe: original};
+    const first = new ViewRegistrationTable(record), second = new ViewRegistrationTable(record);
+    first.register("probe", a1); second.register("probe", b); first.register("probe", a2);
+    expect(record.probe).toBe(a2);
+    second.unregisterAll();
+    expect(record.probe).toBe(a2);
+    first.unregisterAll();
+    expect(record.probe).toBe(original);
+  });
+  it("isolates separate records and preserves an unregistered external replacement", () => {
+    const a: ViewFn = () => "a", b: ViewFn = () => "b", external: ViewFn = () => "external";
+    const left: Record<string, ViewFn> = {}, right: Record<string, ViewFn> = {};
+    const first = new ViewRegistrationTable(left), second = new ViewRegistrationTable(right);
+    first.register("probe", a); second.register("probe", b);
+    left.probe = external;
+    first.unregisterAll();
+    expect(left.probe).toBe(external);
+    expect(right.probe).toBe(b);
+    second.unregisterAll();
+    expect(Object.hasOwn(right, "probe")).toBe(false);
+  });
+  it("restores an existing property's descriptor after both owners leave", () => {
+    const original: ViewFn = () => "original", replacement: ViewFn = () => "replacement";
+    const record: Record<string, ViewFn> = {};
+    Object.defineProperty(record, "probe", {value: original, writable: true, configurable: false, enumerable: false});
+    const before = Object.getOwnPropertyDescriptor(record, "probe");
+    const first = new ViewRegistrationTable(record), second = new ViewRegistrationTable(record);
+    first.register("probe", replacement); second.register("probe", replacement);
+    first.unregisterAll(); second.unregisterAll();
+    expect(Object.getOwnPropertyDescriptor(record, "probe")).toEqual(before);
+  });
+  it("does not invoke another owner's setter when a lower registration retires", () => {
+    const original: ViewFn = () => "original", firstFn: ViewFn = () => "first", secondFn: ViewFn = () => "second";
+    let value = original, writes = 0;
+    const record: Record<string, ViewFn> = {};
+    Object.defineProperty(record, "probe", {configurable: true, enumerable: true,
+      get: () => value, set: (next: ViewFn) => {writes++; value = next;}});
+    const first = new ViewRegistrationTable(record), second = new ViewRegistrationTable(record);
+    first.register("probe", firstFn); second.register("probe", secondFn);
+    expect(writes).toBe(2);
+    first.unregisterAll();
+    expect(value).toBe(secondFn);
+    expect(writes).toBe(2);
+    second.unregisterAll();
+    expect(value).toBe(original);
+    expect(writes).toBe(3);
+  });
+  it("treats __proto__ as an owned view key without changing the record prototype", () => {
+    const record: Record<string, ViewFn> = {};
+    const prototype = Object.getPrototypeOf(record);
+    const owner = new ViewRegistrationTable(record), fn: ViewFn = () => "body";
+    owner.register("__proto__", fn);
+    expect(Object.getPrototypeOf(record)).toBe(prototype);
+    expect(Object.hasOwn(record, "__proto__")).toBe(true);
+    expect(record["__proto__"]).toBe(fn);
+    owner.unregisterAll();
+    expect(Object.getPrototypeOf(record)).toBe(prototype);
+    expect(Object.hasOwn(record, "__proto__")).toBe(false);
+  });
+  it("keeps shared registration ownership separate from a real engine's explicit flat views", async () => {
+    const view = "shared_view_owner_probe", other = "shared_view_owner_other";
+    const before = Object.getOwnPropertyDescriptor(HTML_VIEWS, view), otherBefore = Object.getOwnPropertyDescriptor(HTML_VIEWS, other);
+    const source = (name: string, view: string, text: string) => ({manifest: {name, setModules: [{setPath: `all/${name}`, formats: {html: {views: [{view, config: {perms: "none"}, viewFn: () => text}]}}}]}});
+    const a = new ModLoader([source("owner_a", view, "A"), source("other", other, "OTHER")]);
+    const b = new ModLoader([source("owner_b", view, "B")]);
+    fs.mkdirSync(path.resolve(".runtime"), {recursive: true});
+    const directory = fs.mkdtempSync(path.resolve(".runtime/shared-view-owner-fixture-"));
+    fs.copyFileSync("reference-harness/fixtures/synthetic-v1/deck/deck.sqlite3", path.join(directory, "deck.sqlite3"));
+    const driver = new LocalSqliteDriver({path: path.join(directory, "deck.sqlite3")});
+    try {
+      await ensureFreshnessStamp(driver);
+      a.load(); b.load();
+      const engine = new RenderEngine(new FetchEngine(driver));
+      engine.modLoader = undefined;
+      engine.viewer = {signedIn: false};
+      const bBody = HTML_VIEWS[view]!;
+      await expect(engine.render("Topic 001", view)).rejects.toThrow(UnsupportedViewError);
+      a.resolveOrder({gemMods: ["other"]}); a.load();
+      expect(HTML_VIEWS[view]).toBe(bBody);
+      await expect(engine.render("Topic 001", view)).rejects.toThrow(UnsupportedViewError);
+      engine.views[view] = bBody;
+      expect(await engine.render("Topic 001", view)).toBe("B");
+      a.reset(); b.reset();
+      expect(Object.getOwnPropertyDescriptor(HTML_VIEWS, view)).toEqual(before);
+      engine.resetCaches();
+      expect(await engine.render("Topic 001", view)).toBe("B");
+    } finally {
+      a.reset(); b.reset(); driver.close();
+      for (const [key, descriptor] of [[view, before], [other, otherBefore]] as const) {
+        if (descriptor === undefined) Reflect.deleteProperty(HTML_VIEWS, key);
+        else Object.defineProperty(HTML_VIEWS, key, descriptor);
+      }
+      expect(path.dirname(directory)).toBe(path.resolve(".runtime"));
+      fs.rmSync(directory, {recursive: true});
+    }
+  });
+});

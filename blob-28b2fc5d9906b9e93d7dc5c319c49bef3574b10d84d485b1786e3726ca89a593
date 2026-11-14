@@ -1,0 +1,123 @@
+import { it, expect } from "vitest";
+import { spawnSync } from "node:child_process";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { scratchDir, removeScratchDir } from "./scratch-dir.mjs";
+
+const helperUrl = new URL("./scratch-dir.mjs", import.meta.url).href;
+const purgeUrl = new URL("./purge-stale-vitest-temp.ts", import.meta.url).href;
+function fixture(name: string, body: string) {
+  const parent = scratchDir(`purge-custody-${name}-`);
+  const script = `
+    import fs from 'node:fs'; import cp from 'node:child_process';
+    import { syncBuiltinESMExports } from 'node:module'; import { join } from 'node:path';
+    const helper = await import(${JSON.stringify(helperUrl)});
+    const purger = await import(${JSON.stringify(purgeUrl)});
+    const root = helper.scratchRoot(), warnings = [], owners = [];
+    console.warn = (...args) => warnings.push(args);
+    const age = dir => { const old = (Date.now() - 3 * 60 * 60 * 1000) / 1000; const walk = p => { for (const e of fs.readdirSync(p, { withFileTypes: true })) { const q=join(p,e.name); if(e.isDirectory())walk(q); fs.utimesSync(q,old,old); } fs.utimesSync(p,old,old); }; walk(dir); };
+    const orphan = (keep = false, lateKeep = false, requestCleanup = true) => {
+      const code = "const h=await import("+JSON.stringify(${JSON.stringify(helperUrl)})+");const d=h.scratchDir('owner-');"+
+        (!keep && requestCleanup ? "const fs=(await import('node:fs')).default;const sync=(await import('node:module')).syncBuiltinESMExports;const native=fs.rmSync,expected=Object.assign(new Error('controlled owned cleanup failure'),{code:'EBUSY'});fs.rmSync=(p,o)=>{if(p===d)throw expected;return native(p,o)};sync();let caught;try{h.removeScratchDir(d)}catch(e){caught=e}if(caught!==expected)throw Error('cleanup failure did not reach owner');fs.rmSync=native;sync();" : "")+
+        (lateKeep ? "process.env.DECKO_KEEP_SCRATCH='1';h.cleanupScratch();" : "")+
+        "console.log(JSON.stringify({dir:d,pid:process.pid}));"+
+        (keep || lateKeep ? "" : "const listeners=process.listeners('exit');if(listeners.length!==1)throw Error('unexpected fixture exit listener');process.removeListener('exit',listeners[0]);");
+      const run = cp.spawnSync(process.execPath, ['--input-type=module','-e',code], { windowsHide:true, encoding:'utf8', env:{...process.env,DECKO_KEEP_SCRATCH:keep?'1':'0'} });
+      if(run.status!==0||run.signal||run.error)throw Error('owned owner fixture did not settle: '+run.stderr);
+      const owner=JSON.parse(run.stdout.trim());
+      try { process.kill(owner.pid,0); throw Error('owner is still live'); } catch(e) { if(e.code!=='ESRCH')throw e; }
+      owners.push({ ...owner, nativeExit:run.status, signal:run.signal, positivelyAbsent:true });
+      age(owner.dir); return owner;
+    };
+    ${body}
+    console.log(JSON.stringify({ fixtureOwners: owners }));
+  `;
+  try {
+    const run = spawnSync(process.execPath, ["--input-type=module", "-e", script], { windowsHide: true, encoding: "utf8", env: { ...process.env, DECKO_TEST_TEMP_ROOT: join(parent, "owned"), DECKO_KEEP_SCRATCH: "0" } });
+    const values = run.stdout.trim().split(/\r?\n/).filter(Boolean).map(line => JSON.parse(line));
+    const result = values.find(value => !Object.hasOwn(value, "fixtureOwners"));
+    const ownerProof = values.find(value => Object.hasOwn(value, "fixtureOwners"));
+    if (process.env.SCRATCH_PURGE_EVIDENCE_DIR) {
+      mkdirSync(process.env.SCRATCH_PURGE_EVIDENCE_DIR, { recursive: true });
+      writeFileSync(join(process.env.SCRATCH_PURGE_EVIDENCE_DIR, `${name}.json`), JSON.stringify({ name, pid: run.pid, code: run.status, signal: run.signal, error: String(run.error ?? ""), stdout: run.stdout, stderr: run.stderr, result, ownerProof }, null, 2), { flag: "wx" });
+    }
+    expect(run.status, run.stderr).toBe(0); expect(run.error).toBeUndefined(); expect(run.signal).toBeNull();
+    return result;
+  } finally { removeScratchDir(parent); }
+}
+
+it("retains an idle live allocation owner despite controlled old timestamps", () => {
+  const r = fixture("live", `const dir=helper.scratchDir('live-');age(dir);const removed=purger.purgeStaleVitestTemp(Date.now(),root);console.log(JSON.stringify({removed,exists:fs.existsSync(dir)}));`);
+  expect(r).toEqual({ removed: 0, exists: true });
+});
+it("retains a live owner even when an explicit cleanup request is present", () => {
+  const r = fixture("live-request", `const dir=helper.scratchDir('live-request-'),native=fs.rmSync,original=new Error('controlled live cleanup failure');fs.rmSync=(p,o)=>{if(p===dir)throw original;return native(p,o)};syncBuiltinESMExports();let caught;try{helper.removeScratchDir(dir)}catch(e){caught=e}fs.rmSync=native;syncBuiltinESMExports();if(caught!==original)throw Error('missing native failure');age(dir);const report=purger.purgeStaleVitestTempDetailed(Date.now(),root);console.log(JSON.stringify({removed:report.removed.length,exists:fs.existsSync(dir),reason:report.retained[0].reason}));`);
+  expect(r).toEqual({ removed: 0, exists: true, reason: "live-owner" });
+});
+it("respects explicit run retention without selecting old scratch", () => {
+  const r = fixture("keep", `const owner=orphan();process.env.DECKO_KEEP_SCRATCH='1';const removed=purger.purgeStaleVitestTemp(Date.now(),root);console.log(JSON.stringify({removed,exists:fs.existsSync(owner.dir)}));`);
+  expect(r).toEqual({ removed: 0, exists: true });
+});
+it("retains legacy markers rather than treating checkout identity as process custody", () => {
+  const r = fixture("legacy", `const dir=fs.mkdtempSync(join(root,'legacy-'));helper.writeScratchOwnershipManifest(dir);age(dir);const removed=purger.purgeStaleVitestTemp(Date.now(),root);console.log(JSON.stringify({removed,exists:fs.existsSync(dir)}));`);
+  expect(r).toEqual({ removed: 0, exists: true });
+});
+it("surfaces original removal failure and preserves its unresolved directory", () => {
+  const r = fixture("remove-error", `const owner=orphan(),original=Object.assign(new Error('controlled purge removal failure'),{code:'EBUSY'}),native=fs.rmSync;fs.rmSync=(p,o)=>{if(p===owner.dir)throw original;return native(p,o)};syncBuiltinESMExports();let error;try{purger.purgeStaleVitestTemp(Date.now(),root)}catch(e){error=e}fs.rmSync=native;syncBuiltinESMExports();console.log(JSON.stringify({original:error===original||error?.errors?.includes(original)===true,exists:fs.existsSync(owner.dir)}));`);
+  expect(r).toEqual({ original: true, exists: true });
+});
+it("surfaces a native root listing failure instead of fabricating zero removals", () => {
+  const r = fixture("listing-error", `const native=fs.readdirSync,original=Object.assign(new Error('controlled purge listing failure'),{code:'EACCES'});fs.readdirSync=(p,o)=>{if(p===root)throw original;return native(p,o)};syncBuiltinESMExports();let error;try{purger.purgeStaleVitestTemp(Date.now(),root)}catch(e){error=e}fs.readdirSync=native;syncBuiltinESMExports();console.log(JSON.stringify({original:error===original}));`);
+  expect(r.original).toBe(true);
+});
+
+it("removes a native-settled stale allocation while retaining unrelated live and legacy material", () => {
+  const r = fixture("settled", `const owner=orphan(),live=helper.scratchDir('live-'),legacy=fs.mkdtempSync(join(root,'legacy-'));helper.writeScratchOwnershipManifest(legacy);age(live);age(legacy);const report=purger.purgeStaleVitestTempDetailed(Date.now(),root);console.log(JSON.stringify({removed:report.removed,expected:owner.dir,ownerAbsent:!fs.existsSync(owner.dir),live:fs.existsSync(live),legacy:fs.existsSync(legacy),reasons:report.retained.map(x=>x.reason).sort()}));`);
+  expect(r.removed).toEqual([r.expected]); expect(r.ownerAbsent).toBe(true); expect(r.live).toBe(true); expect(r.legacy).toBe(true);
+  expect(r.reasons).toEqual(["legacy-or-unknown-process-custody", "no-explicit-cleanup-request"]);
+});
+it("retains even a dead identified allocation if its owner never requested cleanup", () => {
+  const r = fixture("unsettled-orphan", `const owner=orphan(false,false,false),report=purger.purgeStaleVitestTempDetailed(Date.now(),root);console.log(JSON.stringify({removed:report.removed.length,exists:fs.existsSync(owner.dir),reason:report.retained[0].reason}));`);
+  expect(r).toEqual({ removed: 0, exists: true, reason: "no-explicit-cleanup-request" });
+});
+it.each([false,true])("persists explicit retention across owner exit, including late keep %s", late => {
+  const r = fixture(`persisted-${late}`, `const owner=orphan(${!late},${late});const metadata=helper.inspectScratchOwnership(owner.dir),report=purger.purgeStaleVitestTempDetailed(Date.now(),root);console.log(JSON.stringify({retained:metadata.manifest.custody.retained,removed:report.removed.length,exists:fs.existsSync(owner.dir),reason:report.retained[0].reason}));`);
+  expect(r).toEqual({ retained: true, removed: 0, exists: true, reason: "explicit-resource-retention" });
+});
+it("retains an owner whose native liveness cannot be read and exposes the original cause", () => {
+  const r = fixture("unknown-owner", `const owner=orphan(),native=process.kill,original=Object.assign(new Error('controlled liveness uncertainty'),{code:'EPERM'});process.kill=(pid,signal)=>{if(pid===owner.pid)throw original;return native(pid,signal)};const report=purger.purgeStaleVitestTempDetailed(Date.now(),root);process.kill=native;console.log(JSON.stringify({removed:report.removed.length,exists:fs.existsSync(owner.dir),original:report.retained[0].cause===original,visible:warnings.some(args=>args.includes(original))}));`);
+  expect(r).toEqual({ removed: 0, exists: true, original: true, visible: true });
+});
+it("retains unreadable candidate ownership without blocking other eligible cleanup", () => {
+  const r = fixture("unreadable", `const owner=orphan(),good=orphan(),file=join(owner.dir,helper.SCRATCH_OWNERSHIP_FILE),native=fs.readFileSync,original=Object.assign(new Error('controlled metadata failure'),{code:'EACCES'});fs.readFileSync=(p,o)=>{if(p===file)throw original;return native(p,o)};syncBuiltinESMExports();const report=purger.purgeStaleVitestTempDetailed(Date.now(),root);fs.readFileSync=native;syncBuiltinESMExports();console.log(JSON.stringify({removed:report.removed.length,goodRemoved:!fs.existsSync(good.dir),unknownRetained:fs.existsSync(owner.dir),original:report.retained.some(x=>x.cause===original),visible:warnings.some(args=>args.includes(original))}));`);
+  expect(r).toEqual({ removed: 1, goodRemoved: true, unknownRetained: true, original: true, visible: true });
+});
+it("aggregates actual cleanup failures after attempting other eligible owned paths", () => {
+  const r = fixture("aggregate", `const bad=orphan(),good=orphan(),native=fs.rmSync,original=Object.assign(new Error('controlled native purge failure'),{code:'EBUSY'});fs.rmSync=(p,o)=>{if(p===bad.dir)throw original;return native(p,o)};syncBuiltinESMExports();let error;try{purger.purgeStaleVitestTempDetailed(Date.now(),root)}catch(e){error=e}fs.rmSync=native;syncBuiltinESMExports();console.log(JSON.stringify({original:error?.errors?.includes(original)===true,unresolved:error?.report?.retained?.some(x=>x.directory===bad.dir&&x.reason==='native-cleanup-unconfirmed'),goodRemoved:!fs.existsSync(good.dir),badRetained:fs.existsSync(bad.dir)}));`);
+  expect(r).toEqual({ original: true, unresolved: true, goodRemoved: true, badRetained: true });
+});
+it("rejects a late retention change immediately before removal", () => {
+  const r = fixture("late-retention", `const owner=orphan(),native=process.kill;let checks=0;process.kill=(pid,signal)=>{if(pid===owner.pid&&++checks===2){const file=join(owner.dir,helper.SCRATCH_OWNERSHIP_FILE),m=JSON.parse(fs.readFileSync(file,'utf8'));m.custody.retained=true;fs.writeFileSync(file,JSON.stringify(m));}return native(pid,signal)};const report=purger.purgeStaleVitestTempDetailed(Date.now(),root);process.kill=native;console.log(JSON.stringify({removed:report.removed.length,exists:fs.existsSync(owner.dir),reason:report.retained[0].reason}));`);
+  expect(r).toEqual({ removed: 0, exists: true, reason: "custody-changed-before-removal" });
+});
+it("rejects a replaced directory despite a copied original owner marker", () => {
+  const r = fixture("replaced-entry", `const owner=orphan(),file=join(owner.dir,helper.SCRATCH_OWNERSHIP_FILE),marker=fs.readFileSync(file),requestFile=join(owner.dir,helper.SCRATCH_CLEANUP_REQUEST_FILE),request=fs.readFileSync(requestFile),native=process.kill;let checks=0;process.kill=(pid,signal)=>{if(pid===owner.pid&&++checks===2){fs.renameSync(owner.dir,owner.dir+'-original');fs.mkdirSync(owner.dir);fs.writeFileSync(file,marker);fs.writeFileSync(requestFile,request);}return native(pid,signal)};const report=purger.purgeStaleVitestTempDetailed(Date.now(),root);process.kill=native;console.log(JSON.stringify({removed:report.removed.length,replacement:fs.existsSync(owner.dir),original:fs.existsSync(owner.dir+'-original'),reason:report.retained[0].reason}));`);
+  expect(r).toEqual({ removed: 0, replacement: true, original: true, reason: "custody-changed-before-removal" });
+});
+it("refuses a native no-op removal rather than crediting success", () => {
+  const r = fixture("noop", `const owner=orphan(),native=fs.rmSync;fs.rmSync=(p,o)=>{if(p!==owner.dir)return native(p,o)};syncBuiltinESMExports();let error;try{purger.purgeStaleVitestTempDetailed(Date.now(),root)}catch(e){error=e}fs.rmSync=native;syncBuiltinESMExports();console.log(JSON.stringify({error:error instanceof AggregateError,exists:fs.existsSync(owner.dir),removed:error?.report?.removed?.length}));`);
+  expect(r).toEqual({ error: true, exists: true, removed: 0 });
+});
+it("preserves a post-removal exception without replay or fabricated removal count", () => {
+  const r = fixture("ambiguous", `const owner=orphan(),native=fs.rmSync,original=new Error('controlled post-removal failure');let calls=0;fs.rmSync=(p,o)=>{if(p===owner.dir){calls++;native(p,o);throw original}return native(p,o)};syncBuiltinESMExports();let error;try{purger.purgeStaleVitestTempDetailed(Date.now(),root)}catch(e){error=e}const after=purger.purgeStaleVitestTempDetailed(Date.now(),root);fs.rmSync=native;syncBuiltinESMExports();console.log(JSON.stringify({original:error?.errors?.includes(original)===true,credited:error?.report?.removed?.length,absent:!fs.existsSync(owner.dir),calls,laterRemoved:after.removed.length}));`);
+  expect(r).toEqual({ original: true, credited: 0, absent: true, calls: 1, laterRemoved: 0 });
+});
+it("does not credit cleanup when native absence verification fails", () => {
+  const r = fixture("postcheck", `const owner=orphan(),nativeRemove=fs.rmSync,nativeStat=fs.lstatSync,original=Object.assign(new Error('controlled purge absence failure'),{code:'EACCES'});let removed=false;fs.rmSync=(p,o)=>{const result=nativeRemove(p,o);if(p===owner.dir)removed=true;return result};fs.lstatSync=(p,o)=>{if(p===owner.dir&&removed)throw original;return nativeStat(p,o)};syncBuiltinESMExports();let error;try{purger.purgeStaleVitestTempDetailed(Date.now(),root)}catch(e){error=e}fs.rmSync=nativeRemove;fs.lstatSync=nativeStat;syncBuiltinESMExports();console.log(JSON.stringify({original:error?.errors?.includes(original)===true,credited:error?.report?.removed?.length,absent:!fs.existsSync(owner.dir),unresolved:error?.report?.retained?.some(x=>x.directory===owner.dir)}));`);
+  expect(r).toEqual({ original: true, credited: 0, absent: true, unresolved: true });
+});
+it("retains a directory with a non-finite own timestamp and exposes the refusal", () => {
+  const r = fixture("nonfinite-directory", `const owner=orphan(),native=fs.statSync;fs.statSync=(p,...args)=>{const stat=native(p,...args);if(p===owner.dir)stat.mtimeMs=NaN;return stat};syncBuiltinESMExports();const report=purger.purgeStaleVitestTempDetailed(Date.now(),root);fs.statSync=native;syncBuiltinESMExports();const retained=report.retained.find(x=>x.directory===owner.dir);console.log(JSON.stringify({removed:report.removed.length,exists:fs.existsSync(owner.dir),reason:retained?.reason,cause:retained?.cause?.message,visible:warnings.some(args=>args.includes(retained?.cause))}));`);
+  expect(r.removed).toBe(0); expect(r.exists).toBe(true);
+  expect(r.reason).toBe("unknown-metadata-or-owner"); expect(r.cause).toContain("timestamp is unreadable"); expect(r.visible).toBe(true);
+});

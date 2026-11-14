@@ -1,0 +1,112 @@
+import {describe,expect,it} from 'vitest';
+import {parseDocument} from 'htmlparser2';
+import {findOne,getInnerHTML} from 'domutils';
+import {createRenderTestStorage,seedCard,seedReference} from './render-test-storage.js';
+import {defaultDeckLoader} from '../../../src/card/mod-loader/default-mod-deck.js';
+import {setDefaultModLoader} from '../../../src/card/mod-loader.js';
+import {RenderEngine} from '../../../src/card/render.js';
+import {renderPageWithStatus} from '../../../src/card/render/page.js';
+import {recordAsMain} from '../../../src/card/name/environment.js';
+
+type Entry='nested'|'layout'|'structure';
+async function scenario(entry:Entry){
+ const loader=defaultDeckLoader(),s=await createRenderTestStorage();
+ try{
+  for(const row of [
+   {id:2,name:'RichText',codename:'basic',typeId:5},
+   {id:5,name:'Cardtype',codename:'cardtype',typeId:5},
+   {id:6,name:'Anyone',codename:'anyone',typeId:2},
+   {id:7,name:'Anyone Signed In',codename:'anyone_signed_in',typeId:2},
+   {id:8,name:'Anonymous',codename:'anonymous',typeId:2},
+   {id:10,name:'*all',codename:'all',typeId:20},
+   {id:11,name:'*type',codename:'type',typeId:2},
+   {id:12,name:'*read',codename:'read',typeId:27},
+   {id:13,name:'*default',codename:'default',typeId:27},
+   {id:14,name:'*self',codename:'self',typeId:2},
+   {id:15,name:'*create',codename:'create',typeId:27},
+   {id:16,name:'*structure',codename:'structure',typeId:27},
+   {id:20,name:'Set',codename:'set',typeId:5},
+   {id:21,name:'List',codename:'list',typeId:5},
+   {id:22,name:'PlainNote',typeId:5},
+   {id:23,name:'Html',codename:'html',typeId:5},
+   {id:24,name:'Default Layout',typeId:23,dbContent:entry==='layout'?'{{_main|titled}}{{Cardtype|grouped_list}}':'{{_main|titled}}'},
+   {id:25,name:'*layout',codename:'layout',typeId:27},
+   {id:27,name:'Setting',codename:'setting',typeId:5},
+   {id:26,name:'*all+*layout',leftId:10,rightId:25,typeId:21,dbContent:'[[Default Layout]]'},
+   {id:30,name:'*all+*read',leftId:10,rightId:12,typeId:21,dbContent:'[[Anyone]]'},
+   {id:31,name:'*all+*default',leftId:10,rightId:13,typeId:22,dbContent:''},
+   {id:32,name:'PlainNote+*type',leftId:22,rightId:11,typeId:20},
+   {id:33,name:'PlainNote+*type+*read',leftId:32,rightId:12,typeId:21,dbContent:'[[Anyone Signed In]]'},
+   {id:34,name:'*all+*create',leftId:10,rightId:15,typeId:21,dbContent:'[[Anyone Signed In]]'},
+   {id:40,name:'Public Index',typeId:entry==='structure'?60:2,dbContent:entry==='nested'?'{{Cardtype|grouped_list}}':'Stored public index body'},
+   {id:60,name:'Index Type',typeId:5},
+   {id:61,name:'Index Type+*type',leftId:60,rightId:11,typeId:20},
+   {id:62,name:'Index Type+*type+*structure',leftId:61,rightId:16,typeId:2,dbContent:'{{Cardtype|grouped_list}}'},
+  ])await seedCard(s,row);
+  for(const [from,to,key] of [[30,6,'anyone'],[33,7,'anyone_signed_in'],[34,7,'anyone_signed_in'],[26,24,'default_layout']] as const)await seedReference(s,from,to,key);
+  await s.counting.query('UPDATE cards SET name=NULL,key=NULL WHERE left_id IS NOT NULL',[]);
+  s.fetcher.installNameEnvironment();
+  // Boot once. Subsequent grants, revocations and new rows must be discovered
+  // through the real freshness path, without re-warming or resetting caches.
+  await s.fetcher.warmLexicon((await s.counting.query<{id:number}>('SELECT id FROM cards',[])).rows.map(r=>r.id));
+  const member=new RenderEngine(s.fetcher),anonymous=s.engine;
+  anonymous.viewer={signedIn:false,actorId:8};member.viewer={signedIn:true,actorId:7};
+  anonymous.pageSession=anonymous.viewer;member.pageSession=member.viewer;
+  anonymous.renderAbsentCards=true;member.renderAbsentCards=true;
+  const render=async(viewer:'anonymous'|'member')=>{
+   const engine=viewer==='anonymous'?anonymous:member;
+   recordAsMain(undefined,'Public Index');
+   return entry==='nested'?engine.render('Public Index','content'):(await renderPageWithStatus(engine,'Public Index','content')).html;
+  };
+  const setRead=async(ruleId:number,publicRead:boolean)=>{
+   await s.counting.query('UPDATE cards SET db_content=? WHERE id=?',[publicRead?'[[Anyone]]':'[[Anyone Signed In]]',ruleId]);
+   await s.counting.query('DELETE FROM card_references WHERE referer_id=?',[ruleId]);
+   await seedReference(s,ruleId,publicRead?6:7,publicRead?'anyone':'anyone_signed_in');
+  };
+  return {...s,anonymous,member,render,setRead,dispose(){s.close();loader.reset();setDefaultModLoader(undefined);}};
+ }catch(error){s.close();loader.reset();setDefaultModLoader(undefined);throw error;}
+}
+function missingDenials(html:string){
+ const slot=findOne(n=>n.attribs?.['data-card-name']==='Twitter template'&&(n.attribs?.class??'').split(' ').includes('mini_bar-view'),parseDocument(html).children,true);
+ expect(Boolean(slot)).toBe(true);
+ return (getInnerHTML(slot!).match(/class="denied"/g)??[]).length;
+}
+
+describe('independent generated-group permission lifecycle',()=>{
+ it.each<Entry>(['nested','layout','structure'])('isolates shared-fetcher viewers across warm grants and revocations: %s',async entry=>{
+  const s=await scenario(entry);
+  try{
+   expect(missingDenials(await s.render('anonymous'))).toBe(2);
+   expect(missingDenials(await s.render('member'))).toBe(0);
+   expect(missingDenials(await s.render('anonymous'))).toBe(2);
+   await s.setRead(33,true);
+   expect(missingDenials(await s.render('anonymous'))).toBe(0);
+   await s.setRead(33,false);
+   expect(missingDenials(await s.render('member'))).toBe(0);
+   expect(missingDenials(await s.render('anonymous'))).toBe(2);
+  }finally{s.dispose();}
+ });
+ it('replaces a warm missing item with its real own-rule row and returns to the default rule after deletion',async()=>{
+  const s=await scenario('nested');
+  try{
+   expect(missingDenials(await s.render('anonymous'))).toBe(2);
+   await seedCard(s,{id:90,name:'Twitter template',typeId:5,readRuleId:92,readRuleClass:'*self',dbContent:'Synthetic restricted real item'});
+   await seedCard(s,{id:91,name:'Twitter template+*self',leftId:90,rightId:14,typeId:20});
+   await seedCard(s,{id:92,name:'Twitter template+*self+*read',leftId:91,rightId:12,typeId:21,dbContent:'[[Anyone Signed In]]'});
+   await seedReference(s,92,7,'anyone_signed_in');
+   await s.counting.query('UPDATE cards SET name=NULL,key=NULL WHERE id IN (91,92)',[]);
+   const denied=await s.render('anonymous');
+   expect(s.anonymous.fetchRenderCard('Twitter template')?.id).toBe(90);
+   expect(s.anonymous.isDenied(s.anonymous.fetchRenderCard('Twitter template')!)).toBe(true);
+   expect(denied.includes('data-card-id="90"')).toBe(false);
+   await s.setRead(92,true);
+   expect((await s.render('anonymous')).includes('data-card-id="90"')).toBe(true);
+   await s.setRead(92,false);
+   expect((await s.render('member')).includes('data-card-id="90"')).toBe(true);
+   expect((await s.render('anonymous')).includes('data-card-id="90"')).toBe(false);
+   await s.counting.query('UPDATE cards SET trash=1 WHERE id=90',[]);
+   const missing=await s.render('anonymous');
+   expect(missingDenials(missing)).toBe(2);expect(missing.includes('data-card-id="90"')).toBe(false);
+  }finally{s.dispose();}
+ });
+});

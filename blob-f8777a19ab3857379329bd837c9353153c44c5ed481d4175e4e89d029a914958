@@ -1,0 +1,72 @@
+{
+  "row": "update-layout-registry",
+  "event": "update_layout_registry",
+  "pinned_file": "card-mod-layout-0.20.0/set/type/layout_type.rb",
+  "pinned_declaration": "event :update_layout_registry, :finalize, on: :update do",
+  "pinned_declaration_line": 7,
+  "pinned_body": "  Card::Layout.deregister_layout name\n  Card::Layout.register_layout_with_nest name, format",
+  "pinned_body_lines": [
+    {
+      "line": 8,
+      "text": "  Card::Layout.deregister_layout name"
+    },
+    {
+      "line": 9,
+      "text": "  Card::Layout.register_layout_with_nest name, format"
+    }
+  ],
+  "executed": true,
+  "notes": [],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "an update of a layout card: the body deregisters the layout and registers it again with its nest",
+      "supplied_answers": {
+        "attributes": [
+          "name"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "name",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "Layout.deregister_layout",
+          "arguments": [
+            "Joe User+Layout"
+          ],
+          "under": ""
+        },
+        {
+          "call": "name",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "Layout.register_layout_with_nest",
+          "arguments": [
+            "Joe User+Layout",
+            "html"
+          ],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    }
+  ]
+}

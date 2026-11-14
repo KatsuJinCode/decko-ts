@@ -1,0 +1,27 @@
+import {createHash} from 'node:crypto';
+import {sourceTreeIdentity,TINYMCE_COMMIT,TINYMCE_TREE,TINYMCE_BUNDLED_BINARY_SHA256} from '../vendor/import-tinymce-source.mjs';
+
+// Exact held source/provenance accepted independently at 9511e66b; not a legal-compliance assertion.
+export const TINYMCE_EXPORT_PROVENANCE_SHA256='b24f180b66eb2302587c4a479fd4130a0c87a0dea4bc3c3d9ad923deb112456f';
+export const TINYMCE_EXPORT_SOURCE_MANIFEST_SHA256='dc2ec122745593cd6fdc7a141b1c53fca509f5fac42862bf3ac9a0ac69785978';
+const prefix='third-party-source/tinymce-5.10.7/';
+const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
+const blob=bytes=>createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex');
+
+export function assertTinyMceExportCustody(content,modes) {
+  for(const [file,digest] of [['PROVENANCE.md',TINYMCE_EXPORT_PROVENANCE_SHA256],['SOURCE-MANIFEST.json',TINYMCE_EXPORT_SOURCE_MANIFEST_SHA256]]){
+    const bytes=content.get(prefix+file);
+    if(!bytes||sha(bytes)!==digest||modes.get(prefix+file)!=='100644')throw Error('TinyMCE export custody differs or is missing: '+file);
+  }
+  const manifest=JSON.parse(content.get(prefix+'SOURCE-MANIFEST.json'));
+  if(manifest.commit!==TINYMCE_COMMIT||manifest.tree!==TINYMCE_TREE||sourceTreeIdentity(manifest.files)!==TINYMCE_TREE)throw Error('TinyMCE export official source identity differs');
+  const expected=new Set([prefix+'PROVENANCE.md',prefix+'SOURCE-MANIFEST.json']);
+  for(const file of manifest.files){
+    const name=prefix+'upstream/'+file.path,bytes=content.get(name);expected.add(name);
+    if(!bytes||bytes.length!==file.bytes||sha(bytes)!==file.sha256||blob(bytes)!==file.oid||modes.get(name)!==file.mode)throw Error('TinyMCE export source bytes/mode differ: '+file.path);
+  }
+  for(const file of content.keys())if(file.startsWith(prefix)&&!expected.has(file))throw Error('Unexpected TinyMCE export namespace entry: '+file);
+  const binary=content.get(manifest.bundledBinary.path);
+  if(!binary||sha(binary)!==TINYMCE_BUNDLED_BINARY_SHA256)throw Error('TinyMCE export bundled identity differs');
+  return {files:expected.size,upstreamFiles:manifest.files.length,executableFiles:manifest.files.filter(f=>f.mode==='100755').length,provenanceSha256:TINYMCE_EXPORT_PROVENANCE_SHA256,sourceManifestSha256:TINYMCE_EXPORT_SOURCE_MANIFEST_SHA256};
+}

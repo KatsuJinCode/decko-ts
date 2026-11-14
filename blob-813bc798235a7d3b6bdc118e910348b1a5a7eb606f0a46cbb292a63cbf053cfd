@@ -1,0 +1,101 @@
+import { describe, expect, it } from "vitest";
+import { createRenderTestStorage, seedCard, seedReference } from "./render-test-storage.js";
+import { defaultDeckLoader } from "../../../src/card/mod-loader/default-mod-deck.js";
+import { setDefaultModLoader } from "../../../src/card/mod-loader.js";
+import { renderPageWithStatus } from "../../../src/card/render/page.js";
+import { recordAsMain } from "../../../src/card/name/environment.js";
+import { createVirtualCardLookup } from "../../../src/card/fetch/virtual-cards.js";
+import { structureRuleUniverseStatement, structureUniverseFromResults, structureRuleTypesFromResults } from "../../../src/card/rules/structure.js";
+
+// Exact unnormalized alert retained from Ruby card 1.110.0 / Decko 0.20.0.
+const numericNotFoundAlert = `<div class="alert alert-warning alert-dismissible " role="alert"><button type="button" data-bs-dismiss="alert" class="btn-close" aria-label="Close"></button>\n<p><strong>NOTFOUND:</strong> Card::Error::NotFound</p></div>`;
+
+describe("numeric page identity alongside virtual names", () => {
+  it.each([false, true])("keeps name virtuals, live IDs and compound marks with signedIn=%s", async signedIn => {
+    const loader = defaultDeckLoader(), s = await createRenderTestStorage();
+    try {
+      for (const row of [
+        { id: 2, name: "RichText", codename: "basic", typeId: 5 },
+        { id: 5, name: "Cardtype", codename: "cardtype", typeId: 5 },
+        { id: 6, name: "Anyone", codename: "anyone", typeId: 2 },
+        { id: 7, name: "Anyone Signed In", codename: "anyone_signed_in", typeId: 2 },
+        { id: 8, name: "Anonymous", codename: "anonymous", typeId: 2 },
+        { id: 10, name: "*all", codename: "all", typeId: 20 },
+        { id: 11, name: "*self", codename: "self", typeId: 20 },
+        { id: 12, name: "*read", codename: "read", typeId: 22 },
+        { id: 15, name: "*create", codename: "create", typeId: 22 },
+        { id: 16, name: "*right", codename: "right", typeId: 20 },
+        { id: 17, name: "*structure", codename: "structure", typeId: 22 },
+        { id: 18, name: "*right+*right", leftId: 16, rightId: 16, typeId: 20 },
+        { id: 19, name: "*right+*right+*structure", leftId: 18, rightId: 17, typeId: 20, dbContent: '{"right":"_left"}' },
+        { id: 20, name: "Set", codename: "set", typeId: 5 },
+        { id: 21, name: "List", codename: "list", typeId: 5 },
+        { id: 22, name: "Setting", codename: "setting", typeId: 5 },
+        { id: 30, name: "*all+*read", leftId: 10, rightId: 12, typeId: 21, dbContent: "[[Anyone]]" },
+        { id: 34, name: "*all+*create", leftId: 10, rightId: 15, typeId: 21, dbContent: "[[Anyone Signed In]]" },
+        { id: 70, name: "Topic", typeId: 2, dbContent: "Live numeric body" },
+        { id: 71, name: "Topic+*right", leftId: 70, rightId: 16, typeId: 20, trash: true },
+        { id: 72, name: "Topic+*right+*self", leftId: 71, rightId: 11, typeId: 2, dbContent: "Nested numeric body" },
+        { id: 200, name: "header", codename: "header", typeId: 2 },
+        { id: 201, name: "footer", codename: "footer", typeId: 2 },
+        { id: 202, name: "sidebar", codename: "sidebar", typeId: 2 },
+      ]) await seedCard(s, row);
+      await seedReference(s, 30, 6, "anyone");
+      await seedReference(s, 34, 7, "anyone_signed_in");
+      await s.counting.query("UPDATE cards SET name=NULL,key=NULL WHERE left_id IS NOT NULL", []);
+      s.engine.renderAbsentCards = true;
+      s.engine.viewer = { signedIn, actorId: signedIn ? 7 : 8 };
+      s.fetcher.installNameEnvironment();
+      await s.fetcher.warmLexicon([72]);
+      const [universe] = await s.counting.batch([structureRuleUniverseStatement()]);
+      s.fetcher.virtualCardLookup = createVirtualCardLookup(s.fetcher, {
+        contents: structureUniverseFromResults(universe), ruleTypeIds: structureRuleTypesFromResults(universe),
+      });
+      const page = async (name: string, view?: string) => {
+        recordAsMain(undefined, name);
+        return renderPageWithStatus(s.engine, name, view);
+      };
+      const virtual = await page("Topic+*right");
+      expect(virtual.status).toBe(200);
+      expect(virtual.html).toContain("Rules");
+      const priorErrors = [{ attribute: "existing", message: "Prior request error bag" }];
+      s.engine.attachedErrorsByKey.set("", priorErrors);
+      for (const name of ["~71", "~999999"]) {
+        for (const view of [undefined, "history", "edit"]) {
+          const missing = await page(name, view);
+          expect(missing.status).toBe(404);
+          expect(missing.html).toContain("not_found-view");
+          expect(missing.html).not.toContain("history-view");
+          expect(missing.html).not.toContain("Nested numeric body");
+          expect(missing.html).toContain(numericNotFoundAlert);
+          expect(missing.html).not.toContain("Prior request error bag");
+          expect(s.engine.attachedErrorsByKey.get("")).toBe(priorErrors);
+        }
+      }
+      s.engine.attachedErrorsByKey.delete("");
+      const unknownName = await page("Never Existing Ordinary Name");
+      expect(unknownName.html).not.toContain("NOTFOUND:");
+      expect(s.engine.attachedErrorsByKey.has("")).toBe(false);
+      const live = await page("~70");
+      expect(live.status).toBe(200);
+      expect(live.html).toContain("Live numeric body");
+      expect(live.html).not.toContain("NOTFOUND:");
+      const nested = await page("~71+*self");
+      expect(nested.status).toBe(200);
+      expect(nested.html).toContain("Nested numeric body");
+      expect((await page("Topic+*right")).status).toBe(200);
+      await s.counting.query("UPDATE cards SET db_content=? WHERE id=70", ["Freshness moved after the warm page"]);
+      const afterWrite = await page("~71");
+      expect(afterWrite.status).toBe(404);
+      expect(afterWrite.html).toContain(numericNotFoundAlert);
+      expect(s.engine.attachedErrorsByKey.has("")).toBe(false);
+      await seedCard(s, { id: 210, name: "*layout", codename: "layout", typeId: 22 });
+      await seedCard(s, { id: 211, name: "*all+*layout", leftId: 10, rightId: 210, typeId: 21, dbContent: "[[Absent Numeric Error Layout]]" });
+      s.engine.resetCaches();
+      await s.engine.ensureFreshness();
+      s.engine.attachedErrorsByKey.set("", priorErrors);
+      await expect(page("~71")).rejects.toThrow("unknown layout card");
+      expect(s.engine.attachedErrorsByKey.get("")).toBe(priorErrors);
+    } finally { s.close(); loader.reset(); setDefaultModLoader(undefined); }
+  });
+});

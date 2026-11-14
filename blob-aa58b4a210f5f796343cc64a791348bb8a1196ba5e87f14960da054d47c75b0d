@@ -1,0 +1,68 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { homedir } from 'node:os';
+import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
+import { build } from 'esbuild';
+import { vmConfig } from '../../reference-harness/browser/lib/vm-engines.mjs';
+
+const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const here = path.join(repo, 'tools/recovery-vm');
+const output = path.join(repo, 'tmp/recovery-vm', `run-${Date.now()}-${process.pid}`);
+fs.mkdirSync(output, { recursive: true });
+const hash = bytes => createHash('sha256').update(bytes).digest('hex');
+const originalTest = 'tests/migrate/recovery-independent-review.test.ts';
+if (hash(fs.readFileSync(path.join(repo, originalTest))) !== 'a66466c8f933032c13c88e54e2177b63a09bd5d0c2208f06d6eef4f24f514d17') throw Error('RecoveryOriginalTestBytesChanged');
+if (hash(fs.readFileSync(path.join(repo, 'tools/migrate/recovery.mjs'))) !== '37ea652cdd42e10893437df390b46763f1841d5d03ae9c019f825625bee01ef0') throw Error('RecoveryImplementationBytesChanged');
+const sourceFiles = new Map();
+const options = { absWorkingDir: repo, bundle: true, platform: 'node', format: 'esm', target: 'node22', metafile: true,
+  alias: { vitest: path.join(here, 'node-test-api.mjs'), 'better-sqlite3': path.join(here, 'node-sqlite-api.mjs') } };
+const files = {};
+for (const [entry, destination] of [
+  ['tests/migrate/recovery-independent-review.test.ts', 'tests/support/recovery-vm-bundle.mjs'],
+  ['tools/recovery-vm/node-test-api-controls.mjs', 'tests/support/assertion-controls.mjs'],
+  ['tools/recovery-vm/node-test-lifecycle-controls.mjs', 'tests/support/lifecycle-controls.mjs'],
+]) {
+  const target = path.join(output, path.basename(destination));
+  const result = await build({ ...options, entryPoints: [entry], outfile: target });
+  const bytes = fs.readFileSync(target);
+  files[destination] = { bytes: bytes.toString('base64'), sha256: hash(bytes) };
+  for (const file of Object.keys(result.metafile.inputs)) {
+    const bytes = fs.readFileSync(path.join(repo, file));
+    sourceFiles.set(file, { bytes: bytes.toString('base64'), sha256: hash(bytes) });
+  }
+}
+for (const [file, item] of sourceFiles) files['source/' + file.replaceAll('\\', '/')] = item;
+const manifest = { originalTest: 'tests/migrate/recovery-independent-review.test.ts', originalTestSha256: sourceFiles.get('tests/migrate/recovery-independent-review.test.ts').sha256,
+  recoverySha256: sourceFiles.get('tools/migrate/recovery.mjs').sha256, sources: Object.fromEntries([...sourceFiles].map(([file, item]) => [file, item.sha256])),
+  bundles: Object.fromEntries(Object.entries(files).filter(([file]) => !file.startsWith('source/')).map(([file, item]) => [file, item.sha256])),
+  adaptations: ['DECKO-256 node:test/node:assert bridge; 18 paired controls plus4 recovery-specific controls; string toThrow uses original substring semantics; it.each/async afterEach have3 lifecycle controls', 'Only better-sqlite3 API mapped to existing native node:sqlite: original SQL, WAL, backup and integrity checks unchanged; row prototypes match better-sqlite3'], testResultsCached: false };
+fs.writeFileSync(path.join(output, 'source-manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
+const runner = fs.readFileSync(path.join(here, 'run-recovery-vm.py'), 'utf8');
+const request = JSON.stringify({ files });
+const cfg = vmConfig();
+if (!['win32', 'linux'].includes(process.platform)) throw Error('RecoveryVmUnsupportedPlatform: ' + process.platform);
+const quote = value => "'" + value.replaceAll("'", "'\\''") + "'";
+const native = spawnSync('ssh', ['-J', cfg.jump, '-i', cfg.key.startsWith('~/') ? path.join(homedir(), cfg.key.slice(2)) : cfg.key, '-o', 'BatchMode=yes', cfg.target, 'python3 -c ' + quote(runner)], { input: request, windowsHide: true, encoding: 'utf8', maxBuffer: Infinity });
+fs.writeFileSync(path.join(output, 'transport-stderr.txt'), native.stderr ?? '');
+if (native.error || native.status !== 0) throw Error('RecoveryVmTransportFailed: ' + (native.error?.message ?? native.stderr));
+const result = JSON.parse(native.stdout);
+for (const [file, item] of Object.entries(files)) if (result.files[file] !== item.sha256) throw Error('RecoveryVmReceiptHashMismatch: ' + file);
+fs.writeFileSync(path.join(output, 'native-result.json'), JSON.stringify({ ...result, sourceManifest: manifest, runnerSha256: hash(runner), requestSha256: hash(request) }, null, 2) + '\n');
+for (const [index, run] of result.results.entries()) {
+  fs.writeFileSync(path.join(output, `native-${index}.stdout.txt`), run.stdout);
+  fs.writeFileSync(path.join(output, `native-${index}.stderr.txt`), run.stderr);
+}
+const controls = result.results[0]?.stdout.trim();
+const controlSummary = controls ? JSON.parse(controls) : {};
+const lifecycle = result.results[1]?.stdout ?? '';
+const tests = result.results[2]?.stdout ?? '';
+if (controlSummary.controls !== 22 || controlSummary.pass !== true ||
+    !/^# tests 3$/m.test(lifecycle) || !/^# pass 3$/m.test(lifecycle) || !/^# fail 0$/m.test(lifecycle) ||
+    !/^# tests 13$/m.test(tests) || !/^# pass 13$/m.test(tests) || !/^# fail 0$/m.test(tests) ||
+    !/^# skipped 0$/m.test(tests) || result.scratchResidue.length !== 0 || result.ownedRootRetired !== true) {
+  throw Error('RecoveryVmAcceptanceIncomplete: retain native-result.json for diagnostics');
+}
+console.log(JSON.stringify({ output, status: result.status, runtime: result.runtime, tests: result.results.at(-1), scratchResidue: result.scratchResidue, ownedRootRetired: result.ownedRootRetired }));
+if (result.status !== 0) process.exitCode = 1;

@@ -1,0 +1,131 @@
+{
+  "contract": "An anonymous person who opens a card's edit modal sees the denial, the denial carries a sign-in link, and following that link reaches the sign-in card's own credential form.",
+  "facts": {
+    "loud_denial_body": "wrap_with(:div, loud_denial_message)",
+    "loud_denial_heading": "wrap_with(:h1, t(:format_sorry))",
+    "loud_denial_message_method": "def loud_denial_message",
+    "loud_denial_method": "def loud_denial",
+    "loud_denial_signed_in_branch": "when Auth.signed_in?",
+    "loud_denial_signed_out_branch": "sign_in_or_up_links to_do_unauthorized_task",
+    "or_text": "or",
+    "please_text": "Please",
+    "sign_in_or_up_links_body": "links = [signin_link, signup_link].compact.join \" #{t(:format_or)} \"",
+    "sign_in_or_up_links_method": "def sign_in_or_up_links to_task",
+    "sign_in_or_up_links_sentence": "\"#{[t(:format_please), links, to_task].join(' ')}.\"",
+    "signin_core_form": "card_form :update, recaptcha: :off, success: signin_success do",
+    "signin_core_haml": "haml :core",
+    "signin_core_view": "view :core, cache: :never do",
+    "signin_field_method": "def signin_field name",
+    "signin_field_tuple": "[nest_name, { title: name.to_s, view: \"titled\",",
+    "signin_field_view": "nest_name: nest_name, skip_perms: true }]",
+    "signin_link_call": "link_to_card :signin, t(:account_sign_in)&.downcase,",
+    "signin_link_class": "class: \"signin-link\", path: signin_link_path",
+    "signin_link_method": "def signin_link",
+    "signin_link_path_method": "def signin_link_path",
+    "signin_link_path_view": "{ view: :titled }",
+    "sorry_text": "Sorry!"
+  },
+  "gem_home": "/RUBY_ORACLE_GEMS/ruby/3.4.0/gems",
+  "oracle": {
+    "loud_denial": {
+      "file_sha256": "2951301a6ff4e6d3aaa0dbbd0f6d36553c03caa95e904b1615dc7b19a37d911a",
+      "first_line": 191,
+      "gem": "card-mod-format-0.20.0",
+      "last_line": 196,
+      "marker": "def loud_denial",
+      "marker_line": 191,
+      "path": "set/all/html/error.rb",
+      "source": "  def loud_denial\n    voo.hide :menu\n    frame do\n      [wrap_with(:h1, t(:format_sorry)),\n       wrap_with(:div, loud_denial_message)]\n    end"
+    },
+    "loud_denial_message": {
+      "file_sha256": "2951301a6ff4e6d3aaa0dbbd0f6d36553c03caa95e904b1615dc7b19a37d911a",
+      "first_line": 199,
+      "gem": "card-mod-format-0.20.0",
+      "last_line": 216,
+      "marker": "def loud_denial_message",
+      "marker_line": 199,
+      "path": "set/all/html/error.rb",
+      "source": "  def loud_denial_message\n    to_task = if @denied_task\n                t(:format_denied_task,\n                  denied_task: @denied_task)\n              else\n                t(:format_to_do_that)\n              end\n\n    case\n    when not_denied_task_read?\n      t(:format_read_only)\n    when Auth.signed_in?\n      t(:format_need_permission_task, task: to_task)\n    else\n      # Env.save_interrupted_action request.env[\"REQUEST_URI\"]\n      sign_in_or_up_links to_do_unauthorized_task\n    end\n  end"
+    },
+    "or_locale": {
+      "file_sha256": "047df52395b1cb70112857e1281bd511a357b2e4aacaba11e733e544c81b0649",
+      "first_line": 14,
+      "gem": "card-mod-format-0.20.0",
+      "last_line": 14,
+      "marker": "format_or:",
+      "marker_line": 14,
+      "path": "config/locales/en.yml",
+      "source": "  format_or: \"or\""
+    },
+    "please_locale": {
+      "file_sha256": "047df52395b1cb70112857e1281bd511a357b2e4aacaba11e733e544c81b0649",
+      "first_line": 15,
+      "gem": "card-mod-format-0.20.0",
+      "last_line": 15,
+      "marker": "format_please:",
+      "marker_line": 15,
+      "path": "config/locales/en.yml",
+      "source": "  format_please: Please"
+    },
+    "sign_in_or_up_links": {
+      "file_sha256": "2951301a6ff4e6d3aaa0dbbd0f6d36553c03caa95e904b1615dc7b19a37d911a",
+      "first_line": 145,
+      "gem": "card-mod-format-0.20.0",
+      "last_line": 152,
+      "marker": "def sign_in_or_up_links to_task",
+      "marker_line": 145,
+      "path": "set/all/html/error.rb",
+      "source": "  def sign_in_or_up_links to_task\n    return if Auth.signed_in?\n\n    links = [signin_link, signup_link].compact.join \" #{t(:format_or)} \"\n    wrap_with(:div) do\n      \"#{[t(:format_please), links, to_task].join(' ')}.\"\n    end\n  end"
+    },
+    "signin_core_view": {
+      "file_sha256": "47dc33c5360b851d617faa27b324ad661601ad31baaf1aebd72ef3a8cbf99b58",
+      "first_line": 115,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 125,
+      "marker": "view :core, cache: :never do",
+      "marker_line": 119,
+      "path": "set/self/signin.rb",
+      "source": "  before :core do\n    voo.edit_structure = [signin_field(:email), signin_field(:password)]\n  end\n\n  view :core, cache: :never do\n    with_nest_mode :edit do\n      card_form :update, recaptcha: :off, success: signin_success do\n        haml :core\n      end\n    end\n  end"
+    },
+    "signin_field": {
+      "file_sha256": "47dc33c5360b851d617faa27b324ad661601ad31baaf1aebd72ef3a8cbf99b58",
+      "first_line": 198,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 203,
+      "marker": "def signin_field name",
+      "marker_line": 198,
+      "path": "set/self/signin.rb",
+      "source": "  def signin_field name\n    nest_name = \"\".to_name.field(name)\n    [nest_name, { title: name.to_s, view: \"titled\",\n                  nest_name: nest_name, skip_perms: true }]\n  end\nend"
+    },
+    "signin_link": {
+      "file_sha256": "2951301a6ff4e6d3aaa0dbbd0f6d36553c03caa95e904b1615dc7b19a37d911a",
+      "first_line": 154,
+      "gem": "card-mod-format-0.20.0",
+      "last_line": 157,
+      "marker": "def signin_link",
+      "marker_line": 154,
+      "path": "set/all/html/error.rb",
+      "source": "  def signin_link\n    link_to_card :signin, t(:account_sign_in)&.downcase,\n                 class: \"signin-link\", path: signin_link_path\n  end"
+    },
+    "signin_link_path": {
+      "file_sha256": "2951301a6ff4e6d3aaa0dbbd0f6d36553c03caa95e904b1615dc7b19a37d911a",
+      "first_line": 159,
+      "gem": "card-mod-format-0.20.0",
+      "last_line": 168,
+      "marker": "def signin_link_path",
+      "marker_line": 159,
+      "path": "set/all/html/error.rb",
+      "source": "  def signin_link_path\n    { view: :titled }.tap do |path|\n      unless Cardio.config.allow_anonymous_cookies\n        # cookie handles where to go after signin if we have it. if not...\n\n        target = signin_link_success_target\n        path[:success] = { mark: target } if target.present?\n      end\n    end\n  end"
+    },
+    "sorry_locale": {
+      "file_sha256": "047df52395b1cb70112857e1281bd511a357b2e4aacaba11e733e544c81b0649",
+      "first_line": 19,
+      "gem": "card-mod-format-0.20.0",
+      "last_line": 19,
+      "marker": "format_sorry:",
+      "marker_line": 19,
+      "path": "config/locales/en.yml",
+      "source": "  format_sorry: Sorry!"
+    }
+  }
+}

@@ -1,0 +1,101 @@
+{
+  "captured_by": "tools/oracle/auth_token_capture.rb",
+  "gem": "card-1.110.0",
+  "jwt_gem": "2.10.3",
+  "ruby": "3.3.12",
+  "note": "SECRET_KEY is a FIXTURE, not a real secret_key_base; expiration is measured from a frozen clock. Bytes below are reproducible only under these two substitutions.",
+  "fixture_secret": "decko-ts-oracle-fixture-secret-key-base-0000",
+  "frozen_now_epoch": 1790553600,
+  "frozen_now_iso": "2026-09-28T00:00:00Z",
+  "token_expiry_seconds": 172800,
+  "expiration": 1790726400,
+  "cases": {
+    "encode_user_only": {
+      "token": "eyJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjo0MiwiZXhwIjoxNzkwNzI2NDAwfQ.QUzi1YXvXHqvDZx0OWC9Kn6ZMC7RuNmfanD44TUxK5o",
+      "segments": 3,
+      "decoded_payload": {
+        "user_id": 42,
+        "exp": 1790726400
+      }
+    },
+    "encode_anonymous_extra": {
+      "token": "eyJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjo0MiwiZXhwIjoxNzkwNzI2NDAwLCJhbm9ueW1vdXMiOnRydWV9.E88FBMeS_JbKTd8TAae558a5KtH-qh_X3lcLBCbvsBI",
+      "decoded_payload": {
+        "user_id": 42,
+        "exp": 1790726400,
+        "anonymous": true
+      }
+    },
+    "encode_reset_password": {
+      "token": "eyJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjo3LCJleHAiOjE3OTA3MjY0MDB9.VW-rfPaI9eVH8sI21DbsAG4DR3hTAKp3UAaCboJoazw",
+      "decoded_payload": {
+        "user_id": 7,
+        "exp": 1790726400
+      }
+    },
+    "encode_anonymous_id_string": {
+      "token": "eyJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoiYW5vbnltb3VzIiwiZXhwIjoxNzkwNzI2NDAwfQ.NQ_Kt1NU86t_7f1H_hPHobZk-yD9-GF4af6SaIxM8RE",
+      "decoded_payload": {
+        "user_id": "anonymous",
+        "exp": 1790726400
+      }
+    },
+    "decode_expired": {
+      "token": "eyJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjo0MiwiZXhwIjoxNzkwNTUzNTk5fQ.vHRCtG7FN6IuWUefB4B-5oZtm4_-EWjH-kweNDsUMc8",
+      "result": "Signature has expired"
+    },
+    "decode_tampered_payload": {
+      "token": "eyJhbGciOiJIUzI1NiJ9.ayJ1c2VyX2lkIjo0MiwiZXhwIjoxNzkwNzI2NDAwfQ.QUzi1YXvXHqvDZx0OWC9Kn6ZMC7RuNmfanD44TUxK5o",
+      "result": "Signature verification failed"
+    },
+    "decode_wrong_secret": {
+      "result": "Signature verification failed"
+    },
+    "decode_garbage": {
+      "result": "Not enough or too many segments"
+    },
+    "decode_two_segments": {
+      "result": "Invalid segment encoding"
+    },
+    "decode_empty": {
+      "result": "Not enough or too many segments"
+    },
+    "decode_alg_none": {
+      "token": "eyJhbGciOiJub25lIn0.eyJ1c2VyX2lkIjo0Mn0.",
+      "result": "Expected a different algorithm"
+    },
+    "header_of_plain": {
+      "alg": "HS256"
+    },
+    "plain_token_is_url_safe": true,
+    "decode_no_exp_claim": {
+      "token": "eyJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjo0Mn0.vRPHDMCgjO6fUg5FEBJYc1EeduwuHRd5w0XjpGhsqBE",
+      "result": {
+        "user_id": 42
+      }
+    },
+    "decode_exp_equal_to_now": {
+      "exp": 1790650546,
+      "result": "Signature has expired"
+    },
+    "decode_exp_one_past_now": {
+      "exp": 1790650547,
+      "result": {
+        "user_id": 42,
+        "exp": 1790650547
+      }
+    },
+    "decode_nbf_in_future": {
+      "token": "eyJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjo0MiwiZXhwIjoxNzkwNjU0MTQ2LCJuYmYiOjE3OTA2NTc3NDZ9.vt4wL5P2hNySOu5PngVcQYHmxwZVwaQljez1v2SkBo0",
+      "result": "Signature nbf has not been reached"
+    },
+    "decode_alg_confusion_hs512": {
+      "result": "Expected a different algorithm"
+    },
+    "encode_empty_key_error": "HMAC key cannot be empty",
+    "encode_non_string_key_error": "HMAC key expected to be a String",
+    "decode_nil": {
+      "result": "Nil JSON web token"
+    }
+  }
+}

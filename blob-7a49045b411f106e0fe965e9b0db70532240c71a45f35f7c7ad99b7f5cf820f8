@@ -1,0 +1,32 @@
+import { afterAll, beforeAll, expect, it } from "vitest";
+import { copyFileSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { LocalSqliteDriver } from "../../src/server/drivers/local-sqlite.js";
+import { FetchEngine } from "../../src/card/fetch.js";
+import { executeQuery, parseOptionsWithLexicon } from "../../src/cql/execute.js";
+import { removeScratchDir, scratchDir } from "../support/scratch-dir.mjs";
+
+let driver:LocalSqliteDriver,fetcher:FetchEngine,copyDir:string;
+beforeAll(async()=>{
+  // Read a private copy of the committed synthetic deck. A read-only handle on
+  // the committed WAL-mode file would create -wal/-shm sidecars beside it.
+  copyDir=scratchDir("found-by-virtual-search-deck-");
+  copyFileSync(resolve("reference-harness/fixtures/synthetic-v1/deck/deck.sqlite3"),join(copyDir,"deck.sqlite3"));
+  driver=new LocalSqliteDriver({path:join(copyDir,"deck.sqlite3"),readonly:true});
+  fetcher=new FetchEngine(driver);fetcher.installNameEnvironment();
+  await fetcher.warmLexicon((await driver.query<{id:number}>("SELECT id FROM cards WHERE trash=0",[])).rows.map(r=>r.id));
+});
+afterAll(()=>{driver?.close();if(copyDir)removeScratchDir(copyDir);});
+async function names(query:Record<string,unknown>){
+  const result=await executeQuery(driver,query,{parse:parseOptionsWithLexicon(fetcher.lexicon)});
+  if(!("rows" in result))throw new Error("unexpected count");
+  return (await Promise.all(result.rows.map(r=>fetcher.lexicon.name(r.id)))).map(n=>n?.s).sort();
+}
+for(const suffix of ["by name","by create","by update"]){
+  it(`found_by resolves Image+*type+${suffix} as the original virtual search`,async()=>{
+    // found_by_spec.rb's virtual-card example is by name. The other two
+    // are the sibling VirtualSearch modules with the same found_by:_left.
+    const expected=await names({type:"Image"});expect(expected.length).toBeGreaterThan(0);
+    expect(await names({found_by:`Image+*type+${suffix}`})).toEqual(expected);
+  });
+}

@@ -1,0 +1,26 @@
+import {readFileSync} from "node:fs";
+import {runInNewContext} from "node:vm";
+import {it as test} from "vitest";
+import assert from "node:assert/strict";
+import {rewriteDeploymentLegacyAssetRevisions} from "../../src/server/deployment-legacy-assets.js";
+const source=readFileSync(new URL("../../vm-staging-server.mjs",import.meta.url),"utf8");
+const start=source.indexOf("function applyServedEnvironmentDeltas("), end=source.indexOf("\n}",start);
+assert.ok(start>=0&&end>start);
+const fn=source.slice(start,end+2);
+function apply(html, stock, deploymentLegacyAssets) {
+  return runInNewContext(`${fn}; applyServedEnvironmentDeltas(html)`, {html,STOCK_DECK:stock,deploymentLegacyAssets,
+    rewriteDeploymentLegacyAssetRevisions,
+    SPACES_HOST:"https://media.example",SERVED_ASSET_HOST_PREFIX:"http://s3.amazonaws.com//files/",
+    SERVED_CSS_REVISION:"42/old.css",SERVED_CSS_REVISION_LIVE:"42/new.css",SERVED_SCRIPT_INTEGRITY:[]});
+}
+test("actual Node delta function applies explicitly configured media revisions and retains URL boundaries",()=>{
+  const settings={revisions:{"53/old.js":"53/new.js"}};
+  const html='<link href="http://s3.amazonaws.com//files/42/old.css"><script src="https://media.example/files/53/old.js"></script><a href="https://media.example/files/53/old.js.map">map</a>';
+  assert.equal(apply(html,false,settings),'<link href="https://media.example/files/42/new.css"><script src="https://media.example/files/53/new.js"></script><a href="https://media.example/files/53/old.js.map">map</a>\n');
+  assert.equal(apply(html,true,settings),html);
+});
+test("absence retains the preexisting legacy delta and configuration admission precedes database creation",()=>{
+  assert.equal(apply('<a href="https://media.example/files/53/old.js">old</a>',false,undefined),'<a href="https://media.example/files/53/old.js">old</a>\n');
+  assert.ok(source.indexOf("const deploymentLegacyAssets = validateDeploymentLegacyAssets(")<source.indexOf("new LocalSqliteDriver("));
+  assert.match(source,/const SPACES_HOST = deploymentLegacyAssets\?\.assetOrigin \?\?/);
+});

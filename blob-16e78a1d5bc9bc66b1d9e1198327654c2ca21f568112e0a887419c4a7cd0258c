@@ -1,0 +1,51 @@
+const fs = require('node:fs');
+const cp = require('node:child_process');
+const net = require('node:net');
+const crypto = require('node:crypto');
+const { syncBuiltinESMExports } = require('node:module');
+const file = process.env.AREA5_OBSERVATION;
+const append = fs.appendFileSync.bind(fs);
+const read = fs.readFileSync.bind(fs);
+const record = value => append(file, JSON.stringify({pid:process.pid,...value})+'\n');
+const inputs = new Map();
+function observed(p,b) {
+  if(typeof p!=='string' && !(p instanceof URL))return;
+  const name=String(p);if(name===file||/backend-matrix-native-evidence/.test(name))return;
+  if(!Buffer.isBuffer(b)&&typeof b!=='string')return;
+  const bytes=Buffer.isBuffer(b)?b:Buffer.from(b);
+  const input={path:name,bytes:bytes.length,sha256:crypto.createHash('sha256').update(bytes).digest('hex')};
+  if(inputs.get(name)?.sha256!==input.sha256)record({event:'input',...input});
+  inputs.set(name,input);
+}
+fs.readFileSync=function(p,...args){const b=read(p,...args);observed(p,b);return b;};
+const asyncRead=fs.readFile.bind(fs);
+fs.readFile=function(p,...args){const callback=args.pop();return asyncRead(p,...args,(e,b)=>{if(!e)observed(p,b);callback(e,b);});};
+const promiseRead=fs.promises.readFile.bind(fs.promises);
+fs.promises.readFile=async function(p,...args){const b=await promiseRead(p,...args);observed(p,b);return b;};
+for(const method of ['spawn','fork']){
+ const original=cp[method];
+ cp[method]=function(...args){
+  if(Array.isArray(args[1]))args[2]={...args[2],windowsHide:true};
+  else args[1]={...args[1],windowsHide:true};
+  if(typeof args[0]==='string'&&/\.exe$/i.test(args[0])&&fs.existsSync(args[0]))observed(args[0],read(args[0]));
+  const child=original.apply(this,args);
+  record({event:'child-start',method,childPid:child.pid,command:args[0],args:args[1],windowsHide:args[2]?.windowsHide??null});
+  child.once('error',e=>record({event:'child-error',childPid:child.pid,message:e.message}));
+  child.once('close',(code,signal)=>record({event:'child-close',childPid:child.pid,code,signal}));
+  return child;
+ };
+}
+const listen=net.Server.prototype.listen;
+net.Server.prototype.listen=function(...args){
+ this.once('listening',()=>record({event:'server-listen',address:this.address()}));
+ this.once('close',()=>record({event:'server-close'}));
+ return listen.apply(this,args);
+};
+record({event:'process-start',argv:process.argv,execArgv:process.execArgv});
+process.on('exit',code=>{
+ record({event:'process-exit',code,handles:process._getActiveHandles().map(h=>({type:h.constructor?.name,pid:h.pid??null,listening:h.listening??null}))});
+});
+const Module=require('node:module');
+const nativeLoad=Module._extensions['.node'];
+Module._extensions['.node']=function(module,filename){observed(filename,read(filename));return nativeLoad(module,filename);};
+syncBuiltinESMExports();

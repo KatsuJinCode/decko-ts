@@ -1,0 +1,11 @@
+export interface RecordedAssetSourceProfile {
+  schema: "decko-recorded-asset-sources/1";
+  directories: string[];
+  files: Array<{ path: string; bytes: number; sha256: string }>;
+}
+
+export function qualifyRecordedAssetRoots(
+  recordedPaths: string[],
+  gemHome: string | undefined,
+  profile: RecordedAssetSourceProfile,
+): string[];

@@ -1,0 +1,152 @@
+import { afterEach, describe, expect, it } from "vitest";
+import { createActionsTestStorage, seedStandardDeck, seedCard, JOE,
+  type ActionsTestStorage } from "./actions-test-storage.js";
+import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
+import { ModLoader } from "../../../src/card/mod-loader.js";
+import type { ModEventRegistration, ModEventStage } from "../../../src/card/mod-loader/mod-manifest.js";
+import carrierwave from "../../../src/card/mod-loader/mods/card-mod-carrierwave.js";
+import { BlobAttachmentStore } from "../../../src/card/attachments/attachment-store.js";
+import { MemoryBlobDriver } from "../../../src/blob/memory.js";
+import { trackedFieldIndex } from "../../../src/card/history/change.js";
+import type { DelayedEventJob } from "../../../src/card/delayed-job/delayed-job.js";
+import type { ModEventStageReport } from "../../../src/card/mod-loader/mod-event-dispatch.js";
+
+const NOW = new Date("2026-11-03T12:00:00Z");
+const stores: ActionsTestStorage[] = [];
+afterEach(() => { for (const storage of stores.splice(0)) storage.close(); });
+
+async function rig(events?: ModEventRegistration[]) {
+  const storage = await createActionsTestStorage();
+  stores.push(storage);
+  await seedStandardDeck(storage);
+  await storage.driver.query("CREATE TABLE integration_effects (value TEXT)", []);
+  const stages: ModEventStage[] = ["integrate", "after_integrate", "integrate_with_delay"];
+  const manifest = { name: "integration-tail", setModules: [{ setPath: "all/integration_tail",
+    events: events ?? stages.map(stage => ({ event: `effect_${stage}`, at: stage,
+      fn: async (card: { name: string }, _host: unknown, ctx: { driver: ActionsTestStorage["driver"] }) => {
+        await ctx.driver.query("INSERT INTO integration_effects VALUES (?)", [`${card.name}:${stage}`]);
+      } })) }] };
+  const loader = new ModLoader([{ manifest }]);
+  loader.resolveOrder({ gemMods: [manifest.name] });
+  loader.load();
+  const files = new MemoryBlobDriver();
+  const tmp = new MemoryBlobDriver();
+  const store = new BlobAttachmentStore(files, tmp);
+  const engine = new CardActionEngine(storage.engine, { actor: JOE, now: () => NOW,
+    integrationHooks: [], attachmentStore: store, modEvents: { registry: loader.eventRegistry() } });
+  return { storage, engine, files, tmp, store, runtime: { registry: loader.eventRegistry() },
+    effects: async () => (await storage.selectAll<{ value: string }>("SELECT value FROM integration_effects ORDER BY rowid")).map(r => r.value) };
+}
+
+describe("save integration stages", () => {
+  it("queues delayed mod bodies and performs them without rerunning earlier stages", async () => {
+    const r = await rig();
+    const jobs: DelayedEventJob[] = [];
+    const engine = new CardActionEngine(r.storage.engine, { actor: JOE, now: () => NOW,
+      modEvents: r.runtime, integrationHooks: [], delayedJobs: { delaying: true,
+        queue: { enqueue: async job => { jobs.push(job); } } } });
+    await engine.createCard({ name: "Queued Card", content: "saved" });
+    expect(await r.effects()).toEqual(["Queued Card:integrate", "Queued Card:after_integrate"]);
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0].queue).toBe("effect_integrate_with_delay");
+    await engine.performDelayedJob(jobs[0]);
+    expect(await r.effects()).toEqual(["Queued Card:integrate", "Queued Card:after_integrate", "Queued Card:integrate_with_delay"]);
+  });
+  it("persists effects in Ruby stage order on create, update and delete", async () => {
+    const r = await rig();
+    const card = await r.engine.createCard({ name: "Stage Card", content: "before" });
+    await r.engine.updateCard({ cardId: card.cardId, content: "after" });
+    await r.engine.deleteCard({ cardId: card.cardId });
+    expect(await r.effects()).toEqual(Array.from({ length: 3 }, () => [
+      "Stage Card:integrate", "Stage Card:after_integrate", "Stage Card:integrate_with_delay",
+    ]).flat());
+  });
+
+  it("finishes after_integrate for the parent and subcards before the delayed stage", async () => {
+    const r = await rig();
+    await r.engine.createCard({ name: "Parent", content: "root", subcards: { "+field": { content: "child" } } });
+    const tail = (await r.effects()).filter(v => !v.endsWith(":integrate"));
+    expect(tail).toContain("Parent:after_integrate");
+    expect(tail).toContain("Parent+field:after_integrate");
+    expect(tail).toContain("Parent+field:integrate_with_delay");
+    const firstDelayed = tail.findIndex(v => v.endsWith(":integrate_with_delay"));
+    expect(tail.slice(firstDelayed).every(v => v.endsWith(":integrate_with_delay"))).toBe(true);
+  });
+
+  it("does not integrate an autosave draft", async () => {
+    const r = await rig();
+    const card = await r.engine.createCard({ name: "Autosave", content: "saved" });
+    await r.storage.driver.query("DELETE FROM integration_effects", []);
+    await r.engine.updateCard({ cardId: card.cardId, content: "draft", draft: true });
+    expect(await r.effects()).toEqual([]);
+  });
+
+  it("isolates a failing after_integrate body and still executes later bodies", async () => {
+    const r = await rig([
+      { event: "broken", at: "after_integrate", fn: () => { throw new Error("broken integration"); } },
+      { event: "retained", at: "integrate_with_delay", fn: async (_c, _h, ctx) => {
+        await ctx.driver.query("INSERT INTO integration_effects VALUES ('continued')", []);
+      } },
+    ]);
+    await r.engine.createCard({ name: "Failure isolation", content: "saved" });
+    expect(await r.effects()).toEqual(["continued"]);
+  });
+});
+
+describe("carrierwave clear_draft_files", () => {
+  const clear = carrierwave.setModules!.flatMap(m => m.events ?? []).find(e => e.event === "clear_draft_files")!;
+  async function draft(r: Awaited<ReturnType<typeof rig>>, id: number, cardId: number,
+    stamp: string, value: string, draftFlag = 1) {
+    await r.storage.driver.query("INSERT INTO card_acts (id, card_id, actor_id, acted_at) VALUES (?, ?, ?, ?)", [id, cardId, JOE.id, stamp]);
+    await r.storage.driver.query("INSERT INTO card_actions (id, card_id, card_act_id, action_type, draft) VALUES (?, ?, ?, 1, ?)", [id, cardId, id, draftFlag]);
+    await r.storage.driver.query("INSERT INTO card_changes (card_action_id, field, value) VALUES (?, ?, ?)", [id, trackedFieldIndex("db_content"), value]);
+  }
+
+  it("retains a draft action when removing its files fails and exposes the failure", async () => {
+    const r = await rig([clear]);
+    await seedCard(r.storage, { id: 801, name: "File", codename: "file" });
+    await seedCard(r.storage, { id: 810, name: "*new file", codename: "new_file", typeId: 801 });
+    await draft(r, 900, 810, "2026-10-28 12:00:00", "~810/900.txt");
+    const reports: ModEventStageReport[] = [];
+    const engine = new CardActionEngine(r.storage.engine, { actor: JOE, now: () => NOW,
+      integrationHooks: [], modEvents: { ...r.runtime, onReport: report => { reports.push(report); } },
+      attachmentStore: { store: r.store.store.bind(r.store), read: r.store.read.bind(r.store),
+        remove: async () => { throw new Error("storage removal refused"); } } });
+    const saved = await engine.createCard({ name: "Retained cleanup", content: "saved" });
+    expect(saved.cardId).toBeGreaterThan(0);
+    expect(await r.storage.selectOne("SELECT id FROM card_actions WHERE id = 900")).toEqual({ id: 900 });
+    const failed = reports.flatMap(report => report.failed);
+    expect(failed).toHaveLength(1);
+    expect(failed[0].event).toBe("clear_draft_files");
+    expect(String(failed[0].error)).toContain("storage removal refused");
+  });
+
+  it("removes old draft files and renditions, preserves recent/read-only/non-draft content and history", async () => {
+    const r = await rig([clear]);
+    await seedCard(r.storage, { id: 801, name: "File", codename: "file" });
+    await seedCard(r.storage, { id: 802, name: "Image", codename: "image" });
+    await seedCard(r.storage, { id: 810, name: "*new file", codename: "new_file", typeId: 801 });
+    await seedCard(r.storage, { id: 811, name: "Draft image", typeId: 802 });
+    await seedCard(r.storage, { id: 812, name: "Web attachment", typeId: 801, dbContent: "https://example.test/file.txt" });
+    await draft(r, 900, 810, "2026-10-28 12:00:00", "~810/900.txt");
+    await draft(r, 901, 810, "2026-10-29 12:00:00", "~810/901.txt");
+    await draft(r, 902, 811, "2026-10-28 12:00:00", "~811/902.png");
+    await draft(r, 903, 811, "2026-10-28 12:00:00", "~811/903.png", 0);
+    await draft(r, 904, 812, "2026-10-28 12:00:00", "~812/904.txt");
+    await r.store.store({ cardId: 810, actionId: 900, ext: ".txt", bytes: new Uint8Array([1]), area: "tmp" });
+    await r.store.store({ cardId: 810, actionId: 901, ext: ".txt", bytes: new Uint8Array([2]), area: "tmp" });
+    await r.store.store({ cardId: 811, actionId: 902, ext: ".png", bytes: new Uint8Array([3]), renditionNames: ["902-original.png", "902-small.png"] });
+    await r.store.store({ cardId: 811, actionId: 903, ext: ".png", bytes: new Uint8Array([4]) });
+    await r.store.store({ cardId: 812, actionId: 904, ext: ".txt", bytes: new Uint8Array([5]) });
+    await r.engine.createCard({ name: "Trigger cleanup", content: "created" });
+    expect(await r.tmp.getBytes("files/810/900.txt")).toBeUndefined();
+    expect(await r.tmp.getBytes("files/810/901.txt")).toEqual(new Uint8Array([2]));
+    expect(await r.files.getBytes("811/902-original.png")).toBeUndefined();
+    expect(await r.files.getBytes("811/902-small.png")).toBeUndefined();
+    expect(await r.files.getBytes("811/903.png")).toEqual(new Uint8Array([4]));
+    expect(await r.files.getBytes("812/904.txt")).toEqual(new Uint8Array([5]));
+    expect((await r.storage.selectAll<{ id: number }>("SELECT id FROM card_actions WHERE id BETWEEN 900 AND 904 ORDER BY id")).map(a => a.id)).toEqual([901, 903, 904]);
+    expect((await r.storage.selectAll("SELECT id FROM card_acts WHERE id BETWEEN 900 AND 904")).length).toBe(5);
+    expect((await r.storage.selectAll("SELECT id FROM card_changes WHERE card_action_id BETWEEN 900 AND 904")).length).toBe(5);
+  });
+});

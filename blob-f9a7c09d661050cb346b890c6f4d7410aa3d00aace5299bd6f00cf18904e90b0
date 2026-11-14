@@ -1,0 +1,40 @@
+import {expect,it} from "vitest";
+import {ModEventRegistry} from "../../../src/card/mod-loader/mod-event-registry.js";
+import {runModEventStage,type ModEventPredicateTable} from "../../../src/card/mod-loader/mod-event-dispatch.js";
+import type {RegisteredModEvent} from "../../../src/card/mod-loader/mod-event-registry.js";
+
+const deps={} as Parameters<typeof runModEventStage>[3];
+const card={id:101,name:"Probe",key:"probe",typeId:1,act:{action:"update" as const}};
+async function run(name:string,predicates:ModEventPredicateTable){
+ const registry=new ModEventRegistry(),calls:string[]=[];
+ registry.register({event:"conditional",at:"validate",when:name,setPath:"all/condition_ownership",modName:"condition_ownership",fn:()=>{calls.push("body");}});
+ const report=await runModEventStage({registry,predicates},"validate",card,deps);return{report,calls};
+}
+for(const name of ["toString","constructor","hasOwnProperty","__proto__"])it("refuses undeclared inherited predicate "+name,async()=>{
+ await expect(run(name,{})).rejects.toMatchObject({name:"NoMethodError",message:"undefined method '"+name+"' for #<Card:0x0000000000000065>",cause:{when:name,event:"conditional",setPath:"all/condition_ownership",modName:"condition_ownership"}});
+});
+it("runs an explicitly declared toString condition",async()=>{
+ const result=await run("toString",Object.fromEntries([["toString",()=>true]]));
+ expect(result.calls).toEqual(["body"]);expect(result.report.fired).toEqual(["conditional"]);
+});
+it("respects an explicitly declared false constructor condition",async()=>{
+ const result=await run("constructor",Object.fromEntries([["constructor",()=>false]]));
+ expect(result.calls).toEqual([]);expect(result.report.skipped).toEqual([{event:"conditional",reason:"when-false"}]);
+});
+it("preserves an explicit own __proto__ condition",async()=>{
+ const result=await run("__proto__",Object.fromEntries([["__proto__",()=>true]]));
+ expect(result.calls).toEqual(["body"]);expect(result.report.fired).toEqual(["conditional"]);
+});
+it("refuses an absent condition in a table without a prototype",async()=>{
+ await expect(run("toString",Object.create(null))).rejects.toMatchObject({name:"NoMethodError"});
+});
+for(const option of ["toString","constructor","hasOwnProperty","__proto__"])it("refuses undeclared registration option "+option,()=>{
+ const registry=new ModEventRegistry();
+ const entry={event:"conditional",at:"validate",setPath:"all/condition_ownership",modName:"condition_ownership",fn:()=>{},[option]:"unsupported"} as unknown as RegisteredModEvent;
+ expect(()=>registry.register(entry)).toThrow("invalid condition key '"+option+"'");
+});
+it("lists the actual Ruby condition keys including when in registration errors",()=>{
+ const registry=new ModEventRegistry();
+ const entry={event:"conditional",at:"validate",setPath:"all/condition_ownership",modName:"condition_ownership",fn:()=>{},unsupported:"value"} as unknown as RegisteredModEvent;
+ expect(()=>registry.register(entry)).toThrow("valid conditions are on, changed, changing, skip, trigger, when");
+});

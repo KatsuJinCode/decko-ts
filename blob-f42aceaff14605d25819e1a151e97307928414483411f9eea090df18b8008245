@@ -1,0 +1,71 @@
+import {afterEach,expect,it,vi} from 'vitest';
+import {createRenderTestStorage,seedCard,type RenderTestStorage} from '../render/render-test-storage.js';
+import {findRule} from '../../../src/card/rules/lookup.js';
+import {getNameEnvironment} from '../../../src/card/name/environment.js';
+import {concretePatternsForCard,patternsForCard} from '../../../src/card/set-patterns/card-patterns.js';
+import {ruleNamesForCard} from '../../../src/card/set-patterns/rule-names.js';
+const cleanups:Array<()=>void>=[];
+afterEach(()=>{vi.restoreAllMocks();while(cleanups.length)cleanups.pop()!();});
+const card={name:'Member+Field',isNew:true,leftTypeName:'Role'};
+async function deck(label:string,offset:number):Promise<RenderTestStorage>{
+  const s=await createRenderTestStorage({bootstrapReadRules:false});cleanups.push(()=>s.close());
+  for(const row of [
+    {id:1+offset,name:'Set',codename:'set'},{id:2+offset,name:'Setting',codename:'setting'},
+    {id:3+offset,name:`*${label} All`,codename:'all',typeId:1+offset},
+    {id:4+offset,name:'Assistance',codename:'help',typeId:2+offset},
+    {id:5+offset,leftId:3+offset,rightId:4+offset,dbContent:`${label}-general`},
+    {id:8+offset,name:`*${label} Compound`,codename:'type_plus_right',typeId:1+offset},
+    {id:9+offset,name:'Role'},{id:10+offset,name:'Field'},
+    {id:11+offset,leftId:9+offset,rightId:10+offset},
+    {id:12+offset,leftId:11+offset,rightId:8+offset,typeId:1+offset},
+    {id:13+offset,leftId:12+offset,rightId:4+offset,dbContent:`${label}-specific`},
+  ])await seedCard(s,row);
+  await s.fetcher.codenames.ensureLoaded();return s;
+}
+it('keeps a suspended receiver separate while another receiver finishes and resets',async()=>{
+  const a=await deck('Alpha',0),b=await deck('Beta',100),foreign=await deck('Foreign',200);
+  foreign.fetcher.installNameEnvironment();const ambient=getNameEnvironment();
+  let enter!:()=>void,release!:()=>void;
+  const entered=new Promise<void>(resolve=>{enter=resolve;});
+  const gate=new Promise<void>(resolve=>{release=resolve;});
+  const read=a.fetcher.codenames.name.bind(a.fetcher.codenames);
+  vi.spyOn(a.fetcher.codenames,'name').mockImplementation(async code=>{if(code==='type_plus_right'){enter();await gate;}return read(code);});
+  const pending=findRule(a.fetcher,card,'Assistance');await entered;
+  try{
+    const first=await findRule(b.fetcher,card,'Assistance');
+    expect(first?.rule.id).toBe(113);expect(first?.setName).toBe('Role+Field+*Beta Compound');
+    await b.counting.query('UPDATE cards SET name=?,key=? WHERE id=?',['*Beta Renamed','*beta_renamed',108]);
+    b.fetcher.resetCaches();
+    expect((await findRule(b.fetcher,card,'Assistance'))?.setName).toBe('Role+Field+*Beta Renamed');
+    expect(getNameEnvironment()).toBe(ambient);
+  }finally{release();}
+  const result=await pending;
+  expect(result?.rule.id).toBe(13);expect(result?.setName).toBe('Role+Field+*Alpha Compound');
+  expect(result?.candidates.some(name=>name.includes('Beta')||name.includes('Foreign'))).toBe(false);
+  expect(getNameEnvironment()).toBe(ambient);
+});
+it('propagates a receiver pattern-name read error without changing another receiver or ambient state',async()=>{
+  const broken=await deck('Broken',0),good=await deck('Good',100);good.fetcher.installNameEnvironment();
+  const ambient=getNameEnvironment(),failure=new Error('owned pattern-name read failed');
+  const read=broken.fetcher.codenames.name.bind(broken.fetcher.codenames);
+  vi.spyOn(broken.fetcher.codenames,'name').mockImplementation(code=>code==='type_plus_right'?Promise.reject(failure):read(code));
+  await expect(findRule(broken.fetcher,card,'Assistance')).rejects.toBe(failure);
+  expect((await findRule(good.fetcher,card,'Assistance'))?.rule.id).toBe(113);
+  expect(getNameEnvironment()).toBe(ambient);
+});
+it('propagates explicit empty and partial maps through both pattern constructors and name algebra',async()=>{
+  const foreign=await deck('Foreign',0);foreign.fetcher.installNameEnvironment();
+  await foreign.fetcher.lexicon.name(3);await foreign.fetcher.lexicon.name(8);
+  const ambient=getNameEnvironment();
+  const explicit=new Map([['all','*Scoped All']]);
+  for(const instances of [concretePatternsForCard(card,explicit),patternsForCard(card,explicit)]){
+    expect(instances.find(p=>p.patternCode==='all')?.setName).toBe('*Scoped All');
+    expect(instances.find(p=>p.patternCode==='type_plus_right')?.setName).toBe('Role+Field+*type plus right');
+  }
+  const empty=ruleNamesForCard(card,'Assistance',new Map());
+  expect(empty).toContain('*all+Assistance');expect(empty).toContain('Role+Field+*type plus right+Assistance');
+  expect(empty.some(name=>name.includes('Foreign'))).toBe(false);
+  // Unscoped callers retain the documented ambient algebra.
+  expect(ruleNamesForCard(card,'Assistance')).toContain('*Foreign All+Assistance');
+  expect(getNameEnvironment()).toBe(ambient);
+});

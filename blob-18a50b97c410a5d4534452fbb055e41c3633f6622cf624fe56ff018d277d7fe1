@@ -1,0 +1,20 @@
+# MySQL row decoding uses the locked static parser
+
+The mysql2 result decoder generated anonymous TextRow classes through
+generate-function/index.js. A real synthetic-v1 MySQL semantics slice
+completed all 50 selected operations, but executed-source qualification
+rejected 18 anonymous generated sources from that producer. The capture
+supervisor stopped the owned server gracefully and retained the failure.
+
+Use mysql2 3.24.6's existing disableEval connection option in the product
+driver and the harness's external-server connection. It selects the locked
+static_text_parser/static_binary_parser modules, preserving the existing
+dateStrings, supportBigNumbers and character-set settings. This choice
+applies to the served driver as well as the graded adapter. It neither
+relaxes source qualification nor changes package versions.
+
+Verification compares the exact same operation IDs and decoded answers
+against the prior real slice, then requires the unchanged source-binding
+validator to accept each new TypeScript shard. Keep the rejected capture
+as the negative control. Full lane grading remains separate from this
+source-qualification check.

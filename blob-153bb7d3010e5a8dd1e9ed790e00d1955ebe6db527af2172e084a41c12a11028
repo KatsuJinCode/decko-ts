@@ -1,0 +1,80 @@
+{
+  "row": "validate-name",
+  "event_file": "card-1.110.0/mod/core/set/all/name_events.rb",
+  "event": "validate_name",
+  "locale": "card-1.110.0/mod/core/config/locales/en.yml",
+  "class_methods": {
+    "Card": {
+      "write_to_temp_cache": null,
+      "where": {
+        "__calls__": {
+          "take": null
+        }
+      }
+    }
+  },
+  "scenarios": [
+    {
+      "name": "a legal and unique name: the body checks the legality, writes the temp cache and checks the uniqueness",
+      "attributes": {
+        "name": {
+          "__calls__": {
+            "length": 5,
+            "blank?": false,
+            "valid?": true,
+            "key": "decko",
+            "to_s": "Decko"
+          }
+        },
+        "name_incomplete?": false,
+        "changing_existing_tag_to_compound?": false,
+        "id": 7,
+        "key": "decko"
+      },
+      "constants": {
+        "Lexicon.id": null
+      },
+      "pinned_event_methods": [
+        {
+          "name": "validate_legality_of_name",
+          "file": "card-1.110.0/mod/core/set/all/name_events.rb"
+        },
+        {
+          "name": "validate_uniqueness_of_name",
+          "file": "card-1.110.0/mod/core/set/all/name_events.rb"
+        }
+      ]
+    },
+    {
+      "name": "a name that is too long: the body returns after the legality check, before the temp cache",
+      "attributes": {
+        "name": {
+          "__calls__": {
+            "length": 300,
+            "blank?": false,
+            "valid?": true,
+            "key": "decko",
+            "to_s": "Decko"
+          }
+        },
+        "name_incomplete?": false,
+        "changing_existing_tag_to_compound?": false,
+        "id": 7,
+        "key": "decko"
+      },
+      "constants": {
+        "Lexicon.id": null
+      },
+      "pinned_event_methods": [
+        {
+          "name": "validate_legality_of_name",
+          "file": "card-1.110.0/mod/core/set/all/name_events.rb"
+        },
+        {
+          "name": "validate_uniqueness_of_name",
+          "file": "card-1.110.0/mod/core/set/all/name_events.rb"
+        }
+      ]
+    }
+  ]
+}

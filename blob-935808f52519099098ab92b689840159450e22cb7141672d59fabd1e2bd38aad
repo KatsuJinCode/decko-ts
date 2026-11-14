@@ -1,0 +1,128 @@
+# Numeric page identity repair (issue 136)
+
+## Controller-error body follow-up
+
+Base `22f81b2f8`, following original identity repair `495edc105`.
+Independent data reattack `48acec62e` confirmed the repaired identity/status
+but supplied two unchanged failing controls for the missing controller alert.
+Both failures reproduced in `numeric136-message-before.log`. Its retained
+Ruby card 1.110.0 / Decko 0.20.0 page/history responses for the two deleted
+IDs contain this exact unnormalized alert:
+
+```html
+<div class="alert alert-warning alert-dismissible " role="alert"><button type="button" data-bs-dismiss="alert" class="btn-close" aria-label="Close"></button>
+<p><strong>NOTFOUND:</strong> Card::Error::NotFound</p></div>
+```
+
+The numeric lookup failure now attaches the controller exception label and
+message to the empty rescue card for that render alone, using the existing
+`attachedErrorsByKey` surface. `not_found_errors` selects its warning-alert
+arm when a bag exists; ordinary missing-name pages keep their template.
+This arm does not use the separate `:errors` view's Problems heading or
+card-error-msg class. The earlier local candidate using that view passed
+the two presence assertions but was corrected after inspecting the full
+retained fragment; no full-byte match was claimed for that intermediate.
+The scalar guard, name virtuals, compound marks and shared default layout
+remain intact. No blanket 404 rewrite, name.ts edit or source131 edit.
+
+The numeric boundary refreshes the engine before the identity read/error
+attachment, so the render's write-stamp invalidation cannot discard that
+new request bag. `finally` removes the bag or restores the prior entry only
+while it still owns the current entry; a cache reset or another writer's
+replacement is retained. The error bag does not survive into a later page.
+
+Final verification: 73 tests passed in seven focused files, zero skipped or
+failed (`.runtime/adapter123/numeric136-message-final.log`); typecheck exits
+zero (`numeric136-exact-alert-typecheck.log`). The two independent body
+controls remain byte-identical to `48acec62e`, as does the original identity
+attack. Added controls compare the entire retained alert exactly, retain
+ordinary missing-name/live/virtual behavior, check prior-bag restoration,
+check the alert after a write moves the freshness stamp, and exercise a
+real unknown-layout failure before confirming cleanup. The initial failure
+case deliberately moved the stamp while retaining an old bag, so the cache
+reset correctly removed that stale bag; the final failure fixture refreshes
+first and tests the new render's ownership instead. All intermediate output
+is retained. These are local SQLite/Node controls with existing transform
+caches; no new Ruby, VM, hosted or model call. Independent full-body reattack
+on the exact follow-up source remains with the release owner.
+
+## Original identity repair
+
+Resumed repair on base `939689b209a21d3f97555f13b4efdd97b55687cf`.
+Scalar `~<digits>` page requests now fetch by numeric ID with virtual lookup
+disabled and verify the returned row's ID, persisted state and trash flag.
+Missing/deleted IDs render the ordinary empty-card not-found page at 404,
+before layout or requested-view dispatch can substitute a virtual name.
+Compound marks retain the existing asynchronous lexicon warm/name path.
+No change to `name.ts` or issue 131 source.
+
+The additional body assertion exposed a second necessary correction: the
+built-in code layout's `_main` called ordinary `nest`, which re-rendered the
+name from request context instead of using the prepared main body. It now
+uses `mainNest`, as authored card-layout `_main` already does. Otherwise a
+404 status could still accompany virtual Set Rules content.
+
+The original independent test below remains byte-identical. Added controls
+exercise virtual names before and after rejected IDs (including a warm
+virtual-name cache), missing and deleted IDs with normal/history/edit views,
+both anonymous and signed-in viewers, live numeric roots, and a live compound
+whose left side is a trashed ID. The compound fixture warms its active
+lexicon, matching the installed virtual-lookup fixture's name composition.
+
+Validation: 23 tests passed across nine focused page/layout/virtual files,
+zero failed/skipped. Raw output is
+`.runtime/adapter123/numeric136-regression-controls.log`; the four direct
+identity controls also passed in `numeric136-content-controls.log`.
+An intermediate status-only candidate failed the added body assertions and
+was corrected before saving. Original before-failure evidence remains below.
+These are local synthetic SQLite/Node controls using existing transform
+caches, with no Ruby, hosted, provider or model calls. Independent reattack
+and release-owner integration remain required.
+
+Verification initially failed with MODULE_NOT_FOUND because cleanup removed
+the installed test runner behind this worktree's dependency junction. System
+issue `rel-455c8fd7-d640-4cd5-95b1-b3f79b15f030` records incoming-junction
+custody protection. The junction was retargeted to an existing dependency
+tree used by the attack lane; its source lock hash matches this checkout,
+and installed Vitest 5.0.1, better-sqlite3 13.0.3 and TypeScript 7.0.2 match
+the lock. No install or dependency source change was made.
+
+## Preserved pre-repair checkpoint
+
+Engineering paused by the controlling Relay instruction. No production repair
+was made for this issue. This checkpoint saves the already-reproduced control.
+
+Base: `82564603cb6b561072fffe997b6e3e5876b4030a`.
+The independent test from `81fa1c0b3` is unchanged, Git blob
+`333e8a14ac7108bb140634ff6c3bc128b83b0e7c`:
+`tests/card/render/adversarial-trashed-id-page.test.ts`.
+
+Executed before the pause:
+
+```text
+node node_modules/vitest/vitest.mjs run tests/card/render/adversarial-trashed-id-page.test.ts
+```
+
+Both assertions fail as reported: expected HTTP 404, received 200, for page and
+history. No skipped tests. This uses isolated synthetic SQLite storage and the
+actual structure-based virtual lookup, with no hosted, Ruby or model call.
+Existing transform caches may be used. Raw complete output:
+`.runtime/adapter123/numeric136-before.log`, SHA-256
+`5bd675e1f9223f0f74c95bf43d11798687563e66fda320efa7eb8ece241ddd63`.
+
+Source inspection traced the conversion in `src/card/render/page.ts`: warming
+numeric marks permits synchronous name resolution, then both page root paths
+fetch by name and admit structure-derived virtual records. A direct numeric
+request must retain missing/deleted identity without changing name-based virtual
+cards or nested ID-to-name composition. This is a diagnosis and requirement,
+not a verified fix. `src/card/render/page.ts` and `src/card/name.ts` are unchanged.
+
+Issue 131 production source is saved at
+`4f39824ff60e5ea4ca5284b862d2664e5e38d324`, with receipt-only report
+`82564603cb6b561072fffe997b6e3e5876b4030a`. Its 43 controls and clean actual
+canonical source self-comparison passed; independent final review and controller
+integration remain separate. The legacy-switch documentation assignment remains
+unfinished. No further engineering or review is started from this checkpoint.
+
+Resume only on controlling admission; then repair numeric identity and reattack
+the unchanged controls while preserving valid virtual-name and nested-ID cases.

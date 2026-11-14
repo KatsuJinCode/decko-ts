@@ -1,0 +1,54 @@
+{
+  "row": "check-for-cards-of-type",
+  "event": "check_for_cards_of_type",
+  "pinned_file": "card-1.110.0/mod/core/set/type/cardtype.rb",
+  "pinned_declaration": "event :check_for_cards_of_type, after: :validate_delete do",
+  "pinned_declaration_line": 15,
+  "pinned_body": "  errors.add :cardtype, t(:core_cards_exist, cardname: name) if cards_of_type_exist?",
+  "pinned_body_lines": [
+    {
+      "line": 16,
+      "text": "  errors.add :cardtype, t(:core_cards_exist, cardname: name) if cards_of_type_exist?"
+    }
+  ],
+  "locale_file": "card-1.110.0/mod/core/config/locales/en.yml",
+  "scenarios": [
+    {
+      "scenario": "Cardtype",
+      "cards_of_type_exist": true,
+      "errors_added": [
+        {
+          "attribute": "cardtype",
+          "message": "Sorry, this card must remain a Cardtype so long as there are Cardtype cards."
+        }
+      ],
+      "calls": [
+        {
+          "call": "cards_of_type_exist?",
+          "arguments": [
+            true
+          ]
+        }
+      ],
+      "outcome": {
+        "raised": null
+      }
+    },
+    {
+      "scenario": "Cardtype",
+      "cards_of_type_exist": false,
+      "errors_added": [],
+      "calls": [
+        {
+          "call": "cards_of_type_exist?",
+          "arguments": [
+            false
+          ]
+        }
+      ],
+      "outcome": {
+        "raised": null
+      }
+    }
+  ]
+}

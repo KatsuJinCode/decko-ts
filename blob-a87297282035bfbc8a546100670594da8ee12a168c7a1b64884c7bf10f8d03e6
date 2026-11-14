@@ -1,0 +1,23 @@
+import { expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { createRenderTestStorage, seedCard } from "./render-test-storage.js";
+
+const oracle=JSON.parse(readFileSync(new URL("./original-cql-result-name-arrays.json",import.meta.url),"utf8")) as {
+  rows:{clauses:Record<string,unknown>,name:string}[]
+};
+for(const row of oracle.rows)it(`renders original array result names for ${JSON.stringify(row.clauses)}`,async()=>{
+  const s=await createRenderTestStorage();
+  try{
+    const read={readRuleId:s.bootstrapRule!,readRuleClass:"*all"};
+    for(const [id,name] of [[1001,"A"],[1002,"B"],[1003,"C"]] as const)await seedCard(s,{id,name,...read});
+    for(const [id,name,leftId,rightId] of [
+      [1004,"C+A",1003,1001],[1005,"A+B",1001,1002],[1006,"C+A+B",1004,1002],[1007,"A+B+C",1005,1003],
+    ] as const)await seedCard(s,{id,name,leftId,rightId,...read});
+    await seedCard(s,{id:1098,name:"Search",codename:"search_type",...read});
+    await seedCard(s,{id:1099,name:"Array result example",typeId:1098,
+      dbContent:JSON.stringify({name:"C",...row.clauses}),...read});
+    const html=await s.engine.render("Array result example","content");
+    const names=[...html.matchAll(/data-card-name="([^"]*)"/g)].map(m=>m[1]);
+    expect(names).toContain(row.name);
+  }finally{s.close();}
+});

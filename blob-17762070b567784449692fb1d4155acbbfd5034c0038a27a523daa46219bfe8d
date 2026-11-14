@@ -1,0 +1,94 @@
+// The head views on a deck whose junction rows store NULL name AND key
+// columns, which is how the synthetic reference decks Ruby builds store
+// them (their junction identity is left_id/right_id only).
+//
+// Two behaviours, both compared against what Ruby renders on such a deck
+// (reference-harness synthetic-v2-mod-probes, probes 320, 381, 383, 385):
+//
+// 1. card-mod-format set/all/head.rb :stylesheet_tags resolves
+//    `*all+*style+*asset output` through asset_output_url. Ruby's
+//    Card.fetch finds a junction by its parts, so the href is the compiled
+//    stylesheet's URL on a fresh engine; the port's head read-set read
+//    the key column only, so a fresh engine rendered `href=""`.
+// 2. card-mod-layout set/self/head.rb :core is
+//    `escape_in_main { nest root.card, view: :head }`. Rendering
+//    `*all+*head` (content `{{:head|core}}`) nests the ROOT card's head, so
+//    the title names `*all+*head`, not `*head`.
+
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import {
+  bindModLoaderToEngine,
+  createRenderTestStorage,
+  seedCard,
+  type RenderTestStorage,
+} from "../render/render-test-storage.js";
+import { ModLoader, modEngineHost } from "../../../src/card/mod-loader.js";
+import cardModFormat from "../../../src/card/mod-loader/mods/card-mod-format.js";
+import cardModLayout from "../../../src/card/mod-loader/mods/card-mod-layout.js";
+
+const DECK_TITLE = "Keyless Junction Deck";
+const STYLE_SRC = "(probe_bucket)/assets/compiled-style.css";
+const STYLE_HREF = "http://s3.amazonaws.com//files/assets/compiled-style.css";
+
+let storage: RenderTestStorage | undefined;
+let loader: ModLoader | undefined;
+
+beforeAll(async () => {
+  storage = await createRenderTestStorage();
+  const s = storage;
+  await seedCard(s, { id: 2, name: "Basic", codename: "basic", typeId: 2 });
+  await seedCard(s, { id: 4, name: "Pointer", codename: "pointer", typeId: 2 });
+  await seedCard(s, { id: 952, name: "Cardtype", codename: "cardtype", typeId: 952 });
+  await seedCard(s, { id: 950, name: "Set", codename: "set", typeId: 952 });
+  await seedCard(s, { id: 951, name: "Setting", codename: "setting", typeId: 952 });
+  await seedCard(s, { id: 900, name: "*all", codename: "all", typeId: 950 });
+  await seedCard(s, { id: 903, name: "*head", codename: "head", typeId: 951 });
+  await seedCard(s, { id: 904, name: "*title", codename: "title", typeId: 2, dbContent: DECK_TITLE });
+  await seedCard(s, { id: 908, name: "*style", codename: "style", typeId: 951 });
+  await seedCard(s, { id: 909, name: "*script", codename: "script", typeId: 951 });
+  await seedCard(s, { id: 923, name: "*asset output", codename: "asset_output", typeId: 2 });
+  await seedCard(s, { id: 921, name: "*all+*style", leftId: 900, rightId: 908, typeId: 2, dbContent: "" });
+  await seedCard(s, { id: 930, name: "*all+*style+*asset output", leftId: 921, rightId: 923, typeId: 2, dbContent: STYLE_SRC });
+  await seedCard(s, { id: 925, name: "*all+*head", leftId: 900, rightId: 903, typeId: 2, dbContent: "{{:head|core}}" });
+  await seedCard(s, { id: 940, name: "Keyless Probe", typeId: 2, dbContent: "<p>probe body</p>" });
+  // The deck shape under test: junctions identified by their side ids only.
+  await s.counting.query("UPDATE cards SET name = NULL, key = NULL WHERE left_id IS NOT NULL", []);
+  const keyed = await s.counting.query<{ n: number }>(
+    "SELECT COUNT(*) AS n FROM cards WHERE left_id IS NOT NULL AND key IS NOT NULL",
+    [],
+  );
+  expect(Number(keyed.rows[0]?.n)).toBe(0);
+  s.fetcher.installNameEnvironment();
+  loader = new ModLoader([{ manifest: cardModFormat }, { manifest: cardModLayout }]);
+  loader.load();
+  bindModLoaderToEngine(s, loader);
+  await loader.installInto(modEngineHost(s.engine, s.fetcher));
+}, 60_000);
+
+afterAll(() => {
+  loader?.reset();
+  storage?.close();
+});
+
+describe("head views on a deck whose junctions carry no key column", () => {
+  it(":stylesheet_tags resolves the compiled stylesheet on the engine's first render", async () => {
+    const s = storage!;
+    expect(await s.engine.render("Keyless Probe", "stylesheet_tags")).toBe(
+      `<link href="https://fonts.googleapis.com/css2?family=Material+Icons" media="all" rel="stylesheet" type="text/css" />\n` +
+        `<link media="all" rel="stylesheet" type="text/css" href="${STYLE_HREF}" />`,
+    );
+  });
+
+  it("*all+*head's :head_content renders the root card's head, titled *all+*head", async () => {
+    const s = storage!;
+    const head = await s.engine.render("*all+*head", "head_content");
+    expect(head.startsWith(`<title>*all+*head - ${DECK_TITLE}</title>\n`)).toBe(true);
+    expect(head).toContain(`href="${STYLE_HREF}"`);
+  });
+
+  it("*head's own :core renders its own head, titled *head", async () => {
+    const s = storage!;
+    const head = await s.engine.render("*head", "core");
+    expect(head.startsWith(`<title>*head - ${DECK_TITLE}</title>\n`)).toBe(true);
+  });
+});

@@ -1,0 +1,76 @@
+// Derive a sparse database-lane overlay from a complete, real Ruby capture.
+// The comparison report determines the IDs; original recorded rows are kept.
+import { createHash } from "node:crypto";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
+import { gradeRun } from "../../reference-harness/runner/grade-lib.mjs";
+import { writeExpectedManifest } from "../../reference-harness/runner/manifest.mjs";
+
+const [fixture, capture, output, receiptDir] = process.argv.slice(2).map(p => path.resolve(p));
+if (!fixture || !capture || !output || !receiptDir) throw new Error("Supply fixture, full capture, overlay output, and receipt directory");
+const records = Object.fromEntries(["render", "semantics", "scenarios"].map(kind => [kind,
+  readFileSync(path.join(capture, `${kind}.jsonl`), "utf8").trim().split("\n").filter(Boolean).map(line => JSON.parse(line))]));
+const meta = JSON.parse(readFileSync(path.join(capture, "run-meta.json"), "utf8"));
+for (const [kind, run] of Object.entries(meta.runs)) {
+  if (!run.complete || run.selection || run.ops_run !== run.ops_total || run.fixture_problems?.length) {
+    throw new Error(`Incomplete Ruby source capture: ${kind}`);
+  }
+  if (run.engine?.version?.ruby !== "3.2.3" || !run.engine?.version?.ruby_platform?.includes("linux")) {
+    throw new Error(`Unexpected Ruby reference environment: ${kind}`);
+  }
+}
+const comparison = gradeRun({ fixture, actual: capture, diagnostic: true });
+mkdirSync(receiptDir, { recursive: true });
+writeFileSync(path.join(receiptDir, "ruby-mysql-vs-sqlite.json"), JSON.stringify(comparison, null, 2) + "\n");
+if (comparison.problems.length) throw new Error(`Oracle comparison invalid: ${comparison.problems.join("; ")}`);
+const ids = { render: new Set(), semantics: new Set(), scenarios: new Set() };
+const knownIds = Object.fromEntries(Object.entries(records).map(([kind, lines]) => [kind, new Set(lines.map(line => line.id))]));
+for (const failures of Object.values(comparison.failures)) {
+  for (const failure of failures) {
+    // A render/ask after a write belongs to its whole scenario, rather than
+    // becoming a nonexistent standalone render/semantics operation.
+    if (knownIds.render.has(failure.id)) ids.render.add(failure.id);
+    else if (knownIds.semantics.has(failure.id)) ids.semantics.add(failure.id);
+    else {
+      const scenario = failure.id.replace(/#\d+$/, "");
+      if (!knownIds.scenarios.has(scenario)) throw new Error(`Comparison named unknown operation ${failure.id}`);
+      ids.scenarios.add(scenario);
+    }
+  }
+}
+// The persistence/side-effects comparison names scenarios as step IDs.
+// A scenario is an indivisible sequence; retain every step from its capture.
+for (const failure of comparison.other_tables?.failures ?? []) ids.scenarios.add(failure.id.replace(/#\d+$/, ""));
+if (comparison.read_writes?.fail) throw new Error("Ruby read requests wrote data; inspect comparison before publication");
+mkdirSync(output, { recursive: true });
+const fullMeta = readFileSync(path.join(capture, "run-meta.json"));
+const published = structuredClone(meta);
+delete published.adapter_diagnostics;
+for (const run of Object.values(published.runs)) {
+  delete run.source_binding;
+  // Full immutable shard paths are local evidence, not public fixture data.
+  run.capture_shards = run.capture_shards.map(shard => ({
+    kind: shard.kind, ids: shard.ids, run_meta_sha256: shard.run_meta_sha256,
+  }));
+}
+for (const kind of ["render", "semantics", "scenarios"]) {
+  const selected = records[kind].filter(record => ids[kind].has(record.id));
+  if (selected.length !== ids[kind].size) throw new Error(`Comparison named unknown ${kind} IDs`);
+  writeFileSync(path.join(output, `${kind}.jsonl`), selected.map(record => JSON.stringify(record) + "\n").join(""));
+}
+writeFileSync(path.join(output, "run-meta.json"), JSON.stringify(published, null, 2) + "\n");
+const provenance = {
+  recorded: new Date().toISOString(),
+  reference: "stock Decko 0.20.0 / card 1.110.0, Ruby 3.2.3 on Linux, mysql2 0.5.7, MySQL 8.4.11",
+  coverage: "complete ordered union of disjoint retained bounded captures; no copied historical results",
+  full_run_meta_sha256: createHash("sha256").update(fullMeta).digest("hex"),
+  rule: "Only operations differing from the Ruby 3.2.3 SQLite reference under the existing grader are overlaid; scenario row deltas are mirrored from MySQL before each response",
+  supersedes: JSON.parse(readFileSync(path.join(receiptDir, "superseded-overlay.json"), "utf8")),
+};
+const oracleTables = JSON.parse(readFileSync(path.join(receiptDir, "mysql-oracle-tables.json"), "utf8")).tables;
+if (!Array.isArray(oracleTables) || !oracleTables.length || !oracleTables.every(name => typeof name === "string")) {
+  throw new Error("Supply the measured MySQL oracle table inventory");
+}
+const manifest = writeExpectedManifest(fixture, output, { lane: "mysql", laneDb: "mysql 8.4.11", laneOracleTables: oracleTables, provenance });
+writeFileSync(path.join(receiptDir, "overlay-ids.json"), JSON.stringify(Object.fromEntries(Object.entries(ids).map(([kind, set]) => [kind, [...set]])), null, 2) + "\n");
+console.log(JSON.stringify({ fixture_digest: manifest.fixture_digest, counts: Object.fromEntries(Object.entries(ids).map(([kind, set]) => [kind, set.size])) }));

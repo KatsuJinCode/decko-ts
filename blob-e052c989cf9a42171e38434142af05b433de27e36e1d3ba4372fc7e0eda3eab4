@@ -1,0 +1,100 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.1 [39m[90mC:/localProjects/decko-ts-lane-a1-mods-validation-2026-10-06[39m
+
+ [31m❯[39m tests/card/render/code-highlighting/coderay-byte-identity.test.ts [2m([22m[2m23 tests[22m[2m | [22m[31m12 failed[39m[2m)[22m[32m 7[2mms[22m[39m
+   [31m❯[39m code-highlighting: byte-identity vs Ruby oracle [2m(6)[22m
+[31m     [31m×[31m json-tinymce-corpus-53 reproduces the captured json output verbatim[39m[32m 3[2mms[22m[39m
+[31m     [31m×[31m css-corpus-198 reproduces the captured css output verbatim[39m[32m 0[2mms[22m[39m
+[31m     [31m×[31m html-layout-corpus-314 reproduces the captured html output verbatim[39m[32m 0[2mms[22m[39m
+[31m     [31m×[31m html-layout-shard1-2339 reproduces the captured html output verbatim[39m[32m 0[2mms[22m[39m
+[31m     [31m×[31m html-layout-shard1-2347 reproduces the captured html output verbatim[39m[32m 0[2mms[22m[39m
+[31m     [31m×[31m html-layout-shard1-2575 reproduces the captured html output verbatim[39m[32m 0[2mms[22m[39m
+   [31m❯[39m code-highlighting: scanner-level byte-identity [2m(6)[22m
+[31m     [31m×[31m json-tinymce-corpus-53: inner spans are wrapped by the CodeRay DIV template[39m[32m 0[2mms[22m[39m
+[31m     [31m×[31m css-corpus-198: inner spans are wrapped by the CodeRay DIV template[39m[32m 0[2mms[22m[39m
+[31m     [31m×[31m html-layout-corpus-314: inner spans are wrapped by the CodeRay DIV template[39m[32m 0[2mms[22m[39m
+[31m     [31m×[31m html-layout-shard1-2339: inner spans are wrapped by the CodeRay DIV template[39m[32m 0[2mms[22m[39m
+[31m     [31m×[31m html-layout-shard1-2347: inner spans are wrapped by the CodeRay DIV template[39m[32m 0[2mms[22m[39m
+[31m     [31m×[31m html-layout-shard1-2575: inner spans are wrapped by the CodeRay DIV template[39m[32m 0[2mms[22m[39m
+   [32m✓[39m code-highlighting: langForTypeCode dispatch [2m(8)[22m
+     [32m✓[39m maps type_code json -> json[32m 0[2mms[22m[39m
+     [32m✓[39m maps type_code css -> css[32m 0[2mms[22m[39m
+     [32m✓[39m maps type_code scss -> css[32m 0[2mms[22m[39m
+     [32m✓[39m maps type_code layout_type -> html[32m 0[2mms[22m[39m
+     [32m✓[39m maps type_code head -> html[32m 0[2mms[22m[39m
+     [32m✓[39m maps type_code basic -> undefined[32m 0[2mms[22m[39m
+     [32m✓[39m maps type_code search_type -> undefined[32m 0[2mms[22m[39m
+     [32m✓[39m maps type_code undefined -> undefined[32m 0[2mms[22m[39m
+   [32m✓[39m code-highlighting: escape + DIV template shape [2m(3)[22m
+     [32m✓[39m escapes HTML entities and control codes per CodeRay[32m 0[2mms[22m[39m
+     [32m✓[39m wraps a scan in the CodeRay DIV template[32m 0[2mms[22m[39m
+     [32m✓[39m alpha theme table covers the kinds the corpus fixtures exercise[32m 0[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 12 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m tests/card/render/code-highlighting/coderay-byte-identity.test.ts[2m > [22mcode-highlighting: byte-identity vs Ruby oracle[2m > [22mjson-tinymce-corpus-53 reproduces the captured json output verbatim
+[41m[1m FAIL [22m[49m tests/card/render/code-highlighting/coderay-byte-identity.test.ts[2m > [22mcode-highlighting: byte-identity vs Ruby oracle[2m > [22mcss-corpus-198 reproduces the captured css output verbatim
+[41m[1m FAIL [22m[49m tests/card/render/code-highlighting/coderay-byte-identity.test.ts[2m > [22mcode-highlighting: byte-identity vs Ruby oracle[2m > [22mhtml-layout-corpus-314 reproduces the captured html output verbatim
+[31m[1mError[22m: ENOENT: no such file or directory, open 'C:\localProjects\decko-ts\fixtures\corpus\shard-000000.jsonl'[39m
+[36m [2m❯[22m loadContent tests/card/render/code-highlighting/coderay-byte-identity.test.ts:[2m46:17[22m[39m
+    [90m 44|[39m
+    [90m 45|[39m function loadContent(shard: string, cardId: number): string {
+    [90m 46|[39m   const lines = readFileSync(resolve(FIXTURES, shard), "utf8").split("…
+    [90m   |[39m                 [31m^[39m
+    [90m 47|[39m   for (const line of lines) {
+    [90m 48|[39m     if (line === "") continue;
+[90m [2m❯[22m tests/card/render/code-highlighting/coderay-byte-identity.test.ts:[2m64:23[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/12]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/card/render/code-highlighting/coderay-byte-identity.test.ts[2m > [22mcode-highlighting: byte-identity vs Ruby oracle[2m > [22mhtml-layout-shard1-2339 reproduces the captured html output verbatim
+[41m[1m FAIL [22m[49m tests/card/render/code-highlighting/coderay-byte-identity.test.ts[2m > [22mcode-highlighting: byte-identity vs Ruby oracle[2m > [22mhtml-layout-shard1-2347 reproduces the captured html output verbatim
+[41m[1m FAIL [22m[49m tests/card/render/code-highlighting/coderay-byte-identity.test.ts[2m > [22mcode-highlighting: byte-identity vs Ruby oracle[2m > [22mhtml-layout-shard1-2575 reproduces the captured html output verbatim
+[31m[1mError[22m: ENOENT: no such file or directory, open 'C:\localProjects\decko-ts\fixtures\corpus\shard-000001.jsonl'[39m
+[36m [2m❯[22m loadContent tests/card/render/code-highlighting/coderay-byte-identity.test.ts:[2m46:17[22m[39m
+    [90m 44|[39m
+    [90m 45|[39m function loadContent(shard: string, cardId: number): string {
+    [90m 46|[39m   const lines = readFileSync(resolve(FIXTURES, shard), "utf8").split("…
+    [90m   |[39m                 [31m^[39m
+    [90m 47|[39m   for (const line of lines) {
+    [90m 48|[39m     if (line === "") continue;
+[90m [2m❯[22m tests/card/render/code-highlighting/coderay-byte-identity.test.ts:[2m64:23[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/12]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/card/render/code-highlighting/coderay-byte-identity.test.ts[2m > [22mcode-highlighting: scanner-level byte-identity[2m > [22mjson-tinymce-corpus-53: inner spans are wrapped by the CodeRay DIV template
+[41m[1m FAIL [22m[49m tests/card/render/code-highlighting/coderay-byte-identity.test.ts[2m > [22mcode-highlighting: scanner-level byte-identity[2m > [22mcss-corpus-198: inner spans are wrapped by the CodeRay DIV template
+[41m[1m FAIL [22m[49m tests/card/render/code-highlighting/coderay-byte-identity.test.ts[2m > [22mcode-highlighting: scanner-level byte-identity[2m > [22mhtml-layout-corpus-314: inner spans are wrapped by the CodeRay DIV template
+[31m[1mError[22m: ENOENT: no such file or directory, open 'C:\localProjects\decko-ts\fixtures\corpus\shard-000000.jsonl'[39m
+[36m [2m❯[22m loadContent tests/card/render/code-highlighting/coderay-byte-identity.test.ts:[2m46:17[22m[39m
+    [90m 44|[39m
+    [90m 45|[39m function loadContent(shard: string, cardId: number): string {
+    [90m 46|[39m   const lines = readFileSync(resolve(FIXTURES, shard), "utf8").split("…
+    [90m   |[39m                 [31m^[39m
+    [90m 47|[39m   for (const line of lines) {
+    [90m 48|[39m     if (line === "") continue;
+[90m [2m❯[22m tests/card/render/code-highlighting/coderay-byte-identity.test.ts:[2m78:23[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/12]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/card/render/code-highlighting/coderay-byte-identity.test.ts[2m > [22mcode-highlighting: scanner-level byte-identity[2m > [22mhtml-layout-shard1-2339: inner spans are wrapped by the CodeRay DIV template
+[41m[1m FAIL [22m[49m tests/card/render/code-highlighting/coderay-byte-identity.test.ts[2m > [22mcode-highlighting: scanner-level byte-identity[2m > [22mhtml-layout-shard1-2347: inner spans are wrapped by the CodeRay DIV template
+[41m[1m FAIL [22m[49m tests/card/render/code-highlighting/coderay-byte-identity.test.ts[2m > [22mcode-highlighting: scanner-level byte-identity[2m > [22mhtml-layout-shard1-2575: inner spans are wrapped by the CodeRay DIV template
+[31m[1mError[22m: ENOENT: no such file or directory, open 'C:\localProjects\decko-ts\fixtures\corpus\shard-000001.jsonl'[39m
+[36m [2m❯[22m loadContent tests/card/render/code-highlighting/coderay-byte-identity.test.ts:[2m46:17[22m[39m
+    [90m 44|[39m
+    [90m 45|[39m function loadContent(shard: string, cardId: number): string {
+    [90m 46|[39m   const lines = readFileSync(resolve(FIXTURES, shard), "utf8").split("…
+    [90m   |[39m                 [31m^[39m
+    [90m 47|[39m   for (const line of lines) {
+    [90m 48|[39m     if (line === "") continue;
+[90m [2m❯[22m tests/card/render/code-highlighting/coderay-byte-identity.test.ts:[2m78:23[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/12]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m12 failed[39m[22m[2m | [22m[1m[32m11 passed[39m[22m[90m (23)[39m
+[2m   Start at [22m 23:15:59
+[2m   Duration [22m 1.32s[2m (transform 70%, import 18%, tests 8%, worker 4%)[22m
+

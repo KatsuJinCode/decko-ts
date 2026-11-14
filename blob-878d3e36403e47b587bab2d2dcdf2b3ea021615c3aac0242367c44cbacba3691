@@ -1,0 +1,5 @@
+// Retain the old entry point so a stale caller gets the required VM route.
+// DEC102 permits no host-interpreter fallback or local gem environment.
+export function rubyOracleChildEnv() {
+  throw new Error("DEC102 requires VM Ruby; use runRubyOracleOnVm from tools/platform/ruby-oracle-vm.mjs");
+}

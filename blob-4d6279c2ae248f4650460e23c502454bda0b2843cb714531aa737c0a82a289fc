@@ -1,0 +1,39 @@
+import { createHash } from "node:crypto";
+import { writeFileSync } from "node:fs";
+import path from "node:path";
+import { expect, it } from "vitest";
+// @ts-expect-error Shared fixture producer is ESM without declarations.
+import { verifyEditSessionCapture } from "./edit-session-capture.mjs";
+import { scratchDir } from "./scratch-dir.mjs";
+
+// Transport integrity controls only; these small byte strings are never used
+// as a Ruby observation or as the replay suite's source deck.
+function transportPair(actor = 911, observedActor = actor) {
+  const directory = scratchDir("edit-session-integrity-");
+  const bytes = Buffer.from("recorded database transport bytes");
+  const database = path.join(directory, "source.sqlite3");
+  const manifest = path.join(directory, "manifest.json");
+  writeFileSync(database, bytes);
+  writeFileSync(manifest, JSON.stringify({
+    provenance: { database_sha256: createHash("sha256").update(bytes).digest("hex") },
+    db_baseline: { actor_id: actor },
+    steps: [{ step: "step-04-save-rev2", db_after: { card_acts: [{ actor_id: observedActor }] } }],
+  }));
+  return { database, manifest };
+}
+
+it("rejects a source database from a different recording", () => {
+  const pair = transportPair();
+  writeFileSync(pair.database, "different database bytes");
+  expect(() => verifyEditSessionCapture(pair.manifest, pair.database)).toThrow("manifest/database mismatch");
+});
+
+it("rejects an actor number that disagrees with Ruby's first persisted save", () => {
+  const pair = transportPair(911, 912);
+  expect(() => verifyEditSessionCapture(pair.manifest, pair.database)).toThrow("actor does not match");
+});
+
+it("accepts matching bytes and the observed actor without pinning a row number", () => {
+  const pair = transportPair(1301);
+  expect(verifyEditSessionCapture(pair.manifest, pair.database).db_baseline.actor_id).toBe(1301);
+});

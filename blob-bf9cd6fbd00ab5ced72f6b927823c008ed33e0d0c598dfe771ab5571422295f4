@@ -1,0 +1,8 @@
+[
+  {
+    "file": "tests/migrate/recovery-independent-review.test.ts",
+    "gate": "harness",
+    "requiredRuntime": "linux-vm",
+    "reason": "Mandatory available VM profile: original recovery assertions require genuine file symlink creation. This Windows account reports EPERM and has no WSL distribution; execute the unchanged original file on the existing Linux VM alongside release-candidate full verification. No setting change, skipped assertion or substitute link qualifies."
+  }
+]

@@ -1,0 +1,77 @@
+# Shared scratch cleanup failure contract
+
+Assigned private issue 224, rooted at
+`7f88f3fe1ab8ee6c7279fa8b64dce7de5afac453`. Related fixture-specific issue 139
+and its separate ownership/evidence remain intact. Root alone integrates.
+
+Required outcome: failures removing owned test scratch must reach the owning
+test/controller with their original cause. A directory remains registered
+until absence is confirmed; other registered cleanup may continue, but failed
+paths remain unresolved. No detached unobserved cleaner or new clock trigger
+is permitted. Explicit debug retention remains distinct from removal. Normal
+owned teardown must close its native resource and confirm removal.
+
+Scope: actual project helper, focused source-qualified tests and evidence.
+No existing scratch is selected, no unrelated process is controlled, and no
+global deletion/approval policy, consumer database or external service changes.
+The retained checkout's helper, declaration, existing tests, setup and purge
+support match the current root preimages exactly; no engine source is loaded
+for this helper-only verification.
+
+## Reproduction and source correction
+
+The complete initial failure-control file ran on the actual root-preimage
+helper: two cases passed and four failed, native exit one. A controlled
+filesystem removal error disappeared from removeScratchDir. Aggregate cleanup
+returned success, dropped the failed registration and attempted detached spawn;
+the fixture intercepted and refused that spawn before any process launched.
+Its launch error was swallowed too. Exit cleanup produced neither failure
+diagnostics nor a failing success status. All original red reports and child
+stdout/stderr remain under registered ignored
+`.runtime/scratch-cleanup-224-20261031/red/`.
+
+The helper now propagates single-removal errors unchanged. Aggregate cleanup
+attempts each owned path, removes only confirmed absences from registration,
+and throws AggregateError containing every original failure and unresolved
+path. The exit handler reports that same failure and changes a zero/undefined
+exit status to one, preserving a prior nonzero code and its diagnostics. No
+child process is imported/launched and the delayed cleaner is removed. Existing
+bounded native rmSync retry settings are unchanged; no timer/schedule was added.
+
+Removal checks actual presence with lstat: only ENOENT confirms absence;
+unreadable status remains an error. A successful rmSync that leaves a directory
+present is not success. An exception remains observable even if removal happened
+before it; a later explicit check may confirm absence without replaying removal.
+Existing paths must be registered to this process, remain directories rather
+than replacement links, and still carry this checkout/machine's manifest.
+An unknown/changed/unreadable owner is refused, not deleted. Explicit debug keep
+leaves both the directory and its registration intact. Public declarations and
+ordinary callers retain the existing void-returning API.
+
+## Verification and scope
+
+The expanded complete file passes twelve cases against the actual helper.
+The unchanged original scratch helper file passes five and the unchanged
+stale-purge file passes six, all assertions/files passed, zero skips/pending,
+native exit zero. These are helper-local selections, not engine or release
+coverage. Actual SQLite opens, writes and closes its owned native handle before
+normal removal. Controlled native API substitutions occur only in disposable
+child processes; they are not claims of a reproduced operating-system locked
+file. They test error identity, aggregate ownership, explicit and natural exit,
+preserved original failure, ambiguous removal, unreadable confirmation, silent
+no-op, changed/unregistered owner, debug keep, normal removal and idempotence.
+
+The project platform scan of the two changed JS/TS files has no command hits.
+The repository test-classification check accepts the new Vitest file. Existing
+helper CRLF preimages are preserved; whitespace is checked with CR-at-EOL
+recognized, without changing Git configuration. Source/support preimage hashes
+pin this to current root; no older engine is substituted or loaded. Raw native
+JSON, full child stdout/stderr and actual observations are retained in the
+registered runtime. No model judge, automatic retry or cached test result is
+used; compiler/dependency/OS caches may be warm. Existing scratch is untouched.
+
+The fixture-specific provider teardown in issue 139 is not modified or declared
+accepted by this shared-helper repair. It retains its own owner and evidence.
+
+Next: distinct exact-source and cleanup-ownership reattack by Codex in juc-relay
+(Relay 1262), then root-only integration of this narrow helper/test/report patch.

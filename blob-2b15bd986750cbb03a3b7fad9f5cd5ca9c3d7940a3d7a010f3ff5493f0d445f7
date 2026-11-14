@@ -1,0 +1,221 @@
+# oracle-capture-signin-page-links.rb - the pinned Ruby's own bytes for the
+# SIGNED-OUT SIGN-IN PAGE'S TWO LINKS (registry row cap-S4, "Sign-in link to
+# sign up, and link to reset password").
+#
+# The row's contract: the signed-out sign-in page links to sign up and to
+# reset the password. Seven pinned files own the two links and the bytes
+# around them:
+#
+#   1. card-mod-account-0.20.0/set/self/signin.rb - THE TWO LINKS:
+#      `signup_link` is `link_to_card :signup, t(:account_or_sign_up), path:
+#      { action: :new, mark: :signup }` and `reset_password_link` is
+#      `link_to_view :edit, t(:account_reset_password), path: { slot: { hide:
+#      :board_link } }`; `signin_button` is the third control in the block.
+#   2. card-mod-account-0.20.0/set/self/signin/core.haml - THE BLOCK: the
+#      `.form-group.signin-buttons` division holds `.reset-password-link`,
+#      `.signin-button` and `.signup-button`, in that order.
+#   3. card-mod-account-0.20.0/config/locales/en.yml - THE THREE TEXTS:
+#      account_or_sign_up is "...or sign up!", account_reset_password is
+#      "Reset password" and account_sign_in is "Sign in".
+#   4. card-mod-format-0.20.0/set/all/links.rb - THE ANCHOR SHAPES:
+#      `link_to` puts the path LAST into the href, `link_to_card` adds the
+#      known/wanted class, `link_to_view` is a remote link with
+#      `rel: "nofollow"` and the "slotter" class.
+#   5. card-mod-format-0.20.0/lib/card/path.rb - THE TWO DESTINATIONS:
+#      `new_cardtype` renders "new/<mark>" and `base` renders "<mark>/<view>".
+#   6. card-mod-format-0.20.0/lib/card/path/cast_params.rb - THE SLOT HIDE
+#      SERIALIZATION: a scalar slot hide is wrapped by `Array.wrap`, which is
+#      why the key carries the `[]` suffix.
+#
+# The capture reads the pinned gemset and writes nothing but its own JSON
+# fixture. It does NOT boot the oracle deck.
+#
+# Run (from the repository root, with the pinned gemset on the gem path):
+#   GEM_PATH="reference-harness/ruby-oracle-gems/ruby/3.4.0:$(ruby -e 'print Gem.default_dir')" \
+#     ruby tests/card/mod-loader/oracle-capture-signin-page-links.rb
+#
+# Determinism contract: the output JSON is pretty-printed with deeply sorted
+# keys and a trailing newline, and carries NO timestamp, so a re-run is
+# byte-stable against what is committed.
+
+require "json"
+require "digest"
+
+REPO_ROOT = File.expand_path("../../..", __dir__)
+OUT_PATH  = File.join(REPO_ROOT, "fixtures", "captured", "signin-page-links.json")
+
+GEM_HOME_DEFAULT = File.join(REPO_ROOT, "reference-harness", "ruby-oracle-gems", "ruby", "3.4.0", "gems")
+GEM_HOME = ENV.fetch("DECKO_ORACLE_GEM_HOME", GEM_HOME_DEFAULT)
+
+OWNERS = [
+  { key: "signup_link",
+    gem: "card-mod-account-0.20.0",
+    path: "set/self/signin.rb",
+    marker: "def signup_link", before: 0, after: 3 },
+  { key: "reset_password_link",
+    gem: "card-mod-account-0.20.0",
+    path: "set/self/signin.rb",
+    marker: "def reset_password_link", before: 0, after: 3 },
+  { key: "signin_button",
+    gem: "card-mod-account-0.20.0",
+    path: "set/self/signin.rb",
+    marker: "def signin_button", before: 0, after: 2 },
+  { key: "core_haml",
+    gem: "card-mod-account-0.20.0",
+    path: "set/self/signin/core.haml",
+    marker: ".form-group.signin-buttons", before: 1, after: 6 },
+  { key: "or_sign_up_locale",
+    gem: "card-mod-account-0.20.0",
+    path: "config/locales/en.yml",
+    marker: "account_or_sign_up:", before: 0, after: 0 },
+  { key: "reset_password_locale",
+    gem: "card-mod-account-0.20.0",
+    path: "config/locales/en.yml",
+    marker: "account_reset_password:", before: 0, after: 0 },
+  { key: "sign_in_locale",
+    gem: "card-mod-account-0.20.0",
+    path: "config/locales/en.yml",
+    marker: "account_sign_in:", before: 0, after: 0 },
+  { key: "link_to",
+    gem: "card-mod-format-0.20.0",
+    path: "set/all/links.rb",
+    marker: "interpret_data_opts_to_link_to opts", before: 2, after: 2 },
+  { key: "link_to_card",
+    gem: "card-mod-format-0.20.0",
+    path: "set/all/links.rb",
+    marker: "add_known_or_wanted_class opts, name", before: 3, after: 1 },
+  { key: "link_to_view",
+    gem: "card-mod-format-0.20.0",
+    path: "set/all/links.rb",
+    marker: "super(view, text || view, opts)", before: 2, after: 1 },
+  { key: "slotterify",
+    gem: "card-mod-format-0.20.0",
+    path: "set/all/links.rb",
+    marker: "def slotterify opts", before: 0, after: 4 },
+  { key: "add_known_or_wanted_class",
+    gem: "card-mod-format-0.20.0",
+    path: "set/all/links.rb",
+    marker: "def add_known_or_wanted_class opts, name", before: 0, after: 5 },
+  { key: "new_cardtype",
+    gem: "card-mod-format-0.20.0",
+    path: "lib/card/path.rb",
+    marker: "def new_cardtype", before: 0, after: 6 },
+  { key: "path_base",
+    gem: "card-mod-format-0.20.0",
+    path: "lib/card/path.rb",
+    marker: "def base", before: 0, after: 8 },
+  { key: "cast_path_value_as_array",
+    gem: "card-mod-format-0.20.0",
+    path: "lib/card/path/cast_params.rb",
+    marker: "def cast_path_value_as_array value", before: 0, after: 2 }
+].freeze
+
+def deep_sort(obj)
+  case obj
+  when Hash
+    obj.keys.sort_by(&:to_s).each_with_object({}) { |k, h| h[k.to_s] = deep_sort(obj[k]) }
+  when Array
+    obj.map { |v| deep_sort(v) }
+  else
+    obj
+  end
+end
+
+def capture_owner(owner)
+  file = File.join(GEM_HOME, owner[:gem], owner[:path])
+  raise "oracle gem file not present: #{file}" unless File.file?(file)
+  lines = File.readlines(file, chomp: true)
+  index = lines.index { |line| line.include?(owner[:marker]) }
+  raise "oracle marker not present in #{owner[:gem]}/#{owner[:path]}: #{owner[:marker]}" if index.nil?
+  first = [index - owner[:before], 0].max
+  last = [index + owner[:after], lines.length - 1].min
+  {
+    "gem" => owner[:gem],
+    "path" => owner[:path],
+    "marker" => owner[:marker],
+    "marker_line" => index + 1,
+    "first_line" => first + 1,
+    "last_line" => last + 1,
+    "source" => lines[first..last].join("\n"),
+    "file_sha256" => Digest::SHA256.hexdigest(File.binread(file))
+  }
+end
+
+def locale_value(source, key)
+  raw = source[/#{Regexp.escape(key)}:\s*(.*)$/, 1]
+  raise "the pinned locale key #{key} was not found" if raw.nil?
+  raw.strip.sub(/\A['"]/, "").sub(/['"]\z/, "")
+end
+
+oracle = OWNERS.each_with_object({}) { |owner, h| h[owner[:key]] = capture_owner(owner) }
+
+signup = oracle["signup_link"]["source"]
+reset = oracle["reset_password_link"]["source"]
+button = oracle["signin_button"]["source"]
+haml = oracle["core_haml"]["source"]
+link_to = oracle["link_to"]["source"]
+link_to_card = oracle["link_to_card"]["source"]
+link_to_view = oracle["link_to_view"]["source"]
+slotterify = oracle["slotterify"]["source"]
+known_class = oracle["add_known_or_wanted_class"]["source"]
+new_cardtype = oracle["new_cardtype"]["source"]
+path_base = oracle["path_base"]["source"]
+cast_array = oracle["cast_path_value_as_array"]["source"]
+
+facts = {
+  # THE TWO LINKS
+  "signup_link_method" => signup[/def signup_link/, 0],
+  "signup_link_call" => signup[/link_to_card :signup, t\(:account_or_sign_up\),/, 0],
+  "signup_link_path" => signup[/path: \{ action: :new, mark: :signup \}/, 0],
+  "reset_password_link_method" => reset[/def reset_password_link/, 0],
+  "reset_password_link_call" => reset[/link_to_view :edit, t\(:account_reset_password\),/, 0],
+  "reset_password_link_path" => reset[/path: \{ slot: \{ hide: :board_link \} \}/, 0],
+  "signin_button_method" => button[/def signin_button/, 0],
+  "signin_button_call" => button[/button_tag t\(:account_sign_in\), situation: "primary"/, 0],
+  # THE BLOCK
+  "core_haml_buttons" => haml[/\.form-group\.signin-buttons/, 0],
+  "core_haml_reset_link" => haml[/\.reset-password-link/, 0],
+  "core_haml_signin_button" => haml[/\.signin-button/, 0],
+  "core_haml_signup_link" => haml[/\.signup-button/, 0],
+  # THE THREE TEXTS
+  "or_sign_up_text" => locale_value(oracle["or_sign_up_locale"]["source"], "account_or_sign_up"),
+  "reset_password_text" => locale_value(oracle["reset_password_locale"]["source"], "account_reset_password"),
+  "sign_in_text" => locale_value(oracle["sign_in_locale"]["source"], "account_sign_in"),
+  # THE ANCHOR SHAPES
+  "link_to_href" => link_to[/opts\[:href\] \|\|= path opts\.delete\(:path\)/, 0],
+  "link_to_card_class" => known_class[/add_class opts, \(known \? "known-card" : "wanted-card"\)/, 0],
+  "link_to_view_remote" => slotterify[/opts\.reverse_merge! remote: true, rel: "nofollow"/, 0],
+  "link_to_view_class" => slotterify[/add_class opts, "slotter"/, 0],
+  # THE TWO DESTINATIONS
+  "new_cardtype_path" => new_cardtype[/"\#\{action\}\/\#\{mark\}\#\{query\}"/, 0],
+  "path_base_mark_view" => path_base[/"\#\{mark\}\/\#\{view\}"/, 0],
+  # THE SLOT HIDE SERIALIZATION
+  "cast_value_as_array" => cast_array[/Array\.wrap value/, 0]
+}
+
+facts.each do |name, value|
+  raise "the pinned fact #{name} was not found in the captured bytes" if value.nil?
+end
+
+raise "the captured sign-up link does not name the sign-up card" unless signup.include?("link_to_card :signup")
+raise "the captured sign-up link does not ask for the new-card path" unless signup.include?("path: { action: :new, mark: :signup }")
+raise "the captured reset link does not ask for the edit view" unless reset.include?("link_to_view :edit")
+raise "the captured reset link does not hide the board link" unless reset.include?("path: { slot: { hide: :board_link } }")
+raise "the captured block does not hold the three divisions" unless haml.include?(".reset-password-link") && haml.include?(".signin-button") && haml.include?(".signup-button")
+raise "the captured texts are not Ruby's own" unless facts["or_sign_up_text"] == "...or sign up!" && facts["reset_password_text"] == "Reset password" && facts["sign_in_text"] == "Sign in"
+raise "the captured link does not put the path into the href" unless link_to.include?("opts[:href] ||= path")
+raise "the captured card link does not add the known/wanted class" unless known_class.include?("known-card")
+raise "the captured view link is not a remote nofollow slotter" unless slotterify.include?("rel: \"nofollow\"") && slotterify.include?("\"slotter\"")
+raise "the captured new-card path is not action/mark" unless new_cardtype.include?("\"\#{action}/\#{mark}\#\{query}\"")
+raise "the captured view path is not mark/view" unless path_base.include?("\"\#{mark}/\#{view}\"")
+raise "the captured slot hide is not wrapped by Array.wrap" unless cast_array.include?("Array.wrap value")
+
+payload = {
+  "contract" => "The signed-out sign-in page links to sign up and to reset the password.",
+  "facts" => facts,
+  "oracle" => oracle,
+  "gem_home" => GEM_HOME.tr("\\", "/")
+}
+
+File.write(OUT_PATH, JSON.pretty_generate(deep_sort(payload)) + "\n")
+puts "wrote #{OUT_PATH}"
