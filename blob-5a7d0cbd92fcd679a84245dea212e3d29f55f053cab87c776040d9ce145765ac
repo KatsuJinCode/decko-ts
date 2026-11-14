@@ -1,0 +1,75 @@
+// A scratch directory still held by a closed native database handle is retained and
+// reported, never silently kept and never reported as removed. On Windows a closed
+// @libsql/client file database keeps deck.db locked until garbage collection, so the
+// live-lock case runs only on Windows; the classifier runs everywhere.
+import assert from "node:assert/strict";
+import { createRequire } from "node:module";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import path from "node:path";
+import test from "node:test";
+import {
+  SCRATCH_CLEANUP_REQUEST_FILE,
+  cleanupScratch,
+  isNativeLockError,
+  registeredScratch,
+  retainedScratch,
+  retentionLogPath,
+  scratchDir,
+} from "./scratch-dir.mjs";
+
+const { createClient } = createRequire(import.meta.url)("@libsql/client");
+
+test("only the closed-handle lock code (EPERM) counts as a lock; other removal errors still throw", () => {
+  assert.equal(isNativeLockError({ code: "EPERM" }), true);
+  assert.equal(isNativeLockError({ code: "EBUSY" }), false, "EBUSY stays a thrown failure under the shared contract");
+  assert.equal(isNativeLockError({ code: "ENOENT" }), false);
+  assert.equal(isNativeLockError({ code: "EACCES" }), false);
+  assert.equal(isNativeLockError(undefined), false);
+});
+
+test(
+  "a directory held by a closed native database handle is retained, reported and logged, with its cleanup request kept",
+  { skip: process.platform === "win32" ? false : "Windows only: the closed libSQL handle locks deck.db on Windows" },
+  async () => {
+    const dir = scratchDir("retention-locked-");
+    const dbPath = path.join(dir, "deck.db").replace(/\\/g, "/");
+    const client = createClient({ url: "file:" + dbPath });
+    await client.execute("create table t(a integer)");
+    client.close();
+
+    const warnings = [];
+    const originalWarn = console.warn;
+    console.warn = (...parts) => warnings.push(parts.join(" "));
+    let logLine;
+    try {
+      // Explicit cleanup must not throw for a lock: the directory is retained.
+      assert.doesNotThrow(() => cleanupScratch());
+      const entries = retainedScratch().filter(entry => entry.directory === dir);
+      assert.equal(entries.length, 1, "the locked directory is listed as retained, not dropped");
+      assert.match(entries[0].reason, /open native handle/);
+      assert.equal(entries[0].code, "EPERM");
+      assert.equal(registeredScratch().includes(dir), false, "a retained directory is not a failing registration any more");
+      assert.equal(existsSync(dir), true, "the directory really is still on disk");
+      assert.ok(
+        warnings.some(line => line.includes("scratch retained, not removed") && line.includes(dir)),
+        "the retention is printed, not silent",
+      );
+      const request = JSON.parse(readFileSync(path.join(dir, SCRATCH_CLEANUP_REQUEST_FILE), "utf8"));
+      assert.equal(request.disposition, "remove", "the cleanup request still says remove, so a later cleanup can finish the job");
+      // Compare parsed paths: the log is JSON, so Windows backslashes are escaped on disk.
+      const lines = readFileSync(retentionLogPath(), "utf8").split("\n").filter(Boolean);
+      const logged = lines.filter(line => JSON.parse(line).path === dir);
+      assert.equal(logged.length, 1, "the retention log names the directory once");
+      logLine = logged[0];
+    } finally {
+      console.warn = originalWarn;
+      // Drop this test's own retention record; other runs' records stay.
+      if (existsSync(retentionLogPath()) && logLine !== undefined) {
+        const kept = readFileSync(retentionLogPath(), "utf8").split("\n").filter(line => line && line !== logLine);
+        writeFileSync(retentionLogPath(), kept.length ? kept.join("\n") + "\n" : "");
+      }
+      // The handle stays locked until garbage collection; the stale-run purge removes the directory later.
+      try { rmSync(dir, { recursive: true, force: true, maxRetries: 2, retryDelay: 100 }); } catch { /* still locked: retained above */ }
+    }
+  },
+);

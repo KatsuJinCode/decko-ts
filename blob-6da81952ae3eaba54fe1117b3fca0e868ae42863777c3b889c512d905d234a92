@@ -1,0 +1,57 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {existsSync,readFileSync,writeFileSync} from 'node:fs';
+import {join} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {spawnSync} from 'node:child_process';
+import {scratchDir,removeScratchDir} from '../support/scratch-dir.mjs';
+import {classify} from '../../tools/test-gates.mjs';
+
+const helper=fileURLToPath(new URL('../support/rule177-preserve-observations.cjs',import.meta.url));
+async function fixture(body){
+  const directories=[];
+  const allocate=prefix=>{const dir=scratchDir(prefix);directories.push(dir);return dir;};
+  try{return await body(allocate);}
+  finally{for(const dir of directories.reverse()){removeScratchDir(dir);assert.equal(existsSync(dir),false,'observation fixture remains');}}
+}
+function produce(source,destination){
+  return spawnSync(process.execPath,['--require',helper,'-e',
+    'require("node:fs").writeFileSync(process.argv[1],"{\\\"observed\\\":true}\\n")',source],{
+    windowsHide:true,encoding:'utf8',env:{...process.env,NODE_OPTIONS:'',DECKO_RULE177_OBSERVATIONS_DIRECTORY:destination},
+  });
+}
+
+for(const [prefix,input,output] of [
+  ['rule163-visibility-observations-','visibility.json','visibility-after.json'],
+  ['rule163-action-observations-','native.json','original163-after.json'],
+])test('collector reads current owned '+input+' without a historical docs path',()=>fixture(allocate=>{
+  const source=join(allocate(prefix),input),destination=allocate('rule177-collector-');
+  const result=produce(source,destination);
+  assert.equal(result.status,0,result.stderr);
+  assert.equal(readFileSync(join(destination,output),'utf8'),readFileSync(source,'utf8'));
+  assert.deepEqual(JSON.parse(readFileSync(source,'utf8')),{observed:true});
+}));
+
+test('the collector does not intercept unrelated files with the same basename',()=>fixture(allocate=>{
+  const source=join(allocate('unrelated-observations-'),'visibility.json'),destination=allocate('rule177-collector-');
+  const result=produce(source,destination);
+  assert.equal(result.status,0,result.stderr);assert.equal(existsSync(source),true);
+  assert.equal(existsSync(join(destination,'visibility-after.json')),false);
+}));
+
+test('a scratch directory owned by another checkout is refused and preserved',()=>fixture(allocate=>{
+  const directory=allocate('rule163-visibility-observations-'),destination=allocate('rule177-collector-');
+  const manifest=join(directory,'decko-scratch-ownership.json'),bytes=readFileSync(manifest);
+  try{
+    const owner=JSON.parse(bytes);owner.repo=join(directory,'another-checkout');
+    writeFileSync(manifest,JSON.stringify(owner));
+    const result=produce(join(directory,'visibility.json'),destination);
+    assert.notEqual(result.status,0);assert.match(result.stderr,/RULE177_OBSERVATION_SCRATCH_OWNERSHIP/);
+    assert.equal(existsSync(join(destination,'visibility-after.json')),false);
+  }finally{writeFileSync(manifest,bytes);}
+}));
+
+test('the regression stays in correctness and the helper contains no docs observation dependency',()=>{
+  assert.equal(classify('tests/tools/rule177-observations-path.test.mjs'),'correctness');
+  assert.doesNotMatch(readFileSync(helper,'utf8'),/docs[\\/]runs/);
+});

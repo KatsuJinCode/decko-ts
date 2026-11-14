@@ -1,0 +1,75 @@
+// The Python 3 interpreter the repo's control scripts run with.
+//
+// Resolution order:
+//   1. DECKO_PYTHON, an explicit configured path, used verbatim.
+//   2. The platform's candidates, in order. Windows: `python`, then the
+//      `py -3` launcher. Linux: `python3`.
+// A candidate counts only when it runs `-I -c "import sys"` and exits 0.
+// When nothing runs, this throws PythonInterpreterUnavailable and names
+// DECKO_PYTHON. It never returns a name that fails later with ENOENT, and it
+// never skips the caller's check.
+
+import { spawnSync } from 'node:child_process';
+
+const PROBE_ARGUMENTS = ['-I', '-c', 'import sys'];
+const PROBE_TIMEOUT_MS = 15000;
+
+function platformCandidates(platform) {
+  if (platform === 'win32') return [{ command: 'python', prefix: [] }, { command: 'py', prefix: ['-3'] }];
+  if (platform === 'linux') return [{ command: 'python3', prefix: [] }];
+  throw Error('UnsupportedPythonControlPlatform:' + platform);
+}
+
+/** True when `command prefix... -I -c "import sys"` starts and exits 0. */
+export function pythonRuns(command, prefix) {
+  const probe = spawnSync(command, [...prefix, ...PROBE_ARGUMENTS], {
+    windowsHide: true, encoding: 'utf8', timeout: PROBE_TIMEOUT_MS,
+  });
+  return probe.error === undefined && probe.status === 0;
+}
+
+/** stdout of `command prefix... -I -c <code>`, or '' when it does not run cleanly. */
+export function pythonAnswer(command, prefix, code) {
+  const answer = spawnSync(command, [...prefix, '-I', '-c', code], {
+    windowsHide: true, encoding: 'utf8', timeout: PROBE_TIMEOUT_MS,
+  });
+  return answer.error === undefined && answer.status === 0 ? answer.stdout.trim() : '';
+}
+
+/**
+ * The interpreter as an absolute file path, for DECKO_PYTHON in a child
+ * environment. A launcher such as `py -3` is asked for sys.executable, so the
+ * variable always names a file that spawns directly. Throws
+ * PythonInterpreterUnavailable when the interpreter runs but names no file.
+ */
+export function resolvePythonExecutable(platform = process.platform, env = process.env, runs = pythonRuns, answer = pythonAnswer) {
+  const invocation = localPythonInvocation(platform, env, runs);
+  const executable = answer(invocation.command, invocation.prefix, 'import sys; print(sys.executable)');
+  if (executable === '') {
+    throw Object.assign(Error(`PythonInterpreterUnavailable: ${invocation.command} ran but reported no sys.executable`), { code: 'PythonInterpreterUnavailable' });
+  }
+  return executable;
+}
+
+/**
+ * The interpreter as `{ command, prefix }`: spawn `command` with
+ * `...prefix` first, then the script arguments.
+ */
+export function localPythonInvocation(platform = process.platform, env = process.env, runs = pythonRuns) {
+  const configured = env.DECKO_PYTHON;
+  if (configured !== undefined && configured !== '') {
+    if (!runs(configured, [])) {
+      throw Object.assign(Error(`PythonInterpreterUnavailable: DECKO_PYTHON=${configured} does not run as Python 3`), { code: 'PythonInterpreterUnavailable' });
+    }
+    return { command: configured, prefix: [] };
+  }
+  const candidates = platformCandidates(platform);
+  for (const candidate of candidates) {
+    if (runs(candidate.command, candidate.prefix)) return candidate;
+  }
+  const tried = candidates.map((c) => [c.command, ...c.prefix].join(' ')).join(', ');
+  throw Object.assign(
+    Error(`PythonInterpreterUnavailable: none of [${tried}] runs as Python 3 on this PATH; set DECKO_PYTHON to a Python 3 interpreter`),
+    { code: 'PythonInterpreterUnavailable' },
+  );
+}

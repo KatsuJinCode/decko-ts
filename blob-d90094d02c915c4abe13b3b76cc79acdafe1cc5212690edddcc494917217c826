@@ -1,0 +1,56 @@
+/** The body of one navbar dropdown menu on the staging host (the
+ * `{{:main_menu|navbar_links}}` header token): the items a dropdown card
+ * lists, in their listed order. Which entries the viewer may see comes from
+ * the deck's own read rules, asked per entry through `canRead`; no card is
+ * singled out by name. */
+
+/** One parsed line of a dropdown card's content. */
+export type NavbarDropdownChild =
+  | {readonly kind: "divider"}
+  | {readonly kind: "link"; readonly target: string; readonly label: string}
+  | {readonly kind: "external"; readonly target: string; readonly label: string};
+
+/** Decko's quiet read-denial span, which the navbar renders in place of an
+ * entry the viewer may not read. */
+export const NAVBAR_READ_DENIED_SPAN = `<span class="denied"><!-- Sorry, you don't have permission (read) --></span>`;
+
+/** The host's HTML attribute/text escaping (vm-staging-server.mjs escapeHtml). */
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/** Card::Name#to_url_key as the navbar uses it: spaces become underscores,
+ * and "$", which is not URL-safe, is slugged to "_" as well. */
+function navbarUrlKey(target: string): string {
+  return target.replace(/ /g, "_").replace(/\$/g, "_");
+}
+
+/** Renders a dropdown card's entries, joined by newlines: a divider, a link
+ * for an entry the viewer may read, or the read-denial span in that entry's
+ * own place for one it may not. External URL entries are omitted for the
+ * anonymous viewer. `canRead` answers for a card name; a database failure it
+ * raises propagates to the caller. */
+export async function renderNavbarDropdownItems(
+  children: readonly NavbarDropdownChild[],
+  canRead: (target: string) => Promise<boolean>,
+): Promise<string> {
+  const items: string[] = [];
+  for (const child of children) {
+    if (child.kind === "divider") {
+      items.push(`<div class="dropdown-divider"></div>`);
+    } else if (child.kind === "external") {
+      continue;
+    } else if (!(await canRead(child.target))) {
+      items.push(NAVBAR_READ_DENIED_SPAN);
+    } else {
+      items.push(
+        `<a class="dropdown-item known-card" href="/${escapeHtml(navbarUrlKey(child.target))}"><span class="card-title" title="${escapeHtml(child.target)}">${escapeHtml(child.label)}</span></a>`,
+      );
+    }
+  }
+  return items.join("\n");
+}

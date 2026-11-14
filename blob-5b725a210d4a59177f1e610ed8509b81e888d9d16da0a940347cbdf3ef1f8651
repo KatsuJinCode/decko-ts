@@ -1,0 +1,76 @@
+import { afterEach, describe, expect, it } from "vitest";
+import { ModLoader } from "../../../src/card/mod-loader.js";
+import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
+import { addValidationErrors } from "../../../src/card/mod-loader/mod-validation-errors.js";
+import { createActionsTestStorage, seedStandardDeck, seedCard, CARDTYPE_ID } from "../actions/actions-test-storage.js";
+import { runModEventStage } from "../../../src/card/mod-loader/mod-event-dispatch.js";
+
+const cleanup: Array<() => void> = [];
+afterEach(() => { while (cleanup.length) cleanup.pop()!(); });
+
+async function fixture(original: boolean) {
+  const storage = await createActionsTestStorage();
+  await seedStandardDeck(storage);
+  await seedCard(storage, { id: 600, name: "Other type", codename: "other_type", typeId: CARDTYPE_ID });
+  const calls: string[] = [];
+  const body = (label: string) => (card: { name: string; dbContent?: string }) => {
+    calls.push(label);
+    if (card.dbContent === "bad") addValidationErrors(card.name, "content", [`blocked by ${label}`]);
+  };
+  const loader = new ModLoader([{ manifest: { name: "receiver_history", setModules: [
+    { setPath: "abstract/a_old", events: [{ event: "history_guard", at: "validate", on: ["update"], fn: body("A") }] },
+    { setPath: "abstract/b_new", events: [{ event: "history_guard", at: "validate", on: ["update"],
+      ...(original ? { changing: ["type"] } : { changed: ["type"] }), fn: body("B") }] },
+    { setPath: "type/basic", includeSets: [{ setPath: "abstract/a_old" }] },
+    { setPath: "type/other_type", includeSets: [{ setPath: "abstract/b_new" }] },
+  ] } }], {});
+  cleanup.push(() => { loader.reset(); storage.close(); });
+  loader.load();
+  const engine = new CardActionEngine(storage.engine, { actor: { id: 1, name: "Joe User" }, ipAddress: "192.0.2.7",
+    modEvents: { registry: loader.eventRegistry(), moduleOrder: loader.eventModuleOrder() } });
+  return { storage, loader, engine, calls };
+}
+
+describe("issue 77: competing included event methods on fresh changing receivers", () => {
+  for (const reverse of [false, true]) for (const original of [false, true]) {
+    it(`${reverse ? "Other to Basic" : "Basic to Other"} keeps ${original ? "original" : "assigned"} callback membership separate from method lookup`, async () => {
+      const { storage, engine, calls } = await fixture(original);
+      const beforeType = reverse ? "other_type" : "basic";
+      const afterType = reverse ? "basic" : "other_type";
+      const saved = await engine.createCard({ name: "History Card", typeCode: beforeType, content: "before" });
+      await engine.updateCard({ cardId: saved.cardId, typeCode: afterType, content: "after" });
+      expect((await storage.engine.fetchById(saved.cardId))?.typeId).toBe(reverse ? 2 : 600);
+      expect(calls).toEqual(reverse ? original ? ["A"] : [] : ["B"]);
+    });
+  }
+  for (const reverse of [false, true]) it(`rolls back the ${reverse ? "Other to Basic" : "Basic to Other"} save when the actual inherited method refuses`, async () => {
+    const { storage, engine, calls } = await fixture(true);
+    const saved = await engine.createCard({ name: "History Refusal", typeCode: reverse ? "other_type" : "basic", content: "before" });
+    const before = await Promise.all([storage.count("cards"), storage.count("card_acts"), storage.count("card_actions")]);
+    await expect(engine.updateCard({ cardId: saved.cardId, typeCode: reverse ? "basic" : "other_type", content: "bad" }))
+      .rejects.toMatchObject({ errorsByAttribute: { content: `blocked by ${reverse ? "A" : "B"}` } });
+    const row = await storage.engine.fetchById(saved.cardId);
+    expect(row?.typeId).toBe(reverse ? 600 : 2);
+    expect(row?.dbContent).toBe("before");
+    expect(await Promise.all([storage.count("cards"), storage.count("card_acts"), storage.count("card_actions")])).toEqual(before);
+    expect(calls).toEqual([reverse ? "A" : "B"]);
+  });
+  it("keeps the explicit-history error when only old/current attributes were supplied", async () => {
+    const { storage, loader, calls } = await fixture(false);
+    await expect(runModEventStage({ registry: loader.eventRegistry(), moduleOrder: loader.eventModuleOrder() }, "validate",
+      { name: "History Card", typeId: 600, patternTypeId: 2, typeIdBeforeAct: 2,
+        changedFields: ["type_id"], currentAction: true, action: "update", act: { action: "update" } },
+      { driver: storage.driver, lexicon: storage.engine.lexicon }))
+      .rejects.toThrow("requires explicit card module ancestry after a name/type change");
+    expect(calls).toEqual([]);
+  });
+  it("continues to use the host's explicit native ancestry when it is supplied", async () => {
+    const { storage, loader, calls } = await fixture(false);
+    await runModEventStage({ registry: loader.eventRegistry(), moduleOrder: loader.eventModuleOrder(),
+      methodModules: () => ["type/other_type", "abstract/b_new", "type/basic", "abstract/a_old"] }, "validate",
+      { name: "History Card", typeId: 600, patternTypeId: 2, typeIdBeforeAct: 2,
+        changedFields: ["type_id"], currentAction: true, action: "update", act: { action: "update" } },
+      { driver: storage.driver, lexicon: storage.engine.lexicon });
+    expect(calls).toEqual(["B"]);
+  });
+});

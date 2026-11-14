@@ -1,0 +1,125 @@
+import { afterEach, expect, it } from "vitest";
+import Database from "better-sqlite3";
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, renameSync, symlinkSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { scratchDir, cleanupScratch } from "../support/scratch-dir.mjs";
+import { createRecoverySnapshot, restoreRecoverySnapshot } from "../../tools/migrate/recovery.mjs";
+import { createFileSymlink } from "../../tools/platform/file-symlink.mjs";
+
+afterEach(cleanupScratch);
+function fixture() {
+  const root = scratchDir("area5-independent-");
+  const databasePath = join(root, "source.sqlite");
+  const db = new Database(databasePath);
+  db.pragma("journal_mode = WAL");
+  db.pragma("wal_autocheckpoint = 0");
+  db.exec("CREATE TABLE proof(id INTEGER PRIMARY KEY, value TEXT); INSERT INTO proof VALUES(1,'committed');");
+  const filesPath = join(root, "uploads");
+  mkdirSync(filesPath);
+  writeFileSync(join(filesPath, "upload.bin"), Buffer.from([0, 255, 128, 1]));
+  return { root, databasePath, filesPath, db, snapshotDir: join(root, "snapshot"), targetDir: join(root, "restored") };
+}
+
+it("takes a committed WAL snapshot while an uncommitted writer stays excluded", async () => {
+  const f = fixture();
+  try {
+    f.db.exec("BEGIN IMMEDIATE; UPDATE proof SET value='uncommitted'; INSERT INTO proof VALUES(2,'uncommitted');");
+    await createRecoverySnapshot(f);
+    const recovered = await restoreRecoverySnapshot(f);
+    const copy = new Database(recovered.databasePath);
+    try { expect(copy.prepare("SELECT * FROM proof ORDER BY id").all()).toEqual([{ id: 1, value: "committed" }]); }
+    finally { copy.close(); }
+    expect(f.db.prepare("SELECT count(*) n FROM proof").get()).toEqual({ n: 2 });
+    f.db.exec("ROLLBACK");
+  } finally { f.db.close(); }
+});
+
+it.each(["-wal", "-shm", "-journal"])("refuses snapshot sidecar %s without creating a target", async (suffix) => {
+  const f = fixture();
+  try {
+    await createRecoverySnapshot(f);
+    writeFileSync(join(f.snapshotDir, `deck.sqlite${suffix}`), "untrusted sidecar");
+    await expect(restoreRecoverySnapshot(f)).rejects.toThrow("unexpected journal");
+    expect(existsSync(f.targetDir)).toBe(false);
+    expect(f.db.prepare("SELECT value FROM proof").get()).toEqual({ value: "committed" });
+  } finally { f.db.close(); }
+});
+
+it.each(["extra", "malformed", "duplicate", "wrong-kind"])("refuses %s inventory before creating a target", async (kind) => {
+  const f = fixture();
+  try {
+    await createRecoverySnapshot(f);
+    const manifestPath = join(f.snapshotDir, "manifest.json");
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    if (kind === "extra") writeFileSync(join(f.snapshotDir, "files", "extra"), "extra");
+    else if (kind === "malformed") manifest.files = [null];
+    else if (kind === "duplicate") manifest.files.push({ ...manifest.files[0] });
+    else manifest.files[0].directory = "false";
+    writeFileSync(manifestPath, JSON.stringify(manifest));
+    await expect(restoreRecoverySnapshot(f)).rejects.toThrow();
+    expect(existsSync(f.targetDir)).toBe(false);
+  } finally { f.db.close(); }
+});
+
+it("refuses a checksum-consistent invalid SQLite database and retains diagnostic output", async () => {
+  const f = fixture();
+  try {
+    await createRecoverySnapshot(f);
+    const manifestPath = join(f.snapshotDir, "manifest.json");
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    const invalid = Buffer.from("not a SQLite database");
+    writeFileSync(join(f.snapshotDir, "deck.sqlite"), invalid);
+    manifest.databaseSha256 = createHash("sha256").update(invalid).digest("hex");
+    writeFileSync(manifestPath, JSON.stringify(manifest));
+    await expect(restoreRecoverySnapshot(f)).rejects.toThrow();
+    expect(readFileSync(join(f.targetDir, "deck.sqlite"))).toEqual(invalid);
+    expect(f.db.prepare("SELECT value FROM proof").get()).toEqual({ value: "committed" });
+  } finally { f.db.close(); }
+});
+
+it("rejects a destination alias into the snapshot namespace", async () => {
+  const f = fixture();
+  try {
+    await createRecoverySnapshot(f);
+    const alias = join(f.root, "snapshot-alias");
+    symlinkSync(f.snapshotDir, alias, process.platform === "win32" ? "junction" : "dir");
+    await expect(restoreRecoverySnapshot({ snapshotDir: f.snapshotDir, targetDir: join(alias, "nested") })).rejects.toThrow("outside its source");
+    expect(existsSync(join(f.snapshotDir, "nested"))).toBe(false);
+  } finally { f.db.close(); }
+});
+
+it("retains exact binary uploads through snapshot and restore", async () => {
+  const f = fixture();
+  try {
+    await createRecoverySnapshot(f);
+    const recovered = await restoreRecoverySnapshot(f);
+    expect(readFileSync(join(recovered.filesPath, "upload.bin"))).toEqual(Buffer.from([0, 255, 128, 1]));
+  } finally { f.db.close(); }
+});
+
+it("refuses a manifest linked outside the self-contained recovery package", async (context) => {
+  const f = fixture();
+  try {
+    await createRecoverySnapshot(f);
+    const manifestPath = join(f.snapshotDir, "manifest.json");
+    const externalManifest = join(f.root, "external-manifest.json");
+    renameSync(manifestPath, externalManifest);
+    createFileSymlink(externalManifest, manifestPath);
+    await expect(restoreRecoverySnapshot(f)).rejects.toThrow("manifest must be a regular file");
+    expect(existsSync(f.targetDir)).toBe(false);
+    expect(f.db.prepare("SELECT value FROM proof").get()).toEqual({ value: "committed" });
+  } finally { f.db.close(); }
+});
+
+it("identifies a non-file manifest explicitly before creating output", async () => {
+  const f = fixture();
+  try {
+    await createRecoverySnapshot(f);
+    const manifestPath = join(f.snapshotDir, "manifest.json");
+    renameSync(manifestPath, join(f.root, "original-manifest.json"));
+    mkdirSync(manifestPath);
+    await expect(restoreRecoverySnapshot(f)).rejects.toThrow("manifest must be a regular file");
+    expect(existsSync(f.targetDir)).toBe(false);
+  } finally { f.db.close(); }
+});

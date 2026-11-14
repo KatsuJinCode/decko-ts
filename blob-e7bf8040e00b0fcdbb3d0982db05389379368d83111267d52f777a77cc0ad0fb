@@ -1,0 +1,1123 @@
+// The history WRITE PATH: acts, actions, and changes recorded for card
+// create / update / delete, ported from the Ruby truth.
+//
+// Ruby saves one card through a Director-run pipeline (card-1.110.0/lib/
+// card/director/): the cards row is written in the :store stage, and the
+// history rows are written in the :finalize stage
+// (card-mod-history set/all/history/events.rb):
+//
+//   event :assign_action, :initialize, when: :actionable? do
+//     @current_action = new_action            # Action.new(act:, action_type:, draft:, super_action:)
+//   end
+//   event :finalize_action, :finalize, when: :finalize_action? do
+//     if changed_fields.present?
+//       @current_action.update! card_id: id   # action row INSERT (autosaves the act row)
+//       store_card_changes_for_create_action if first_change?
+//       store_card_changes unless first_create?
+//     elsif @current_action.card_changes.reload.empty?
+//       @current_action.delete                # no changes -> no action row at all
+//       @current_action = nil
+//     end
+//   end
+//   event :finalize_act, after: :finalize_action, when: :act_card? do
+//     Card::Director.act.update! card_id: id  # act's primary card
+//   end
+//
+// This module reproduces that row behavior against the SQLDatabaseDriver
+// seam. The caller drives the per-card sequencing (subcard orchestration,
+// events like reference maintenance, cache expiry); the writer owns
+// everything from "this card's state changed" to "the storage rows exist".
+
+import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../server/driver.js";
+import type { CardsRow, SQLBoolean } from "../../server/schema.js";
+import { sqlDateTime } from "./act.js";
+import { actionTypeCode, identifyAction } from "./action.js";
+import {
+  changeValueForField,
+  diffTrackedFields,
+  trackedFieldIndex,
+  type CardFieldState,
+  type TrackedField,
+} from "./change.js";
+import type { ReadRuleRecord } from "../permissions/set-read-rule.js";
+
+/** Re-exported for callers that build snapshots next to the writer. */
+export type { CardFieldState };
+
+export interface ActWriterOptions {
+  /** The storage seam. */
+  driver: SQLDatabaseDriver;
+  /** Current account used for card stamps. Ruby fills the act's
+   *  actor_id from Auth.current_id at act save (act.rb:131-134 assign_actor)
+   *  and the card's creator_id/updater_id from the same value
+   *  (card-mod-account set/all/account.rb:20-23, event :set_stamper). This
+   *  is the actor passthrough. */
+  actorId: number;
+  /** Separate act attribution when an event changes the current account
+   *  between root prepare and act save. Defaults to actorId. */
+  actActorId?: number;
+  /** Root card's prepare-stage stamper when an event later signs in a
+   *  different current user before generating child cards. */
+  rootStamperId?: number;
+  /** Env.ip stand-in for card_acts.ip_address
+   *  (director/class_methods.rb:27-29). */
+  ipAddress?: string | null;
+  /** Clock for every timestamp this act writes. Defaults to () => new Date(). */
+  now?: () => Date;
+  /** The act's primary card id when it already exists (update/delete
+   *  requests). For a create request the primary card is created inside the
+   *  act and claims act-card status automatically. */
+  actCardId?: number;
+}
+
+/** The cards-row attributes a create writes (all others stay NULL — see the
+ *  column notes in createCard). */
+export interface CreateCardInput {
+  /** Simple cards: the name string. Compound cards: NULL — they carry
+   *  left_id/right_id instead (lib/card/name/all.rb:20-21). */
+  name: string | null;
+  /** Downcased key; NULL for compound cards (lib/card/name/all.rb:64-66).
+   *  Derived by the name stream, never by this writer. */
+  key: string | null;
+  type_id: number;
+  db_content?: string | null;
+  left_id?: number | null;
+  right_id?: number | null;
+  codename?: string | null;
+  /** The read-rule pair the set_read_rule store event derives
+   *  (card-mod-permissions set/all/permissions.rb:1-5): Ruby assigns the
+   *  attributes during the :store stage, so the INSERT carries them. The
+   *  engine computes them; this writer only places the values. */
+  readRule?: ReadRuleRecord;
+  /** card_actions.super_action_id passthrough for subcard actions
+   *  (events.rb:88-92: the supercard's current action). */
+  superActionId?: number | null;
+  /** false: the card's set has history? false (card-mod-history
+   *  set/all/history.rb actionable?), so the row is inserted with no act
+   *  or action (password and salt fields). */
+  history?: boolean;
+  /** Explicitly mark this create as the act's primary card. Defaults to
+   *  "the first operation on the writer" (the common request shape); see
+   *  ActWriter docs. */
+  isActCard?: boolean;
+  /** card_actions.comment on the CREATE action — the attachment mod's
+   *  :save_original_filename writes the original upload filename there on
+   *  create saves too (card-mod-carrierwave set/abstract/attachment.rb
+   *  :20-24; the update path already carried comment). Defaults to NULL. */
+  comment?: string | null;
+  /** An action row reserved for this save (ActWriter.reserveAction). */
+  reservedActionId?: number;
+}
+
+export interface UpdateCardInput {
+  cardId: number;
+  /** The card's tracked fields as they sit in the DB before this save
+   *  (snapshot taken with cardFieldStateFromRow). */
+  before: CardFieldState;
+  /** The tracked fields after this save. */
+  after: CardFieldState;
+  /** Required when `name` changes: the new cards.key value (name= also
+   *  writes key=, lib/card/name/all.rb:20-23). Ignored otherwise. */
+  key?: string | null;
+  /** false: history? false for this card (password, salt): the row is
+   *  saved without act, action or change rows. */
+  history?: boolean;
+  /** card_actions.super_action_id passthrough (events.rb:88-92). */
+  superActionId?: number | null;
+  /** card_actions.comment is NOT written by the core history machinery; the
+   *  only core-suite writer is the attachment mod storing the original
+   *  filename (card-mod-carrierwave set/abstract/attachment.rb:23). Kept as
+   *  a passthrough for that parity; defaults to NULL. */
+  comment?: string | null;
+  /** Cards whose updated_at/updater_id are bumped by this save — port of
+   *  event :update_ancestor_timestamps (events.rb:1-7,
+   *  `Card.where(id: ids).update_all(updater_id: Auth.current_id,
+   *  updated_at: Time.now)`). The ancestor list comes from the reference
+   *  graph (history_card_ids), which is a later wave; pass [] to skip. */
+  ancestorCardIds?: number[];
+  /** The read-rule pair the set_read_rule store event derived for this
+   *  save (fires when type or name changed — permissions.rb:1-5): Ruby
+   *  assigns the attributes before the row save, so the UPDATE carries
+   *  them alongside the tracked fields (they are NOT tracked fields — no
+   *  change rows). */
+  readRule?: ReadRuleRecord;
+  /** Explicitly mark this save as the act's primary card's own action.
+   *  Defaults to "the first operation on the writer" (the common request
+   *  shape); see ActWriter docs. */
+  isActCard?: boolean;
+  /** Fields the caller asserts are dirty BEYOND the tracked-field diff —
+   *  unioned into `changed` when the diff comes up empty. Needed because
+   *  Ruby's dirty flag for a mounted attachment is the ASSIGNMENT, not the
+   *  computed value: re-uploading a file with the same extension computes
+   *  an intermediate identifier equal to the current db_content, yet the
+   *  save is real (new action row, new bytes, :correct_identifier rewrite —
+   *  card-mod-carrierwave attachment.rb's mount assignment + event pair).
+   *  Without this the no-op detection below silently drops the attachment
+   *  save. */
+  dirtyFields?: readonly TrackedField[];
+  /** The complete changed-field set, replacing the tracked-field diff. A
+   *  revival from trash needs it: pull_from_trash! (trash.rb:57-62) reuses
+   *  only the trashed row's id on what is otherwise a NEW record, so Ruby's
+   *  dirty tracking compares the assigned values against a blank record,
+   *  not against the trashed row. */
+  changedFields?: readonly TrackedField[];
+  /** An action row reserved for this save (ActWriter.reserveAction). */
+  reservedActionId?: number;
+}
+
+export interface SavedAction {
+  actId: number;
+  actionId: number;
+  /** The act row already existed when this operation began (the act card's
+   *  bare finalize_act row, or an earlier operation of the same save). A
+   *  history-less save's cleanup may drop the act it lazily created with
+   *  its own action — Ruby's history-less saves create no act at all — but
+   *  never one that predates the operation (events.rb:48-50 keeps it). */
+  actPreexisted?: boolean;
+}
+
+export interface CreatedCard extends SavedAction {
+  cardId: number;
+}
+
+/**
+ * The id a new card row takes, as an SQL expression: NULL (the table's
+ * AUTOINCREMENT id, max(sqlite_sequence, MAX(cards.id)) + 1) unless history
+ * rows (card_acts.card_id, card_actions.card_id) already name that id or a
+ * later one, in which case the first id past every id they name.
+ *
+ * Such orphan history appears when a deck's card rows were deleted or
+ * copied without the table's id counter. Taking the AUTOINCREMENT id there
+ * would give the new card a deleted card's actions: Ruby on the same
+ * SQLite data does exactly that (Card::Action.where(card_id:) counts the
+ * orphan rows, so first_create? is false and the new card's history starts
+ * with the deleted card's create action — card-1.110.0
+ * mod/history/set/all/history.rb:38-44, history/events.rb:25-35,
+ * history/actions.rb:21-23). On
+ * Decko's MySQL production database the AUTO_INCREMENT counter is past
+ * every id ever used, so a new card never meets old history there; this
+ * keeps that outcome on copies that lost the counter. Index lookups only
+ * (cards primary key, card_acts_card_id_index, card_actions_card_id_index),
+ * and part of the INSERT, so no extra round trip.
+ */
+const NEW_CARD_ID_SQL = `(
+  SELECT CASE WHEN history_max >= next_id THEN history_max + 1 END
+  FROM (
+    SELECT
+      MAX(COALESCE((SELECT MAX(card_id) FROM card_acts), 0),
+          COALESCE((SELECT MAX(card_id) FROM card_actions), 0)) AS history_max,
+      MAX(COALESCE((SELECT MAX(id) FROM cards), 0),
+          COALESCE((SELECT seq FROM sqlite_sequence WHERE name = 'cards'), 0)) + 1 AS next_id
+  ) AS id_source
+)`;
+
+/** TRACKED_FIELDS in storage order — the order Ruby's
+ *  store_card_changes_for_create_action iterates
+ *  (events.rb:108-115, `fields ||= Card::Change::TRACKED_FIELDS`). */
+const ALL_TRACKED_WRITE_ORDER: (keyof CardFieldState)[] = [
+  "name",
+  "type_id",
+  "db_content",
+  "trash",
+  "left_id",
+  "right_id",
+];
+
+/**
+ * One save "request". All history rows recorded through one ActWriter share
+ * one card_acts row ("if a given web form submission updates the contents of
+ * three cards, then the submission will result in the recording of three
+ * actions, each of which is tied to one act" — act.rb:8-11), and the act row
+ * is inserted lazily when the first action row is persisted — in Ruby the
+ * act is only `Card::Act.new`ed up front (director/class_methods.rb:27-29)
+ * and INSERTs as part of the first action's save via belongs_to autosave
+ * (activerecord-7.2.3.2/lib/active_record/autosave_association.rb:514-515).
+ *
+ * The act row is inserted with card_id NULL — Ruby's Act.new never sets one
+ * — and the act's primary card is written by the finalize_act port
+ * (`UPDATE card_acts SET card_id`), exactly the two-step Ruby performs
+ * (events.rb:48-50). Which operation is the act card's own: the constructor
+ * may pin `actCardId`; otherwise the FIRST operation claims act-card status
+ * (the common request shape: the request starts on its act card). A
+ * subcard-first orchestration must pass `isActCard: false` on the
+ * subcard operations and `isActCard: true` on the act card's operation, or
+ * construct the writer with `actCardId` once known.
+ *
+ * THE ACT'S DIRECTOR (director.rb:135-230). Ruby keeps the act on a
+ * DIRECTOR object, and the port keeps the same two facts as this writer's
+ * two pointers. The Ruby methods, and the port's counterpart for each:
+ *
+ *   - director.rb#main? - "is this the act's MAIN director?" The writer's
+ *     answer is `isActCardOp`: the one operation that claims act-card
+ *     status is the act's main card, and no other operation does.
+ *   - director.rb#main_director - "which director heads the act?" The
+ *     writer's answer is the pair (`actCardId`, `currentActId`): the act's
+ *     card and the act's row. There is no chain to walk up, because the
+ *     port has no director objects at all.
+ *   - director.rb#need_act - "give me the act, creating it if there is
+ *     none yet." The writer's answer is the lazy act INSERT: the card_acts
+ *     row is created with the first persisted action of the request, and
+ *     every later operation of that request reuses that one row.
+ *   - director.rb#appoint - "this card joins the act." The port's answer
+ *     is the joining save inside the SAME writer: the joining card's
+ *     action row carries the act id, and the joining card runs its own
+ *     stage walk from "initialize" (Ruby's reset_stage).
+ *   - director.rb:191 abort - the port carries it too: the engine's
+ *     rollback arm skips the integration phase for the whole request, so
+ *     no integrate stage runs for an aborted act.
+ *   - director.rb:164 head? - no counterpart: the port has no director
+ *     chain and no per-card stage index. Each card's stages are its own
+ *     straight-line walk, so the question has no answer to give.
+ *   - director.rb:172 unregister - no counterpart: the port has no
+ *     director registry, so the registry has nothing to remove. The act's
+ *     state is this writer's, and the writer lives one request.
+ *   - director.rb:217 replace_card - no counterpart: the port has no
+ *     director object to re-point at another card object, because a card
+ *     in the port is its row, addressed by id.
+ *   - director.rb:225 update_card - no counterpart, for the same reason:
+ *     the card a save writes IS the row, so there is no card attribute to
+ *     re-point and no registry to re-key.
+ *   - director.rb:168 register - no counterpart: the port has no director
+ *     registry to add to.
+ *   - director.rb:176 delete - no counterpart: the port has no director
+ *     object, so there is no director state to clear.
+ */
+export class ActWriter {
+  private readonly driver: SQLDatabaseDriver;
+  private readonly actorId: number;
+  private readonly actActorId: number;
+  private readonly rootStamperId: number | undefined;
+  private readonly ipAddress: string | null;
+  private readonly clock: () => Date;
+  private actCardId: number | undefined;
+  private actId: number | null = null;
+
+  /** Whether the act row already existed when the current operation began.
+   *  Snapshotted at each public operation's entry; the reserved-create fill
+   *  reads reserveCreateAction's snapshot (reserve + fill are ONE logical
+   *  operation — the reserve may have lazily inserted the act itself). */
+  private opActPreexisted = false;
+  private reserveOpActPreexisted = false;
+
+  constructor(options: ActWriterOptions) {
+    this.driver = options.driver;
+    this.actorId = options.actorId;
+    this.actActorId = options.actActorId ?? options.actorId;
+    this.rootStamperId = options.rootStamperId;
+    this.ipAddress = options.ipAddress ?? null;
+    this.clock = options.now ?? (() => new Date());
+    this.actCardId = options.actCardId;
+  }
+
+  // -----------------------------------------------------------------------
+  // create — Ruby: :create action, cards row INSERT, and (first_create?)
+  // NO change rows. The create action's changes are stored lazily by the
+  // first later update (see updateCard).
+  // -----------------------------------------------------------------------
+
+  async createCard(input: CreateCardInput): Promise<CreatedCard> {
+    this.assertNameKeyConvention(input.name, input.key, input.left_id, input.right_id);
+    // A reserved fill continues reserveCreateAction's operation: its
+    // snapshot decides, not this call's entry state.
+    if (input.reservedActionId === undefined) {
+      this.opActPreexisted = this.actId !== null;
+    }
+    const ts = sqlDateTime(this.clock());
+    const trash: SQLBoolean = 0; // event :manage_trash forces trash false on create
+    // (mod/core/set/all/trash.rb:23-27); revival from trash reuses the old
+    // row via a different path and is deferred.
+
+    // The id is the AUTOINCREMENT one (NULL below) unless history rows
+    // already name that id or a later one: then it is the first id past
+    // every id the history names. See NEW_CARD_ID_SQL.
+    const cardId = await this.insertReturningId(
+      `INSERT INTO cards
+         (id, name, key, codename, left_id, right_id, current_revision_id,
+          created_at, updated_at, creator_id, updater_id,
+          read_rule_class, read_rule_id, references_expired, trash, type_id, db_content)
+       VALUES (${NEW_CARD_ID_SQL}, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?)`,
+      [
+        input.name,
+        input.key,
+        input.codename ?? null,
+        input.left_id ?? null,
+        input.right_id ?? null,
+        ts,
+        ts,
+        this.cardStamperId(undefined, input.isActCard), // set_stamper: Auth.current_id
+        this.cardStamperId(undefined, input.isActCard),
+        input.readRule?.readRuleClass ?? null, // set_read_rule store event
+        input.readRule?.readRuleId ?? null, // (permissions.rb:1-5)
+        trash,
+        input.type_id,
+        input.db_content ?? null,
+      ],
+    );
+
+    if (input.history === false) {
+      // no action, no act row of its own; actionId 0 marks "none recorded"
+      return { cardId, actId: this.actId ?? 0, actionId: 0, actPreexisted: this.opActPreexisted };
+    }
+    const stmts: SQLStatement[] = [];
+    const actIdSelect = this.pushClearDraftsAndAct(stmts, cardId, ts);
+    const actionRow = {
+      cardId,
+      superActionId: input.superActionId ?? null,
+      actionType: actionTypeCode("create"),
+      comment: input.comment ?? null,
+    };
+    let actionIdSelect: number | undefined;
+    if (input.reservedActionId !== undefined) {
+      this.pushFillReservedAction(stmts, input.reservedActionId, actionRow);
+    } else {
+      actionIdSelect = this.pushInsertAction(stmts, { ...actionRow, draft: 0 });
+    }
+    // The first_create? count rides the SAME batch as a trailing read: the
+    // batch runs in order on the server, so a COUNT placed after the
+    // action-row INSERT (or the reserved-row fill) reads the exact state the
+    // separate round trip read — one hop fewer per created card (the save
+    // path's block batching).
+    const actionCountIndex = stmts.length;
+    stmts.push(this.actionCountStmt(cardId));
+    const batch = await this.runBatch(stmts, { actIdSelect, actionIdSelect });
+    const actId = batch.actId;
+    const actionId = input.reservedActionId ?? batch.actionId;
+
+    // finalize_action: first_create? (set/all/history.rb:38-40 —
+    // "@current_action.action_type == :create && action_count == 1") skips
+    // change storage entirely; a plain create leaves card_changes untouched
+    // (seed truth: mod/core/data/fixtures/real/card_changes.yml is empty
+    // while card_actions.yml is full of create rows).
+    const actionCount = Number((batch.results[actionCountIndex].rows[0] as { n: number }).n);
+    if (actionCount !== 1) {
+      // first_create? is false; Ruby would then run store_card_changes for
+      // the create action. Unreachable for a fresh INSERT — refuse to guess.
+      throw new Error(
+        `createCard: expected exactly 1 action row for card ${cardId}, found ${actionCount}`,
+      );
+    }
+
+    await this.finalizeActCard(cardId, this.isActCardOp(cardId, input.isActCard));
+    return {
+      cardId,
+      actId: this.requireActId(actId),
+      actionId: requireId(actionId),
+      actPreexisted: this.opActPreexisted,
+    };
+  }
+
+  /** Reserve this act's next action row for a create whose card row cannot
+   *  be inserted yet. A compound card's missing sides are inserted before it
+   *  (the junction row needs their ids), but Ruby records the compound's
+   *  own action first and the sides' actions after it, as subactions
+   *  (director/store.rb: the supercard's action is assigned before its
+   *  subcards store). The reserved row carries the act and the create type;
+   *  createCard({ reservedActionId }) fills in the card. */
+  async reserveCreateAction(): Promise<number> {
+    this.reserveOpActPreexisted = this.actId !== null;
+    this.opActPreexisted = this.reserveOpActPreexisted;
+    const ts = sqlDateTime(this.clock());
+    const stmts: SQLStatement[] = [];
+    const actIdSelect = this.actId === null ? this.pushInsertAct(stmts, null, ts) : undefined;
+    const actionIdSelect = this.pushInsertAction(stmts, {
+      cardId: null,
+      superActionId: null,
+      actionType: actionTypeCode("create"),
+      draft: 0,
+      comment: null,
+    });
+    const { actionId } = await this.runBatch(stmts, { actIdSelect, actionIdSelect });
+    return requireId(actionId);
+  }
+
+  // -----------------------------------------------------------------------
+  // update / delete — Ruby: :update or :delete action; change rows only for
+  // fields that differ from the pre-act DB state.
+  // -----------------------------------------------------------------------
+
+  async updateCard(input: UpdateCardInput): Promise<SavedAction | null> {
+    this.opActPreexisted = this.actId !== null;
+    let changed =
+      input.changedFields !== undefined
+        ? ALL_TRACKED_WRITE_ORDER.filter((f) => input.changedFields!.includes(f))
+        : diffTrackedFields(input.before, input.after);
+    if (changed.length === 0 && input.dirtyFields !== undefined) {
+      // Caller-asserted dirty fields (the mounted-attachment assignment —
+      // see UpdateCardInput.dirtyFields): a real save even when the computed
+      // values equal the pre-act state.
+      changed = [...input.dirtyFields];
+    }
+    if (changed.length === 0) {
+      // finalize_action else-branch (events.rb:34-37): with no changed
+      // fields and no pre-existing changes the action row is never saved,
+      // and ActiveRecord skips the cards-row UPDATE entirely (no-op save).
+      // finalize_act (events.rb:48-50, when: act_card?) still runs:
+      // `Director.act.update! card_id: id` saves the act, so the act card's
+      // no-op save leaves an act row with no actions; `remove_empty_act?` is
+      // defined upstream but never wired.
+      if (this.actId === null && this.isActCardOp(input.cardId, input.isActCard)) {
+        const stmts: SQLStatement[] = [];
+        const actIdSelect = this.pushInsertAct(stmts, input.cardId, sqlDateTime(this.clock()));
+        await this.runBatch(stmts, { actIdSelect });
+      }
+      return null;
+    }
+    if (changed.includes("name")) {
+      if (input.key === undefined) {
+        throw new Error(
+          "updateCard: a name change requires `key` (name= writes key=; lib/card/name/all.rb:20-23)",
+        );
+      }
+      this.assertNameKeyConvention(
+        input.after.name,
+        input.key,
+        input.after.left_id,
+        input.after.right_id,
+      );
+    }
+
+    const actionType = identifyAction({
+      trashBefore: input.before.trash,
+      trashAfter: input.after.trash,
+      isNewCard: false,
+    });
+    const ts = sqlDateTime(this.clock());
+    if (input.history === false) {
+      // history? false (password, salt): the row is saved with no act,
+      // action or change rows of its own.
+      const stmts: SQLStatement[] = [];
+      this.pushUpdateCardsRow(stmts, input, changed, ts);
+      await this.driver.batch(stmts);
+      return { actId: this.actId ?? 0, actionId: 0, actPreexisted: this.opActPreexisted };
+    }
+
+    // Pre-reads (single-writer assumption as in ActiveRecord; the values are
+    // re-derivable, not authoritative, so no locking is attempted).
+    //
+    // The three card_actions reads ride ONE batch — the save path's block
+    // batching: read-only statements issued at the same sequence point (no
+    // write runs between them), so the ordered batch answers each exactly as
+    // its individual round trip did. On a hosted database every round trip is
+    // a network hop (measured by a save-statement ladder diagnostic
+    // — one Person-card save issued one pipeline POST per statement).
+    const [countResult, draftResult, firstActionResult] = await this.driver.batch([
+      this.actionCountStmt(input.cardId),
+      this.ownDraftCountStmt(input.cardId),
+      this.firstNonDraftActionStmt(input.cardId),
+    ]);
+    const actionCountBefore = Number((countResult.rows[0] as { n: number }).n);
+    // first_change? (set/all/history.rb:32-36 — action_type != :create &&
+    // action_count == 2 && create_action.card_changes.empty?). Ruby counts
+    // AFTER the :store-stage clear_drafts (event :set_content,
+    // mod/core/set/all/content.rb:8) deleted this actor's drafts and after
+    // `@current_action.update! card_id: id` saved the new action row, so the
+    // port subtracts the drafts the batch is about to clear and adds the
+    // action it is about to insert.
+    const ownDrafts = Number((draftResult.rows[0] as { n: number }).n);
+    const actionCountAtFinalize = actionCountBefore - ownDrafts + 1;
+    let backfill: { createActionId: number } | null = null;
+    if (actionType !== "create" && actionCountAtFinalize === 2) {
+      const firstRow = firstActionResult.rows[0] as
+        | { id: number; action_type: number }
+        | undefined;
+      const createAction =
+        firstRow === undefined
+          ? undefined
+          : { id: Number(firstRow.id), action_type: Number(firstRow.action_type) };
+      if (createAction !== undefined) {
+        if ((await this.changeCount(createAction.id)) === 0) {
+          backfill = { createActionId: createAction.id };
+        }
+      }
+      // No create action row (e.g. pre-history card): Ruby would crash on
+      // create_action.card_changes; the port skips the backfill instead.
+    }
+
+    const stmts: SQLStatement[] = [];
+    const actIdSelect = this.pushClearDraftsAndAct(stmts, input.cardId, ts);
+    const updateCardsIndex = this.pushUpdateCardsRow(stmts, input, changed, ts);
+    const actionRow = {
+      cardId: input.cardId,
+      superActionId: input.superActionId ?? null,
+      actionType: actionTypeCode(actionType),
+      comment: input.comment ?? null,
+    };
+    let actionIdSelect: number | undefined;
+    if (input.reservedActionId !== undefined) {
+      this.pushFillReservedAction(stmts, input.reservedActionId, actionRow);
+    } else {
+      actionIdSelect = this.pushInsertAction(stmts, { ...actionRow, draft: 0 });
+    }
+    if (backfill !== null) {
+      // store_card_changes_for_create_action (events.rb:95-100): the create
+      // action gets one change per TRACKED_FIELDS entry, valued with the
+      // pre-act state (attribute_before_act — lib/card/dirty.rb:23-33; for
+      // fields this act changed that is the pre-save value, for untouched
+      // fields the current value, which is the same pre-act row either way).
+      // These rows are inserted BEFORE the update's own changes so their ids
+      // sort earlier (events.rb:29-31 NOTE — last_change_on orders by id).
+      for (const field of ALL_TRACKED_WRITE_ORDER) {
+        this.pushInsertChange(stmts, { kind: "id", id: backfill.createActionId }, field, input.before[field]);
+      }
+    }
+    // store_card_changes (events.rb:102-106): one change per changed field,
+    // valued with the post-act state (self[field]). The rows reference the
+    // action inserted earlier in this batch via a MAX(id) subquery scoped to
+    // the card: the statements in between (the create-action backfill) only
+    // touch card_changes, so the subquery still resolves to this save's
+    // action row inside the atomic batch — unlike last_insert_rowid(), which
+    // every INSERT resets.
+    for (const field of changed) {
+      this.pushInsertChange(stmts, { kind: "newActionRow", cardId: input.cardId }, field, input.after[field]);
+    }
+    // integration stage, event :update_ancestor_timestamps (events.rb:1-7,
+    // `Card.where(id: ids).update_all(updater_id: Auth.current_id,
+    // updated_at: Time.now)`). Ruby's cache expiry for the ancestors is not
+    // ported here.
+    const ancestors = input.ancestorCardIds ?? [];
+    if (ancestors.length > 0) {
+      stmts.push({
+        sql: `UPDATE cards SET updated_at = ?, updater_id = ? WHERE id IN (${ancestors
+          .map(() => "?")
+          .join(", ")})`,
+        params: [ts, this.actorId, ...ancestors],
+      });
+    }
+
+    const { actId, actionId, results } = await this.runBatch(stmts, {
+      actIdSelect,
+      actionIdSelect,
+    });
+
+    const saved = {
+      actId: this.requireActId(actId),
+      actionId: input.reservedActionId ?? requireId(actionId),
+      actPreexisted: this.opActPreexisted,
+    };
+    const updateResult = results[updateCardsIndex];
+    if (updateResult.rowsAffected !== 1) {
+      throw new Error(
+        `updateCard: cards row ${input.cardId} not updated (rowsAffected=${updateResult.rowsAffected})`,
+      );
+    }
+    await this.finalizeActCard(input.cardId, this.isActCardOp(input.cardId, input.isActCard));
+    return saved;
+  }
+
+  /** prepare_attachment (card-mod-carrierwave
+   *  set/abstract/attachment/00_upload_cache.rb:8-25): the first step of a
+   *  two-step upload records one DRAFT action (action_type create for a new
+   *  card, filed on the upload-cache card; update for an existing card),
+   *  with the original filename as its comment and the change rows that
+   *  store_card_changes writes, then aborts — the cards row is untouched.
+   *  `changes` receives the new action id (the stored file's identifier
+   *  carries it).
+   *
+   *  The ACT row carries card_id NULL: Ruby's director builds every act as
+   *  `Card::Act.new ip_address: Env.ip` (director/class_methods.rb:27-28)
+   *  and only `finalize_act` (history/events.rb:55-57) stamps the acting
+   *  card's id on it — an event the preliminary save never reaches, because
+   *  prepare_attachment aborts :success at :prepare_to_validate. The oracle
+   *  rows pin the shape (upload-remove-preview-admin: card_acts #1
+   *  card_id null beside card_actions #1 card_id 295, the cache card). The
+   *  ACTION is filed on `cardId` — the draft card itself
+   *  (00_upload_cache.rb:17 `@current_action.update! draft: true,
+   *  card_id: card_id`). */
+  async recordUploadDraft(input: {
+    cardId: number;
+    actionType: "create" | "update";
+    comment: string | null;
+    changes: (actionId: number) => [keyof CardFieldState, string | number | null][];
+  }): Promise<SavedAction> {
+    const ts = sqlDateTime(this.clock());
+    const stmts: SQLStatement[] = [];
+    const actIdSelect = this.actId === null ? this.pushInsertAct(stmts, null, ts) : undefined;
+    const actionIdSelect = this.pushInsertAction(stmts, {
+      cardId: input.cardId,
+      superActionId: null,
+      actionType: actionTypeCode(input.actionType),
+      draft: 1,
+      comment: input.comment,
+    });
+    const { actId, actionId } = await this.runBatch(stmts, { actIdSelect, actionIdSelect });
+    const saved = { actId: this.requireActId(actId), actionId: requireId(actionId) };
+    const changeStmts: SQLStatement[] = [];
+    for (const [field, value] of input.changes(saved.actionId)) {
+      this.pushInsertChange(changeStmts, { kind: "id", id: saved.actionId }, field, value);
+    }
+    if (changeStmts.length > 0) await this.driver.batch(changeStmts);
+    return saved;
+  }
+
+  /** Action#delete (ActiveRecord #delete: no callbacks, so the action's
+   *  change rows stay) — the cached upload's draft action once its file has
+   *  been assigned (00_upload_cache.rb delete_cached_upload_file_on_*). */
+  async deleteActionRow(actionId: number): Promise<void> {
+    await this.driver.batch([{ sql: "DELETE FROM card_actions WHERE id = ?", params: [actionId] }]);
+  }
+
+  /** `card.delete!` = an update save with trash: true
+   *  (mod/core/set/all/trash.rb:11-21, :70-72); identify_action turns the
+   *  trash flip into a :delete action. Already-trashed cards come back as a
+   *  no-op (trash_changed? false -> plain :update with no changed fields).
+   *  Child cards are deleted as subcards with their own delete actions in
+   *  the same act (trash.rb:46-57 delete_children) — pass each child through
+   *  updateCard with superActionId (subcard orchestration is the caller's). */
+  async trashCard(input: {
+    cardId: number;
+    before: CardFieldState;
+    history?: boolean;
+    /** The state after the delete when it changes more than trash (a
+     *  closed account's holder is renamed in its own delete action). */
+    after?: CardFieldState;
+    key?: string | null;
+    superActionId?: number | null;
+    ancestorCardIds?: number[];
+  }): Promise<SavedAction | null> {
+    const after: CardFieldState =
+      input.after ?? (input.before.trash === 1 ? input.before : { ...input.before, trash: 1 });
+    return this.updateCard({ ...input, after });
+  }
+
+  // -----------------------------------------------------------------------
+  // drafts — card-mod-history set/all/history.rb:88-94
+  // -----------------------------------------------------------------------
+
+  /** Draft saves record history WITHOUT touching the cards row: the
+   *  save_draft event runs in the :store stage and aborts the act
+   *  (mod/core/set/all/content.rb:12-15, `save_content_draft content;
+   *  abort :success` — the storage-phase abort rolls the row save back), so
+   *  only the draft's own rows persist: a fresh act (history.rb:88-94
+   *  `acts.create` always builds its own), an action with draft=true and
+   *  action_type :update, and one db_content change, all created immediately
+   *  (unlike the lazy create-action backfill). save_content_draft clears the
+   *  current actor's earlier drafts for this card first (history.rb:88-90,
+   *  super -> clear_drafts). */
+  async saveDraft(input: { cardId: number; content: string | null }): Promise<SavedAction> {
+    const ts = sqlDateTime(this.clock());
+    const stmts: SQLStatement[] = [];
+    this.pushClearOwnDrafts(stmts, input.cardId);
+    const actIdSelect = this.pushInsertAct(stmts, input.cardId, ts); // always a NEW act
+    const actionIdSelect = this.pushInsertAction(stmts, {
+      cardId: input.cardId,
+      superActionId: null,
+      actionType: actionTypeCode("update"),
+      draft: 1,
+      comment: null,
+    });
+    this.pushInsertChange(stmts, { kind: "newActionRow", cardId: input.cardId }, "db_content", input.content);
+    const { actId, actionId } = await this.runBatch(stmts, { actIdSelect, actionIdSelect });
+    return { actId: this.requireActId(actId), actionId: requireId(actionId) };
+  }
+
+  /** Deletes this writer's actor's draft actions for one card — clear_drafts
+   *  (lib/card/content/all.rb:38-40,
+   *  `drafts.created_by(Card::Auth.current_id).each(&:delete)`). Their
+   *  change rows stay: #delete skips the dependent: :delete_all callback
+   *  (see pushClearOwnDrafts). */
+  async clearOwnDrafts(cardId: number): Promise<void> {
+    const stmts: SQLStatement[] = [];
+    this.pushClearOwnDrafts(stmts, cardId);
+    await this.driver.batch(stmts);
+  }
+
+  /** Insert an action row before its card is stored, card_id NULL, and
+   *  return its id. Ruby builds the supercard's action at :initialize and
+   *  saves it ahead of the subcards stored during the supercard's :store
+   *  stage, setting card_id only at :finalize (`@current_action.update!
+   *  card_id: id`, events.rb:26-27), so a junction's action precedes the
+   *  actions of the side cards its create makes. Pass the returned id as
+   *  `reservedActionId` to the createCard/updateCard call that stores the
+   *  card: that call fills the row instead of inserting one. */
+  async reserveAction(input: {
+    actionType: "create" | "update";
+    superActionId?: number | null;
+  }): Promise<number> {
+    this.reserveOpActPreexisted = this.actId !== null;
+    this.opActPreexisted = this.reserveOpActPreexisted;
+    const stmts: SQLStatement[] = [];
+    const actIdSelect =
+      this.actId === null ? this.pushInsertAct(stmts, null, sqlDateTime(this.clock())) : undefined;
+    const actionIdSelect = this.pushInsertAction(stmts, {
+      cardId: null,
+      superActionId: input.superActionId ?? null,
+      actionType: actionTypeCode(input.actionType),
+      draft: 0,
+      comment: null,
+    });
+    const { actionId } = await this.runBatch(stmts, { actIdSelect, actionIdSelect });
+    return requireId(actionId);
+  }
+
+  /** Fill a reserved action row (see reserveAction) — the statement that
+   *  replaces pushInsertAction for a save whose action was reserved. */
+  private pushFillReservedAction(
+    stmts: SQLStatement[],
+    reservedId: number,
+    input: { cardId: number; superActionId: number | null; actionType: number; comment: string | null },
+  ): void {
+    stmts.push({
+      sql: "UPDATE card_actions SET card_id = ?, super_action_id = ?, action_type = ?, comment = ? WHERE id = ?",
+      params: [input.cardId, input.superActionId, input.actionType, input.comment, reservedId],
+    });
+  }
+
+  /** The act row's id once at least one action has been persisted.
+   *  Also non-null when an act-card no-op save left the row by itself
+   *  (updateCard's `finalize_act` arm, write-path.ts:400-405). Callers
+   *  that insert an act of their own (the controller path's all-no-op arm)
+   *  read this first: Ruby has ONE act row per request (act.rb:64-68, the
+   *  `belongs_to :card` autosave), so a save whose act card already left
+   *  the writer its row must not add another.
+   *
+   *  This is the port's answer to director.rb#need_act (director.rb:195-200):
+   *  Ruby's act is created once and shared by every director in the act,
+   *  and this id is that one act. */
+  currentActId(): number | null {
+    return this.actId;
+  }
+
+  // -----------------------------------------------------------------------
+  // internals
+  // -----------------------------------------------------------------------
+
+  /** :store stage clear_drafts (event :set_content) plus the lazy act INSERT
+   *  when this operation is the act's first persisted action. The act row is
+   *  inserted with card_id NULL (Ruby's Act.new sets only the ip; the
+   *  primary card is written by finalize_act). Returns the batch index of
+   *  the act-id read-back SELECT, or undefined when the act row already
+   *  exists. */
+  private pushClearDraftsAndAct(
+    stmts: SQLStatement[],
+    draftsCardId: number,
+    ts: string,
+  ): number | undefined {
+    this.pushClearOwnDrafts(stmts, draftsCardId);
+    if (this.actId !== null) return undefined;
+    return this.pushInsertAct(stmts, null, ts);
+  }
+
+  /** act INSERT on the first persisted action of the act (belongs_to
+   *  autosave — see the class doc). acted_at is the Rails create-timestamp
+   *  (act.rb:64-68); actor_id the assign_actor fill (act.rb:131-134). */
+  private pushInsertAct(
+    stmts: SQLStatement[],
+    cardId: number | null,
+    actedAt: string,
+  ): number {
+    stmts.push({
+      sql: "INSERT INTO card_acts (card_id, actor_id, acted_at, ip_address) VALUES (?, ?, ?, ?)",
+      params: [cardId, this.actActorId, actedAt, this.ipAddress],
+    });
+    stmts.push({ sql: "SELECT last_insert_rowid() AS id", params: [] });
+    return stmts.length - 1;
+  }
+
+  /** action row INSERT. When the act row is inserted in the same batch, the
+   *  card_act_id is supplied as SQL last_insert_rowid() (batch statements
+   *  share one connection; the id read-back SELECT between the two INSERTs
+   *  does not reset it). Returns the batch index of the action-id read-back
+   *  SELECT. */
+  private pushInsertAction(
+    stmts: SQLStatement[],
+    input: {
+      cardId: number | null;
+      superActionId: number | null;
+      actionType: number;
+      draft: SQLBoolean;
+      comment: string | null;
+    },
+  ): number {
+    const actIdSql = this.actId === null ? "last_insert_rowid()" : "?";
+    const params =
+      this.actId === null
+        ? [input.cardId, input.superActionId, input.actionType, input.draft, input.comment]
+        : [
+            input.cardId,
+            this.actId,
+            input.superActionId,
+            input.actionType,
+            input.draft,
+            input.comment,
+          ];
+    stmts.push({
+      sql: `INSERT INTO card_actions
+              (card_id, card_act_id, super_action_id, action_type, draft, comment)
+            VALUES (?, ${actIdSql}, ?, ?, ?, ?)`,
+      params,
+    });
+    stmts.push({ sql: "SELECT last_insert_rowid() AS id", params: [] });
+    return stmts.length - 1;
+  }
+
+  /** One card_changes row. `actionId` either names a known action row (the
+   *  create-action backfill) or is "newActionRow", meaning the change belongs
+   *  to the action row inserted earlier in the same batch — referenced with a
+   *  MAX(id) subquery scoped to the card, which stays correct even when other
+   *  INSERTs (the backfill rows) run in between. */
+  private pushInsertChange(
+    stmts: SQLStatement[],
+    actionId: { kind: "id"; id: number } | { kind: "newActionRow"; cardId: number },
+    field: keyof CardFieldState,
+    value: string | number | SQLBoolean | null,
+  ): void {
+    if (actionId.kind === "newActionRow") {
+      stmts.push({
+        sql: `INSERT INTO card_changes (card_action_id, field, value)
+              VALUES ((SELECT MAX(id) FROM card_actions WHERE card_id = ?), ?, ?)`,
+        params: [actionId.cardId, trackedFieldIndex(field), changeValueForField(field, value)],
+      });
+      return;
+    }
+    stmts.push({
+      sql: "INSERT INTO card_changes (card_action_id, field, value) VALUES (?, ?, ?)",
+      params: [actionId.id, trackedFieldIndex(field), changeValueForField(field, value)],
+    });
+  }
+
+  /** clear_drafts for this writer's actor, set-based: the draft action rows
+   *  only. Ruby deletes them with `drafts.created_by(...).each(&:delete)`
+   *  (card-1.110.0 lib/card/content/all.rb:38-40); ActiveRecord's #delete
+   *  skips callbacks, so the `dependent: :delete_all` on card_changes
+   *  (card-mod-history lib/card/action.rb:30-33, a destroy callback) never
+   *  runs and the draft's change row stays behind, as Ruby leaves it. */
+  private pushClearOwnDrafts(stmts: SQLStatement[], cardId: number): void {
+    const draftPredicate = `card_actions.card_id = ?
+      AND card_actions.draft = 1
+      AND card_actions.card_act_id IN (SELECT id FROM card_acts WHERE actor_id = ?)`;
+    stmts.push({
+      sql: `DELETE FROM card_actions WHERE ${draftPredicate}`,
+      params: [cardId, this.actorId],
+    });
+  }
+
+  /** ActiveRecord writes only the changed attributes plus updated_at; name=
+   *  also writes key= (lib/card/name/all.rb:20-23). updater_id comes from
+   *  set_stamper (card-mod-account set/all/account.rb:20-22). Returns the
+   *  statement's batch index for the rowsAffected assertion. */
+  private pushUpdateCardsRow(
+    stmts: SQLStatement[],
+    input: UpdateCardInput,
+    changed: (keyof CardFieldState)[],
+    ts: string,
+  ): number {
+    const sets: string[] = [];
+    const params: unknown[] = [];
+    for (const field of changed) {
+      sets.push(`${field} = ?`);
+      params.push(input.after[field]);
+    }
+    if (changed.includes("name")) {
+      sets.push("key = ?");
+      params.push(input.key ?? null);
+    }
+    if (input.readRule !== undefined) {
+      // set_read_rule store event (permissions.rb:1-5): the pair rides the
+      // same row UPDATE (Ruby assigns the attributes pre-store). Not tracked
+      // fields — no change rows exist for them.
+      sets.push("read_rule_class = ?", "read_rule_id = ?");
+      params.push(input.readRule.readRuleClass, input.readRule.readRuleId);
+    }
+    sets.push("updated_at = ?", "updater_id = ?");
+    params.push(ts, this.cardStamperId(input.cardId, input.isActCard));
+    stmts.push({
+      sql: `UPDATE cards SET ${sets.join(", ")} WHERE id = ?`,
+      params: [...params, input.cardId],
+    });
+    return stmts.length - 1;
+  }
+
+  /** Runs one operation's statements as one atomic batch, reads generated
+   *  ids back from the bookkeeping SELECTs, and caches the act id. */
+  private async runBatch(
+    stmts: SQLStatement[],
+    reads: { actIdSelect?: number; actionIdSelect?: number },
+  ): Promise<{ actId?: number; actionId?: number; results: SQLQueryResult[] }> {
+    const results = await this.driver.batch(stmts);
+    const out: { actId?: number; actionId?: number; results: SQLQueryResult[] } = { results };
+    if (reads.actIdSelect !== undefined) {
+      out.actId = selectId(results[reads.actIdSelect]);
+    }
+    if (reads.actionIdSelect !== undefined) {
+      out.actionId = selectId(results[reads.actionIdSelect]);
+    }
+    if (out.actId !== undefined) this.actId = out.actId;
+    return out;
+  }
+
+  /** Event :finalize_act (events.rb:48-50, `Card::Director.act.update!
+   *  card_id: id`): the act's primary card, written as its own UPDATE — the
+   *  row was inserted with card_id NULL. Only the act card's own operation
+   *  reaches here; subcard operations return early. */
+  private async finalizeActCard(cardId: number, isActCard: boolean): Promise<void> {
+    if (!isActCard || this.actId === null) return;
+    if (this.actCardId !== undefined && this.actCardId !== cardId) {
+      throw new Error(
+        `ActWriter: card ${cardId} claims act-card status already held by card ${this.actCardId}`,
+      );
+    }
+    this.actCardId = cardId;
+    await this.driver.query("UPDATE card_acts SET card_id = ? WHERE id = ?", [
+      cardId,
+      this.actId,
+    ]);
+  }
+
+  /** Resolve whether this operation is the act card's own action: an
+   *  explicit input wins; otherwise a pinned actCardId decides; otherwise
+   *  the first operation claims act-card status (documented default).
+   *
+   *  This is the port's answer to director.rb#main? (director.rb:160-162):
+   *  the act card's own operation is the port's main director, and every
+   *  other operation of the request is a subdirector of it. The port has
+   *  no director objects, so the one fact Ruby's `main?` answers is the
+   *  one this method decides. */
+  private isActCardOp(cardId: number, explicit: boolean | undefined): boolean {
+    if (explicit !== undefined) {
+      if (explicit && this.actCardId !== undefined && this.actCardId !== cardId) {
+        throw new Error(
+          `ActWriter: card ${cardId} claims act-card status already held by card ${this.actCardId}`,
+        );
+      }
+      if (explicit) this.actCardId = cardId;
+      return explicit;
+    }
+    if (this.actCardId !== undefined) return this.actCardId === cardId;
+    this.actCardId = cardId;
+    return true;
+  }
+
+  private cardStamperId(cardId: number | undefined, explicit: boolean | undefined): number {
+    const root = explicit ?? (this.actCardId === undefined || cardId === this.actCardId);
+    return root ? this.rootStamperId ?? this.actorId : this.actorId;
+  }
+
+  private requireActId(readBack?: number): number {
+    const id = this.actId ?? readBack;
+    if (id === undefined || id === null) {
+      throw new Error("ActWriter: no act row persisted yet");
+    }
+    return id;
+  }
+
+  /** INSERT plus id read-back. Drivers that surface lastInsertRowId (the
+   *  local SQLite adapters) avoid the extra round trip; the fallback uses
+   *  SQLite's connection-scoped last_insert_rowid(), the same mechanism
+   *  ActiveRecord relies on. */
+  private async insertReturningId(sql: string, params: unknown[]): Promise<number> {
+    const result = await this.driver.query(sql, params);
+    if (result.lastInsertRowId !== undefined) {
+      return Number(result.lastInsertRowId);
+    }
+    const rows = await this.driver.query<{ id: number }>("SELECT last_insert_rowid() AS id", []);
+    return Number(rows.rows[0].id);
+  }
+
+  /** The pre-read and read-back statements, built once so the batched and
+   *  point-query forms are the SAME text and parameters by construction. */
+  private actionCountStmt(cardId: number): SQLStatement {
+    return {
+      sql: "SELECT COUNT(*) AS n FROM card_actions WHERE card_id = ?",
+      params: [cardId],
+    };
+  }
+
+  private ownDraftCountStmt(cardId: number): SQLStatement {
+    return {
+      sql: `SELECT COUNT(*) AS n FROM card_actions
+       WHERE card_actions.card_id = ? AND card_actions.draft = 1
+         AND card_actions.card_act_id IN (SELECT id FROM card_acts WHERE actor_id = ?)`,
+      params: [cardId, this.actorId],
+    };
+  }
+
+  private firstNonDraftActionStmt(cardId: number): SQLStatement {
+    return {
+      sql: `SELECT id, action_type FROM card_actions
+       WHERE card_id = ? AND (draft IS NULL OR draft = 0)
+       ORDER BY id LIMIT 1`,
+      params: [cardId],
+    };
+  }
+
+  /** Card::Action count INCLUDING drafts — set/all/history.rb:42-44
+   *  (`Card::Action.where(card_id: ...)` has no draft filter). */
+  private async actionCount(cardId: number): Promise<number> {
+    const stmt = this.actionCountStmt(cardId);
+    const result = await this.driver.query<{ n: number }>(stmt.sql, stmt.params);
+    return Number(result.rows[0].n);
+  }
+
+  /** This writer's actor's draft-action count for one card — the rows the
+   *  :store-stage clear_drafts is about to delete (same predicate as
+   *  pushClearOwnDrafts, built from drafts.created_by,
+   *  lib/card/content/all.rb:33-35). */
+  private async ownDraftCount(cardId: number): Promise<number> {
+    const stmt = this.ownDraftCountStmt(cardId);
+    const result = await this.driver.query<{ n: number }>(stmt.sql, stmt.params);
+    return Number(result.rows[0].n);
+  }
+
+  /** create_action — the card's first non-draft action
+   *  (set/all/history/actions.rb:21-23 `@create_action ||= actions.first`,
+   *  with Card#actions = draft [nil, false] ordered by id, lib/card.rb:172). */
+  private async firstNonDraftAction(
+    cardId: number,
+  ): Promise<{ id: number; action_type: number } | undefined> {
+    const stmt = this.firstNonDraftActionStmt(cardId);
+    const result = await this.driver.query<{ id: number; action_type: number }>(stmt.sql, stmt.params);
+    return result.rows[0];
+  }
+
+  private async changeCount(actionId: number): Promise<number> {
+    const result = await this.driver.query<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM card_changes WHERE card_action_id = ?",
+      [actionId],
+    );
+    return Number(result.rows[0].n);
+  }
+
+  /** cards.name/key carry simple names only; compound cards are NULL there
+   *  and identified by left_id/right_id (lib/card/name/all.rb:20-21, :64-66). */
+  private assertNameKeyConvention(
+    name: string | null,
+    key: string | null,
+    leftId: number | null | undefined,
+    rightId: number | null | undefined,
+  ): void {
+    const compound = (leftId ?? null) !== null || (rightId ?? null) !== null;
+    if (compound && (name !== null || key !== null)) {
+      throw new Error(
+        "ActWriter: compound cards (left_id/right_id set) must carry name = key = NULL",
+      );
+    }
+    if (!compound && (name === null || key === null)) {
+      throw new Error("ActWriter: simple cards require both name and key");
+    }
+  }
+}
+
+function requireId(id: number | undefined): number {
+  if (id === undefined) {
+    throw new Error("ActWriter: id read-back returned no row (last_insert_rowid unavailable)");
+  }
+  return id;
+}
+
+function selectId(result: SQLQueryResult): number | undefined {
+  const row = result.rows[0] as { id: number } | undefined;
+  return row === undefined ? undefined : Number(row.id);
+}
+
+/** Snapshot a cards row's tracked fields in the raw attribute form the
+ *  change-value store uses (`self[field]` — events.rb:102-106). */
+export function cardFieldStateFromRow(row: CardsRow): CardFieldState {
+  return {
+    name: row.name,
+    type_id: row.type_id,
+    db_content: row.db_content,
+    trash: row.trash,
+    left_id: row.left_id,
+    right_id: row.right_id,
+  };
+}

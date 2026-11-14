@@ -1,0 +1,30 @@
+// A caller may provide its explicitly managed loopback server. The adapter
+// owns only its per-session database; it never stops that supplied server.
+import { createConnection } from "mysql2/promise";
+import { startMysqlServer, type MysqlServer } from "../../../tests/server/drivers/mysql-server.js";
+
+let server: Promise<MysqlServer> | undefined;
+
+export function mysqlForHarness(): Promise<MysqlServer> {
+  server ??= managedOrLocalServer();
+  return server;
+}
+
+async function managedOrLocalServer(): Promise<MysqlServer> {
+  const configured = process.env.HARNESS_MYSQL_PORT;
+  if (configured !== undefined) {
+    const port = Number(configured);
+    if (!/^[0-9]+$/.test(configured) || !Number.isSafeInteger(port) || port <= 40000 || port > 65535) {
+      throw new Error("MysqlHarnessPortError: the managed loopback port must be above 40000 and at most 65535");
+    }
+    return {
+      port, pid: 0, datadir: "externally-managed",
+      connect: database => createConnection({ host: "127.0.0.1", port, user: "root", password: "", database, charset: "utf8mb4", disableEval: true }),
+      stop: async () => { throw new Error("MysqlHarnessOwnershipError: stop the supplied server through its owner"); },
+      kill: () => { throw new Error("MysqlHarnessOwnershipError: the adapter does not own the supplied server"); },
+    };
+  }
+  const local = await startMysqlServer();
+  process.once("exit", () => local.kill());
+  return local;
+}

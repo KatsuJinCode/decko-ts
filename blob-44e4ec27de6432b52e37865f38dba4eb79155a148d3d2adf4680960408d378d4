@@ -1,0 +1,324 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { loadAllowlist, runReadinessCheck, sqlComments, defaultAllowlistFile } from '../../tools/release/readiness-check.mjs';
+
+const checkScript = fileURLToPath(new URL('../../tools/release/readiness-check.mjs', import.meta.url));
+const sha = bytes => createHash('sha256').update(bytes).digest('hex');
+// Planted markers carry a '^' break so this source never holds a marker itself;
+// unmask() restores the exact text the check receives at runtime.
+const unmask = text => text.replaceAll('^', '');
+
+const cleanFiles = () => ({
+  'README.md': [
+    '# Example engine',
+    '',
+    'Read [the scope](PORT-SCOPE.md) and [the notice](NOTICE) first.',
+    'The entry point is `src/index.ts`, and the schema is db/schema.sql.',
+    'The export manifest is HANDOVER-MANIFEST.json, written by tools/build/export.mjs (development repository; not included).',
+    'Hosting on Bunny (bunny.net) is described in docs/handover/DEPLOYMENT.md.',
+    'Run `node tools/run.mjs ./tmp/out` to write output into tmp/out.',
+    '',
+  ].join('\n'),
+  'PORT-SCOPE.md': '# Scope\n\nSee [the readme](README.md#example-engine).\n',
+  'NOTICE': 'Copyright notice for the example engine.\n',
+  'docs/handover/DEPLOYMENT.md': '# Deployment\n\nBack to [the readme](../../README.md).\n',
+  'src/index.ts': [
+    '/*! Example engine. Licensed under GPL-3.0-or-later. */',
+    '/// <reference types="node" />',
+    'export const slash = "// not a comment";',
+    'export const template = `/* not a comment ${slash} */`;',
+    'export const pattern = /\\/\\/+/g;',
+    '// @ts-expect-error',
+    'export const value: number = "text";',
+    '',
+  ].join('\n'),
+  'src/types.d.mts': 'export const LIMIT: number;\n',
+  'db/schema.sql': [
+    "CREATE TABLE cards (name TEXT DEFAULT '-- not a comment', note TEXT DEFAULT '/* nor this */');",
+    'CREATE TABLE "odd--name" (id INTEGER);',
+    '',
+  ].join('\n'),
+  'tools/run.mjs': [
+    '#!/usr/bin/env node',
+    '/*',
+    ' * SPDX-License-Identifier: GPL-3.0-or-later',
+    ' */',
+    "const url = 'https://example.com/path';",
+    'console.log(url);',
+    '',
+  ].join('\n'),
+  'vendor/upstream/lib.js': unmask('// Upstream says: da^mn, Re^lay this to Clau^de.\nmodule.exports = 1;\n'),
+});
+
+function writeExport(root, files) {
+  for (const [name, text] of Object.entries(files)) {
+    const full = path.join(root, ...name.split('/'));
+    mkdirSync(path.dirname(full), { recursive: true });
+    writeFileSync(full, text);
+  }
+}
+
+function writeManifest(root, files) {
+  const entries = Object.keys(files).sort().map(name => {
+    const bytes = readFileSync(path.join(root, ...name.split('/')));
+    return { path: name, mode: '100644', bytes: bytes.length, sha256: sha(bytes) };
+  });
+  writeFileSync(path.join(root, 'HANDOVER-MANIFEST.json'), JSON.stringify({ format: 1, files: entries }, null, 2) + '\n');
+}
+
+function exportWith(mutate = () => {}, { manifestBeforeMutation = false } = {}) {
+  const root = mkdtempSync(path.join(tmpdir(), 'decko-readiness-'));
+  const files = cleanFiles();
+  if (manifestBeforeMutation) {
+    writeExport(root, files);
+    writeManifest(root, files);
+    mutate(files, root);
+  } else {
+    mutate(files, root);
+    writeExport(root, files);
+    writeManifest(root, files);
+  }
+  return root;
+}
+
+function lineNumberOf(text, needle) {
+  const index = text.split('\n').findIndex(line => line.includes(needle));
+  assert.notEqual(index, -1, 'planted text not found: ' + needle);
+  return index + 1;
+}
+
+async function check(root, allowlist = []) {
+  try { return await runReadinessCheck(root, { allowlist }); }
+  finally { rmSync(root, { recursive: true, force: true }); }
+}
+
+function summary(result) {
+  return result.failures.map(item => `${item.check} ${item.file}:${item.line} ${item.rule}`).sort();
+}
+
+test('a clean export passes every check', async () => {
+  const result = await check(exportWith());
+  assert.deepEqual(summary(result), []);
+  assert.equal(result.passed, true);
+  assert.deepEqual(result.counts, { 'private-markers': 0, 'shipped-wording': 0, comments: 0, links: 0, 'cited-paths': 0, manifest: 0 });
+});
+
+test('check 1 refuses private markers anywhere, with file and line', async () => {
+  let line, readmeLine, vendorLine;
+  const result = await check(exportWith(files => {
+    files['src/index.ts'] += unmask('export const owner = "rule card 455^14 on the ju^c VM";\n');
+    line = lineNumberOf(files['src/index.ts'], unmask('455^14'));
+    files['README.md'] += unmask('Measured on the 4^7k-card corpus^ deck at C^:\\localProjects\\decko-example, see DEC^KO-12.\n');
+    readmeLine = lineNumberOf(files['README.md'], unmask('4^7k'));
+    files['vendor/upstream/lib.js'] += unmask('module.exports.id = "Make^ Contact";\n');
+    vendorLine = lineNumberOf(files['vendor/upstream/lib.js'], unmask('Make^ Contact'));
+  }));
+  const failures = summary(result);
+  assert.ok(failures.includes(`private-markers src/index.ts:${line} private-card-id`), failures.join('\n'));
+  assert.ok(failures.includes(`private-markers src/index.ts:${line} private-host`), failures.join('\n'));
+  for (const rule of ['private-deck-fact', 'local-path', 'tracker-id']) {
+    assert.ok(failures.includes(`private-markers README.md:${readmeLine} ${rule}`), rule + '\n' + failures.join('\n'));
+  }
+  assert.ok(failures.includes(`private-markers vendor/upstream/lib.js:${vendorLine} private-deck-name`), failures.join('\n'));
+  assert.ok(!failures.some(item => item.includes('vendor/upstream/lib.js:1 ')), 'third-party wording and profanity are excluded');
+  assert.equal(result.passed, false);
+});
+
+test('check 1 refuses Linux and macOS home-folder paths of any user, in code, data and third-party files', async () => {
+  const lines = {};
+  const result = await check(exportWith(files => {
+    files['src/index.ts'] += 'export const bundle = "/home/alice/oracle-bundle/app/public";\n';
+    lines.src = lineNumberOf(files['src/index.ts'], '/home/alice/');
+    files['README.md'] += 'Captured with the bundle in /Users/bob smith/work/decko.\n';
+    lines.readme = lineNumberOf(files['README.md'], '/Users/bob');
+    files['fixtures/expected/render.jsonl'] = '{"id":"a","error":{"message":"for #<View @dir=\\"/home/runner/x\\">"}}\n';
+    files['vendor/upstream/lib.js'] += 'module.exports.root = "/Users/carol/lib";\n';
+    lines.vendor = lineNumberOf(files['vendor/upstream/lib.js'], '/Users/carol/');
+    files['fixtures/account.txt'] = '/home/guest\n/Users/jane doe\n';
+  }));
+  const failures = summary(result);
+  assert.ok(failures.includes(`private-markers src/index.ts:${lines.src} home-folder-path`), failures.join('\n'));
+  assert.ok(failures.includes(`private-markers README.md:${lines.readme} home-folder-path`), failures.join('\n'));
+  assert.ok(failures.includes('private-markers fixtures/expected/render.jsonl:1 home-folder-path'), failures.join('\n'));
+  assert.ok(failures.includes(`private-markers vendor/upstream/lib.js:${lines.vendor} home-folder-path`), failures.join('\n'));
+  assert.ok(failures.includes('private-markers fixtures/account.txt:1 home-folder-path'), failures.join('\n'));
+  assert.ok(failures.includes('private-markers fixtures/account.txt:2 home-folder-path'), failures.join('\n'));
+  assert.equal(result.passed, false);
+});
+
+test('the home-folder rule leaves a bare /home or /Users segment and other absolute paths alone', async () => {
+  const result = await check(exportWith(files => {
+    files['src/index.ts'] += [
+      'export const route = "/home";',
+      'export const users = "/Users";',
+      'export const placeholder = "<capture-root>/oracle-bundle/app/public";',
+      'export const scratch = "/scratch/decko-harness-session/adapter/cache";',
+      'export const nested = "/srv/home/";',
+      'export const nestedAccount = "/srv/home/alice/work";',
+      'export const homeRoute = "/homepage";',
+      '',
+    ].join('\n');
+  }));
+  assert.ok(!summary(result).some(item => item.endsWith(' home-folder-path')), summary(result).join('\n'));
+});
+
+test('check 1 refuses internal names, ruling phrases and profanity in the port', async () => {
+  let line;
+  const result = await check(exportWith(files => {
+    files['docs/handover/DEPLOYMENT.md'] += unmask('\nPer the lead\u2019s ruling, Jul^ian said this da^mn thing ships.\n');
+    line = lineNumberOf(files['docs/handover/DEPLOYMENT.md'], unmask('Jul^ian'));
+  }));
+  const failures = summary(result);
+  for (const rule of ['ruling-phrase', 'internal-name', 'profanity']) {
+    assert.ok(failures.includes(`private-markers docs/handover/DEPLOYMENT.md:${line} ${rule}`), rule + '\n' + failures.join('\n'));
+  }
+});
+
+test('check 1 reads the Bootstrap Icons class bi-layout-wtf as an icon name, not profanity', async () => {
+  let line;
+  const result = await check(exportWith(files => {
+    files['docs/handover/DEPLOYMENT.md'] += unmask('\nThe icon class .bi-layout-w^tf is upstream; a bare w^tf is not.\n');
+    line = lineNumberOf(files['docs/handover/DEPLOYMENT.md'], 'is upstream');
+  }));
+  const profanity = result.failures.filter(item => item.rule === 'profanity');
+  assert.deepEqual(profanity.map(item => [item.file, item.line, item.match]), [['docs/handover/DEPLOYMENT.md', line, unmask('w^tf')]]);
+});
+
+test('check 2 refuses release-process wording, handover in prose and an unexplained Bunny', async () => {
+  let candidate, prose, bunny;
+  const result = await check(exportWith(files => {
+    files['PORT-SCOPE.md'] += '\nThis release candidate is pending review.\nRead the handover notes in docs/handover/DEPLOYMENT.md.\nIt runs on Bunny.\n';
+    candidate = lineNumberOf(files['PORT-SCOPE.md'], 'release candidate');
+    prose = lineNumberOf(files['PORT-SCOPE.md'], 'handover notes');
+    bunny = lineNumberOf(files['PORT-SCOPE.md'], 'on Bunny');
+  }));
+  const failures = summary(result);
+  assert.deepEqual(failures, [
+    `shipped-wording PORT-SCOPE.md:${candidate} release-process`,
+    `shipped-wording PORT-SCOPE.md:${candidate} review-status`,
+    `shipped-wording PORT-SCOPE.md:${prose} handover-in-prose`,
+    `shipped-wording PORT-SCOPE.md:${bunny} unexplained-bunny`,
+  ].sort());
+});
+
+test('check 3 refuses comments in the port source and SQL, keeping directives and licenses', async () => {
+  let tsLine, blockLine, sqlLine, mjsLine;
+  const result = await check(exportWith(files => {
+    files['src/index.ts'] += 'export const later = 1; // trailing note\n/* block note */\n';
+    tsLine = lineNumberOf(files['src/index.ts'], 'trailing note');
+    blockLine = lineNumberOf(files['src/index.ts'], 'block note');
+    files['db/schema.sql'] += '-- explain the table\n';
+    sqlLine = lineNumberOf(files['db/schema.sql'], 'explain the table');
+    files['tools/run.mjs'] += '/* License text after code is not a header */\n';
+    mjsLine = lineNumberOf(files['tools/run.mjs'], 'not a header');
+  }));
+  assert.deepEqual(summary(result), [
+    `comments db/schema.sql:${sqlLine} line-comment`,
+    `comments src/index.ts:${blockLine} block-comment`,
+    `comments src/index.ts:${tsLine} line-comment`,
+    `comments tools/run.mjs:${mjsLine} block-comment`,
+  ].sort());
+});
+
+test('check 3 refuses source the parser cannot read', async () => {
+  const result = await check(exportWith(files => { files['src/broken.ts'] = 'export const = ;\n'; }));
+  assert.deepEqual(summary(result), ['comments src/broken.ts:1 unparseable-source']);
+});
+
+test('check 4 refuses a markdown link that resolves to no exported file', async () => {
+  let line, nested;
+  const result = await check(exportWith(files => {
+    files['README.md'] += 'See [missing](docs/MISSING.md) and [external](https://example.com/x).\n';
+    line = lineNumberOf(files['README.md'], 'MISSING');
+    files['docs/handover/DEPLOYMENT.md'] += '\nSee [scope](docs/handover/DEPLOYMENT.md).\n';
+    nested = lineNumberOf(files['docs/handover/DEPLOYMENT.md'], '[scope]');
+  }));
+  const failures = summary(result);
+  assert.ok(failures.includes(`links README.md:${line} unresolved-link`), failures.join('\n'));
+  assert.ok(failures.includes(`links docs/handover/DEPLOYMENT.md:${nested} unresolved-link`), failures.join('\n'));
+  assert.equal(failures.filter(item => item.startsWith('links ')).length, 2);
+});
+
+test('check 5 refuses a cited repository path missing from the export unless labelled', async () => {
+  let line;
+  const result = await check(exportWith(files => {
+    files['README.md'] += 'The recovery test is tests/migrate/recovery.test.ts.\n';
+    files['README.md'] += 'The oracle lives in tools/oracle/app (development repository; not included).\n';
+    files['README.md'] += 'The capture script (tools/oracle/capture.mjs; development repository;\nnot included) is not shipped.\n';
+    line = lineNumberOf(files['README.md'], 'recovery.test.ts');
+  }));
+  assert.deepEqual(summary(result), [`cited-paths README.md:${line} missing-cited-path`]);
+});
+
+test('check 6 refuses a manifest whose sizes, digests or file list disagree with the export', async () => {
+  const result = await check(exportWith((files, root) => {
+    writeFileSync(path.join(root, 'src', 'index.ts'), files['src/index.ts'] + 'export const added = 2;\n');
+    writeFileSync(path.join(root, 'src', 'unlisted.ts'), 'export const extra = 3;\n');
+  }, { manifestBeforeMutation: true }));
+  assert.deepEqual(summary(result), [
+    'manifest src/index.ts:0 sha256-mismatch',
+    'manifest src/index.ts:0 size-mismatch',
+    'manifest src/unlisted.ts:0 unlisted-file',
+  ]);
+});
+
+test('check 6 refuses a listed file that is missing', async () => {
+  const result = await check(exportWith((files, root) => { rmSync(path.join(root, 'src', 'types.d.mts')); }, { manifestBeforeMutation: true }));
+  const failures = summary(result);
+  assert.equal(failures.length, 1, failures.join('\n'));
+  assert.match(failures[0], /^manifest HANDOVER-MANIFEST\.json:\d+ listed-file-missing$/);
+});
+
+test('an exact allowlist entry suppresses only its own finding', async () => {
+  const files = cleanFiles();
+  files['src/index.ts'] += unmask('export const ruleCard = "card 455^14";\n');
+  const line = lineNumberOf(files['src/index.ts'], unmask('455^14'));
+  const entry = { check: 'private-markers', file: 'src/index.ts', line, text: unmask('export const ruleCard = "card 455^14";'), reason: 'test' };
+  const allowed = await check(exportWith(f => { f['src/index.ts'] = files['src/index.ts']; }), [entry]);
+  assert.deepEqual(summary(allowed), []);
+  assert.equal(allowed.allowlisted.length, 1);
+  const moved = await check(exportWith(f => { f['src/index.ts'] = files['src/index.ts']; }), [{ ...entry, line: line + 1 }]);
+  assert.deepEqual(summary(moved), [`private-markers src/index.ts:${line} private-card-id`]);
+});
+
+test('the allowlist file is valid and refuses wildcards', () => {
+  assert.ok(Array.isArray(loadAllowlist(defaultAllowlistFile)));
+  const root = mkdtempSync(path.join(tmpdir(), 'decko-readiness-allowlist-'));
+  try {
+    const file = path.join(root, 'allowlist.json');
+    writeFileSync(file, JSON.stringify({ entries: [{ check: 'comments', file: 'src/*.ts', line: 1, text: 'x', reason: 'y' }] }));
+    assert.throws(() => loadAllowlist(file), /wildcard/);
+    writeFileSync(file, JSON.stringify({ entries: [{ check: 'comments', file: 'src/a.ts', line: 1, text: 'x' }] }));
+    assert.throws(() => loadAllowlist(file), /reason/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('the SQL scanner ignores comment markers inside quoted text', () => {
+  const comments = sqlComments("SELECT '--x', \"a/*b\", $$ -- y $$ FROM t; -- real\n/* outer /* inner */ */");
+  assert.deepEqual(comments.map(item => item.type), ['Line', 'Block']);
+  assert.equal(comments[0].value, ' real');
+});
+
+test('the command exits non-zero and prints each failure with file and line', () => {
+  let line;
+  const root = exportWith(files => {
+    files['src/index.ts'] += 'export const z = 0; // planted\n';
+    line = lineNumberOf(files['src/index.ts'], 'planted');
+  });
+  try {
+    const empty = path.join(root, '..', path.basename(root) + '-allowlist.json');
+    writeFileSync(empty, '{"entries":[]}');
+    try {
+      const child = spawnSync(process.execPath, [checkScript, root, '--allowlist', empty], { encoding: 'utf8', windowsHide: true });
+      assert.equal(child.status, 1, child.stderr);
+      assert.match(child.stdout, new RegExp(`src/index\\.ts:${line}: line-comment`));
+      assert.match(child.stdout, /readiness REFUSED/);
+    } finally { rmSync(empty, { force: true }); }
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});

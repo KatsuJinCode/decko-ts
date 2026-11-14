@@ -1,0 +1,60 @@
+# Cardtype empty-group separator: issue 164
+
+## Request and change
+
+Preserve the original Ruby grouped-list mapping's empty position when Custom
+has no items, restoring the missing LF before Organize. Keep group contents,
+permission decisions and normalization unchanged; keep this correction separate
+from issues 154 and 156.
+
+The sole production hunk changes `groupedListView` in
+`src/card/mod-loader/mods/card-mod-rules.ts`. Its loop previously continued
+without adding an output position for an empty group. Ruby's documented
+`map { ...; next if type_list.empty?; ... }.flatten.join "\n"` retains the
+nil position and therefore its separator. The loop now pushes an empty string
+before continuing. Nonempty groups follow the identical existing path.
+
+No group arrays, listing contents, deny logic, preparation paths, drivers,
+normalizers or issue154/156 production files changed. No private page data is
+included in the test or report.
+
+## Immutable red/green control
+
+Imported the exact synthetic two-case independent control from commit
+`6faf9c5af0be4055d0270a50ceab9831a52bddf7`:
+`tests/card/mod-loader/adversarial-cardtype-empty-group.test.ts`.
+Its Git blob remains `ce1535832c7ac99b9523752a4536e7870087515a` before and
+after the fix. Both original test bodies and expected bytes are unchanged.
+
+On parent `fc033f04f8769db2256c101f712ca9e73984a222`, the actual registered
+grouped-list view failed the empty-Custom case and passed the nonempty-Custom
+case: one failure, one pass, zero skips. After the single production hunk,
+both cases pass with zero skips. These are local synthetic view executions,
+not fresh Rails acceptance.
+
+## Verification
+
+- Exact imported control plus unchanged grouped-permission and permission-
+  isolation suites: 15 passed, zero skipped or failed across three files.
+- Five unchanged rules/view/oracle-pinned fixture files: 71 passed, zero
+  skipped or failed. This is retained fixture evidence, not a fresh reference
+  framework capture.
+- TypeScript typecheck exits zero. Explicit two-file platform scan: zero
+  command landmines. Whitespace check passes.
+
+Test transformations can use the repository's compilation cache; all assertions
+executed locally. No model grading, VM/live/provider call or install was used.
+
+Raw ignored receipts under `.runtime/adapter123/`:
+
+| Receipt | SHA-256 |
+| --- | --- |
+| `cardtype164-red.log` | `be21c9d595e284e35147278fade2551203750a30b6d2b62b60bbcb9885d34db0` |
+| `cardtype164-green-controls.log` | `0c12e0f9c330a910c3d541774bbc5a1d2a55d5db10f79d95c28b1bea26bedcd1` |
+| `cardtype164-rules-controls.log` | `8927cca8c0f4f5ed305ba38d455b3c4dd80484e4780582ee1338af4fff66ae30` |
+
+The empty typecheck log and `cardtype164-platform-scan.log` retain the other
+checks. No persistent DB, server, build directory, dependency install or new
+checkout was created. The release owner and independent data reviewer own
+the exact-source recheck and retained-page comparison with the existing
+normalizer; neither that comparison nor release acceptance is claimed here.

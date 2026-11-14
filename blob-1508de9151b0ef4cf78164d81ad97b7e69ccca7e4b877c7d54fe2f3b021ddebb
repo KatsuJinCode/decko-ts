@@ -1,0 +1,32 @@
+{
+  "registerRow": "reg-mods-23",
+  "registerRowNumber": 23,
+  "mod": "card-mod-markdown",
+  "verdict": "DONE",
+  "gap": "",
+  "oracle": {
+    "source": "the pinned Ruby gem tree <oracle-gems>/ruby/3.4.0/gems",
+    "gem": "<oracle-gems>/ruby/3.4.0/gems/card-mod-markdown-0.20.0",
+    "readBy": "tools/audit-mod-declaration-coverage.mjs (the family's declaration census) and this tool"
+  },
+  "port": {
+    "file": "src/card/mod-loader/mods/card-mod-markdown.ts",
+    "setPaths": [
+      "type/markdown"
+    ],
+    "viewNames": [
+      "core"
+    ],
+    "eventNames": []
+  },
+  "gem": {
+    "setFiles": [
+      "type/markdown.rb"
+    ],
+    "viewNames": [
+      "core"
+    ],
+    "eventNames": []
+  },
+  "namedSkips": []
+}

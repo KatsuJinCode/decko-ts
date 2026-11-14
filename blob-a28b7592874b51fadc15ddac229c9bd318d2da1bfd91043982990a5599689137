@@ -1,0 +1,39 @@
+# Ruby mapping for handover review
+
+This map identifies source annotations to inspect at the named integration
+commit. It establishes provenance pointers, not working compatibility. The
+complete per-module map must be generated and reviewed with the eventual package.
+
+Private local draft for DECKO-259, bound to
+`f6c437775384d442a0bdea276b31662c74b3e9b0`. References below were read from that
+commit's source comments. Retained reference versions are card 1.110.0 and
+Decko 0.20.0; the name module also cites cardname 0.20.0.
+
+| Behavior / contract category | TypeScript source and annotation line | Ruby reference recorded there | Required handover evidence |
+| --- | --- | --- | --- |
+| Names / semantics | `src/card/name.ts:3` | `lib/cardname.rb`, `lib/cardname/*.rb`, `lib/card/name.rb`, `lib/card/name/name_variants.rb` | Captured names/inflections on the bound Ruby profile; port citations alone do not prove encoding/runtime behavior. |
+| Fetch / semantics | `src/card/fetch.ts:5` | `lib/card/fetch.rb`, `lib/card/fetch/retrieve.rb`, `lib/card/fetch/store.rb`, `lib/card/fetch/results.rb` | Fetch/cache/virtual-card outcomes on the selected database and profile. |
+| Query / semantics | `src/cql/sql.ts:4` | `SqlStatement`, `sql_statement/joins.rb`, `where.rb`, `order.rb` | Parameterized SQL and result checks; retain the declared SQL-text differences in decision 0010. |
+| Rules / semantics | `src/card/rules/lookup.ts:8` | `lib/card/rule/all.rb#rule_card_id`, `lib/card/rule/cache.rb#lookup_key`, `lib/card/rule.rb` | Rule priority, cache refresh and permission-sensitive results. |
+| Permissions / semantics and rendering | `src/card/permissions/read-rules.ts:5` | `lib/card/rule/read_rule_cache.rb`, account-holder and permissions set files | Allowed and denied cases, view behavior and exact read-rule updates. |
+| Views / rendering | `src/card/render.ts:26` | `format/render.rb#render!`, `render.rb#view_method`, `format/nesting.rb`, `nest.rb` | Raw view/page/status output, nesting and assets under the frozen settings; keep literal bytes and unexecuted cases visible. |
+| Saves / persistence and side effects | `src/card/history/write-path.ts:7` | `card-mod-history set/all/history/events.rb`, plus `act.rb`, account stamper and director references | Card/act/action/change rows, create/update/delete, transactional failure and follow-on effects. |
+| Notifications / side effects | `src/card/notify/follow-notify.ts:4` | `card-mod-follow set/all/notify.rb`, `set/right/account.rb` | Exact notification content and URLs; transport delivery and delayed execution require separate checks. |
+| Passwords / semantics and side effects | `src/card/auth/password-hash.ts:4` | `lib/card/auth.rb:27-39`, `Card::Auth.encrypt` | Legacy-hash behavior and the chosen upgrade/rollback policy; PBKDF2 records are not Ruby sign-in proof. |
+| Mod declarations / semantics, rendering and side effects | `src/card/mod-loader/mod-dsl.ts:11` | `mod/class_methods.rb`, `set/format.rb`, `format/abstract_format/view_opts.rb`, `lib/card/set/event.rb`, `lib/card/set/trait.rb` | Specific view/helper/event/set declarations; no blanket claim that arbitrary Ruby mods or accessor methods execute unchanged. |
+| Files / persistence and side effects | `src/card/attachments/attachment-store.ts:7` | `lib/carrier_wave/file_card_uploader.rb`, `set/abstract/attachment/paths.rb`, uploader path and upload-cache references | Actual file bytes/paths, restoration and unknown-write handling for the selected store. |
+
+This is a review route, not an exhaustive module inventory. The writer in
+`tools/handover/package.mjs` generates RUBY-MAP by scanning every selected
+`src/**/*.ts` module for `.rb` references, explicitly retaining uncited modules.
+It separately indexes divergence/unported/unsupported/deliberate-difference
+annotations. Neither matching rule proves that all differences are known or
+accepted. Review the shipped source and DIFFERENCES alongside that output.
+
+The four acceptance categories remain persistence, semantics, rendering and
+side effects. DSL/mod checks cross those categories rather than forming a
+substitute score. Earlier source annotations, old comparison results and old
+guide checkpoint claims retain their own source bindings; none is promoted to
+acceptance of this integration or a later package. Required next step: bind the
+final package/source/Ruby/checker/settings receipts listed in the companion
+checklist, then independently review the complete generated map and package.

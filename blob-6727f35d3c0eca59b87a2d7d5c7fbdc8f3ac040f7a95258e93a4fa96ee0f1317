@@ -1,0 +1,50 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { homedir } from 'node:os';
+import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
+import { spawn } from 'node:child_process';
+import { vmConfig } from '../../reference-harness/browser/lib/vm-engines.mjs';
+
+const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const here = path.join(repo, 'tools/persistence');
+const hash = bytes => createHash('sha256').update(bytes).digest('hex');
+const seed = path.join(repo, 'reference-harness/fixtures/synthetic-v1/deck/deck.sqlite3');
+const sources = {};
+for (const [name, file] of [['seed.sqlite3', seed], ...['public-oracle-bootstrap.rb', 'public-oracle-scene.rb', 'leftover-probe.rb', 'persist-write-probe.rb', 'pod-sow.rb', 'pod-eat.rb'].map(name => [name, path.join(here, name)])]) {
+  const data = fs.readFileSync(file);
+  sources[name] = { bytes: data.toString('base64'), sha256: hash(data) };
+}
+if (sources['seed.sqlite3'].sha256 !== 'a9f580814c2a5adc30e21f704985573ebb3f1090a14993bacacbdb1fb9a32f3d') throw Error('PublicOracleSeedMismatch');
+const cfg = vmConfig();
+if (!['win32', 'linux'].includes(process.platform)) throw Error('PublicOracleUnsupportedPlatform: ' + process.platform);
+const request = JSON.stringify({ sources, app: cfg.root + '/oracle-stock/app', slice: process.argv.includes('--slice') });
+const runner = fs.readFileSync(path.join(here, 'build-public-oracle-fixtures.py'), 'utf8');
+const quote = text => "'" + text.replaceAll("'", "'\\''") + "'";
+const out = path.join(repo, process.argv.includes('--slice') ? 'tmp/public-oracle-slice' : 'tests/fixtures/public-oracle-v1');
+fs.mkdirSync(out, { recursive: true });
+const log = path.join(out, 'capture.log');
+fs.writeFileSync(log, '');
+const result = await new Promise(resolve => {
+  const child = spawn('ssh', ['-J', cfg.jump, '-i', cfg.key.startsWith('~/') ? path.join(homedir(), cfg.key.slice(2)) : cfg.key, '-o', 'BatchMode=yes', cfg.target, 'python3 -c ' + quote(runner)], { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
+  let stdout = '', stderr = '';
+  child.stdout.on('data', data => { stdout += data; });
+  child.stderr.on('data', data => { stderr += data; fs.appendFileSync(log, data); });
+  child.on('error', error => resolve({ error, stdout, stderr, status: null }));
+  child.on('close', status => resolve({ stdout, stderr, status }));
+  child.stdin.on('error', error => resolve({ error, stdout, stderr, status: null }));
+  child.stdin.end(request);
+});
+if (result.error || result.status !== 0) throw Error('PublicOracleCaptureFailed: ' + (result.error?.message ?? result.stderr));
+const capture = JSON.parse(result.stdout);
+fs.writeFileSync(path.join(out, 'capture-generator.py'), runner);
+for (const [name, item] of Object.entries(capture.files)) {
+  if (path.isAbsolute(name) || name.split('/').includes('..')) throw Error('PublicOracleOutputPathInvalid');
+  const data = Buffer.from(item.bytes, 'base64');
+  if (hash(data) !== item.sha256) throw Error('PublicOracleOutputHashMismatch');
+  const target = path.join(out, name);
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.writeFileSync(target, data);
+}
+fs.writeFileSync(path.join(out, 'manifest.json'), JSON.stringify({ format: 'decko-public-ruby-oracle/1', runtime: capture.runtime, runtimeSources: capture.runtimeSources, sourceHashes: capture.sources, transportSha256: hash(request), runnerSha256: hash(runner), files: Object.fromEntries(Object.entries(capture.files).map(([name, item]) => [name, item.sha256])), receipts: capture.receipts }, null, 2) + '\n');
+console.log(JSON.stringify({ out, runtime: capture.runtime, files: Object.keys(capture.files).length, receipts: capture.receipts.map(r => ({ script: r.script, status: r.status, seconds: r.seconds })) }));

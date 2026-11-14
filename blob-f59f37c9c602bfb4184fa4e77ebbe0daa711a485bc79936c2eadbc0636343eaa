@@ -1,0 +1,10 @@
+# The test and cucumber environments share one database, as in a stock deck:
+# Decko's cucumber support reseeds it through the test environment before
+# every scenario.
+test: &test
+  adapter: sqlite3
+  pool: 5
+  timeout: 5000
+  database: <%= File.join(ENV.fetch("CUCUMBER_WORK"), "test.sqlite3") %>
+
+cucumber: *test

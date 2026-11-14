@@ -1,0 +1,118 @@
+# Portable owned cleanup for the compound controls: issue 187
+
+## Result
+
+Against exact root `1a33200c56d2b177139a374f4729cf0f36f986df`, the unchanged
+two-file selection passes all 16 cases but fails both cleanup hooks and exits
+unsuccessfully. After the lifecycle correction, the same 16 cases pass, both
+files pass, cleanup hooks pass and the checked native runner exits zero.
+An inert removal-failure control still passes the 16 semantic cases but fails
+both original directory-absence assertions and returns native status one.
+
+| Selection | Passed cases | Failed cases | Failed files/suites | Runner result |
+| --- | ---: | ---: | ---: | --- |
+| Original root tests, missing machine neighbor | 16 | 0 | 2 | tool exit 1; success false |
+| Corrected tests, same recovery-shaped context | 16 | 0 | 0 | native exit 0; success true |
+| Corrected tests, inert removal failure | 16 | 0 | 2 | native exit 1; success false |
+
+These are overlapping local invocations, not additive coverage or an assembled
+205-case claim. Case counts alone do not describe these cleanup failures.
+Original integration-root raw receipts are untouched.
+
+## Mechanism and scoped correction
+
+Both original `afterAll` hooks resolve a sibling diskSteward Python script
+relative to the checkout. That sibling is absent beside the recovery worktree.
+The script-existence assertion fails after the actual database assertions have
+already passed. This is a test lifecycle dependency, not a new compound-save
+or authentication failure.
+
+Only scratch creation and lifecycle code in these two tests changes:
+
+- `compound-conflict-connections.attack.test.ts`
+- `compound-current-external-state.attack.test.ts`
+
+Creation now uses the existing repository `scratchDir` factory. Before any
+explicit removal, the tests require their own registration and matching
+checkout/machine ownership manifest. Every actual driver handle still closes
+in `afterEach`, with an additional empty-handle assertion before teardown.
+Only the owned flat directory is measured. The test's teardown removes it
+through `removeScratchDir` if shared teardown has not already done so.
+The original explicit absence assertion remains and fails visibly if removal
+fails. There is no machine-neighbor command, hardcoded machine path or Python
+dependency in either corrected file.
+
+The full `fixture` function and everything following it are byte-identical to
+the root originals in both files. Thus all 16 expanded test bodies, original
+semantic assertions, two real SQLite connections, actual registered core
+events, snapshots and rollback checks remain unchanged. No application module,
+driver, shared scratch helper, global guard, approval policy or hook is edited.
+
+The existing scratch helper was read in full before use. Its immediate remove
+operation does not itself enforce registration and swallows an unsuccessful
+remove; the tests therefore check registration/manifest themselves and retain
+the required final absence assertion. Its keep/debug behavior cannot silently
+make these cleanup tests green. The four-line ownership/absence contract is
+local to directories this test creates, not a new general deletion authority.
+
+## Exact patch and source custody
+
+Apply `portable-compound-test-cleanup-2026-10-31.patch` to the exact root test
+files, not older production modules or the author's full branch. Patch SHA-256:
+`3d1b64b5c9a53de00fd81810c58aa4496578c03f34f0d7417505c00876cd968f`.
+It changes only these two files' imports and lifecycle prefix. The patch was
+checked and applied to owned original-file copies; both outputs were verified
+byte-for-byte against the corrected files. Those copies were removed through
+the registered scratch facility and their absence checked.
+
+An immutable-source Vitest control loads root production and helper tests from
+Git, recording actual refs and hashes. The scratch module/declaration and schema
+were independently checked against the same root. The verification context
+contains an owned recovery-shaped checkout with no diskSteward neighbor; no
+integration-root file is written. Before uses original Git test bytes; after
+uses only the corrected lifecycle files over the identical production pin.
+
+The negative control changes only the in-memory test copy of the scratch
+removal function to report failure. It edits no helper on disk. Both original
+absence checks fail, the JSON reporter records two failed files despite zero
+failed cases, and the checked native runner records exit one, signal/error
+null. Failed cleanup is not hidden by an eventual exit-time retry.
+
+## Cleanup and validation
+
+The final positive run measured 3,612,998 logical bytes in its two closed
+database scratch roots, including ownership manifests. Both directories were
+absent at the final checks. Duplicate console reporting is deduplicated by
+scratch path; it is not a test retry or double-counted removal.
+
+The initial verification wrapper held a disposable directory as native Windows
+cwd, preventing its immediate removal. The wrapper now supplies the same
+recovery path to the observed cwd function without holding the folder open.
+Four initially retained registered diagnostic roots were verified and removed
+(3,613,324 logical bytes). The two deliberately failing negative runs retained
+six owned roots: registration/manifest, recorded creation window and expected
+fixture contents were rechecked before removal through the original helper
+(7,226,322 logical bytes). No verification-context directory remains.
+The independent patch-application fixture removed 16,614 payload bytes,
+excluding its ownership manifest and directory allocation. These measurements
+have different scopes and are not presented as a complete disk allocation total.
+
+The checked native compiler returns zero with empty diagnostics and null
+signal/error. The explicit two-file platform scan reports zero command
+landmines. Source and patch whitespace checks pass. No full gate, root edit,
+install, service, browser, live request or schedule was introduced. Test
+assertions execute with real local SQLite handles, without a model grader or
+test retry; immutable-load module caching is disabled, OS caches may be warm.
+
+## Retained receipts and next acceptance
+
+Ignored `.runtime/adapter123/cleanup187-*` receipts retain the original before
+log/JSON/XML, final after and negative log/JSON/XML plus native exit records,
+source input hashes, native compiler receipt, platform result, per-directory
+cleanup records, exact patch/body custody and `cleanup187-results.json`.
+That summary includes failed files/suites, case counts, runner exit and actual
+folder absence rather than only a passing assertion count.
+
+The modal fixture package is unchanged. Independent exact-patch reattack and
+a fresh whole integration selection remain the release owner's acceptance
+steps; no whole-root green claim is inferred from these two files.

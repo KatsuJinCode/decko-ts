@@ -1,0 +1,232 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import {createHash} from 'node:crypto';
+import {spawnSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
+import {profilePreflight,runAssembledHost,assembledHostReleaseEvidence,profileObligation,profileRoot} from '../../tools/assembled-host-profile.mjs';
+import {treeDigest} from '../../reference-harness/browser/lib/journey-provenance.mjs';
+import {scratchDir,removeScratchDir} from '../support/scratch-dir.mjs';
+import {isTestFile} from '../../tools/test-file-inventory.mjs';
+import {batteryVerdict} from '../../scripts/release-check-evidence.mjs';
+import {createProfileResources} from '../../tools/assembled-host-owned-runtime.mjs';
+import {validateHostCase,verifyCleanupState,captureEvidenceFiles,verifyEvidenceFiles,verifyControllerStreams,verifyNodeLifecycle} from '../../tools/assembled-host-evidence.mjs';
+
+const repo=fileURLToPath(new URL('../..',import.meta.url));
+const sha=value=>createHash('sha256').update(value).digest('hex');
+const nativeCases=JSON.parse(fs.readFileSync(path.join(repo,'tests/fixtures/assembled-host-case-evidence.json')));
+const nativeEvents=JSON.parse(fs.readFileSync(path.join(repo,'tests/fixtures/assembled-host-node-events.json')));
+const expectedEventFile=nativeEvents[0].data.file;
+for(const [name,change] of [
+  ['duplicate outer replaces child summary',events=>{events[events.findIndex(e=>e.type==='test:summary'&&e.data.entryFile)]=structuredClone(events.find(e=>e.type==='test:summary'&&!e.data.entryFile));}],
+  ['plan exceeds actual assertions',events=>events.find(e=>e.type==='test:plan').data.count=8],
+  ['orphan parent across consistent phases',events=>{for(const e of events)if(e.data.name==='full staging host with real SQLite: ipc-clean'&&Object.hasOwn(e.data,'parentId'))e.data.parentId=999;}],
+  ['duplicate sibling number across consistent phases',events=>{for(const e of events)if(e.data.name==='full staging host with real SQLite: http-clean'&&Object.hasOwn(e.data,'testNumber'))e.data.testNumber=1;}],
+])test(`cross-record reconciliation rejects ${name}`,()=>{const events=structuredClone(nativeEvents);change(events);assert.throws(()=>verifyNodeLifecycle(events,expectedEventFile));});
+for(const [name,change]of [
+ ['duplicate child replaces outer summary',events=>{events[events.findIndex(e=>e.type==='test:summary'&&!e.data.entryFile)]=structuredClone(events.find(e=>e.type==='test:summary'&&e.data.entryFile));}],
+ ['duplicate root plan',events=>events.push(structuredClone(events.find(e=>e.type==='test:plan')))],
+ ['out of range sibling ordinal',events=>{for(const e of events)if(e.data.name==='full staging host with real SQLite: http-clean'&&Object.hasOwn(e.data,'testNumber'))e.data.testNumber=999;}],
+ ['self parent',events=>{for(const e of events)if(e.data.name==='full staging host with real SQLite: ipc-clean'&&Object.hasOwn(e.data,'parentId'))e.data.parentId=1;}],
+ ['cyclic parent graph',events=>{for(const e of events)if(e.data.entryFile&&[1,2].includes(e.data.testId)){delete e.data.nesting;if(Object.hasOwn(e.data,'parentId'))e.data.parentId=e.data.testId===1?2:1;}}],
+ ['root parent with positive nesting',events=>{for(const e of events)if(e.data.name==='full staging host with real SQLite: ipc-clean'&&Object.hasOwn(e.data,'nesting'))e.data.nesting=1;}],
+])test(`graph/count constraints reject ${name}`,()=>{const events=structuredClone(nativeEvents);change(events);assert.throws(()=>verifyNodeLifecycle(events,expectedEventFile));});
+test('graph relationships admit consistent parent edges and separately numbered sibling groups',()=>{
+  const events=structuredClone(nativeEvents);
+  for(const event of events){const data=event.data;if(data.entryFile&&data.testId===1){if(Object.hasOwn(data,'parentId'))data.parentId=2;if(Object.hasOwn(data,'nesting'))data.nesting=1;}
+    else if(data.entryFile&&data.testId>1&&Object.hasOwn(data,'testNumber'))data.testNumber--;
+    if(event.type==='test:summary')data.counts.topLevel=6;
+    if(event.type==='test:plan')data.count=6;
+  }
+  assert.equal(verifyNodeLifecycle(events,expectedEventFile).childCases,7);
+});
+test('actual Node lifecycle keeps wrapper and child ID namespaces separate and legitimate missing fields intact',()=>{
+  assert.equal(verifyNodeLifecycle(nativeEvents,expectedEventFile).childCases,7);
+  const events=structuredClone(nativeEvents),start=events.find(event=>event.type==='test:start');
+  for(const field of ['file','line','column','parentId','testNumber','type','tags'])delete start.data[field];
+  assert.equal(verifyNodeLifecycle(events,expectedEventFile).childCases,7);
+});
+for(const phase of ['test:enqueue','test:dequeue','test:start','test:complete','test:pass'])test(`all ${phase} identities must agree within stream/testId`,()=>{
+  const events=structuredClone(nativeEvents);events.find(event=>event.type===phase&&event.data.name==='full staging host with real SQLite: ipc-clean').data.name='full staging host with real SQLite: foreign-clean';
+  assert.throws(()=>verifyNodeLifecycle(events,expectedEventFile));
+});
+for(const [name,change] of [
+  ['foreign source file',event=>event.data.file+='foreign'],
+  ['foreign entry stream',event=>event.data.entryFile+='foreign'],
+  ['changed numeric ID',event=>event.data.testId=99],
+  ['missing lifecycle ID',event=>delete event.data.testId],
+])test(`lifecycle rejects ${name}`,()=>{
+  const events=structuredClone(nativeEvents);change(events.find(event=>event.type==='test:enqueue'&&event.data.entryFile));assert.throws(()=>verifyNodeLifecycle(events,expectedEventFile));
+});
+test('lifecycle cannot omit or duplicate a nonterminal record while retaining terminal PASS',()=>{
+  const events=structuredClone(nativeEvents),index=events.findIndex(event=>event.type==='test:enqueue'&&event.data.entryFile);
+  const [removed]=events.splice(index,1);assert.throws(()=>verifyNodeLifecycle(events,expectedEventFile));events.splice(index,0,removed,removed);assert.throws(()=>verifyNodeLifecycle(events,expectedEventFile));
+});
+for(const stage of ['host','deployment'])for(const channel of ['stdout','stderr'])test(`${stage} ${channel} must match captured and raw bytes exactly`,()=>{
+  const root=scratchDir('issue216-streams-');try{
+    const runs=['host','deployment'].map(stage=>({stage,stdout:'captured\r\n',stderr:''}));for(const run of runs)for(const c of ['stdout','stderr'])fs.writeFileSync(path.join(root,run.stage+'.'+c+'.log'),run[c]);
+    assert.doesNotThrow(()=>verifyControllerStreams(root,runs));const changed=structuredClone(runs);changed.find(row=>row.stage===stage)[channel]+='contradiction';assert.throws(()=>verifyControllerStreams(root,changed));
+    fs.appendFileSync(path.join(root,stage+'.'+channel+'.log'),'contradiction');assert.throws(()=>verifyControllerStreams(root,runs));
+  }finally{removeScratchDir(root);}
+});
+test('stream reconciliation does not normalize unpaired Unicode or invalid UTF8 into a match',()=>{
+  const root=scratchDir('issue216-stream-encoding-');try{
+    const runs=['host','deployment'].map(stage=>({stage,stdout:'',stderr:''}));for(const run of runs)for(const c of ['stdout','stderr'])fs.writeFileSync(path.join(root,run.stage+'.'+c+'.log'),'');
+    runs[0].stdout=String.fromCharCode(0xd800);fs.writeFileSync(path.join(root,'host.stdout.log'),'\ufffd');assert.throws(()=>verifyControllerStreams(root,runs));
+    runs[0].stdout='\ufffd';fs.writeFileSync(path.join(root,'host.stdout.log'),Buffer.from([255]));assert.throws(()=>verifyControllerStreams(root,runs));
+  }finally{removeScratchDir(root);}
+});
+test('all seven unchanged native case receipts reconcile with their original scenario outcomes',()=>{
+  for(const {row,events} of nativeCases.cases)assert.doesNotThrow(()=>validateHostCase(row,events,nativeCases.subject,nativeCases.out));
+});
+for(const [name,label,change] of [
+  ['incomplete exit rewritten to zero','ipc-incomplete',row=>row.exit.code=0],
+  ['clean response rewritten as unfinished','ipc-clean',row=>row.response.ended=false],
+  ['changed database digest','http-clean',row=>row.after.cardsSha256='0'.repeat(64)],
+  ['late native error rewritten as success','ipc-file-error-clean',row=>row.exit.code=0],
+  ['missing unknown database outcome','file-incomplete',row=>row.stderr=row.stderr.replaceAll('databaseOutcome','omittedDatabaseOutcome')],
+  ['wrong scenario identity','ipc-clean',row=>row.label='foreign-clean'],
+])test(`raw case reconciliation rejects ${name}`,()=>{
+  const {row,events}=structuredClone(nativeCases.cases.find(item=>item.row.label===label));change(row);assert.throws(()=>validateHostCase(row,events,nativeCases.subject,nativeCases.out));
+});
+function cleanupFixture(root){
+  const stat=fs.lstatSync(root,{bigint:true}),cleaned=['full-host-owned-unit','deployment-owned-unit','runtime-owned-unit'].map(name=>path.join(root,name));
+  const ownership={format:'assembled-host-controller-resources/1',state:'cleaned',root,rootIdentity:{dev:String(stat.dev),ino:String(stat.ino),birth:String(stat.birthtimeNs)},ownerPid:process.pid,nonce:'synthetic-unit-only',resources:cleaned.map((file,index)=>({kind:['host','deployment','runtime'][index],path:file,identity:{dev:'1',ino:'1',birth:'1'}}))};
+  const markers=ownership.resources.map(resource=>{const content=JSON.stringify({format:'assembled-host-controller-resource/1',ownerPid:ownership.ownerPid,nonce:ownership.nonce,kind:resource.kind,path:resource.path,identity:resource.identity})+'\n';resource.markerSha256=sha(content);return{kind:resource.kind,content};});
+  fs.writeFileSync(path.join(root,'controller-ownership.json'),JSON.stringify({format:'assembled-host-controller-evidence/1',ownership:{...ownership,state:'allocating'},markers}));
+  return{cleanup:{complete:true,cleaned,ownership},raw:{subject:{owned:cleaned[0]},deployment:{scratch:cleaned[1]}}};
+}
+for(const[name,mutate]of [
+  ['nonce',o=>o.nonce='different-nonempty-nonce'],
+  ['owner PID',o=>o.ownerPid=process.pid+1],
+  ['resource identity',o=>o.resources[0].identity.ino='999999999'],
+  ['marker digest',o=>o.resources[0].markerSha256='0'.repeat(64)],
+  ['output identity',o=>o.rootIdentity.ino='999999999'],
+])test(`saved ownership rejects independent ${name} mutation`,()=>{
+  const root=scratchDir('issue216-ownership-');try{const{cleanup,raw}=cleanupFixture(root);assert.doesNotThrow(()=>verifyCleanupState(root,cleanup,raw));mutate(cleanup.ownership);assert.throws(()=>verifyCleanupState(root,cleanup,raw));}finally{removeScratchDir(root);}
+});
+test('matching summary and retained allocation changes still contradict the original native marker envelope',()=>{
+  const root=scratchDir('issue216-ownership-coordinated-');try{
+    const{cleanup,raw}=cleanupFixture(root),file=path.join(root,'controller-ownership.json'),evidence=JSON.parse(fs.readFileSync(file));
+    cleanup.ownership.nonce=evidence.ownership.nonce='coordinated-foreign-nonce';fs.writeFileSync(file,JSON.stringify(evidence));
+    assert.throws(()=>verifyCleanupState(root,cleanup,raw),/marker envelope/);
+  }finally{removeScratchDir(root);}
+});
+test('cleanup claims are read back, including the exact recreated sentinel counterexample',()=>{
+  const root=scratchDir('issue216-cleanup-');try{
+    const{cleanup,raw}=cleanupFixture(root),cleaned=cleanup.cleaned;
+    assert.doesNotThrow(()=>verifyCleanupState(root,cleanup,raw));
+    fs.mkdirSync(cleaned[1]);fs.writeFileSync(path.join(cleaned[1],'owned-sentinel.txt'),'Owned counterexample');
+    assert.throws(()=>verifyCleanupState(root,cleanup,raw),/exists again/);
+  }finally{removeScratchDir(root);}
+});
+function ownerFixture(){
+  const base=path.join(repo,'.runtime/area3/issue216-graph/owner-units');fs.mkdirSync(base,{recursive:true});const root=fs.mkdtempSync(path.join(base,'unit-'));
+  const outer=createProfileResources(root),container=outer.allocate('host');outer.allocate('deployment');outer.allocate('runtime');
+  const registry=createProfileResources(container),paths=['host','deployment','runtime'].map(kind=>registry.allocate(kind));
+  return{root,outer,registry,paths,finish(){outer.cleanup([]);fs.unlinkSync(path.join(root,'controller-ownership.json'));fs.rmdirSync(root);}};
+}
+test('profile controller owns fresh resources and cleanup never adopts standard scratch paths',()=>{
+  const f=ownerFixture();try{
+    assert.ok(f.paths.every(file=>!fs.existsSync(path.join(file,'decko-scratch-ownership.json'))));
+    const originalMarkers=f.paths.map(file=>fs.readFileSync(path.join(file,'assembled-host-resource-owner.json'),'utf8'));
+    assert.throws(()=>f.registry.allocate('host'));const cleanup=f.registry.cleanup([]);assert.equal(cleanup.complete,true);assert.equal(cleanup.cleaned.length,3);assert.ok(f.paths.every(file=>!fs.existsSync(file)));
+    const evidence=JSON.parse(fs.readFileSync(path.join(path.dirname(f.paths[0]),'controller-ownership.json')));assert.deepEqual(evidence.markers.map(row=>row.content),originalMarkers);assert.deepEqual(evidence.ownership,{...cleanup.ownership,state:'allocating'});
+  }finally{f.finish();}
+});
+test('failure to retain original ownership evidence refuses cleanup before any resource removal',()=>{
+  const f=ownerFixture();try{
+    fs.writeFileSync(path.join(path.dirname(f.paths[0]),'controller-ownership.json'),'preexisting evidence');assert.throws(()=>f.registry.cleanup([]),{code:'EEXIST'});assert.ok(f.paths.every(file=>fs.existsSync(file)));
+  }finally{f.finish();}
+});
+test('controller retains all resources when ownership or worker settlement is uncertain',()=>{
+  const f=ownerFixture();try{
+    assert.throws(()=>f.registry.cleanup([process.pid]),/still present/);assert.ok(f.paths.every(file=>fs.existsSync(file)));
+    const marker=path.join(f.paths[0],'assembled-host-resource-owner.json'),saved=fs.readFileSync(marker);fs.writeFileSync(marker,'foreign');assert.throws(()=>f.registry.cleanup([]),/ownership changed/);assert.ok(f.paths.every(file=>fs.existsSync(file)));fs.writeFileSync(marker,saved);
+    const retained=f.registry.retain('synthetic unit failure; no native job started');assert.equal(retained.state,'retained');assert.throws(()=>f.registry.cleanup([]));
+  }finally{f.finish();}
+});
+test('accepted224 refuses a marker-only directory that this process did not register',()=>{
+  const f=ownerFixture();try{
+    assert.throws(()=>removeScratchDir(f.paths[0]),/not registered/);assert.ok(fs.existsSync(f.paths[0]));
+  }finally{f.finish();}
+});
+test('produced raw bytes cannot change or disappear after the completed-run binding',()=>{
+  const root=scratchDir('issue216-binding-');try{
+    fs.writeFileSync(path.join(root,'case.json'),'{"exit":{"code":1}}');const binding=captureEvidenceFiles(root,['case.json']);
+    assert.doesNotThrow(()=>verifyEvidenceFiles(root,binding,['case.json']));fs.writeFileSync(path.join(root,'case.json'),'{"exit":{"code":0}}');
+    assert.throws(()=>verifyEvidenceFiles(root,binding,['case.json']),/bytes changed/);assert.throws(()=>verifyEvidenceFiles(root,[],['case.json']));
+  }finally{removeScratchDir(root);}
+});
+function fixture(){
+  const root=scratchDir('assembled-profile-unit-');
+  const files=['vm-staging-server.mjs','configured-public-page-shell.mjs','package.json','scripts/demo-scratch-copy/demo-child-lifecycle.mjs','src/server/deployment-migration-config.ts','src/card/render/deployment-reference-storage.ts','db/schema.sql','vendor/assets.js','reference-harness/fixtures/synthetic-v1/deck/files/fixture.txt','deploy/migrations/0003-deck-data-version-stamp.sql'];
+  for(const file of files){fs.mkdirSync(path.dirname(path.join(root,file)),{recursive:true});fs.writeFileSync(path.join(root,file),file==='package.json'?'{}':'synthetic qualifier metadata fixture only\n');}
+  const database='reference-harness/fixtures/synthetic-v1/deck/deck.sqlite3';
+  fs.copyFileSync(path.join(repo,database),path.join(root,database));files.push(database);
+  fs.mkdirSync(path.join(root,'dist'));fs.writeFileSync(path.join(root,'dist/fixture.js'),'// not an executable host; no host is launched by these metadata tests\n');
+  const manifest={base:'c'.repeat(40),inputs:files.map(file=>({file,sha256:sha(fs.readFileSync(path.join(root,file)))})),outputs:[]};
+  const inputManifest=path.join(root,'inputs.json'),buildManifest=path.join(root,'build.json');
+  fs.writeFileSync(inputManifest,JSON.stringify(manifest));
+  const build={source:manifest.base,sourceManifestSha256:sha(fs.readFileSync(inputManifest)),status:0,signal:null,error:null,gone:true,windowsHide:true,distSha256:treeDigest(path.join(root,'dist'))};
+  fs.writeFileSync(buildManifest,JSON.stringify(build));
+  return{root,manifest,build,options:{runtimeRoot:root,inputManifest,buildManifest}};
+}
+test('missing prerequisites are INCOMPLETE before output creation or any host launch',async()=>{
+  const record=await runAssembledHost({});assert.equal(record.result,'INCOMPLETE');assert.equal(record.started,false);
+  const child=spawnSync(process.execPath,[path.join(repo,'tools/assembled-host-profile.mjs'),'--check'],{windowsHide:true,encoding:'utf8'});
+  assert.equal(child.status,3,child.stderr);assert.match(child.stdout,/INCOMPLETE/);assert.doesNotMatch(child.stdout,/"result": "PASS"/);
+});
+test('explicit controls are outside default test discovery and remain required for release',()=>{
+  assert.equal(isTestFile('test-profiles/assembled-host/host-recovery.control.mjs'),false);
+  assert.equal(isTestFile('test-profiles/assembled-host/deployment.control.mjs'),false);
+  assert.equal(profileObligation.requiredForRelease,true);assert.equal(profileObligation.hostCases+profileObligation.deploymentCases,14);
+  assert.equal(assembledHostReleaseEvidence(undefined,'c'.repeat(40)).result,'INCOMPLETE');
+  assert.equal(fs.existsSync(path.join(repo,'tests/deploy/assembled-host-recovery.test.mjs')),false);
+});
+test('passing default stages cannot turn an omitted explicit profile into release completeness',()=>{
+  const passed=['source','api-key-capture','vitest','node'].map(stage=>({stage,result:'PASS'}));
+  const required=[...passed.map(row=>row.stage),'assembled-host'];
+  const verdict=batteryVerdict([...passed,assembledHostReleaseEvidence(undefined,'c'.repeat(40))],required,{sourceQualified:true,problems:[]});
+  assert.equal(verdict.batteryPassed,false);
+});
+test('a forged passing profile with no actual native evidence remains INCOMPLETE',()=>{
+  const f=fixture();try{const file=path.join(f.root,'forged.json');fs.writeFileSync(file,JSON.stringify({result:'PASS',qualification:{base:f.manifest.base},cleanup:{complete:true}}));assert.equal(assembledHostReleaseEvidence(file,f.manifest.base).result,'INCOMPLETE');}finally{removeScratchDir(f.root);}
+});
+test('qualification derives the source pin from a complete bound manifest, without launching metadata fixtures',()=>{
+  const f=fixture();try{const r=profilePreflight(f.options);assert.equal(r.result,'READY',r.reason);assert.equal(r.qualification.base,f.manifest.base);assert.equal(r.qualification.subject,'assembled:'+sha(fs.readFileSync(f.options.inputManifest)));}finally{removeScratchDir(f.root);}
+});
+function snapshotBuild(f){
+  const snapshot={sourceCommit:f.manifest.base,files:f.manifest.inputs.map(row=>({path:row.file,sha256:row.sha256}))};
+  fs.writeFileSync(path.join(f.root,'HANDOVER-MANIFEST.json'),JSON.stringify(snapshot));
+  f.build={sourceCommit:f.manifest.base,sourceDiffSha256:sha('[]'),sourceSnapshotSha256:sha(JSON.stringify(snapshot)),changedSnapshotFiles:0,config:'tsconfig.dist.json',runtimeAssets:{manifestSha256:'a'.repeat(64)},builtAt:'synthetic metadata fixture; no compiler/native profile run',distSha256:treeDigest(path.join(f.root,'dist'))};
+  fs.writeFileSync(f.options.buildManifest,JSON.stringify(f.build));return snapshot;
+}
+test('sourceProvenance189 snapshot stamp qualifies exact complete source independently of enclosing Git',()=>{
+  const f=fixture();try{snapshotBuild(f);const r=profilePreflight(f.options);assert.equal(r.result,'READY',r.reason);}finally{removeScratchDir(f.root);}
+});
+test('a changed snapshot cannot be hidden by updating only the host input manifest',()=>{
+  const f=fixture();try{snapshotBuild(f);const file='src/server/deployment-migration-config.ts';fs.writeFileSync(path.join(f.root,file),'changed after build');f.manifest.inputs.find(row=>row.file===file).sha256=sha('changed after build');fs.writeFileSync(f.options.inputManifest,JSON.stringify(f.manifest));assert.equal(profilePreflight(f.options).result,'INCOMPLETE');}finally{removeScratchDir(f.root);}
+});
+test('a source snapshot must cover the full runtime closure even with a matching snapshot digest',()=>{
+  const f=fixture();try{const snapshot=snapshotBuild(f);snapshot.files=snapshot.files.filter(row=>!row.path.startsWith('src/server/'));fs.writeFileSync(path.join(f.root,'HANDOVER-MANIFEST.json'),JSON.stringify(snapshot));f.build.sourceSnapshotSha256=sha(JSON.stringify(snapshot));fs.writeFileSync(f.options.buildManifest,JSON.stringify(f.build));assert.equal(profilePreflight(f.options).result,'INCOMPLETE');}finally{removeScratchDir(f.root);}
+});
+for(const [name,change] of [
+  ['failed compiler',f=>f.build.status=1],['native signal',f=>f.build.signal='SIGTERM'],['launch error',f=>f.build.error={code:'ENOENT'}],['unsettled compiler',f=>f.build.gone=false],['foreign source pin',f=>f.build.source='d'.repeat(40)],['unbound source manifest',f=>f.build.sourceManifestSha256='0'.repeat(64)],['stale arbitrary dist',f=>fs.writeFileSync(path.join(f.root,'dist/fixture.js'),'stale')],['changed source',f=>fs.writeFileSync(path.join(f.root,'src/server/deployment-migration-config.ts'),'changed')],['unlisted runtime source',f=>fs.writeFileSync(path.join(f.root,'src/unlisted.ts'),'unqualified')],
+])test(`qualification refuses ${name} as INCOMPLETE`,()=>{
+  const f=fixture();try{change(f);fs.writeFileSync(f.options.buildManifest,JSON.stringify(f.build));const record=profilePreflight(f.options);assert.equal(record.result,'INCOMPLETE');assert.equal(record.started,false);}finally{removeScratchDir(f.root);}
+});
+test('profile preserves all seven original full-host assertion bodies after path-only guard relocation',()=>{
+  const original=fs.readFileSync(path.join(repo,'tests/fixtures/assembled-host-original-host.mjs.txt'),'utf8');
+  let actual=fs.readFileSync(path.join(profileRoot,'host-recovery.control.mjs'),'utf8');
+  for(const [before,after] of [['assembled-network-guard.mjs','network-guard.mjs'],['assembled-late-stop-observer.mjs','late-stop-observer.mjs'],['staging-host-close-observer.mjs','close-observer.mjs']])actual=actual.replaceAll(`fileURLToPath(new URL('./support/${after}',import.meta.url))`,`path.join(root, 'tests/support/${before}')`);
+  assert.equal(actual.slice(actual.indexOf('function databaseSnapshot')),original.slice(original.indexOf('function databaseSnapshot')));
+});
+test('profile preserves all seven deployment scenario bodies after explicit setup and provenance relocation',()=>{
+  const original=fs.readFileSync(path.join(repo,'tests/fixtures/assembled-host-original-deployment.mjs.txt'),'utf8');
+  let actual=fs.readFileSync(path.join(profileRoot,'deployment.control.mjs'),'utf8');
+  for(const suffix of ['reference-harness/fixtures/synthetic-v1/deck/deck.sqlite3','reference-harness/fixtures/synthetic-v1/deck/files','deploy/migrations/0003-deck-data-version-stamp.sql'])actual=actual.replaceAll(`path.join(process.env.ASSEMBLED_RUNTIME_ROOT,'${suffix}')`,`path.join(root,'${suffix}')`);
+  actual=actual.replaceAll("new URL('./support/network-guard.mjs',import.meta.url).href","pathToFileURL(path.join(out,'network-guard.mjs')).href").replace('base:manifest.base',"base:'a1199f60ba1da690fbc101061fd8a0e73b745257'").replace('const p=s.address().port;assert.notEqual(p,3142);','const p=s.address().port;');
+  assert.equal(actual.slice(actual.indexOf('const key=')),original.slice(original.indexOf('const key=')));
+});

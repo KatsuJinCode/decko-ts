@@ -1,0 +1,212 @@
+// Disposable local databases only. These controls never open an existing deck.
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { Miniflare, convertV4MiniflareOptions } from "miniflare";
+import { LocalSqliteDriver } from "../../src/server/drivers/local-sqlite.js";
+import { CloudflareD1Adapter } from "../../src/server/drivers/d1.js";
+import type { SQLDatabaseDriver, SQLStatement } from "../../src/server/driver.js";
+import { DEPLOY_MIGRATION_ORDER } from "../../src/server/deploy-migrations.js";
+import { splitSqlStatements } from "../card/render/render-test-storage.js";
+import { planMembersKeyRecovery, applyMembersKeyRecovery } from "../../tools/migrate/members-key-recovery.mjs";
+
+const preserved = ["cards", "card_acts", "card_actions", "card_changes", "card_revisions", "card_references", "deck_data_version", "d1_migrations", "recovery_audit"];
+const tempTrigger = "CREATE TEMP TRIGGER hidden_members_recovery AFTER UPDATE OF key ON main.cards BEGIN INSERT INTO recovery_audit(note) VALUES('unreviewed synthetic marker'); END";
+
+// Every D1 test gets its own empty database. One Miniflare (one workerd
+// process) declares a binding per test instead of each test starting its own
+// workerd: a fresh binding is the same empty in-memory D1 database, with its
+// own SQLite connection, without the process start-up.
+const D1_DATABASES_PER_SUITE = 40;
+
+for (const provider of ["sqlite", "d1"] as const) describe(`effective recovery schema: ${provider}`, () => {
+  let driver: SQLDatabaseDriver;
+  let dispose: () => Promise<void>;
+  let mf: Miniflare | undefined;
+  let d1Next = 0;
+  beforeAll(async () => {
+    if (provider !== "d1") return;
+    const d1Databases: Record<string, string> = {};
+    for (let i = 1; i <= D1_DATABASES_PER_SUITE; i++) d1Databases[`DB${i}`] = `owned-effective-schema-${i}`;
+    mf = new Miniflare(convertV4MiniflareOptions({ modules: true, script: "export default { fetch() { return new Response(''); } }", compatibilityDate: "2026-08-01", d1Databases }) as never);
+  }, 120_000);
+  afterAll(async () => { await mf?.dispose(); });
+  beforeEach(async () => {
+    if (provider === "sqlite") {
+      const sqlite = new LocalSqliteDriver({ path: ":memory:" });
+      driver = sqlite; dispose = async () => sqlite.close();
+    } else {
+      d1Next += 1;
+      if (d1Next > D1_DATABASES_PER_SUITE) throw Error(`effective recovery schema suite needs more than ${D1_DATABASES_PER_SUITE} D1 databases; raise D1_DATABASES_PER_SUITE`);
+      dispose = async () => {};
+      driver = new CloudflareD1Adapter(await mf!.getD1Database(`DB${d1Next}`));
+    }
+    await driver.query("CREATE TABLE d1_migrations(id INTEGER PRIMARY KEY,name TEXT UNIQUE,applied_at TEXT)", []);
+    for (const migration of DEPLOY_MIGRATION_ORDER) {
+      const source = migration.filename === "0006-demo-role-substrate.sql" ? "./fixtures/members-key-old-0006.sql.fixture" : `../../deploy/migrations/${migration.filename}`;
+      await driver.batch(splitSqlStatements(readFileSync(new URL(source, import.meta.url), "utf8")).map(sql => ({ sql, params: [] })));
+      await driver.query("INSERT INTO d1_migrations(name,applied_at) VALUES(?,'owned-local-schema-test')", [migration.filename]);
+    }
+    await driver.query("CREATE TABLE recovery_audit(id INTEGER PRIMARY KEY,note TEXT)", []);
+  });
+  afterEach(async () => { await dispose?.(); });
+  async function snapshot() {
+    const result: Record<string, unknown> = {};
+    for (const table of preserved) result[table] = (await driver.query(`SELECT * FROM main.${table} ORDER BY id`, [])).rows;
+    result.main = (await driver.query("SELECT * FROM main.sqlite_master ORDER BY type,name", [])).rows;
+    result.temp = (await driver.query("SELECT * FROM temp.sqlite_master ORDER BY type,name", [])).rows;
+    if (provider === "sqlite") {
+      result.databases = (await driver.query<{ name: string }>("PRAGMA database_list", [])).rows;
+      for (const row of result.databases as { name: string }[]) {
+        if (["main", "temp"].includes(row.name)) continue;
+        const schema = '"' + row.name.replaceAll('"', '""') + '"';
+        result[`attached:${row.name}`] = (await driver.query(`SELECT * FROM ${schema}.sqlite_master ORDER BY type,name`, [])).rows;
+        if (row.name === "recovery_extra" && (result[`attached:${row.name}`] as { name: string }[]).some(object => object.name === "recovery_audit")) {
+          result.attachedAudit = (await driver.query("SELECT * FROM recovery_extra.recovery_audit ORDER BY id", [])).rows;
+        }
+      }
+    }
+    return result;
+  }
+  function storedRows(snapshot: Record<string, unknown>) {
+    return Object.fromEntries(preserved.map(table => [table, snapshot[table]]));
+  }
+  function retain(name: string, data: unknown) {
+    const directory = process.env.MEMBERS_RECOVERY_EVIDENCE_DIR;
+    if (!directory) return;
+    mkdirSync(directory, { recursive: true });
+    writeFileSync(join(directory, `${provider}-effective-${name}.json`), JSON.stringify(data, null, 2), { flag: "wx" });
+  }
+  function wrap(batch: SQLDatabaseDriver["batch"], query = driver.query.bind(driver)): SQLDatabaseDriver {
+    return { query, batch, transactionGuarantee: driver.transactionGuarantee };
+  }
+  async function attempt(target: SQLDatabaseDriver, digest: string) {
+    try { return { value: await applyMembersKeyRecovery(target, digest), error: undefined }; }
+    catch (error) { const e = error as Error & { code?: string }; return { value: undefined, error: { code: e.code, message: e.message, cause: String(e.cause) } }; }
+  }
+
+  it("blocks indirect main freshness-trigger effects before planning", async () => {
+    await driver.query("CREATE TRIGGER unreviewed_version_effect AFTER UPDATE ON deck_data_version BEGIN INSERT INTO recovery_audit(note) VALUES('indirect'); END", []);
+    const before = await snapshot(), plan = await planMembersKeyRecovery(driver), outcome = await attempt(driver, plan.sha256), after = await snapshot();
+    retain("indirect-trigger", { before, plan, outcome, after });
+    expect(plan.status).toBe("blocked"); expect(outcome.value).toBeUndefined(); expect(after).toEqual(before);
+  });
+
+  it.each(["main-view", "indirect-trigger"])("rejects late %s metadata in the actual batch", async kind => {
+    const plan = await planMembersKeyRecovery(driver); let race: unknown, batches = 0;
+    const target = wrap(async statements => {
+      batches++;
+      await driver.query(kind === "main-view" ? "CREATE VIEW recovery_view AS SELECT id FROM main.cards" : "CREATE TRIGGER late_version_effect AFTER UPDATE ON deck_data_version BEGIN INSERT INTO recovery_audit(note) VALUES('late indirect'); END", []);
+      race = await snapshot(); return driver.batch(statements);
+    });
+    const outcome = await attempt(target, plan.sha256), after = await snapshot();
+    retain(`late-${kind}`, { plan, race, outcome, after, batches });
+    expect(outcome.error?.code).toBe("members-recovery-apply-outcome-unconfirmed"); expect(after).toEqual(race); expect(batches).toBe(1);
+  });
+
+  it("refuses unreadable effective metadata without entering a mutation batch", async () => {
+    let batches = 0;
+    const target = wrap(async statements => { batches++; return driver.batch(statements); }, async (sql, params) => {
+      if (/temp\.|pragma_table_list/i.test(sql)) throw new Error("synthetic metadata unavailable");
+      return driver.query(sql, params);
+    });
+    const before = await snapshot();
+    let error: unknown;
+    try { await planMembersKeyRecovery(target); } catch (e) { error = e; }
+    retain("unreadable-metadata", { before, error: String(error), after: await snapshot(), batches });
+    expect(error).toBeDefined(); expect(batches).toBe(0); expect(await snapshot()).toEqual(before);
+  });
+
+  it("refuses a missing standalone admission guarantee before planning", async () => {
+    const target = { ...wrap(driver.batch.bind(driver)), transactionGuarantee: { ...driver.transactionGuarantee!, standaloneBatchAdmission: undefined } };
+    await expect(planMembersKeyRecovery(target)).rejects.toMatchObject({ code: "members-recovery-standalone-admission-required" });
+  });
+
+  it("checks a standalone batch marker on any statement before executing the first write", async () => {
+    const before = await snapshot();
+    await driver.transaction!(async () => {
+      await expect(driver.batch([
+        { sql: "INSERT INTO main.recovery_audit(note) VALUES('must never run')", params: [] },
+        { sql: "SELECT 1", params: [], requireStandaloneTransaction: true },
+      ])).rejects.toThrow("database-standalone-batch-required");
+      expect((await driver.query("SELECT * FROM main.recovery_audit", [])).rows).toEqual([]);
+    });
+    expect(storedRows(await snapshot())).toEqual(storedRows(before));
+  });
+
+  it("does not acknowledge recovery inside a caller-owned transaction", async () => {
+    const before = await snapshot(); let outcome: unknown;
+    const rollback = new Error("owned caller rollback");
+    await expect(driver.transaction!(async () => {
+      const plan = await planMembersKeyRecovery(driver);
+      outcome = await attempt(driver, plan.sha256);
+      throw rollback;
+    })).rejects.toBe(rollback);
+    retain("caller-transaction", { before, outcome, after: await snapshot() });
+    expect(outcome).toMatchObject({ value: undefined, error: expect.anything() });
+    // D1's first transaction installs persistent journal instrumentation,
+    // including on rollback. Preserve those actual schemas in the receipt;
+    // no recovery, history, reference, ledger or audit row may change.
+    expect(storedRows(await snapshot())).toEqual(storedRows(before));
+  });
+
+  it("rejects caller transaction admission occurring immediately before batch execution", async () => {
+    const plan = await planMembersKeyRecovery(driver); let batches = 0;
+    const target = wrap(statements => driver.transaction!(async () => { batches++; return driver.batch(statements); }));
+    const before = await snapshot(), outcome = await attempt(target, plan.sha256), after = await snapshot();
+    retain("late-caller-transaction", { plan, before, outcome, after, batches });
+    expect(outcome.error?.code).toBe("members-recovery-apply-outcome-unconfirmed"); expect(storedRows(after)).toEqual(storedRows(before)); expect(batches).toBe(1);
+  });
+
+  if (provider === "sqlite") {
+    it("refuses a direct SQL caller transaction at the native batch boundary", async () => {
+      const plan = await planMembersKeyRecovery(driver), before = await snapshot();
+      const target = wrap(async statements => {
+        await driver.query("BEGIN", []);
+        try { return await driver.batch(statements); }
+        // This direct-SQL transaction has no async call-tree attribution.
+        // Release it on its owned native handle, rather than queueing a
+        // serving query behind the very transaction this fixture owns.
+        finally { (driver as unknown as { db: { prepare(sql: string): { run(): unknown } } }).db.prepare("ROLLBACK").run(); }
+      });
+      const outcome = await attempt(target, plan.sha256), after = await snapshot();
+      retain("direct-caller-transaction", { plan, before, outcome, after });
+      expect(outcome.error?.cause).toContain("database-standalone-batch-required"); expect(after).toEqual(before);
+    });
+    it("refuses a real table shadowing the metadata function instead of trusting its rows", async () => {
+      await driver.query("CREATE TABLE pragma_table_list(schema TEXT,name TEXT,type TEXT,ncol INTEGER,wr INTEGER,strict INTEGER)", []);
+      const before = await snapshot();
+      await expect(planMembersKeyRecovery(driver)).rejects.toThrow();
+      expect(await snapshot()).toEqual(before);
+    });
+    const states = [
+      ["temp-trigger", tempTrigger],
+      ["temp-shadow-table", "CREATE TEMP TABLE cards AS SELECT * FROM main.cards"],
+      ["temp-shadow-view", "CREATE TEMP VIEW card_references AS SELECT * FROM main.card_references"],
+      ["temp-shadow-version", "CREATE TEMP TABLE deck_data_version AS SELECT * FROM main.deck_data_version"],
+      ["empty-attachment", "ATTACH DATABASE ':memory:' AS recovery_extra"],
+      ["populated-attachment", "ATTACH DATABASE ':memory:' AS recovery_extra", "CREATE TABLE recovery_extra.recovery_audit(id INTEGER PRIMARY KEY,note TEXT)"],
+    ];
+    it.each(states)("refuses pre-existing %s and preserves all observed tables", async (name, sql, extra) => {
+      await driver.query(sql, []);
+      if (extra) { await driver.query(extra, []); await driver.query("INSERT INTO recovery_extra.recovery_audit(note) VALUES('retained attached data')", []); }
+      const before = await snapshot(), plan = await planMembersKeyRecovery(driver), outcome = await attempt(driver, plan.sha256), after = await snapshot();
+      retain(`pre-${name}`, { before, plan, outcome, after });
+      expect(plan.status).toBe("blocked"); expect(outcome.value).toBeUndefined(); expect(after).toEqual(before);
+    });
+    it.each(states)("rejects late %s before any repair or custom-table side effect", async (name, sql, extra) => {
+      const plan = await planMembersKeyRecovery(driver); let race: unknown, batches = 0;
+      const target = wrap(async statements => { batches++; await driver.query(sql, []); if (extra) { await driver.query(extra, []); await driver.query("INSERT INTO recovery_extra.recovery_audit(note) VALUES('retained attached data')", []); } race = await snapshot(); return driver.batch(statements); });
+      const outcome = await attempt(target, plan.sha256), after = await snapshot();
+      retain(`late-${name}`, { plan, race, outcome, after, batches });
+      expect(outcome.error?.code).toBe("members-recovery-apply-outcome-unconfirmed"); expect(outcome.value).toBeUndefined(); expect(after).toEqual(race); expect(batches).toBe(1);
+    });
+  } else {
+    it.each([tempTrigger, "CREATE TEMP TABLE cards(id INTEGER)", "ATTACH DATABASE ':memory:' AS recovery_extra"])("retains D1's authorization refusal for %s", async sql => {
+      const before = await snapshot();
+      await expect(driver.query(sql, [])).rejects.toThrow(/SQLITE_AUTH|not authorized/i);
+      expect(await snapshot()).toEqual(before);
+      expect((await planMembersKeyRecovery(driver)).status).toBe("ready");
+    });
+  }
+});

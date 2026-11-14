@@ -1,0 +1,58 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {execFileSync,spawnSync} from 'node:child_process';
+import {mkdirSync,readFileSync,writeFileSync,symlinkSync,realpathSync,existsSync} from 'node:fs';
+import {dirname,join,resolve} from 'node:path';
+import {CHECKER_SOURCE_FILES} from '../../scripts/release-check.mjs';
+import {scratchDir,removeScratchDir} from '../support/scratch-dir.mjs';
+
+// Synthetic actor data only exercises admission; it is never native capture evidence.
+function actorFixture(){
+ const digest='1'.repeat(64),runtime={ruby:'3.4.11',platform:'synthetic',decko:'0.20.0',card:'1.110.0'};
+ const actor={current_id:1,effective_id:1,bot_id:1,always_ok:true};
+ const expected={producer_sha256:digest,helper_sha256:digest,database_identity_sha256:digest,bot_id:1,runtime,
+  auth_sources:{current_id:digest,as_id:digest,'always_ok?':digest},renders:{content:{target_sha256:digest}}};
+ const capture={rendered:{content:'<p>Synthetic</p>'},capture_evidence:{schema:'decko-api-key-view-capture/1',runtime,
+  producer_sha256:digest,helper_sha256:digest,database_identity_sha256:digest,
+  auth_sources:Object.fromEntries(Object.keys(expected.auth_sources).map(k=>[k,{path:'/synthetic/'+k+'.rb',sha256:digest}])),
+  initial_auth:{current_id:{defined:false,value:null},as_id:{defined:false,value:null}},
+  renders:{content:{before:{...actor},after:{...actor},permissions:{read:true,update:true},target_sha256:digest}}}};
+ return {capture,expected};
+}
+
+test('actual release CLI refuses inherited alternate-index concealment of changed source',()=>{
+ const root=scratchDir('release-git-env-'),source=resolve(import.meta.dirname,'../..');
+ const cleanEnv={...process.env};for(const k of Object.keys(cleanEnv))if(k.startsWith('GIT_'))delete cleanEnv[k];
+ const git=(args,env=cleanEnv)=>execFileSync('git',['-C',root,...args],{env,encoding:'utf8',windowsHide:true}).trim();
+ try{
+  const files=new Set([...CHECKER_SOURCE_FILES,'tools/run-node-tests.mjs','tools/node-test-runners.mjs','tools/test-file-inventory.mjs','tools/test-gates.mjs','tools/native-mysql-provider.mjs','tools/native-command-provider.mjs','tools/platform/python-runtime.mjs']);
+  for(const file of files){mkdirSync(dirname(join(root,file)),{recursive:true});writeFileSync(join(root,file),readFileSync(join(source,file)));}
+  // The fixture has one real Node assertion and real checker/toolchain bytes.
+  writeFileSync(join(root,'vitest.config.ts'),'export default {};\n');
+  writeFileSync(join(root,'.gitignore'),'node_modules/\n.runtime/\ndecko-scratch-ownership.json\n');
+  mkdirSync(join(root,'tests/tools'),{recursive:true});
+  writeFileSync(join(root,'tests/tools/owned.test.mjs'),"import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';test('executes changed source',()=>assert.equal(readFileSync(new URL('../../owned-source.txt',import.meta.url),'utf8'),'changed bytes'));\n");
+  writeFileSync(join(root,'owned-source.txt'),'committed bytes');
+  symlinkSync(realpathSync(join(source,'node_modules')),join(root,'node_modules'),process.platform==='win32'?'junction':'dir');
+  const evidence=actorFixture();mkdirSync(join(root,'.runtime'),{recursive:true});
+  for(const key of ['capture','expected'])writeFileSync(join(root,'.runtime',key+'.json'),JSON.stringify(evidence[key]));
+  git(['init']);git(['add','--',...files,'tests/tools/owned.test.mjs','owned-source.txt']);
+  git(['commit','-m','Create isolated release checker attack fixture','--',...files,'tests/tools/owned.test.mjs','owned-source.txt']);
+  const commit=git(['rev-parse','HEAD']);
+  writeFileSync(join(root,'owned-source.txt'),'changed bytes');
+  assert.match(git(['status','--porcelain']),/owned-source.txt/,'real index must see the edit');
+  const env={...cleanEnv,GIT_INDEX_FILE:join(root,'.runtime','alternate-index')};
+  git(['read-tree','HEAD'],env);git(['update-index','--assume-unchanged','owned-source.txt'],env);
+  assert.equal(git(['status','--porcelain','--untracked-files=all'],env),'','attack precondition');
+  const result=spawnSync(process.execPath,[join(root,'scripts/release-check.mjs'),'--out',join(root,'.runtime','out'),
+   '--api-key-capture',join(root,'.runtime','capture.json'),'--api-key-expected',join(root,'.runtime','expected.json')],{cwd:root,env,encoding:'utf8',windowsHide:true});
+  assert.ok(existsSync(join(root,'.runtime/out/summary.json')),
+   'Release CLI failed before producing its refusal summary: '+JSON.stringify({exit:result.status,stdout:result.stdout,stderr:result.stderr}));
+  const report=JSON.parse(readFileSync(join(root,'.runtime/out/summary.json'),'utf8'));
+  const observation={exit:result.status,commit,reportedCommit:report.sourceCommit,sourceQualified:report.sourceQualified,
+   batteryPassed:report.batteryPassed,sourceStatus:report.sourceStatus,rows:report.rows.map(r=>({stage:r.stage,result:r.result,counts:r.counts})),stdout:result.stdout,stderr:result.stderr};
+  console.log(JSON.stringify(observation));
+  assert.equal(report.batteryPassed,false,'Changed bytes must not qualify as the clean committed revision: '+JSON.stringify(observation));
+  assert.notEqual(result.status,0);
+ }finally{removeScratchDir(root);}
+});

@@ -1,0 +1,242 @@
+import { afterEach, describe, expect, it } from "vitest";
+import { defaultDeckLoader } from "../../../src/card/mod-loader/default-mod-deck.js";
+import { getDefaultModLoader, setDefaultModLoader } from "../../../src/card/mod-loader.js";
+import { DeckoName } from "../../../src/card/name.js";
+import {
+  bindModLoaderToEngine,
+  createRenderTestStorage,
+  seedCard,
+  seedReference,
+  type RenderTestStorage,
+} from "./render-test-storage.js";
+
+// The new card's TYPE error, as native produces it.
+//
+// The native behavior this pins (executed from the pinned card gem, see
+// .runtime/adversarial-repair/minimax-account-view/probe-native-type-error.rb):
+//
+//   mod/core/set/all/type.rb:87-96 extract_type_id! + :106-112 type_id_or_error
+//     type: 'Nonexistent Type' -> type_id=nil, errors=[[:type, "Nonexistent Type is not a known type."]]
+//     type: '' (empty string)  -> type_id=nil, errors=[[:type, " is not a known type."]]
+//     type: 'Sign up' (valid)  -> type_id=12,  errors=[]
+//
+// So an unknown (or empty) type name does NOT change the card's type - native
+// keeps the DEFAULT type (type.rb:58-66 ensure_type_id) - but the card DOES
+// carry the error on :type. The port resolves the type to nil for an unknown
+// name (fetch.ts typeIdFromNewOpts, :1101-1113) and keeps the default type,
+// but nothing carries the error: the card is silently defaulted.
+//
+// The port's carrier for a card's errors is RenderEngine.attachedErrorsByKey
+// (render.ts:602) - the same map the html :errors view reads
+// (card-mod-format errorsView). Ruby's carrier is card.errors, and the
+// message the :errors view shows is "<ATTRIBUTE>: <message>"
+// (card-mod-format set/all/error.rb:48-50).
+
+const originalLoader = getDefaultModLoader();
+afterEach(() => setDefaultModLoader(originalLoader));
+
+async function typeDeck(): Promise<RenderTestStorage> {
+  const storage = await createRenderTestStorage();
+  for (const card of [
+    { id: 2, name: "RichText", codename: "basic", typeId: 5 },
+    { id: 5, name: "Cardtype", codename: "cardtype", typeId: 5 },
+    { id: 10, name: "*all", codename: "all", typeId: 13 },
+    { id: 12, name: "Sign up", codename: "signup", typeId: 5 },
+    { id: 13, name: "Set", codename: "set", typeId: 5 },
+    { id: 14, name: "Setting", codename: "setting", typeId: 5 },
+    { id: 15, name: "*type", codename: "type", typeId: 14 },
+    { id: 16, name: "*read", codename: "read", typeId: 14 },
+    { id: 17, name: "*create", codename: "create", typeId: 14 },
+    { id: 18, name: "Anyone", codename: "anyone", typeId: 5 },
+    { id: 19, name: "Anyone Signed In", codename: "anyone_signed_in", typeId: 5 },
+    { id: 20, name: "Anonymous", codename: "anonymous", typeId: 5 },
+    { id: 70, name: "Sign up+*type", leftId: 12, rightId: 15, typeId: 13 },
+    { id: 71, name: "Sign up+*type+*create", leftId: 70, rightId: 17, typeId: 14, dbContent: "[[Anyone]]" },
+    { id: 200, name: "Html", codename: "html", typeId: 5 },
+  ]) await seedCard(storage, card);
+  await seedReference(storage, 71, 18, "anyone");
+  bindModLoaderToEngine(storage, defaultDeckLoader());
+  return storage;
+}
+
+describe("a new card whose requested type does not resolve", () => {
+  it.each(["Fixture New", ""])("refreshes its own error for repeated builds of %j", async (name) => {
+    const storage = await typeDeck();
+    const key = DeckoName.parse(name).key;
+    try {
+      for (const typeName of ["Unavailable Alpha", "Unavailable Beta", ""]) {
+        await storage.engine.render(name, "new", {
+          absentCard: true,
+          focalRoot: true,
+          newCard: { typeName, typePreset: true },
+        });
+        expect(storage.engine.attachedErrorsByKey.get(key)).toEqual([
+          { attribute: "type", message: `${typeName} is not a known type.` },
+        ]);
+      }
+      await storage.engine.render(name, "new", {
+        absentCard: true,
+        focalRoot: true,
+        newCard: { typeId: 12, typePreset: true },
+      });
+      expect(storage.engine.attachedErrorsByKey.has(key)).toBe(false);
+    } finally {
+      storage.close();
+    }
+  });
+
+  it("preserves a foreign bag that replaces an owned type error", async () => {
+    const storage = await typeDeck();
+    const render = (typeName: string) => storage.engine.render("Fixture New", "new", {
+      absentCard: true,
+      focalRoot: true,
+      newCard: { typeName, typePreset: true },
+    });
+    try {
+      await render("Unavailable Alpha");
+      const foreign = [{ attribute: "content", message: "is not numeric" }];
+      storage.engine.attachedErrorsByKey.set("fixture_new", foreign);
+      await render("Unavailable Beta");
+      expect(storage.engine.attachedErrorsByKey.get("fixture_new")).toBe(foreign);
+      await render("Sign up");
+      expect(storage.engine.attachedErrorsByKey.get("fixture_new")).toBe(foreign);
+    } finally {
+      storage.close();
+    }
+  });
+
+  it("carries native's type error on the card", async () => {
+    const storage = await typeDeck();
+    try {
+      await storage.engine.render("Fixture New", "new", {
+        absentCard: true,
+        focalRoot: true,
+        newCard: { typeName: "No Such Type", typePreset: true },
+      });
+      expect(storage.engine.attachedErrorsByKey.get("fixture_new")).toEqual([
+        { attribute: "type", message: "No Such Type is not a known type." },
+      ]);
+    } finally {
+      storage.close();
+    }
+  });
+
+  it("carries native's type error for an EMPTY type name (Ruby's truthy empty string)", async () => {
+    const storage = await typeDeck();
+    try {
+      await storage.engine.render("Fixture New", "new", {
+        absentCard: true,
+        focalRoot: true,
+        newCard: { typeName: "", typePreset: false },
+      });
+      expect(storage.engine.attachedErrorsByKey.get("fixture_new")).toEqual([
+        { attribute: "type", message: " is not a known type." },
+      ]);
+    } finally {
+      storage.close();
+    }
+  });
+
+  it("resolves the type itself from the raw type name, with no error", async () => {
+    // The positive control for the engine's own resolution path: a name that
+    // resolves (the lexicon's own lookup) assigns the type and carries no
+    // error - so an error must only ever be attached when the name does NOT
+    // resolve.
+    const storage = await typeDeck();
+    try {
+      const html = await storage.engine.render("Fixture New", "new", {
+        absentCard: true,
+        focalRoot: true,
+        newCard: { typeName: "Sign up", typePreset: true },
+      });
+      expect(storage.engine.attachedErrorsByKey.has("fixture_new")).toBe(false);
+      // The resolved type is the signup card (12), so the preset branch
+      // (new.rb:128-133) renders the hidden card[type_id] field with it.
+      const field = html.match(/<input[^>]*card\[type_id\][^>]*>/)?.[0] ?? "";
+      expect(field).toContain('value="12"');
+    } finally {
+      storage.close();
+    }
+  });
+
+  it("carries no error when the requested type resolves", async () => {
+    const storage = await typeDeck();
+    try {
+      const html = await storage.engine.render("Fixture New", "new", {
+        absentCard: true,
+        focalRoot: true,
+        newCard: { typeId: 12, typeName: "Sign up", typePreset: true },
+      });
+      expect(storage.engine.attachedErrorsByKey.has("fixture_new")).toBe(false);
+      // The preset branch (new.rb:128-133): a preset type renders the hidden
+      // card[type_id] field, not the type dropdown.
+      expect(html).toMatch(/name=["']card\[type_id\]["']/);
+    } finally {
+      storage.close();
+    }
+  });
+
+  it("does not carry the error on a card that already exists", async () => {
+    // Ruby's Card.fetch(mark, new: card_opts) returns the EXISTING card and
+    // never assigns the type options (card_class.rb:118-126), so no
+    // Card.new runs and no error exists. The request's new-card arguments do
+    // not apply to a card that is in the deck.
+    const storage = await typeDeck();
+    try {
+      await storage.engine.render("Sign up", "new", {
+        focalRoot: true,
+        newCard: { typeName: "No Such Type", typePreset: true },
+      });
+      expect(storage.engine.attachedErrorsByKey.has("sign_up")).toBe(false);
+    } finally {
+      storage.close();
+    }
+  });
+
+  it("releases the error when the same key is later built with a type that resolves", async () => {
+    // The stale-error guard: the error belonged to the new card, so a later
+    // build of the same key that DOES resolve must not inherit it.
+    const storage = await typeDeck();
+    try {
+      await storage.engine.render("Fixture New", "new", {
+        absentCard: true,
+        focalRoot: true,
+        newCard: { typeName: "No Such Type", typePreset: true },
+      });
+      expect(storage.engine.attachedErrorsByKey.has("fixture_new")).toBe(true);
+      await storage.engine.render("Fixture New", "new", {
+        absentCard: true,
+        focalRoot: true,
+        newCard: { typeId: 12, typeName: "Sign up", typePreset: true },
+      });
+      expect(storage.engine.attachedErrorsByKey.has("fixture_new")).toBe(false);
+    } finally {
+      storage.close();
+    }
+  });
+
+  it("never overwrites or removes another surface's error bag for the same key", async () => {
+    // The write-refusal page seats its OWN bag for the refused card's key
+    // (server/write-routes.ts: the refused save's errors). The new card's
+    // type error must not overwrite it, and its release must not remove it.
+    const storage = await typeDeck();
+    try {
+      const foreign = [{ attribute: "content", message: "is not numeric" }];
+      storage.engine.attachedErrorsByKey.set("fixture_new", foreign);
+      await storage.engine.render("Fixture New", "new", {
+        absentCard: true,
+        focalRoot: true,
+        newCard: { typeName: "No Such Type", typePreset: true },
+      });
+      expect(storage.engine.attachedErrorsByKey.get("fixture_new")).toBe(foreign);
+      await storage.engine.render("Fixture New", "new", {
+        absentCard: true,
+        focalRoot: true,
+        newCard: { typeId: 12, typeName: "Sign up", typePreset: true },
+      });
+      expect(storage.engine.attachedErrorsByKey.get("fixture_new")).toBe(foreign);
+    } finally {
+      storage.close();
+    }
+  });
+});

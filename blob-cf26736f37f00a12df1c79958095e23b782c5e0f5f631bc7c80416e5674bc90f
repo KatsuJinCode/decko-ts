@@ -1,0 +1,43 @@
+// Event-driven project cleanup: explicit command or test startup, no schedule.
+// All removal authority remains in the existing custody-aware purge.
+import {existsSync} from 'node:fs';
+import {fileURLToPath, pathToFileURL} from 'node:url';
+import {resolve} from 'node:path';
+
+const repoRoot = fileURLToPath(new URL('..', import.meta.url));
+const escalationModule = new URL('./cleanup-escalation-platform.mjs', import.meta.url);
+
+// The escalation channel files an issue in the development checkout's tracker.
+// A source export omits it; there a cleanup failure is thrown unchanged.
+async function escalateToIssueTracker(error) {
+  if (!existsSync(escalationModule)) return;
+  const {escalateCleanupFailure} = await import(escalationModule.href);
+  return escalateCleanupFailure(error, repoRoot);
+}
+
+async function nativePurge() {
+  await import('../tests/support/typescript-source-loader.mjs');
+  const {purgeStaleVitestTempDetailed} = await import('../tests/support/purge-stale-vitest-temp.ts');
+  return purgeStaleVitestTempDetailed();
+}
+
+export async function cleanupProjectTestScratch({purge = nativePurge,
+  escalate = escalateToIssueTracker} = {}) {
+  try {
+    const report = await purge();
+    const uncertain = report.retained.filter(entry => entry.cause !== undefined);
+    if (uncertain.length) throw Object.assign(new AggregateError(uncertain.map(entry => entry.cause),
+      'Project scratch cleanup retained unreadable ownership or metadata'), {report});
+    return report;
+  }
+  catch (error) {
+    try {await escalate(error);}
+    catch (reportingError) {throw new AggregateError([error, reportingError], 'Project cleanup failed and its escalation failed');}
+    throw error;
+  }
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  try {console.log(JSON.stringify(await cleanupProjectTestScratch(), null, 2));}
+  catch (error) {console.error(error); process.exitCode = 1;}
+}

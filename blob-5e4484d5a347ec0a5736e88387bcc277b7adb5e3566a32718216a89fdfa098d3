@@ -1,0 +1,132 @@
+# Unavailable test inputs and verification limits
+
+The redistributable development test suite and its reference inputs are
+included; private rich-corpus data, private captures and trial credentials are
+not. Passing main-fixture grades does not complete the remaining mod-write
+failures. This document separates export exclusions, unavailable inputs and
+historical test results; it does not turn missing or failing coverage into a
+pass.
+
+## Included tests and source-origin exclusions
+
+`npm test` runs the package smoke check and `npm run test:suite` runs the
+included Vitest suite. The export also includes the reference harness and
+synthetic-v1, synthetic-v2, synthetic-v2-mod-probes,
+synthetic-v3-mod-probes-ruby33 and write-battery-v1 inputs. Each fixture
+manifest states its actual expected-output coverage; v3's new Ruby 3.2.3
+evidence is render-only. The MySQL overlay is a fresh stock Ruby 3.2.3
+capture, not the superseded Windows Ruby 3.3.12 recording.
+
+Four captures still lack positive evidence establishing the origin of their
+input records. Those captures and their three actual runtime test readers are
+excluded from the export; they remain in private development history. Unknown
+origin is not proof of private origin. The 29 tests whose public-source basis
+was established remain included; a comment-only mention of an excluded input
+does not remove a test that never reads it.
+
+These exclusions are unfinished evidence work, not successful comparisons.
+Restore the affected checks only after exact captured bytes are bound to
+redistributable source inputs, or fresh stock-Ruby captures from committed
+reproducible seeds replace them and the tests pass. Development-only tooling
+tests are also excluded where their required tool is not part of the package.
+The export manifest lists the actual shipped files; shipping the suite is not
+a claim that every test has passed from this export.
+
+## Remaining write failures
+
+The complete mod probe's latest recorded checkpoint passes its rendering
+comparisons but still fails 278 persistence comparisons, 303 side-effect
+comparisons and 275 other-table write comparisons. These are executed
+failures, not missing-input skips. The owner continues the implementation
+repair; no full mod-write compatibility or release-readiness claim follows
+from a limited correction. Exact counts, source and fixture are in
+[EVIDENCE.md](EVIDENCE.md). Keep them failing until a fresh complete result
+shows the actual differences are fixed.
+
+## Historical missing-input counts
+
+An earlier development run recorded 253 test cases requiring private or
+external inputs. Its skipped cases were not passes, and its per-case receipt
+is not redistributed. The table preserves that run's breakdown; it is not a
+current inventory of the exported suite.
+
+| Skipped cases | Input absent from this package | Verification status |
+| --- | --- | --- |
+| 249 corpus | A private deck with rich content, local copies of the database behind a privately served deck, and pages recorded earlier from that deck as it was publicly served (stored in several parts), all required by the original comparisons | Unverified; the small committed synthetic fixtures do not replace these inputs. |
+| 2 harness | Private source snapshot and hosted measurement configuration for page-subresource and search-suggestion observations | Unverified; offline sibling checks are a separate scope. |
+| 2 deploy | Explicit trial database URL and token for real session creation/resolution/revocation and the read-only trial-deck census | Unverified; production credentials are not substituted. |
+
+The two trial-database cases are included in that historical 253 total. They are not two
+additional passing or executed cases. Supplying their declared inputs is what
+allows those checks to run; this package creates no trial resource.
+
+Real-deck behaviour rests on named hosted comparisons, made during
+development, of a Ruby Decko site used as the comparison reference with a
+hosted deployment of the port on the Bunny (bunny.net) edge platform, against
+the same selected records. Those are development observations: no record of
+them ships with this package, and none is one of the results in
+[EVIDENCE.md](EVIDENCE.md). They establish
+their stated routes and settings only, not arbitrary corpus compatibility.
+The required settings are in [DEPLOYMENT.md](DEPLOYMENT.md).
+
+Two PGlite concurrency cases need independent database sessions, which the
+embedded database does not offer. They are skipped as not applicable; they
+are not passes and are not part of the 253 missing-input cases. A recovery
+run on a Linux machine during development, limited to the Node and SQLite
+interfaces the recovery tools use, is likewise a development observation
+with no record in this package; it is not a full-suite result.
+
+## Historical suite observations
+
+### Linux full-suite gate, 3 November 2026
+
+The retained run manifest names source commit
+`fc5917bb942bf151bfbe992827f46793cc3c6d4a`. This is an old-source run,
+not an outcome for the current combined source or exported package. Its
+recorded case results are:
+
+| Runner | Passed | Failed | Skipped | Cancelled | Files with failures |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Vitest | 12,072 | 75 | 194 | not recorded | 40 |
+| node:test | 1,814 | 99 | 3 | 68 | 44 |
+
+The failure-file counts identify files containing failed results; they are
+not additional failed cases to add to the case totals. The Node runner
+records Node v22.23.3. The retained receipt includes incomplete gem-source
+copies and MySQL routing failures **and ordinary assertion differences**.
+These results have not all been classified as environmental, and the failed
+or cancelled cases are not passes. Repair and rechecking remain ongoing.
+No fresh whole-suite success for the current candidate is inferred from
+targeted tests or the passing synthetic-fixture grades.
+
+The counts come from the retained runner summary and its original source
+manifest, not a rerun or a model estimate. Test inputs were copied for the
+run; no controlled cache state is recorded for these suite totals. Private
+machine paths, operational logs and input details are not redistributed.
+
+### Windows development run, 2 November 2026
+
+A complete development run on 2 November 2026 on a Windows
+workstation at an earlier source recorded 12,068 passing tests,
+30 failed assertions and 149 pending tests under Vitest, plus 12 test files
+that failed as a whole, and 1,996 passing and 5 failing tests under Node's
+test runner. The project's reading of those 47 failures found none to be a
+difference between the port and Ruby: 39 were tests that need the Linux
+reference machine and could not reach it from that workstation, 3 were test
+expectations older than a change to the default unsubscribe refusal, 4 came
+from one defect in a staging build-freshness test, and 1 was a test file
+whose tests were all skipped. That historical triage is not a statement that
+the current implementation has no Ruby differences: the newer complete
+mod-write probe above records actual mismatches. Later targeted Linux checks
+and passing synthetic-fixture grades are not substituted for a complete
+exported-suite result.
+Separately, a test of the export tool failed 9 of its 12 cases, first on
+Linux and then also on Windows, because the test's own stand-in module table
+lacked a module the export tool had started to import. The corrected test
+passed 12 of 12 on the Linux reference machine on 3 November 2026, and the
+correction is in the source this package was exported from.
+
+The package smoke check covers runtime assets and a synthetic render; its
+`test:suite` command is a separate test run. Neither an export privacy check
+nor a smoke pass establishes full behavior compatibility, private-deck
+migration or hosted acceptance.

@@ -1,0 +1,1179 @@
+{
+  "modId": "card-mod-account",
+  "gemName": "card-mod-account-0.20.0",
+  "gemPath": "$GEM_HOME/gems/card-mod-account-0.20.0",
+  "setFiles": [
+    {
+      "file": "set/abstract/account_field.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/abstract/account_holder.rb",
+      "views": 2,
+      "events": 1,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/account.rb",
+      "views": 0,
+      "events": 2,
+      "baskets": 0
+    },
+    {
+      "file": "set/all/password_input.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/right/account.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/right/account/events.rb",
+      "views": 0,
+      "events": 8,
+      "baskets": 0
+    },
+    {
+      "file": "set/right/account/views.rb",
+      "views": 8,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/right/email.rb",
+      "views": 0,
+      "events": 3,
+      "baskets": 0
+    },
+    {
+      "file": "set/right/password.rb",
+      "views": 2,
+      "events": 4,
+      "baskets": 0
+    },
+    {
+      "file": "set/right/roles.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/right/salt.rb",
+      "views": 1,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/right/status.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/self/anonymous.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/self/decko_bot.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/self/role.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/self/signin.rb",
+      "views": 8,
+      "events": 4,
+      "baskets": 0
+    },
+    {
+      "file": "set/type/role.rb",
+      "views": 2,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/type/signup.rb",
+      "views": 0,
+      "events": 4,
+      "baskets": 1
+    },
+    {
+      "file": "set/type/signup/views.rb",
+      "views": 4,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/type/user.rb",
+      "views": 1,
+      "events": 3,
+      "baskets": 2
+    },
+    {
+      "file": "set/type_plus_right/cardtype/account.rb",
+      "views": 0,
+      "events": 0,
+      "baskets": 0
+    },
+    {
+      "file": "set/type_plus_right/role/members.rb",
+      "views": 0,
+      "events": 1,
+      "baskets": 0
+    },
+    {
+      "file": "set/type_plus_right/user/email.rb",
+      "views": 1,
+      "events": 0,
+      "baskets": 0
+    }
+  ],
+  "behaviors": [
+    {
+      "id": "view:closed_account",
+      "kind": "view",
+      "name": "closed_account",
+      "alias": null,
+      "config": ", template: :haml",
+      "source": "card-mod-account-0.20.0/set/abstract/account_holder.rb:126"
+    },
+    {
+      "id": "view:account_tab",
+      "kind": "view",
+      "name": "account_tab",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-account-0.20.0/set/abstract/account_holder.rb:132"
+    },
+    {
+      "id": "event:<declared hooks, not listed>",
+      "kind": "event",
+      "name": null,
+      "options": null,
+      "source": null
+    },
+    {
+      "id": "event:<declared hooks, not listed>",
+      "kind": "event",
+      "name": null,
+      "options": null,
+      "source": null
+    },
+    {
+      "id": "event:<declared hooks, not listed>",
+      "kind": "event",
+      "name": null,
+      "options": null,
+      "source": null
+    },
+    {
+      "id": "event:<declared hooks, not listed>",
+      "kind": "event",
+      "name": null,
+      "options": null,
+      "source": null
+    },
+    {
+      "id": "event:<declared hooks, not listed>",
+      "kind": "event",
+      "name": null,
+      "options": null,
+      "source": null
+    },
+    {
+      "id": "event:<declared hooks, not listed>",
+      "kind": "event",
+      "name": null,
+      "options": null,
+      "source": null
+    },
+    {
+      "id": "event:<declared hooks, not listed>",
+      "kind": "event",
+      "name": null,
+      "options": null,
+      "source": null
+    },
+    {
+      "id": "event:<declared hooks, not listed>",
+      "kind": "event",
+      "name": null,
+      "options": null,
+      "source": null
+    },
+    {
+      "id": "event:<declared hooks, not listed>",
+      "kind": "event",
+      "name": null,
+      "options": null,
+      "source": null
+    },
+    {
+      "id": "event:<declared hooks, not listed>",
+      "kind": "event",
+      "name": null,
+      "options": null,
+      "source": null
+    },
+    {
+      "id": "event:<declared hooks, not listed>",
+      "kind": "event",
+      "name": null,
+      "options": null,
+      "source": null
+    },
+    {
+      "id": "view:verify_url",
+      "kind": "view",
+      "name": "verify_url",
+      "alias": null,
+      "config": ", cache: :never, denial: :blank, perms: :verify_url_ok? do",
+      "source": "card-mod-account-0.20.0/set/right/account/views.rb:2"
+    },
+    {
+      "id": "view:reset_password_url",
+      "kind": "view",
+      "name": "reset_password_url",
+      "alias": null,
+      "config": ", denial: :blank, perms: :reset_password_ok? do",
+      "source": "card-mod-account-0.20.0/set/right/account/views.rb:6"
+    },
+    {
+      "id": "view:token_expiry",
+      "kind": "view",
+      "name": "token_expiry",
+      "alias": null,
+      "config": ", denial: :blank do",
+      "source": "card-mod-account-0.20.0/set/right/account/views.rb:10"
+    },
+    {
+      "id": "view:token_days",
+      "kind": "view",
+      "name": "token_days",
+      "alias": null,
+      "config": ", denial: :blank do",
+      "source": "card-mod-account-0.20.0/set/right/account/views.rb:14"
+    },
+    {
+      "id": "view:verify_days",
+      "kind": "view",
+      "name": "verify_days",
+      "alias": "token_days",
+      "config": null,
+      "source": "card-mod-account-0.20.0/set/right/account/views.rb:19"
+    },
+    {
+      "id": "view:reset_password_days",
+      "kind": "view",
+      "name": "reset_password_days",
+      "alias": "token_days",
+      "config": null,
+      "source": "card-mod-account-0.20.0/set/right/account/views.rb:20"
+    },
+    {
+      "id": "view:closure",
+      "kind": "view",
+      "name": "closure",
+      "alias": null,
+      "config": ", perms: :delete, template: :haml, wrap: :slot",
+      "source": "card-mod-account-0.20.0/set/right/account/views.rb:22"
+    },
+    {
+      "id": "view:core",
+      "kind": "view",
+      "name": "core",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-account-0.20.0/set/right/account/views.rb:50"
+    },
+    {
+      "id": "event:<declared hooks, not listed>",
+      "kind": "event",
+      "name": null,
+      "options": null,
+      "source": null
+    },
+    {
+      "id": "event:<declared hooks, not listed>",
+      "kind": "event",
+      "name": null,
+      "options": null,
+      "source": null
+    },
+    {
+      "id": "event:<declared hooks, not listed>",
+      "kind": "event",
+      "name": null,
+      "options": null,
+      "source": null
+    },
+    {
+      "id": "view:raw",
+      "kind": "view",
+      "name": "raw",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-account-0.20.0/set/right/password.rb:53"
+    },
+    {
+      "id": "view:core",
+      "kind": "view",
+      "name": "core",
+      "alias": null,
+      "config": ", wrap: :em do",
+      "source": "card-mod-account-0.20.0/set/right/password.rb:82"
+    },
+    {
+      "id": "event:<declared hooks, not listed>",
+      "kind": "event",
+      "name": null,
+      "options": null,
+      "source": null
+    },
+    {
+      "id": "event:<declared hooks, not listed>",
+      "kind": "event",
+      "name": null,
+      "options": null,
+      "source": null
+    },
+    {
+      "id": "event:<declared hooks, not listed>",
+      "kind": "event",
+      "name": null,
+      "options": null,
+      "source": null
+    },
+    {
+      "id": "event:<declared hooks, not listed>",
+      "kind": "event",
+      "name": null,
+      "options": null,
+      "source": null
+    },
+    {
+      "id": "view:raw",
+      "kind": "view",
+      "name": "raw",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-account-0.20.0/set/right/salt.rb:13"
+    },
+    {
+      "id": "view:core",
+      "kind": "view",
+      "name": "core",
+      "alias": null,
+      "config": ", cache: :never do",
+      "source": "card-mod-account-0.20.0/set/self/signin.rb:119"
+    },
+    {
+      "id": "view:open",
+      "kind": "view",
+      "name": "open",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-account-0.20.0/set/self/signin.rb:127"
+    },
+    {
+      "id": "view:title",
+      "kind": "view",
+      "name": "title",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-account-0.20.0/set/self/signin.rb:134"
+    },
+    {
+      "id": "view:open_content",
+      "kind": "view",
+      "name": "open_content",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-account-0.20.0/set/self/signin.rb:139"
+    },
+    {
+      "id": "view:one_line_content",
+      "kind": "view",
+      "name": "one_line_content",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-account-0.20.0/set/self/signin.rb:144"
+    },
+    {
+      "id": "view:reset_password_success",
+      "kind": "view",
+      "name": "reset_password_success",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-account-0.20.0/set/self/signin.rb:148"
+    },
+    {
+      "id": "view:edit",
+      "kind": "view",
+      "name": "edit",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-account-0.20.0/set/self/signin.rb:154"
+    },
+    {
+      "id": "view:edit_buttons",
+      "kind": "view",
+      "name": "edit_buttons",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-account-0.20.0/set/self/signin.rb:165"
+    },
+    {
+      "id": "event:<declared hooks, not listed>",
+      "kind": "event",
+      "name": null,
+      "options": null,
+      "source": null
+    },
+    {
+      "id": "event:<declared hooks, not listed>",
+      "kind": "event",
+      "name": null,
+      "options": null,
+      "source": null
+    },
+    {
+      "id": "event:<declared hooks, not listed>",
+      "kind": "event",
+      "name": null,
+      "options": null,
+      "source": null
+    },
+    {
+      "id": "event:<declared hooks, not listed>",
+      "kind": "event",
+      "name": null,
+      "options": null,
+      "source": null
+    },
+    {
+      "id": "view:link_with_checkbox",
+      "kind": "view",
+      "name": "link_with_checkbox",
+      "alias": null,
+      "config": ", cache: :never do",
+      "source": "card-mod-account-0.20.0/set/type/role.rb:8"
+    },
+    {
+      "id": "view:configs",
+      "kind": "view",
+      "name": "configs",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-account-0.20.0/set/type/role.rb:12"
+    },
+    {
+      "id": "event:<declared hooks, not listed>",
+      "kind": "event",
+      "name": null,
+      "options": null,
+      "source": null
+    },
+    {
+      "id": "event:<declared hooks, not listed>",
+      "kind": "event",
+      "name": null,
+      "options": null,
+      "source": null
+    },
+    {
+      "id": "event:<declared hooks, not listed>",
+      "kind": "event",
+      "name": null,
+      "options": null,
+      "source": null
+    },
+    {
+      "id": "event:<declared hooks, not listed>",
+      "kind": "event",
+      "name": null,
+      "options": null,
+      "source": null
+    },
+    {
+      "id": "basket:basket[:non_createable_types] << :signup",
+      "kind": "basket-op",
+      "op": "basket[:non_createable_types] << :signup",
+      "source": "card-mod-account-0.20.0/set/type/signup.rb:3"
+    },
+    {
+      "id": "view:new",
+      "kind": "view",
+      "name": "new",
+      "alias": null,
+      "config": ", cache: :never do",
+      "source": "card-mod-account-0.20.0/set/type/signup/views.rb:6"
+    },
+    {
+      "id": "view:content_formgroups",
+      "kind": "view",
+      "name": "content_formgroups",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-account-0.20.0/set/type/signup/views.rb:11"
+    },
+    {
+      "id": "view:new_buttons",
+      "kind": "view",
+      "name": "new_buttons",
+      "alias": null,
+      "config": ", cache: :never do",
+      "source": "card-mod-account-0.20.0/set/type/signup/views.rb:15"
+    },
+    {
+      "id": "view:core",
+      "kind": "view",
+      "name": "core",
+      "alias": null,
+      "config": ", template: :haml, cache: :never do",
+      "source": "card-mod-account-0.20.0/set/type/signup/views.rb:27"
+    },
+    {
+      "id": "view:setup",
+      "kind": "view",
+      "name": "setup",
+      "alias": null,
+      "config": ", unknown: true, perms: :needs_setup?, cache: :never do",
+      "source": "card-mod-account-0.20.0/set/type/user.rb:10"
+    },
+    {
+      "id": "event:<declared hooks, not listed>",
+      "kind": "event",
+      "name": null,
+      "options": null,
+      "source": null
+    },
+    {
+      "id": "event:<declared hooks, not listed>",
+      "kind": "event",
+      "name": null,
+      "options": null,
+      "source": null
+    },
+    {
+      "id": "event:<declared hooks, not listed>",
+      "kind": "event",
+      "name": null,
+      "options": null,
+      "source": null
+    },
+    {
+      "id": "basket:basket[:roles_for_first_user] = %i[help_desk shark administrator]",
+      "kind": "basket-op",
+      "op": "basket[:roles_for_first_user] = %i[help_desk shark administrator]",
+      "source": "card-mod-account-0.20.0/set/type/user.rb:3"
+    },
+    {
+      "id": "basket:basket[:roles_for_first_user].map(&:cardname).each do |role|",
+      "kind": "basket-op",
+      "op": "basket[:roles_for_first_user].map(&:cardname).each do |role|",
+      "source": "card-mod-account-0.20.0/set/type/user.rb:61"
+    },
+    {
+      "id": "event:<declared hooks, not listed>",
+      "kind": "event",
+      "name": null,
+      "options": null,
+      "source": null
+    },
+    {
+      "id": "view:raw",
+      "kind": "view",
+      "name": "raw",
+      "alias": null,
+      "config": "do",
+      "source": "card-mod-account-0.20.0/set/type_plus_right/user/email.rb:7"
+    },
+    {
+      "id": "seed:role",
+      "kind": "seed",
+      "name": "Role",
+      "codename": "role",
+      "type": ":cardtype",
+      "contentSha": null,
+      "source": "card-mod-account-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:members",
+      "kind": "seed",
+      "name": "\"*members\"",
+      "codename": "members",
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-account-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:anyone",
+      "kind": "seed",
+      "name": "Anyone",
+      "codename": "anyone",
+      "type": ":role",
+      "contentSha": null,
+      "source": "card-mod-account-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:anyone_signed_in",
+      "kind": "seed",
+      "name": "Anyone Signed In",
+      "codename": "anyone_signed_in",
+      "type": ":role",
+      "contentSha": null,
+      "source": "card-mod-account-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:administrator",
+      "kind": "seed",
+      "name": "Administrator",
+      "codename": "administrator",
+      "type": ":role",
+      "contentSha": null,
+      "source": "card-mod-account-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:eagle",
+      "kind": "seed",
+      "name": "Eagle",
+      "codename": "eagle",
+      "type": ":role",
+      "contentSha": null,
+      "source": "card-mod-account-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:shark",
+      "kind": "seed",
+      "name": "Shark",
+      "codename": "shark",
+      "type": ":role",
+      "contentSha": null,
+      "source": "card-mod-account-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:help_desk",
+      "kind": "seed",
+      "name": "Help Desk",
+      "codename": "help_desk",
+      "type": ":role",
+      "contentSha": null,
+      "source": "card-mod-account-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:anonymous",
+      "kind": "seed",
+      "name": "Anonymous",
+      "codename": "anonymous",
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-account-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:",
+      "kind": "seed",
+      "name": "",
+      "codename": null,
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-account-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:account",
+      "kind": "seed",
+      "name": "\"*account\"",
+      "codename": "account",
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-account-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:email",
+      "kind": "seed",
+      "name": "\"*email\"",
+      "codename": "email",
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-account-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:password",
+      "kind": "seed",
+      "name": "\"*password\"",
+      "codename": "password",
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-account-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:salt",
+      "kind": "seed",
+      "name": "\"*salt\"",
+      "codename": "salt",
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-account-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:status",
+      "kind": "seed",
+      "name": "\"*status\"",
+      "codename": "status",
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-account-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:account_settings",
+      "kind": "seed",
+      "name": "\"*account settings\"",
+      "codename": "account_settings",
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-account-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:signup",
+      "kind": "seed",
+      "name": "Sign up",
+      "codename": "signup",
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-account-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:",
+      "kind": "seed",
+      "name": "",
+      "codename": null,
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-account-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:",
+      "kind": "seed",
+      "name": "",
+      "codename": null,
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-account-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:welcome_email",
+      "kind": "seed",
+      "name": "welcome email",
+      "codename": "welcome_email",
+      "type": ":email_template",
+      "contentSha": null,
+      "source": "card-mod-account-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:verification_email",
+      "kind": "seed",
+      "name": "verification email",
+      "codename": "verification_email",
+      "type": ":email_template",
+      "contentSha": null,
+      "source": "card-mod-account-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:password_reset_email",
+      "kind": "seed",
+      "name": "password reset email",
+      "codename": "password_reset_email",
+      "type": ":email_template",
+      "contentSha": null,
+      "source": "card-mod-account-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:signup_alert_email",
+      "kind": "seed",
+      "name": "signup alert email",
+      "codename": "signup_alert_email",
+      "type": ":email_template",
+      "contentSha": null,
+      "source": "card-mod-account-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:signin",
+      "kind": "seed",
+      "name": "\"*signin\"",
+      "codename": "signin",
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-account-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:roles",
+      "kind": "seed",
+      "name": "\"*roles\"",
+      "codename": "roles",
+      "type": ":search_type",
+      "contentSha": null,
+      "source": "card-mod-account-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:enabled_roles",
+      "kind": "seed",
+      "name": "\"*enabled roles\"",
+      "codename": "enabled_roles",
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-account-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:account_links",
+      "kind": "seed",
+      "name": "\"*account links\"",
+      "codename": "account_links",
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-account-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:cards_with_account",
+      "kind": "seed",
+      "name": "Cards with accounts",
+      "codename": "cards_with_account",
+      "type": ":search_type",
+      "contentSha": null,
+      "source": "card-mod-account-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:thanks",
+      "kind": "seed",
+      "name": "\"*thanks\"",
+      "codename": "thanks",
+      "type": ":setting",
+      "contentSha": null,
+      "source": "card-mod-account-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:",
+      "kind": "seed",
+      "name": "",
+      "codename": null,
+      "type": ":phrase",
+      "contentSha": null,
+      "source": "card-mod-account-0.20.0/data/real.yml"
+    },
+    {
+      "id": "seed:signup_success",
+      "kind": "seed",
+      "name": "Signup Success",
+      "codename": "signup_success",
+      "type": null,
+      "contentSha": null,
+      "source": "card-mod-account-0.20.0/data/real.yml"
+    },
+    {
+      "id": "config:cardtypes",
+      "kind": "config",
+      "name": "cardtypes",
+      "source": "card-mod-account-0.20.0/config/admin.yml"
+    },
+    {
+      "id": "config:de",
+      "kind": "config",
+      "name": "de",
+      "source": "card-mod-account-0.20.0/config/locales/de.yml"
+    },
+    {
+      "id": "config:en",
+      "kind": "config",
+      "name": "en",
+      "source": "card-mod-account-0.20.0/config/locales/en.yml"
+    }
+  ],
+  "seeds": [
+    {
+      "name": "Role",
+      "codename": "role",
+      "type": ":cardtype",
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "\"*members\"",
+      "codename": "members",
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "Anyone",
+      "codename": "anyone",
+      "type": ":role",
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "Anyone Signed In",
+      "codename": "anyone_signed_in",
+      "type": ":role",
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "Administrator",
+      "codename": "administrator",
+      "type": ":role",
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "Eagle",
+      "codename": "eagle",
+      "type": ":role",
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "Shark",
+      "codename": "shark",
+      "type": ":role",
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "Help Desk",
+      "codename": "help_desk",
+      "type": ":role",
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "Anonymous",
+      "codename": "anonymous",
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "",
+      "codename": null,
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "\"*account\"",
+      "codename": "account",
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "\"*email\"",
+      "codename": "email",
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "\"*password\"",
+      "codename": "password",
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "\"*salt\"",
+      "codename": "salt",
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "\"*status\"",
+      "codename": "status",
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "\"*account settings\"",
+      "codename": "account_settings",
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "Sign up",
+      "codename": "signup",
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "",
+      "codename": null,
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "",
+      "codename": null,
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "welcome email",
+      "codename": "welcome_email",
+      "type": ":email_template",
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "verification email",
+      "codename": "verification_email",
+      "type": ":email_template",
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "password reset email",
+      "codename": "password_reset_email",
+      "type": ":email_template",
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "signup alert email",
+      "codename": "signup_alert_email",
+      "type": ":email_template",
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "\"*signin\"",
+      "codename": "signin",
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "\"*roles\"",
+      "codename": "roles",
+      "type": ":search_type",
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "\"*enabled roles\"",
+      "codename": "enabled_roles",
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "\"*account links\"",
+      "codename": "account_links",
+      "type": null,
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "Cards with accounts",
+      "codename": "cards_with_account",
+      "type": ":search_type",
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "\"*thanks\"",
+      "codename": "thanks",
+      "type": ":setting",
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "",
+      "codename": null,
+      "type": ":phrase",
+      "content": null,
+      "contentLines": [],
+      "file": "data/real.yml"
+    },
+    {
+      "name": "Signup Success",
+      "codename": "signup_success",
+      "type": null,
+      "content": null,
+      "file": "data/real.yml"
+    }
+  ],
+  "configs": [
+    {
+      "file": "config/admin.yml",
+      "keys": [
+        "cardtypes"
+      ]
+    },
+    {
+      "file": "config/locales/de.yml",
+      "keys": [
+        "de"
+      ]
+    },
+    {
+      "file": "config/locales/en.yml",
+      "keys": [
+        "en"
+      ]
+    }
+  ],
+  "assets": [
+    "assets/script/toggle_visibility.js.coffee",
+    "assets/style/account.scss"
+  ],
+  "publicAssets": 0,
+  "eventHooks": 30
+}

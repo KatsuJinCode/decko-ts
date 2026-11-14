@@ -1,0 +1,45 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { DatabaseSync } from 'node:sqlite';
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const repo = fileURLToPath(new URL('../../../', import.meta.url));
+test('the real comparator closes its database handles before retiring its owned base copy', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'comparison-custody-'));
+  try {
+    const input = path.join(root, 'input.sqlite3');
+    const db = new DatabaseSync(input);
+    try {
+      db.exec(readFileSync(path.join(repo, 'db/schema.sqlite.sql'), 'utf8'));
+      db.exec('DROP TABLE deck_data_version'); // A Ruby source deck has no port-only stamp table.
+    }
+    finally { db.close(); }
+    const result = spawnSync(process.execPath, [path.join(repo, 'tools/persistence/compare-decks.mjs'), input, input, input], {
+      cwd: repo, windowsHide: true, encoding: 'utf8', env: { ...process.env, TEMP: root, TMP: root, TMPDIR: root },
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(JSON.parse(result.stdout).outsideMismatches, 0);
+    assert.deepEqual(readdirSync(root).filter(name => name.startsWith('persist-base-deck-')), []);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('a later database-open failure closes the earlier base copy and preserves its original error', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'comparison-failed-open-'));
+  try {
+    const input = path.join(root, 'input.sqlite3');
+    const db = new DatabaseSync(input);
+    try { db.exec(readFileSync(path.join(repo, 'db/schema.sqlite.sql'), 'utf8')); db.exec('DROP TABLE deck_data_version'); }
+    finally { db.close(); }
+    const result = spawnSync(process.execPath, [path.join(repo, 'tools/persistence/compare-decks.mjs'), input, root, input], {
+      cwd: repo, windowsHide: true, encoding: 'utf8', env: { ...process.env, TEMP: root, TMP: root, TMPDIR: root },
+    });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /open database|SQLITE_CANTOPEN|EISDIR/i);
+    assert.doesNotMatch(result.stderr, /EPERM/);
+    assert.deepEqual(readdirSync(root).filter(name => name.startsWith('persist-base-deck-')), []);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
