@@ -1,0 +1,1506 @@
+{
+  "generatedAt": "2026-10-05T10:11:41.915Z",
+  "jsonlPath": "C:\\localProjects\\decko-ts-lane-inlinetrip-2026-10-04\\benchmarks\\trip-census\\census\\trip-census.jsonl",
+  "postures": [
+    "off",
+    "on-inline"
+  ],
+  "pages": [
+    "About",
+    "Aikido",
+    "Eagle",
+    "Home",
+    "Taking_Stock"
+  ],
+  "perPage": {
+    "off": {
+      "About": {
+        "trips": 202,
+        "statements": 254,
+        "bootStatements": 5,
+        "renderPhaseStatements": 253,
+        "families": {
+          "engine-boot-codenames": {
+            "statements": 3,
+            "tripsContaining": 2,
+            "soleTrips": 1,
+            "verdict": "boot-cacheable",
+            "topModules": [
+              "src/card/render/prefetch.ts (2)",
+              "src/card/fetch/codename.ts (1)"
+            ]
+          },
+          "point-row-by-key": {
+            "statements": 54,
+            "tripsContaining": 54,
+            "soleTrips": 54,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/retrieve.ts (54)"
+            ]
+          },
+          "point-row-by-id": {
+            "statements": 31,
+            "tripsContaining": 31,
+            "soleTrips": 30,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/retrieve.ts (30)",
+              "src/card/render/prefetch.ts (1)"
+            ]
+          },
+          "closure-prefetch-batch": {
+            "statements": 106,
+            "tripsContaining": 63,
+            "soleTrips": 61,
+            "verdict": "pipeline-already-batched-rounds",
+            "topModules": [
+              "src/card/render/prefetch.ts (52)",
+              "src/card/render.ts (52)",
+              "src/card/permissions/read-rules.ts (1)"
+            ]
+          },
+          "search-count": {
+            "statements": 1,
+            "tripsContaining": 1,
+            "soleTrips": 0,
+            "verdict": "order-dependent-sequential",
+            "topModules": [
+              "src/card/render/prefetch.ts (1)"
+            ]
+          },
+          "reached-rules-cte": {
+            "statements": 4,
+            "tripsContaining": 3,
+            "soleTrips": 1,
+            "verdict": "pipeline-transport-only-statement-irreducible",
+            "topModules": [
+              "src/card/render/prefetch.ts (2)",
+              "src/card/render/help-popover.ts (1)",
+              "src/card/render.ts (1)"
+            ]
+          },
+          "engine-fold-type-names": {
+            "statements": 1,
+            "tripsContaining": 1,
+            "soleTrips": 0,
+            "verdict": "boot-cacheable",
+            "topModules": [
+              "src/card/render/prefetch.ts (1)"
+            ]
+          },
+          "engine-fold-head-reads": {
+            "statements": 1,
+            "tripsContaining": 1,
+            "soleTrips": 0,
+            "verdict": "boot-cacheable",
+            "topModules": [
+              "src/card/render/prefetch.ts (1)"
+            ]
+          },
+          "lexicon-id-to-name": {
+            "statements": 9,
+            "tripsContaining": 9,
+            "soleTrips": 9,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/lexicon.ts (9)"
+            ]
+          },
+          "pair-exists-probe": {
+            "statements": 39,
+            "tripsContaining": 39,
+            "soleTrips": 39,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/lexicon.ts (39)"
+            ]
+          },
+          "template-link-id-read": {
+            "statements": 3,
+            "tripsContaining": 3,
+            "soleTrips": 3,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/permissions/read-rules.ts (3)"
+            ]
+          },
+          "lexicon-key-to-id": {
+            "statements": 2,
+            "tripsContaining": 2,
+            "soleTrips": 2,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/lexicon.ts (2)"
+            ]
+          }
+        }
+      },
+      "Aikido": {
+        "trips": 92,
+        "statements": 113,
+        "bootStatements": 5,
+        "renderPhaseStatements": 112,
+        "families": {
+          "engine-boot-codenames": {
+            "statements": 3,
+            "tripsContaining": 2,
+            "soleTrips": 1,
+            "verdict": "boot-cacheable",
+            "topModules": [
+              "src/card/render/prefetch.ts (2)",
+              "src/card/fetch/codename.ts (1)"
+            ]
+          },
+          "point-row-by-key": {
+            "statements": 25,
+            "tripsContaining": 25,
+            "soleTrips": 25,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/retrieve.ts (25)"
+            ]
+          },
+          "point-row-by-id": {
+            "statements": 21,
+            "tripsContaining": 21,
+            "soleTrips": 20,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/retrieve.ts (20)",
+              "src/card/render/prefetch.ts (1)"
+            ]
+          },
+          "closure-prefetch-batch": {
+            "statements": 35,
+            "tripsContaining": 23,
+            "soleTrips": 21,
+            "verdict": "pipeline-already-batched-rounds",
+            "topModules": [
+              "src/card/render.ts (27)",
+              "src/card/render/prefetch.ts (6)",
+              "src/card/permissions/read-rules.ts (1)"
+            ]
+          },
+          "search-count": {
+            "statements": 1,
+            "tripsContaining": 1,
+            "soleTrips": 0,
+            "verdict": "order-dependent-sequential",
+            "topModules": [
+              "src/card/render/prefetch.ts (1)"
+            ]
+          },
+          "reached-rules-cte": {
+            "statements": 4,
+            "tripsContaining": 3,
+            "soleTrips": 1,
+            "verdict": "pipeline-transport-only-statement-irreducible",
+            "topModules": [
+              "src/card/render/prefetch.ts (2)",
+              "src/card/render/help-popover.ts (1)",
+              "src/card/render.ts (1)"
+            ]
+          },
+          "engine-fold-type-names": {
+            "statements": 1,
+            "tripsContaining": 1,
+            "soleTrips": 0,
+            "verdict": "boot-cacheable",
+            "topModules": [
+              "src/card/render/prefetch.ts (1)"
+            ]
+          },
+          "engine-fold-head-reads": {
+            "statements": 1,
+            "tripsContaining": 1,
+            "soleTrips": 0,
+            "verdict": "boot-cacheable",
+            "topModules": [
+              "src/card/render/prefetch.ts (1)"
+            ]
+          },
+          "lexicon-id-to-name": {
+            "statements": 4,
+            "tripsContaining": 4,
+            "soleTrips": 4,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/lexicon.ts (4)"
+            ]
+          },
+          "pair-exists-probe": {
+            "statements": 14,
+            "tripsContaining": 14,
+            "soleTrips": 14,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/lexicon.ts (14)"
+            ]
+          },
+          "template-link-id-read": {
+            "statements": 3,
+            "tripsContaining": 3,
+            "soleTrips": 3,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/permissions/read-rules.ts (3)"
+            ]
+          },
+          "lexicon-key-to-id": {
+            "statements": 1,
+            "tripsContaining": 1,
+            "soleTrips": 1,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/lexicon.ts (1)"
+            ]
+          }
+        }
+      },
+      "Eagle": {
+        "trips": 51,
+        "statements": 70,
+        "bootStatements": 5,
+        "renderPhaseStatements": 69,
+        "families": {
+          "engine-boot-codenames": {
+            "statements": 3,
+            "tripsContaining": 2,
+            "soleTrips": 1,
+            "verdict": "boot-cacheable",
+            "topModules": [
+              "src/card/render/prefetch.ts (2)",
+              "src/card/fetch/codename.ts (1)"
+            ]
+          },
+          "point-row-by-key": {
+            "statements": 18,
+            "tripsContaining": 18,
+            "soleTrips": 18,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/retrieve.ts (18)"
+            ]
+          },
+          "point-row-by-id": {
+            "statements": 13,
+            "tripsContaining": 13,
+            "soleTrips": 12,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/retrieve.ts (12)",
+              "src/card/render/prefetch.ts (1)"
+            ]
+          },
+          "closure-prefetch-batch": {
+            "statements": 21,
+            "tripsContaining": 11,
+            "soleTrips": 9,
+            "verdict": "pipeline-already-batched-rounds",
+            "topModules": [
+              "src/card/render.ts (15)",
+              "src/card/render/prefetch.ts (4)",
+              "src/card/permissions/read-rules.ts (1)"
+            ]
+          },
+          "search-count": {
+            "statements": 1,
+            "tripsContaining": 1,
+            "soleTrips": 0,
+            "verdict": "order-dependent-sequential",
+            "topModules": [
+              "src/card/render/prefetch.ts (1)"
+            ]
+          },
+          "reached-rules-cte": {
+            "statements": 4,
+            "tripsContaining": 3,
+            "soleTrips": 1,
+            "verdict": "pipeline-transport-only-statement-irreducible",
+            "topModules": [
+              "src/card/render/prefetch.ts (2)",
+              "src/card/render/help-popover.ts (1)",
+              "src/card/render.ts (1)"
+            ]
+          },
+          "engine-fold-type-names": {
+            "statements": 1,
+            "tripsContaining": 1,
+            "soleTrips": 0,
+            "verdict": "boot-cacheable",
+            "topModules": [
+              "src/card/render/prefetch.ts (1)"
+            ]
+          },
+          "engine-fold-head-reads": {
+            "statements": 1,
+            "tripsContaining": 1,
+            "soleTrips": 0,
+            "verdict": "boot-cacheable",
+            "topModules": [
+              "src/card/render/prefetch.ts (1)"
+            ]
+          },
+          "lexicon-id-to-name": {
+            "statements": 1,
+            "tripsContaining": 1,
+            "soleTrips": 1,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/lexicon.ts (1)"
+            ]
+          },
+          "pair-exists-probe": {
+            "statements": 4,
+            "tripsContaining": 4,
+            "soleTrips": 4,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/lexicon.ts (4)"
+            ]
+          },
+          "template-link-id-read": {
+            "statements": 2,
+            "tripsContaining": 2,
+            "soleTrips": 2,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/permissions/read-rules.ts (2)"
+            ]
+          },
+          "lexicon-key-to-id": {
+            "statements": 1,
+            "tripsContaining": 1,
+            "soleTrips": 1,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/lexicon.ts (1)"
+            ]
+          }
+        }
+      },
+      "Home": {
+        "trips": 176,
+        "statements": 209,
+        "bootStatements": 6,
+        "renderPhaseStatements": 208,
+        "families": {
+          "engine-boot-codenames": {
+            "statements": 3,
+            "tripsContaining": 2,
+            "soleTrips": 1,
+            "verdict": "boot-cacheable",
+            "topModules": [
+              "src/card/render/prefetch.ts (2)",
+              "src/card/fetch/codename.ts (1)"
+            ]
+          },
+          "point-row-by-key": {
+            "statements": 37,
+            "tripsContaining": 37,
+            "soleTrips": 37,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/retrieve.ts (37)"
+            ]
+          },
+          "point-row-by-id": {
+            "statements": 31,
+            "tripsContaining": 31,
+            "soleTrips": 30,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/retrieve.ts (30)",
+              "src/card/render/prefetch.ts (1)"
+            ]
+          },
+          "closure-prefetch-batch": {
+            "statements": 81,
+            "tripsContaining": 57,
+            "soleTrips": 55,
+            "verdict": "pipeline-already-batched-rounds",
+            "topModules": [
+              "src/card/render.ts (69)",
+              "src/card/render/prefetch.ts (7)",
+              "src/cql/execute.ts (2)"
+            ]
+          },
+          "search-count": {
+            "statements": 1,
+            "tripsContaining": 1,
+            "soleTrips": 0,
+            "verdict": "order-dependent-sequential",
+            "topModules": [
+              "src/card/render/prefetch.ts (1)"
+            ]
+          },
+          "reached-rules-cte": {
+            "statements": 4,
+            "tripsContaining": 3,
+            "soleTrips": 1,
+            "verdict": "pipeline-transport-only-statement-irreducible",
+            "topModules": [
+              "src/card/render/prefetch.ts (2)",
+              "src/card/render/help-popover.ts (1)",
+              "src/card/render.ts (1)"
+            ]
+          },
+          "engine-fold-type-names": {
+            "statements": 1,
+            "tripsContaining": 1,
+            "soleTrips": 0,
+            "verdict": "boot-cacheable",
+            "topModules": [
+              "src/card/render/prefetch.ts (1)"
+            ]
+          },
+          "engine-fold-head-reads": {
+            "statements": 1,
+            "tripsContaining": 1,
+            "soleTrips": 0,
+            "verdict": "boot-cacheable",
+            "topModules": [
+              "src/card/render/prefetch.ts (1)"
+            ]
+          },
+          "lexicon-id-to-name": {
+            "statements": 10,
+            "tripsContaining": 10,
+            "soleTrips": 10,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/lexicon.ts (10)"
+            ]
+          },
+          "pair-exists-probe": {
+            "statements": 34,
+            "tripsContaining": 34,
+            "soleTrips": 34,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/lexicon.ts (34)"
+            ]
+          },
+          "template-link-id-read": {
+            "statements": 2,
+            "tripsContaining": 2,
+            "soleTrips": 2,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/permissions/read-rules.ts (2)"
+            ]
+          },
+          "lexicon-key-to-id": {
+            "statements": 3,
+            "tripsContaining": 3,
+            "soleTrips": 3,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/lexicon.ts (3)"
+            ]
+          },
+          "engine-boot-dangling-canonical": {
+            "statements": 1,
+            "tripsContaining": 1,
+            "soleTrips": 1,
+            "verdict": "boot-cacheable",
+            "topModules": [
+              "src/card/render.ts (1)"
+            ]
+          }
+        }
+      },
+      "Taking_Stock": {
+        "trips": 47,
+        "statements": 65,
+        "bootStatements": 5,
+        "renderPhaseStatements": 64,
+        "families": {
+          "engine-boot-codenames": {
+            "statements": 3,
+            "tripsContaining": 2,
+            "soleTrips": 1,
+            "verdict": "boot-cacheable",
+            "topModules": [
+              "src/card/render/prefetch.ts (2)",
+              "src/card/fetch/codename.ts (1)"
+            ]
+          },
+          "point-row-by-key": {
+            "statements": 18,
+            "tripsContaining": 18,
+            "soleTrips": 18,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/retrieve.ts (18)"
+            ]
+          },
+          "point-row-by-id": {
+            "statements": 12,
+            "tripsContaining": 12,
+            "soleTrips": 11,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/retrieve.ts (11)",
+              "src/card/render/prefetch.ts (1)"
+            ]
+          },
+          "closure-prefetch-batch": {
+            "statements": 20,
+            "tripsContaining": 11,
+            "soleTrips": 9,
+            "verdict": "pipeline-already-batched-rounds",
+            "topModules": [
+              "src/card/render.ts (14)",
+              "src/card/render/prefetch.ts (4)",
+              "src/card/permissions/read-rules.ts (1)"
+            ]
+          },
+          "search-count": {
+            "statements": 1,
+            "tripsContaining": 1,
+            "soleTrips": 0,
+            "verdict": "order-dependent-sequential",
+            "topModules": [
+              "src/card/render/prefetch.ts (1)"
+            ]
+          },
+          "reached-rules-cte": {
+            "statements": 4,
+            "tripsContaining": 3,
+            "soleTrips": 1,
+            "verdict": "pipeline-transport-only-statement-irreducible",
+            "topModules": [
+              "src/card/render/prefetch.ts (2)",
+              "src/card/render/help-popover.ts (1)",
+              "src/card/render.ts (1)"
+            ]
+          },
+          "engine-fold-type-names": {
+            "statements": 1,
+            "tripsContaining": 1,
+            "soleTrips": 0,
+            "verdict": "boot-cacheable",
+            "topModules": [
+              "src/card/render/prefetch.ts (1)"
+            ]
+          },
+          "engine-fold-head-reads": {
+            "statements": 1,
+            "tripsContaining": 1,
+            "soleTrips": 0,
+            "verdict": "boot-cacheable",
+            "topModules": [
+              "src/card/render/prefetch.ts (1)"
+            ]
+          },
+          "lexicon-id-to-name": {
+            "statements": 1,
+            "tripsContaining": 1,
+            "soleTrips": 1,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/lexicon.ts (1)"
+            ]
+          },
+          "pair-exists-probe": {
+            "statements": 2,
+            "tripsContaining": 2,
+            "soleTrips": 2,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/lexicon.ts (2)"
+            ]
+          },
+          "template-link-id-read": {
+            "statements": 2,
+            "tripsContaining": 2,
+            "soleTrips": 2,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/permissions/read-rules.ts (2)"
+            ]
+          }
+        }
+      }
+    },
+    "on-inline": {
+      "About": {
+        "trips": 147,
+        "statements": 232,
+        "bootStatements": 5,
+        "renderPhaseStatements": 231,
+        "families": {
+          "engine-boot-codenames": {
+            "statements": 3,
+            "tripsContaining": 2,
+            "soleTrips": 1,
+            "verdict": "boot-cacheable",
+            "topModules": [
+              "src/card/render/prefetch.ts (2)",
+              "src/card/fetch/codename.ts (1)"
+            ]
+          },
+          "one-trip-seat": {
+            "statements": 37,
+            "tripsContaining": 2,
+            "soleTrips": 2,
+            "verdict": "the-seat-itself",
+            "topModules": [
+              "src/card/one-trip/one-trip-fetch.ts (37)"
+            ]
+          },
+          "point-row-by-id": {
+            "statements": 8,
+            "tripsContaining": 8,
+            "soleTrips": 7,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/retrieve.ts (7)",
+              "src/card/render/prefetch.ts (1)"
+            ]
+          },
+          "closure-prefetch-batch": {
+            "statements": 98,
+            "tripsContaining": 57,
+            "soleTrips": 55,
+            "verdict": "pipeline-already-batched-rounds",
+            "topModules": [
+              "src/card/render/prefetch.ts (52)",
+              "src/card/render.ts (44)",
+              "src/card/permissions/read-rules.ts (1)"
+            ]
+          },
+          "search-count": {
+            "statements": 1,
+            "tripsContaining": 1,
+            "soleTrips": 0,
+            "verdict": "order-dependent-sequential",
+            "topModules": [
+              "src/card/render/prefetch.ts (1)"
+            ]
+          },
+          "reached-rules-cte": {
+            "statements": 4,
+            "tripsContaining": 3,
+            "soleTrips": 1,
+            "verdict": "pipeline-transport-only-statement-irreducible",
+            "topModules": [
+              "src/card/render/prefetch.ts (2)",
+              "src/card/render/help-popover.ts (1)",
+              "src/card/render.ts (1)"
+            ]
+          },
+          "engine-fold-type-names": {
+            "statements": 1,
+            "tripsContaining": 1,
+            "soleTrips": 0,
+            "verdict": "boot-cacheable",
+            "topModules": [
+              "src/card/render/prefetch.ts (1)"
+            ]
+          },
+          "engine-fold-head-reads": {
+            "statements": 1,
+            "tripsContaining": 1,
+            "soleTrips": 0,
+            "verdict": "boot-cacheable",
+            "topModules": [
+              "src/card/render/prefetch.ts (1)"
+            ]
+          },
+          "point-row-by-key": {
+            "statements": 37,
+            "tripsContaining": 37,
+            "soleTrips": 37,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/retrieve.ts (37)"
+            ]
+          },
+          "pair-exists-probe": {
+            "statements": 37,
+            "tripsContaining": 37,
+            "soleTrips": 37,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/lexicon.ts (37)"
+            ]
+          },
+          "template-link-id-read": {
+            "statements": 3,
+            "tripsContaining": 3,
+            "soleTrips": 3,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/permissions/read-rules.ts (3)"
+            ]
+          },
+          "lexicon-key-to-id": {
+            "statements": 2,
+            "tripsContaining": 2,
+            "soleTrips": 2,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/lexicon.ts (2)"
+            ]
+          }
+        }
+      },
+      "Aikido": {
+        "trips": 55,
+        "statements": 111,
+        "bootStatements": 5,
+        "renderPhaseStatements": 110,
+        "families": {
+          "engine-boot-codenames": {
+            "statements": 3,
+            "tripsContaining": 2,
+            "soleTrips": 1,
+            "verdict": "boot-cacheable",
+            "topModules": [
+              "src/card/render/prefetch.ts (2)",
+              "src/card/fetch/codename.ts (1)"
+            ]
+          },
+          "one-trip-seat": {
+            "statements": 37,
+            "tripsContaining": 2,
+            "soleTrips": 2,
+            "verdict": "the-seat-itself",
+            "topModules": [
+              "src/card/one-trip/one-trip-fetch.ts (37)"
+            ]
+          },
+          "point-row-by-id": {
+            "statements": 6,
+            "tripsContaining": 6,
+            "soleTrips": 5,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/retrieve.ts (5)",
+              "src/card/render/prefetch.ts (1)"
+            ]
+          },
+          "closure-prefetch-batch": {
+            "statements": 32,
+            "tripsContaining": 20,
+            "soleTrips": 18,
+            "verdict": "pipeline-already-batched-rounds",
+            "topModules": [
+              "src/card/render.ts (24)",
+              "src/card/render/prefetch.ts (6)",
+              "src/card/permissions/read-rules.ts (1)"
+            ]
+          },
+          "search-count": {
+            "statements": 1,
+            "tripsContaining": 1,
+            "soleTrips": 0,
+            "verdict": "order-dependent-sequential",
+            "topModules": [
+              "src/card/render/prefetch.ts (1)"
+            ]
+          },
+          "reached-rules-cte": {
+            "statements": 4,
+            "tripsContaining": 3,
+            "soleTrips": 1,
+            "verdict": "pipeline-transport-only-statement-irreducible",
+            "topModules": [
+              "src/card/render/prefetch.ts (2)",
+              "src/card/render/help-popover.ts (1)",
+              "src/card/render.ts (1)"
+            ]
+          },
+          "engine-fold-type-names": {
+            "statements": 1,
+            "tripsContaining": 1,
+            "soleTrips": 0,
+            "verdict": "boot-cacheable",
+            "topModules": [
+              "src/card/render/prefetch.ts (1)"
+            ]
+          },
+          "engine-fold-head-reads": {
+            "statements": 1,
+            "tripsContaining": 1,
+            "soleTrips": 0,
+            "verdict": "boot-cacheable",
+            "topModules": [
+              "src/card/render/prefetch.ts (1)"
+            ]
+          },
+          "point-row-by-key": {
+            "statements": 8,
+            "tripsContaining": 8,
+            "soleTrips": 8,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/retrieve.ts (8)"
+            ]
+          },
+          "pair-exists-probe": {
+            "statements": 14,
+            "tripsContaining": 14,
+            "soleTrips": 14,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/lexicon.ts (14)"
+            ]
+          },
+          "template-link-id-read": {
+            "statements": 3,
+            "tripsContaining": 3,
+            "soleTrips": 3,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/permissions/read-rules.ts (3)"
+            ]
+          },
+          "lexicon-key-to-id": {
+            "statements": 1,
+            "tripsContaining": 1,
+            "soleTrips": 1,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/lexicon.ts (1)"
+            ]
+          }
+        }
+      },
+      "Eagle": {
+        "trips": 24,
+        "statements": 78,
+        "bootStatements": 5,
+        "renderPhaseStatements": 77,
+        "families": {
+          "engine-boot-codenames": {
+            "statements": 3,
+            "tripsContaining": 2,
+            "soleTrips": 1,
+            "verdict": "boot-cacheable",
+            "topModules": [
+              "src/card/render/prefetch.ts (2)",
+              "src/card/fetch/codename.ts (1)"
+            ]
+          },
+          "one-trip-seat": {
+            "statements": 37,
+            "tripsContaining": 2,
+            "soleTrips": 2,
+            "verdict": "the-seat-itself",
+            "topModules": [
+              "src/card/one-trip/one-trip-fetch.ts (37)"
+            ]
+          },
+          "point-row-by-id": {
+            "statements": 2,
+            "tripsContaining": 2,
+            "soleTrips": 1,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/render/prefetch.ts (1)",
+              "src/card/fetch/retrieve.ts (1)"
+            ]
+          },
+          "closure-prefetch-batch": {
+            "statements": 20,
+            "tripsContaining": 10,
+            "soleTrips": 8,
+            "verdict": "pipeline-already-batched-rounds",
+            "topModules": [
+              "src/card/render.ts (14)",
+              "src/card/render/prefetch.ts (4)",
+              "src/card/permissions/read-rules.ts (1)"
+            ]
+          },
+          "search-count": {
+            "statements": 1,
+            "tripsContaining": 1,
+            "soleTrips": 0,
+            "verdict": "order-dependent-sequential",
+            "topModules": [
+              "src/card/render/prefetch.ts (1)"
+            ]
+          },
+          "reached-rules-cte": {
+            "statements": 4,
+            "tripsContaining": 3,
+            "soleTrips": 1,
+            "verdict": "pipeline-transport-only-statement-irreducible",
+            "topModules": [
+              "src/card/render/prefetch.ts (2)",
+              "src/card/render/help-popover.ts (1)",
+              "src/card/render.ts (1)"
+            ]
+          },
+          "engine-fold-type-names": {
+            "statements": 1,
+            "tripsContaining": 1,
+            "soleTrips": 0,
+            "verdict": "boot-cacheable",
+            "topModules": [
+              "src/card/render/prefetch.ts (1)"
+            ]
+          },
+          "engine-fold-head-reads": {
+            "statements": 1,
+            "tripsContaining": 1,
+            "soleTrips": 0,
+            "verdict": "boot-cacheable",
+            "topModules": [
+              "src/card/render/prefetch.ts (1)"
+            ]
+          },
+          "pair-exists-probe": {
+            "statements": 4,
+            "tripsContaining": 4,
+            "soleTrips": 4,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/lexicon.ts (4)"
+            ]
+          },
+          "template-link-id-read": {
+            "statements": 2,
+            "tripsContaining": 2,
+            "soleTrips": 2,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/permissions/read-rules.ts (2)"
+            ]
+          },
+          "point-row-by-key": {
+            "statements": 2,
+            "tripsContaining": 2,
+            "soleTrips": 2,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/retrieve.ts (2)"
+            ]
+          },
+          "lexicon-key-to-id": {
+            "statements": 1,
+            "tripsContaining": 1,
+            "soleTrips": 1,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/lexicon.ts (1)"
+            ]
+          }
+        }
+      },
+      "Home": {
+        "trips": 109,
+        "statements": 174,
+        "bootStatements": 6,
+        "renderPhaseStatements": 173,
+        "families": {
+          "engine-boot-codenames": {
+            "statements": 3,
+            "tripsContaining": 2,
+            "soleTrips": 1,
+            "verdict": "boot-cacheable",
+            "topModules": [
+              "src/card/render/prefetch.ts (2)",
+              "src/card/fetch/codename.ts (1)"
+            ]
+          },
+          "one-trip-seat": {
+            "statements": 37,
+            "tripsContaining": 2,
+            "soleTrips": 2,
+            "verdict": "the-seat-itself",
+            "topModules": [
+              "src/card/one-trip/one-trip-fetch.ts (37)"
+            ]
+          },
+          "point-row-by-id": {
+            "statements": 8,
+            "tripsContaining": 8,
+            "soleTrips": 7,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/retrieve.ts (7)",
+              "src/card/render/prefetch.ts (1)"
+            ]
+          },
+          "closure-prefetch-batch": {
+            "statements": 66,
+            "tripsContaining": 45,
+            "soleTrips": 43,
+            "verdict": "pipeline-already-batched-rounds",
+            "topModules": [
+              "src/card/render.ts (54)",
+              "src/card/render/prefetch.ts (7)",
+              "src/cql/execute.ts (2)"
+            ]
+          },
+          "search-count": {
+            "statements": 1,
+            "tripsContaining": 1,
+            "soleTrips": 0,
+            "verdict": "order-dependent-sequential",
+            "topModules": [
+              "src/card/render/prefetch.ts (1)"
+            ]
+          },
+          "reached-rules-cte": {
+            "statements": 4,
+            "tripsContaining": 3,
+            "soleTrips": 1,
+            "verdict": "pipeline-transport-only-statement-irreducible",
+            "topModules": [
+              "src/card/render/prefetch.ts (2)",
+              "src/card/render/help-popover.ts (1)",
+              "src/card/render.ts (1)"
+            ]
+          },
+          "engine-fold-type-names": {
+            "statements": 1,
+            "tripsContaining": 1,
+            "soleTrips": 0,
+            "verdict": "boot-cacheable",
+            "topModules": [
+              "src/card/render/prefetch.ts (1)"
+            ]
+          },
+          "engine-fold-head-reads": {
+            "statements": 1,
+            "tripsContaining": 1,
+            "soleTrips": 0,
+            "verdict": "boot-cacheable",
+            "topModules": [
+              "src/card/render/prefetch.ts (1)"
+            ]
+          },
+          "pair-exists-probe": {
+            "statements": 30,
+            "tripsContaining": 30,
+            "soleTrips": 30,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/lexicon.ts (30)"
+            ]
+          },
+          "template-link-id-read": {
+            "statements": 2,
+            "tripsContaining": 2,
+            "soleTrips": 2,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/permissions/read-rules.ts (2)"
+            ]
+          },
+          "engine-boot-dangling-canonical": {
+            "statements": 1,
+            "tripsContaining": 1,
+            "soleTrips": 1,
+            "verdict": "boot-cacheable",
+            "topModules": [
+              "src/card/render.ts (1)"
+            ]
+          },
+          "lexicon-id-to-name": {
+            "statements": 3,
+            "tripsContaining": 3,
+            "soleTrips": 3,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/lexicon.ts (3)"
+            ]
+          },
+          "point-row-by-key": {
+            "statements": 15,
+            "tripsContaining": 15,
+            "soleTrips": 15,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/retrieve.ts (15)"
+            ]
+          },
+          "lexicon-key-to-id": {
+            "statements": 2,
+            "tripsContaining": 2,
+            "soleTrips": 2,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/lexicon.ts (2)"
+            ]
+          }
+        }
+      },
+      "Taking_Stock": {
+        "trips": 21,
+        "statements": 74,
+        "bootStatements": 5,
+        "renderPhaseStatements": 73,
+        "families": {
+          "engine-boot-codenames": {
+            "statements": 3,
+            "tripsContaining": 2,
+            "soleTrips": 1,
+            "verdict": "boot-cacheable",
+            "topModules": [
+              "src/card/render/prefetch.ts (2)",
+              "src/card/fetch/codename.ts (1)"
+            ]
+          },
+          "one-trip-seat": {
+            "statements": 37,
+            "tripsContaining": 2,
+            "soleTrips": 2,
+            "verdict": "the-seat-itself",
+            "topModules": [
+              "src/card/one-trip/one-trip-fetch.ts (37)"
+            ]
+          },
+          "point-row-by-id": {
+            "statements": 2,
+            "tripsContaining": 2,
+            "soleTrips": 1,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/render/prefetch.ts (1)",
+              "src/card/fetch/retrieve.ts (1)"
+            ]
+          },
+          "closure-prefetch-batch": {
+            "statements": 19,
+            "tripsContaining": 10,
+            "soleTrips": 8,
+            "verdict": "pipeline-already-batched-rounds",
+            "topModules": [
+              "src/card/render.ts (13)",
+              "src/card/render/prefetch.ts (4)",
+              "src/card/permissions/read-rules.ts (1)"
+            ]
+          },
+          "search-count": {
+            "statements": 1,
+            "tripsContaining": 1,
+            "soleTrips": 0,
+            "verdict": "order-dependent-sequential",
+            "topModules": [
+              "src/card/render/prefetch.ts (1)"
+            ]
+          },
+          "reached-rules-cte": {
+            "statements": 4,
+            "tripsContaining": 3,
+            "soleTrips": 1,
+            "verdict": "pipeline-transport-only-statement-irreducible",
+            "topModules": [
+              "src/card/render/prefetch.ts (2)",
+              "src/card/render/help-popover.ts (1)",
+              "src/card/render.ts (1)"
+            ]
+          },
+          "engine-fold-type-names": {
+            "statements": 1,
+            "tripsContaining": 1,
+            "soleTrips": 0,
+            "verdict": "boot-cacheable",
+            "topModules": [
+              "src/card/render/prefetch.ts (1)"
+            ]
+          },
+          "engine-fold-head-reads": {
+            "statements": 1,
+            "tripsContaining": 1,
+            "soleTrips": 0,
+            "verdict": "boot-cacheable",
+            "topModules": [
+              "src/card/render/prefetch.ts (1)"
+            ]
+          },
+          "pair-exists-probe": {
+            "statements": 2,
+            "tripsContaining": 2,
+            "soleTrips": 2,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/lexicon.ts (2)"
+            ]
+          },
+          "template-link-id-read": {
+            "statements": 2,
+            "tripsContaining": 2,
+            "soleTrips": 2,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/permissions/read-rules.ts (2)"
+            ]
+          },
+          "point-row-by-key": {
+            "statements": 2,
+            "tripsContaining": 2,
+            "soleTrips": 2,
+            "verdict": "pipeline-pure-key-value",
+            "topModules": [
+              "src/card/fetch/retrieve.ts (2)"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "families": {
+    "off": {
+      "engine-boot-codenames": {
+        "statements": 15,
+        "verdict": "boot-cacheable"
+      },
+      "point-row-by-key": {
+        "statements": 152,
+        "verdict": "pipeline-pure-key-value"
+      },
+      "point-row-by-id": {
+        "statements": 108,
+        "verdict": "pipeline-pure-key-value"
+      },
+      "closure-prefetch-batch": {
+        "statements": 263,
+        "verdict": "pipeline-already-batched-rounds"
+      },
+      "search-count": {
+        "statements": 5,
+        "verdict": "order-dependent-sequential"
+      },
+      "reached-rules-cte": {
+        "statements": 20,
+        "verdict": "pipeline-transport-only-statement-irreducible"
+      },
+      "engine-fold-type-names": {
+        "statements": 5,
+        "verdict": "boot-cacheable"
+      },
+      "engine-fold-head-reads": {
+        "statements": 5,
+        "verdict": "boot-cacheable"
+      },
+      "lexicon-id-to-name": {
+        "statements": 25,
+        "verdict": "pipeline-pure-key-value"
+      },
+      "pair-exists-probe": {
+        "statements": 93,
+        "verdict": "pipeline-pure-key-value"
+      },
+      "template-link-id-read": {
+        "statements": 12,
+        "verdict": "pipeline-pure-key-value"
+      },
+      "lexicon-key-to-id": {
+        "statements": 7,
+        "verdict": "pipeline-pure-key-value"
+      },
+      "engine-boot-dangling-canonical": {
+        "statements": 1,
+        "verdict": "boot-cacheable"
+      }
+    },
+    "on-inline": {
+      "engine-boot-codenames": {
+        "statements": 15,
+        "verdict": "boot-cacheable"
+      },
+      "one-trip-seat": {
+        "statements": 185,
+        "verdict": "the-seat-itself"
+      },
+      "point-row-by-id": {
+        "statements": 26,
+        "verdict": "pipeline-pure-key-value"
+      },
+      "closure-prefetch-batch": {
+        "statements": 235,
+        "verdict": "pipeline-already-batched-rounds"
+      },
+      "search-count": {
+        "statements": 5,
+        "verdict": "order-dependent-sequential"
+      },
+      "reached-rules-cte": {
+        "statements": 20,
+        "verdict": "pipeline-transport-only-statement-irreducible"
+      },
+      "engine-fold-type-names": {
+        "statements": 5,
+        "verdict": "boot-cacheable"
+      },
+      "engine-fold-head-reads": {
+        "statements": 5,
+        "verdict": "boot-cacheable"
+      },
+      "point-row-by-key": {
+        "statements": 64,
+        "verdict": "pipeline-pure-key-value"
+      },
+      "pair-exists-probe": {
+        "statements": 87,
+        "verdict": "pipeline-pure-key-value"
+      },
+      "template-link-id-read": {
+        "statements": 12,
+        "verdict": "pipeline-pure-key-value"
+      },
+      "lexicon-key-to-id": {
+        "statements": 6,
+        "verdict": "pipeline-pure-key-value"
+      },
+      "engine-boot-dangling-canonical": {
+        "statements": 1,
+        "verdict": "boot-cacheable"
+      },
+      "lexicon-id-to-name": {
+        "statements": 3,
+        "verdict": "pipeline-pure-key-value"
+      }
+    }
+  },
+  "floor": {
+    "off": {
+      "About": {
+        "censusTrips": 202,
+        "censusStatements": 254,
+        "floorTrips": 3,
+        "floorStatementsStillExecuting": 254,
+        "orderDependentTrips": 1,
+        "note": "trips = pipeline POSTs; statements still execute server-side inside the batches (the V3-proven per-statement cost) — wall-time floor on the cross-region class is governed by statement elimination (seating), not POST count"
+      },
+      "Aikido": {
+        "censusTrips": 92,
+        "censusStatements": 113,
+        "floorTrips": 3,
+        "floorStatementsStillExecuting": 113,
+        "orderDependentTrips": 1,
+        "note": "trips = pipeline POSTs; statements still execute server-side inside the batches (the V3-proven per-statement cost) — wall-time floor on the cross-region class is governed by statement elimination (seating), not POST count"
+      },
+      "Eagle": {
+        "censusTrips": 51,
+        "censusStatements": 70,
+        "floorTrips": 3,
+        "floorStatementsStillExecuting": 70,
+        "orderDependentTrips": 1,
+        "note": "trips = pipeline POSTs; statements still execute server-side inside the batches (the V3-proven per-statement cost) — wall-time floor on the cross-region class is governed by statement elimination (seating), not POST count"
+      },
+      "Home": {
+        "censusTrips": 176,
+        "censusStatements": 209,
+        "floorTrips": 3,
+        "floorStatementsStillExecuting": 209,
+        "orderDependentTrips": 1,
+        "note": "trips = pipeline POSTs; statements still execute server-side inside the batches (the V3-proven per-statement cost) — wall-time floor on the cross-region class is governed by statement elimination (seating), not POST count"
+      },
+      "Taking_Stock": {
+        "censusTrips": 47,
+        "censusStatements": 65,
+        "floorTrips": 3,
+        "floorStatementsStillExecuting": 65,
+        "orderDependentTrips": 1,
+        "note": "trips = pipeline POSTs; statements still execute server-side inside the batches (the V3-proven per-statement cost) — wall-time floor on the cross-region class is governed by statement elimination (seating), not POST count"
+      }
+    },
+    "on-inline": {
+      "About": {
+        "censusTrips": 147,
+        "censusStatements": 232,
+        "floorTrips": 5,
+        "floorStatementsStillExecuting": 232,
+        "orderDependentTrips": 1,
+        "note": "trips = pipeline POSTs; statements still execute server-side inside the batches (the V3-proven per-statement cost) — wall-time floor on the cross-region class is governed by statement elimination (seating), not POST count"
+      },
+      "Aikido": {
+        "censusTrips": 55,
+        "censusStatements": 111,
+        "floorTrips": 5,
+        "floorStatementsStillExecuting": 111,
+        "orderDependentTrips": 1,
+        "note": "trips = pipeline POSTs; statements still execute server-side inside the batches (the V3-proven per-statement cost) — wall-time floor on the cross-region class is governed by statement elimination (seating), not POST count"
+      },
+      "Eagle": {
+        "censusTrips": 24,
+        "censusStatements": 78,
+        "floorTrips": 5,
+        "floorStatementsStillExecuting": 78,
+        "orderDependentTrips": 1,
+        "note": "trips = pipeline POSTs; statements still execute server-side inside the batches (the V3-proven per-statement cost) — wall-time floor on the cross-region class is governed by statement elimination (seating), not POST count"
+      },
+      "Home": {
+        "censusTrips": 109,
+        "censusStatements": 174,
+        "floorTrips": 5,
+        "floorStatementsStillExecuting": 174,
+        "orderDependentTrips": 1,
+        "note": "trips = pipeline POSTs; statements still execute server-side inside the batches (the V3-proven per-statement cost) — wall-time floor on the cross-region class is governed by statement elimination (seating), not POST count"
+      },
+      "Taking_Stock": {
+        "censusTrips": 21,
+        "censusStatements": 74,
+        "floorTrips": 5,
+        "floorStatementsStillExecuting": 74,
+        "orderDependentTrips": 1,
+        "note": "trips = pipeline POSTs; statements still execute server-side inside the batches (the V3-proven per-statement cost) — wall-time floor on the cross-region class is governed by statement elimination (seating), not POST count"
+      }
+    }
+  },
+  "topFamilies": {
+    "off": [
+      {
+        "family": "closure-prefetch-batch",
+        "statements": 263,
+        "verdict": "pipeline-already-batched-rounds"
+      },
+      {
+        "family": "point-row-by-key",
+        "statements": 152,
+        "verdict": "pipeline-pure-key-value"
+      },
+      {
+        "family": "point-row-by-id",
+        "statements": 108,
+        "verdict": "pipeline-pure-key-value"
+      },
+      {
+        "family": "pair-exists-probe",
+        "statements": 93,
+        "verdict": "pipeline-pure-key-value"
+      },
+      {
+        "family": "lexicon-id-to-name",
+        "statements": 25,
+        "verdict": "pipeline-pure-key-value"
+      }
+    ],
+    "on-inline": [
+      {
+        "family": "closure-prefetch-batch",
+        "statements": 235,
+        "verdict": "pipeline-already-batched-rounds"
+      },
+      {
+        "family": "one-trip-seat",
+        "statements": 185,
+        "verdict": "the-seat-itself"
+      },
+      {
+        "family": "pair-exists-probe",
+        "statements": 87,
+        "verdict": "pipeline-pure-key-value"
+      },
+      {
+        "family": "point-row-by-key",
+        "statements": 64,
+        "verdict": "pipeline-pure-key-value"
+      },
+      {
+        "family": "point-row-by-id",
+        "statements": 26,
+        "verdict": "pipeline-pure-key-value"
+      }
+    ]
+  }
+}

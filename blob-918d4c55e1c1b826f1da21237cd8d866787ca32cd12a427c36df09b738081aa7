@@ -1,0 +1,35 @@
+{
+  "row": "smell-prepare-remote-widget-cas",
+  "instrument": "C:/localProjects/brandonDojoTech/recovery/release/private-probes/private-tool-repairs-20261018/prepare-remote-widget-cas.mjs",
+  "instrumentSha256": "14378aeb45fa6fde8a0cbfd7cc5b81567e962b7ec0f3ded4bdf5df4cf870da16",
+  "at": "2026-10-25T04:56:00.000Z",
+  "command": "not run: the instrument's first act is live traffic to the cs-edge database, which this lane's guards forbid",
+  "outcome": "not-run",
+  "exit": null,
+  "refusal": null,
+  "mechanism": "the instrument reads the live cs-edge database over its v2 pipeline endpoint before it writes anything, and its one-shot outputs already exist, so a run would be live database traffic that ends in EEXIST.",
+  "verdict": "open",
+  "scope": "Read-only inspection of the instrument's own source and of the one-shot artifacts it wrote on 2026-10-18. No database traffic, no .com traffic, no credential read.",
+  "detail": {
+    "liveTrafficSourceLine": 5,
+    "liveTrafficDescription": "the sql() helper POSTs SELECT and WITH statements to CSEDGE_DB_URL's /v2/pipeline endpoint with the operator's read-only token",
+    "liveTrafficExcerpt": "const r=await fetch(creds.CSEDGE_DB_URL.replace(/^libsql:/,'https:').replace(/\\/+$/,'')+'/v2/pipeline',{method:'POST'",
+    "oneShotWriteSourceLine": 14,
+    "oneShotWriteDescription": "the before image is written with the exclusive-create flag into remote-widget-cas/before.json",
+    "oneShotWriteExcerpt": "const backupFile=path.join(root,'before.json');fs.writeFileSync(backupFile,JSON.stringify(backup,null,2),{flag:'wx'});",
+    "oneShotOutputs": [
+      { "name": "before.json", "bytes": 18875, "writtenAt": "2026-10-18T14:35" },
+      { "name": "plan.json", "bytes": 21806, "writtenAt": "2026-10-18T14:35" },
+      { "name": "after.json", "bytes": 6847, "writtenAt": "2026-10-18T14:35" },
+      { "name": "apply-receipt.json", "bytes": 1312, "writtenAt": "2026-10-18T14:35" },
+      { "name": "hosted-content-view-readback.json", "bytes": 6322, "writtenAt": "2026-10-18T14:38" },
+      { "name": "hosted-card-*.html", "count": 12, "writtenAt": "2026-10-18T14:38" }
+    ],
+    "applyReceipt": { "pass": true, "contentWritten": true, "at": "2026-10-18T21:35:53.298Z" },
+    "hostedReadback": { "pass": true, "rows": 12, "at": "2026-10-18T21:38:09.942Z" },
+    "twoSufficientReasons": [
+      "the instrument's first act is live cs-edge database traffic, which an agent lane must not make",
+      "its exclusive-create outputs already exist, so the run would end in EEXIST after that traffic"
+    ]
+  }
+}

@@ -1,0 +1,168 @@
+{
+  "row": "update-read-rule",
+  "event": "update_read_rule",
+  "pinned_file": "card-mod-permissions-0.20.0/set/all/permissions.rb",
+  "pinned_declaration": "event :update_read_rule do",
+  "pinned_declaration_line": 11,
+  "pinned_body": "  without_timestamps do\n    reset_patterns # why is this needed?\n    set_read_rule\n    Card.where(id: id).update_all read_rule_id: read_rule_id,\n                                  read_rule_class: read_rule_class\n    expire :shared\n    update_field_read_rules\n  end",
+  "pinned_body_lines": [
+    {
+      "line": 12,
+      "text": "  without_timestamps do"
+    },
+    {
+      "line": 13,
+      "text": "    reset_patterns # why is this needed?"
+    },
+    {
+      "line": 14,
+      "text": "    set_read_rule"
+    },
+    {
+      "line": 15,
+      "text": "    Card.where(id: id).update_all read_rule_id: read_rule_id,"
+    },
+    {
+      "line": 16,
+      "text": "                                  read_rule_class: read_rule_class"
+    },
+    {
+      "line": 17,
+      "text": "    expire :shared"
+    },
+    {
+      "line": 18,
+      "text": "    update_field_read_rules"
+    },
+    {
+      "line": 19,
+      "text": "  end"
+    }
+  ],
+  "executed": true,
+  "notes": [],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a rule that changed: the body rewrites the read rule on the card and its fields, without timestamps",
+      "supplied_answers": {
+        "attributes": [
+          "id"
+        ],
+        "returns": [
+          "permission_rule_id_and_class"
+        ],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "without_timestamps",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "Card.record_timestamps=",
+          "arguments": [
+            false
+          ],
+          "under": ""
+        },
+        {
+          "call": "reset_patterns",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "set_read_rule",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "permission_rule_id_and_class",
+          "arguments": [
+            "read"
+          ],
+          "under": ""
+        },
+        {
+          "call": "read_rule_id=",
+          "arguments": [
+            7
+          ],
+          "under": ""
+        },
+        {
+          "call": "read_rule_class=",
+          "arguments": [
+            "Rule"
+          ],
+          "under": ""
+        },
+        {
+          "call": "id",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "Card.where",
+          "arguments": [
+            {
+              "id": 7
+            }
+          ],
+          "under": ""
+        },
+        {
+          "call": "read_rule_id",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "read_rule_class",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "expire",
+          "arguments": [
+            "shared"
+          ],
+          "under": ""
+        },
+        {
+          "call": "update_field_read_rules",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "Card.record_timestamps=",
+          "arguments": [
+            true
+          ],
+          "under": ""
+        }
+      ],
+      "writes": [
+        {
+          "attribute": "read_rule_id",
+          "value": 7
+        },
+        {
+          "attribute": "read_rule_class",
+          "value": "Rule"
+        }
+      ],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": ""
+      }
+    }
+  ]
+}

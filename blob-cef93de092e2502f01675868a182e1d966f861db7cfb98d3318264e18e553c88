@@ -1,0 +1,36 @@
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+
+const fixture = "reference-harness/fixtures/synthetic-v1";
+const scenario = "create-topic-with-fields-as-admin";
+const rows = (path: string) => readFileSync(path, "utf8").trim().split("\n").map(line => JSON.parse(line));
+
+describe("reference adapter notification mode", () => {
+  it.each([undefined, "off"])("records and applies mode %j without changing captured evidence", (mode) => {
+    const out = mkdtempSync(join(tmpdir(), "decko-notify-adapter-"));
+    try {
+      const env = { ...process.env };
+      delete env.DECKO_STRICT_PARITY_MAIL_UNFOLLOW_REFUSAL;
+      if (mode) env.DECKO_STRICT_PARITY_MAIL_UNFOLLOW_REFUSAL = mode;
+      const run = spawnSync(process.execPath, [
+        "reference-harness/runner/run.mjs", "--adapter", "reference-harness/adapters/ts/adapter.json",
+        "--fixture", fixture, "--out", out, "--kinds", "scenarios", "--filter", `^${scenario}$`,
+      ], { env, encoding: "utf8", timeout: 60_000, windowsHide: true });
+      expect(run.status, run.stderr).toBe(0);
+      const actual = rows(join(out, "scenarios.jsonl"))[0].steps[0].result.mail;
+      const expected = rows(join(fixture, "expected/scenarios.jsonl")).find(row => row.id === scenario).steps[0].result.mail;
+      expect(actual).toHaveLength(1);
+      if (mode === undefined) expect(actual).toEqual(expected);
+      else {
+        // The bare unfollow URL ends the text part. Assert the entire capture,
+        // including origin and envelope, with only the approved suffix added.
+        expect(actual).toEqual([{ ...expected[0], text: expected[0].text + "&success%5Bredirect%5D=soft" }]);
+      }
+      const meta = JSON.parse(readFileSync(join(out, "run-meta.json"), "utf8"));
+      expect(meta.runs.scenarios.engine.version.mail_unfollow_refusal).toBe(mode ?? "on");
+    } finally { rmSync(out, { recursive: true, force: true }); }
+  }, 65_000);
+});

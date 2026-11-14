@@ -1,0 +1,150 @@
+import { afterEach, beforeEach, expect, it } from 'vitest';
+import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { LocalSqliteDriver } from '../../../src/server/drivers/local-sqlite.js';
+import { openSameDatabase } from '../../../src/server/same-database.js';
+import { FetchEngine } from '../../../src/card/fetch.js';
+import { CardActionEngine } from '../../../src/card/actions/card-action-engine.js';
+import { actorBot } from '../../../src/card/auth/actor.js';
+import { defaultDeckLoader } from '../../../src/card/mod-loader/default-mod-deck.js';
+import { observedModEventRuntime } from '../../../src/server/write-routes.js';
+import { ruleContentForCard } from '../../../src/card/actions/rule-content-walk.js';
+import { findRule } from '../../../src/card/rules/lookup.js';
+import { CountingRenderDriver } from '../render/render-test-storage.js';
+import { scratchDir } from '../../support/scratch-dir.mjs';
+
+// Synthetic local database controls only. The unchanged action reproduction
+// separately supplies a rejecting fake verifier; no external service is used.
+let dir: string, writerDb: LocalSqliteDriver, readerDb: LocalSqliteDriver;
+let writerCount: CountingRenderDriver, readerCount: CountingRenderDriver;
+let writer: FetchEngine, reader: FetchEngine, admin: CardActionEngine;
+let book: number, specific: number, trunk: number, setting: number;
+const releases: Array<() => void> = [];
+const observations: unknown[] = [];
+const observationDir = scratchDir('rule177-content-observations-');
+beforeEach(async () => {
+  mkdirSync(resolve('tmp'), { recursive: true });
+  dir = mkdtempSync(resolve('tmp/security-rule177-content-'));
+  const database = resolve(dir, 'deck.sqlite3');
+  copyFileSync(resolve('reference-harness/fixtures/synthetic-v1/deck/deck.sqlite3'), database);
+  writerDb = new LocalSqliteDriver({ path: database });
+  await openSameDatabase(writerDb); defaultDeckLoader();
+  writerCount = new CountingRenderDriver(writerDb);
+  writer = new FetchEngine(writerCount); writer.installNameEnvironment();
+  admin = new CardActionEngine(writer, { actor: await actorBot(writerCount),
+    modEvents: await observedModEventRuntime({ driver: writerCount, fetcher: writer }) });
+  book = (await admin.createCard({ name: 'Independent Content Book', typeName: 'Cardtype' })).cardId;
+  const global = await writer.fetchByName('*all+*captcha');
+  if (global) await admin.updateCard({ cardId: global.id!, content: '1' });
+  else await admin.createCard({ name: '*all+*captcha', content: '1' });
+  specific = (await admin.createCard({ name: 'Independent Content Book+*type+*captcha', content: '0' })).cardId;
+  trunk = (await writer.fetchByName('Independent Content Book+*type'))!.id!;
+  setting = (await writer.codenames.id('captcha'))!;
+  readerDb = new LocalSqliteDriver({ path: database });
+  readerCount = new CountingRenderDriver(readerDb);
+  reader = new FetchEngine(readerCount);
+  releases.push(reader.holdTemporaryCaches(), writer.holdTemporaryCaches());
+  await read(writer, '0', false); await read(reader, '0', false);
+});
+afterEach(() => {
+  while (releases.length) releases.pop()!();
+  readerDb?.close(); writerDb?.close();
+  if (dir) rmSync(dir, { recursive: true });
+  writeFileSync(resolve(observationDir, 'content-observations.json'), JSON.stringify(observations, null, 2) + '\n');
+});
+const input = () => ({ name: 'Synthetic content subject', isNew: true,
+  typeId: book, typeName: 'Independent Content Book' });
+async function read(fetcher: FetchEngine, expected: string | undefined, warm = true) {
+  const counter = fetcher === writer ? writerCount : readerCount;
+  const before = counter.snapshot(), start = counter.statements.length;
+  const actual = await ruleContentForCard(fetcher, input(), 'captcha');
+  const after = counter.snapshot();
+  const cost = { statements: after.statements - before.statements, roundTrips: after.roundTrips - before.roundTrips };
+  observations.push({ test: expect.getState().currentTestName, connection: fetcher === writer ? 'writer' : 'reader',
+    actual: actual === undefined ? { undefined: true } : actual, warm, cost, sql: counter.statements.slice(start) });
+  expect(actual).toBe(expected);
+  if (warm) expect(cost).toEqual({ statements: 1, roundTrips: 1 });
+}
+it('synthetic local content: retained request-held reader follows ordinary on and off saves without mutating cached records', async () => {
+  const cached = await reader.fetchById(specific);
+  expect(cached?.dbContent).toBe('0');
+  for (const content of ['1', '0', '1']) {
+    await admin.updateCard({ cardId: specific, content });
+    expect((await readerDb.query<{ db_content: string }>('SELECT db_content FROM cards WHERE id=?', [specific])).rows[0]!.db_content).toBe(content);
+    await read(reader, content);
+    const found = await findRule(reader, input(), '*captcha', 'captcha');
+    expect(found?.rule).not.toBe(cached); expect(found?.rule.dbContent).toBe(content);
+    expect(cached?.dbContent).toBe('0');
+    expect(await reader.fetchById(specific)).toBe(cached);
+  }
+  reader.resetCaches();
+  await read(reader, '1', false); await read(reader, '1');
+});
+it('synthetic local content: commit becomes visible to both connections while held cached objects stay unchanged', async () => {
+  const cachedWriter = await writer.fetchById(specific), cachedReader = await reader.fetchById(specific);
+  await writerDb.transaction(async () => {
+    await writerDb.query('UPDATE cards SET db_content=? WHERE id=?', ['1', specific]);
+    await read(writer, '1'); await read(reader, '0');
+    expect(cachedWriter?.dbContent).toBe('0'); expect(cachedReader?.dbContent).toBe('0');
+  });
+  await read(writer, '1'); await read(reader, '1');
+  expect(cachedWriter?.dbContent).toBe('0'); expect(cachedReader?.dbContent).toBe('0');
+});
+it('synthetic local content: rollback restores storage values without poisoning request-held records', async () => {
+  const cached = await writer.fetchById(specific);
+  await expect(writerDb.transaction(async () => {
+    await writerDb.query('UPDATE cards SET db_content=? WHERE id=?', ['1', specific]);
+    await read(writer, '1'); await read(reader, '0');
+    expect(cached?.dbContent).toBe('0');
+    throw new Error('synthetic content rollback');
+  })).rejects.toThrow('synthetic content rollback');
+  await read(writer, '0'); await read(reader, '0');
+  expect(cached?.dbContent).toBe('0');
+});
+it('synthetic local content: null and empty stored values do not fall back to stale cached content', async () => {
+  const cached = await reader.fetchById(specific);
+  for (const content of [null, '', '1']) {
+    await writerDb.query('UPDATE cards SET db_content=? WHERE id=?', [content, specific]);
+    await read(reader, content ?? undefined);
+    const found = await findRule(reader, input(), '*captcha', 'captcha');
+    expect(found?.rule.id).toBe(specific); expect(found?.rule.dbContent).toBe(content ?? undefined);
+    expect(cached?.dbContent).toBe('0');
+  }
+});
+it('synthetic local content: Set and Setting qualification still excludes cached candidates', async () => {
+  const basic = await writer.codenames.id('basic');
+  for (const id of [trunk, setting]) {
+    const original = (await writerDb.query<{ type_id: number }>('SELECT type_id FROM cards WHERE id=?', [id])).rows[0]!.type_id;
+    await writerDb.query('UPDATE cards SET type_id=? WHERE id=?', [basic, id]);
+    if (id === trunk) {
+      // The first fallback has not warmed the global candidate. A subsequent
+      // fallback qualifies two candidates: rejected specific plus valid global.
+      await read(reader, '1', false);
+      const before = readerCount.snapshot();
+      await read(reader, '1', false);
+      const after = readerCount.snapshot();
+      expect({ statements: after.statements - before.statements,
+        roundTrips: after.roundTrips - before.roundTrips }).toEqual({ statements: 2, roundTrips: 2 });
+    }
+    else expect(await ruleContentForCard(reader, input(), 'captcha')).toBeUndefined();
+    await writerDb.query('UPDATE cards SET type_id=? WHERE id=?', [original, id]);
+    await read(reader, '0');
+  }
+  expect(await findRule(reader, input(), '*captcha', 'other_captcha')).toBeUndefined();
+});
+it('synthetic local content: an omitted driver projection throws instead of returning stale cache', async () => {
+  const cached = await reader.fetchById(specific);
+  const query = readerCount.query.bind(readerCount);
+  readerCount.query = async <T = unknown>(sql: string, params: unknown[]) => {
+    const result = await query<T>(sql, params);
+    if (!sql.includes('rules.db_content AS rule_content')) return result;
+    return { ...result, rows: result.rows.map(row => {
+      const { rule_content, ...rest } = row as Record<string, unknown>;
+      void rule_content; return rest as T;
+    }) };
+  };
+  try {
+    await expect(ruleContentForCard(reader, input(), 'captcha')).rejects.toThrow('Qualified rule read omitted its current content');
+    expect(cached?.dbContent).toBe('0');
+  } finally { readerCount.query = query; }
+});

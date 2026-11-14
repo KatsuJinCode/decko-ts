@@ -1,0 +1,65 @@
+# Independent parity assignment verification
+
+Assignment: issues 164, 165, 176, 178 and 182, branch
+`fleet/parity-a-20261101`. Tested integration source:
+`3baed9b6b` (full revision recorded in the adjacent receipt).
+
+All five repairs already exist in the assigned integration base. No production
+or test edit was necessary. This report records independent execution rather
+than replaying existing implementation. Issues remain open for the lead's
+acceptance and closure decision.
+
+## Per-issue result
+
+| Issue | Fresh execution | Existing repair and Ruby evidence |
+| --- | --- | --- |
+| 164 | Two unchanged separator controls pass | Empty Custom pushes an empty output position before join. `cardtype-empty-group-separator-fix-2026-10-31.md` records the immutable one-fail/one-pass control and two-pass repair, mapping Ruby map/next/flatten/join. Full retained-page comparison is not repeated here. |
+| 165 | Eight original compound controls and ten independent connection attacks pass | `e1fca0096` integrates current transactional identity reads. The independent stale-positive, stale-negative, overlapping-create, rollback and unrelated-storage-error controls now pass. No new native Ruby concurrency run is claimed. |
+| 176 | All 15 unchanged head/type-event/pointer cases pass | `qualified-rule-compatibility-fixtures-2026-10-31.md` records exact-parent red/green fixture qualification. Set trunks and Setting tags qualify; rule eligibility has not been relaxed. |
+| 178 | All 18 original create cases pass | `82182cb3c` qualifies the automatic-name fixture's Setting tag. `autoname-qualified-fixture-2026-10-31.md` records five selected-source failures before qualification and preserves original assertion bytes. |
+| 182 | All seven unchanged comment HTTP cases pass | `a51d6bea1` clears commentAuthor at both existing session reset sites. The explicit sign-out HTTP regression passes. Issue 182 retains the committed before-fix reproduction `546e70a5f`. The save-event sign-out reset is source-inspected, not separately accepted as account deletion. |
+
+The first selection executes 60 tests in eight files, with zero failures,
+errors or skips. Denominators are read directly from JUnit; cases are not
+model graded, retried or supplied by a result cache. Compilation/OS caches may
+be warm.
+
+## Fresh original Ruby controls
+
+A separate selection executes 36 tests in eight files, zero failures/errors/
+skips. Fourteen cases execute original card-1.110.0 rule/cache/preference SQL and
+methods through Ruby 3.4.11 and SQLite-backed minimal Card adapters against
+the same synthetic fixture data. Native outputs and source hashes are retained
+in the adjacent receipt. This is not Rails, ActiveRecord, RSpec, fresh page
+capture, hosted Bunny or release acceptance.
+
+The original cache.rb SHA-256 observed by those native subprocesses is
+`17a240a32aed7c2ea07c69df21bfb78190a4cd501583171f2b23403de1f7736d`.
+The two selections cover disjoint files: 96 executed local cases in 16 files.
+
+## Reproduction
+
+```text
+node node_modules/vitest/vitest.mjs run tests/card/mod-loader/adversarial-cardtype-empty-group.test.ts tests/card/actions/create.test.ts tests/card/actions/compound-name-conflict.test.ts tests/card/actions/compound-conflict-connections.attack.test.ts tests/card/mod-loader/card-mod-format-async-head-views.test.ts tests/card/mod-loader/core-mod-type-events.test.ts tests/card/mod-loader/pointer-options-all-arm-default-limit.test.ts tests/server/comment-author-http-session.test.ts --reporter=dot --reporter=junit --outputFile=.runtime/fleet-parity-a-initial.xml
+
+node node_modules/vitest/vitest.mjs run tests/card/rules/lookup-qualification.test.ts tests/card/rules/lookup-key-identity.test.ts tests/card/rules/receiving-pattern-name-scope.test.ts tests/card/rules/adversarial-rule-cache-key.test.ts tests/card/rules/adversarial-receiving-pattern-names.test.ts tests/card/rules/adversarial-pattern-scope-boundaries.test.ts tests/card/rules/adversarial-original-rule-storage.test.ts tests/card/rules/lookup-save-revocation.test.ts --reporter=dot --reporter=junit --outputFile=.runtime/fleet-parity-a-ruby-controls.xml
+```
+
+The first attempted command failed before collection because this existing
+worktree lacked node_modules. A junction to the primary lead's existing
+node_modules restored local execution without download or install. No product
+failure is inferred from that missing local dependency route. The tests then
+ran once per selection; there was no failing-case retry.
+
+## Custody and handoff
+
+Only this report and its adjacent receipt are authored here. Original source,
+tests, expected output and shared test policy remain unchanged. Every owned
+SQLite handle/listener is closed by the existing tests; their scratch cleanup
+assertions pass. No hosted resource, model call, deployment, install or new
+worktree was used. Retain ignored XML/native observations in this active
+worktree for review; the receipt preserves their hashes and observations.
+
+The lead should reconcile these already-integrated fixes with the open issue
+board, then carry outstanding retained-page/native/full-release gates through
+the existing release process. Do not merge duplicate production patches.

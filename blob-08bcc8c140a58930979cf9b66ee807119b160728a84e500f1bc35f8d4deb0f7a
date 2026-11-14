@@ -1,0 +1,44 @@
+# Explicit window suppression for test children
+
+The combined test inventory contained 34 statically imported Node child-process
+calls in 23 files without an explicit `windowsHide: true` option. An inert
+execution of the exact staging boot function confirmed the omitted option;
+it created no actual child or window. This change supplies the option after
+other options, including spreads, without changing executable paths, arguments,
+environment values, callbacks, test identities or expected results.
+
+The added Node regression checks the declared test inventory and rejects
+missing, false, overwritten and computed-key lookalike options. It recognizes
+named and namespace imports, aliases and lexical shadowing. Its scope is
+statically imported Node child-process APIs, not universal process observation.
+
+Validation used the existing local runtime, without result-cache acceptance,
+automatic retry or model grading:
+
+- Final five guard cases: five passed, zero failed/skipped; native exit 0.
+- The same final guard with the exact `e80a0ee984efcb91363c20956ab8a1b72bda8d37`
+  parent inputs supplied in memory: four passed, one failed; native exit 1.
+  The inventory case identifies all 34 omissions. No source file was rolled back.
+- AST comparison before/after the 23-file edit found only the added options.
+  Their raw hashes also match the saved source at
+  `811f99c4b2711016c4b7caefd2a5eb1c007b8400`.
+- TypeScript `--noEmit` passed. Gate classification passed for 1,517 files,
+  including 188 Node files. These are inventory counts, not executed cases.
+- Platform scan of all 24 changed executable paths found zero command hits.
+  Whole-repository discovery separately failed with
+  `platform-scan-discovery-incomplete`; no repository-wide clearance is claimed.
+- Read-only whitespace validation with `core.whitespace=cr-at-eol` passed.
+  The existing CRLF file retains its line endings; no Git setting was changed.
+
+The source was preserved at the named immutable checkpoint and continued in
+the single admitted combined checkout. Machine receipts retain the edit hashes,
+parent-input control and native results under `fleet-briefs/routing-20261101/`
+with the `lead-768-` prefix. One initial author invocation used an invalid
+Windows `--import` spelling and failed before the guard; its output is retained
+separately. Successful controls use a file URL or the local installed runtime.
+Compiler and OS caches may be warm.
+
+This fixes the explicit window option only. The separate readiness-failure
+child ownership and cleanup defects in issue #262 remain open. No full-host,
+combined-suite, Ruby application, hosted or release acceptance follows from
+these static/inert controls. Independent exact-head review remains required.

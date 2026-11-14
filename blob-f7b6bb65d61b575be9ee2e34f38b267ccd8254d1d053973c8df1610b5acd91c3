@@ -1,0 +1,79 @@
+# Saved repair and evidence checkpoint
+
+This checkpoint advances the complete-port assignment; it establishes no new
+site score, runtime/backend parity, deployed behavior or release acceptance.
+
+## Saved work
+
+- Engine `974c8befac5b702aff3243eb29cd49597c0fa906`, private branch
+  `codex/port-identity-integration-20261029`: API-key capture instrumentation,
+  strict actor-evidence preflight, probe ownership controls and explicitly
+  historical byte-diagnostic labels. Report and raw results:
+  `api-key-capture-evidence-2026-10-30.md` and sibling files. Engine issue 63
+  comment 6531879058 was read back exactly. Independent and qualified native
+  capture acceptance remain pending.
+- Consumer `9b63efebdc9774e09d500574dffb9fc9d42b8a31`, private branch
+  `codex/atlas-nine-corrections-20261029`: revised SVG subtree boundaries,
+  actual self-closing token handling and spacing counterexamples. The earlier
+  revision 511a7146 was independently rejected; that rejection is preserved.
+  The revised source and raw evidence are in
+  `assistant-drafts/site-atlas-adversarial-review-2026-10-30/SVG-CORRECTION-R2.md`.
+  Consumer issue 114 comment 6531879075 was read back exactly.
+- Consumer `a91602f9f1a5cdd4790db36fecf0fc227f2f2c6a`: exact-source synthetic
+  reproductions of backup-loader ID collision and created-card inventory
+  defects, filed as private consumer issue 115 with exact body readback.
+
+## Coordination and qualification
+
+The consumer lead received the frozen SVG revision through its prompt-submit
+hook at 19:32:02 UTC and acknowledged that the independent reviewer is
+challenging it. No corrected regrade is accepted here.
+
+The 17-ID privacy alert was not evidence that the corresponding private cards
+were exposed. The consumer lead traced those IDs to test-created cards with
+different identities after database ID reuse. The actual loader's ID-only
+classification defect was independently reproduced. No containment deployment
+or bulk reload was performed.
+
+The consumer lead reported that MiniMax Code in the consumer folder (Relay
+1199) stopped with an error. Its queued corrective messages are not treated
+as received or replayed. A Claude Haiku subagent under the consumer lead now
+owns loader issue 115 on `loader-identity-fixes-20261030`; its exact repair
+commit remains pending. The loader is not a cutover content-proof prerequisite.
+
+Source and local helper verification do not establish the private reference
+runtime. All six HIGH findings from that runtime review remain open. The
+previously blocked retirement-platform test was not rerun, and no approval
+mechanism was edited. Original databases and live sites were not opened for
+new capture by this checkpoint.
+
+## Resource custody
+
+Git blob size deltas for the saved changes, measured at the named commits:
+
+- Engine `fbaad66ec..974c8befa`: 12 changed paths, 44,082 bytes added and
+  270 bytes removed.
+- Consumer `511a71469..9b63efebd`: 27 changed paths, 160,074 bytes added and
+  zero bytes removed.
+
+These describe tracked file content, not object-store or filesystem allocation,
+and exclude this subsequent checkpoint receipt. Three disposable headless
+browser profiles were separately removed through the protected regenerable
+route: 493 files and 18,197,659 logical bytes. Their Chrome processes were
+verified absent first; the canonical shutdown commands and listener checks had
+completed. Observations, daemon logs and shutdown receipts remain registered.
+No archive, upload, deployment, paid model verification or new worktree was
+created by these checks. Unrelated consumer work-applet state is preserved.
+
+## Active next repair
+
+Tracked on private engine issue 91. The issue body was prepared from the
+retained exact-source reproduction, without running the full release pipeline.
+
+The actual release-check classifier was inspected and isolated. It admits a
+started exit-1 runner as PASS when reported counters pass, and admits one
+passing/three skipped assertions as PASS. Its known-baseline-only completion
+also differs from complete acceptance. Raw reproduction:
+`.runtime/release-classifier-before-20261030.json`. Correct its runner/evidence
+admission and Node coverage, retain baseline history, and independently
+challenge the replacement before relying on its release verdict.

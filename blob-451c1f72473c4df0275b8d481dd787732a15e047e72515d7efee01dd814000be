@@ -1,0 +1,48 @@
+import { afterEach, beforeAll, expect, it } from "vitest";
+import { spawnSync } from "node:child_process";
+import { resolve } from "node:path";
+import { readFileSync } from "node:fs";
+import { defineMod } from "../../../src/card/mod-loader/mod-dsl.js";
+import { ModLoader } from "../../../src/card/mod-loader.js";
+import { createRenderTestStorage, seedCard } from "../render/render-test-storage.js";
+
+const cases = [
+  { id: "array-unicode-blanks", tag: "div", defaults: {},
+    options: { class: ["", false, "\u0085", "\uFEFF", 0, ["a", null, "a"]] }, content: "cake" },
+  { id: "default-nel-blank", tag: "div", defaults: { class: "\u0085" }, options: { class: "call" }, content: "cake" },
+  { id: "default-bom-present", tag: "div", defaults: { class: "\uFEFF" }, options: { class: "call" }, content: "cake" },
+  { id: "false-default-array", tag: "div", defaults: { class: false }, options: { class: [false, "x"] }, content: "cake" },
+  { id: "data-json-and-scalar", tag: "div", defaults: {}, options: { data: {
+    object: { html: "<>&", separators: "\u2028\u2029", literal: "\\u003c" },
+    scalar: "<>&\u2028\u2029", array: ["<>&\u2028\u2029"],
+  } }, content: "cake" },
+] as const;
+let reference: { baseline: unknown; cases: Array<{ id: string; body: string }> };
+beforeAll(() => {
+  const native = spawnSync("ruby", [resolve("tests/card/mod-loader/ruby-adversarial-tag-values-probe.rb"),
+    "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems"], {
+    windowsHide: true, encoding: "utf8", input: JSON.stringify(cases),
+  });
+  expect(native.status, native.stderr).toBe(0);
+  reference = JSON.parse(native.stdout);
+  const fixture = JSON.parse(readFileSync(resolve("tests/card/mod-loader/fixtures/declared-tag-wrapper-native.json"), "utf8"));
+  delete fixture.probeSha256;
+  expect(reference.baseline).toEqual(fixture);
+  console.info("NATIVE_TAG_VALUE_EDGES", JSON.stringify(reference));
+});
+const cleanup: Array<() => void> = [];
+afterEach(() => { while (cleanup.length) cleanup.pop()!(); });
+for (const request of cases) it(`matches native tag edge: ${request.id}`, async () => {
+  const storage = await createRenderTestStorage(); cleanup.push(() => storage.close());
+  await seedCard(storage, { id: 2, name: "RichText", codename: "basic" });
+  await seedCard(storage, { id: 500, name: "Tag Example", typeId: 2 });
+  const manifest = defineMod("tag_value_edges", ({ set }) => set("all/tag_value_edges", ({ format }) =>
+    format("html", ({ wrapper, view }) => {
+      wrapper("edge", request.tag, request.defaults);
+      view("value_edge", { perms: "none" }, ctx => ctx.fmt.callFormatMethod("wrap_with_edge", "cake", request.options) as string);
+    })));
+  const loader = new ModLoader([{ manifest }], {}); cleanup.push(() => loader.reset());
+  loader.load(); storage.engine.modLoader = loader;
+  expect({ id: request.id, body: await storage.engine.render("Tag Example", "value_edge") })
+    .toEqual(reference.cases.find(row => row.id === request.id));
+});

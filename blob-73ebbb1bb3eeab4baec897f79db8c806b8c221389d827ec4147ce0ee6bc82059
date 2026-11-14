@@ -1,0 +1,227 @@
+{
+  "captures": {
+    "q1-structure-rule-form.json": {
+      "formCount": 2,
+      "forms": [
+        {
+          "action": "/update/Ada_Admin+*enabled_roles",
+          "fields": [
+            {
+              "cls": "",
+              "hidden": true,
+              "name": "utf8",
+              "type": "hidden",
+              "value": "\u2713"
+            },
+            {
+              "cls": "",
+              "hidden": true,
+              "name": "success[reload]",
+              "type": "hidden",
+              "value": "true"
+            },
+            {
+              "cls": "",
+              "hidden": true,
+              "name": "card[type_id]",
+              "type": "hidden",
+              "value": "481"
+            },
+            {
+              "cls": "d0-card-content form-control",
+              "hidden": true,
+              "name": "card[content]",
+              "type": "hidden",
+              "value": "Anyone Signed In\nAdministrator"
+            },
+            {
+              "cls": "pointer-checkbox-button _submit-on-chang",
+              "hidden": false,
+              "name": "pointer_checkbox-ada_admin-Xenabled_role-2",
+              "type": "checkbox",
+              "value": "Anyone Signed In"
+            },
+            {
+              "cls": "pointer-checkbox-button _submit-on-chang",
+              "hidden": false,
+              "name": "pointer_checkbox-ada_admin-Xenabled_role-3",
+              "type": "checkbox",
+              "value": "Administrator"
+            }
+          ]
+        },
+        {
+          "action": "/card/create",
+          "fields": [
+            {
+              "cls": "",
+              "hidden": true,
+              "name": "utf8",
+              "type": "hidden",
+              "value": "\u2713"
+            },
+            {
+              "cls": "",
+              "hidden": true,
+              "name": "success[mark]",
+              "type": "hidden",
+              "value": "_self"
+            },
+            {
+              "cls": "",
+              "hidden": true,
+              "name": "card[name]",
+              "type": "hidden",
+              "value": "Disc_Book_mvmv6x4d"
+            },
+            {
+              "cls": "",
+              "hidden": true,
+              "name": "card[type_id]",
+              "type": "hidden",
+              "value": "3"
+            },
+            {
+              "cls": "tinymce-textarea d0-card-content form-co",
+              "hidden": false,
+              "name": "card[subcards][+description][content]",
+              "type": "textarea",
+              "value": ""
+            },
+            {
+              "cls": "",
+              "hidden": true,
+              "name": "card[subcards][+description][type_id]",
+              "type": "hidden",
+              "value": "2"
+            }
+          ]
+        }
+      ],
+      "status": 200
+    },
+    "q2-after-type-row-click.json": {
+      "allForms": [
+        {
+          "action": "/*search",
+          "cls": "search-box-form",
+          "fields": [
+            "utf8",
+            "query[keyword]"
+          ],
+          "inModal": false
+        },
+        {
+          "action": "/update/Ada_Admin+*enabled_roles",
+          "cls": "card-form slotter autosave",
+          "fields": [
+            "utf8",
+            "success[reload]",
+            "card[type_id]",
+            "card[content]",
+            "pointer_checkbox-ada_admin-Xenabled_role-1",
+            "pointer_checkbox-ada_admin-Xenabled_role-2"
+          ],
+          "inModal": false
+        },
+        {
+          "action": "/update/Disc_TypeChange_mvmv6x4d",
+          "cls": "card-form slotter autosave",
+          "fields": [
+            "utf8",
+            "_method",
+            "card[type]",
+            "assign",
+            "card[last_action_id_before_edit]",
+            "card[content]"
+          ],
+          "inModal": true
+        },
+        {
+          "action": "/card/create",
+          "cls": "card-form slotter",
+          "fields": [
+            "utf8",
+            "card[name]",
+            "card[comment]"
+          ],
+          "inModal": true
+        }
+      ],
+      "mainText": "Disc_TypeChange_mvmv6x4d\nsubject Disc_TypeChange_mvmv6x4d",
+      "modalPresent": true,
+      "typeFields": [
+        {
+          "formAction": "/update/Ada_Admin+*enabled_roles",
+          "inModal": false,
+          "name": "card[type_id]",
+          "options": null,
+          "tag": "INPUT",
+          "value": "481"
+        },
+        {
+          "formAction": "/update/Disc_TypeChange_mvmv6x4d",
+          "inModal": true,
+          "name": "card[type]",
+          "options": [
+            "RichText",
+            "PlainText",
+            "Markdown",
+            "Phrase",
+            "HTML",
+            "Number",
+            "Toggle",
+            "Date"
+          ],
+          "tag": "SELECT",
+          "value": "PlainText"
+        }
+      ]
+    },
+    "q2-board-links.json": {
+      "links": [
+        {
+          "href": "/Disc_TypeChange_mvmv6x4d/name_form",
+          "text": "edit"
+        },
+        {
+          "href": "/PlainText",
+          "text": "PlainText"
+        },
+        {
+          "href": "/Disc_TypeChange_mvmv6x4d/board_type_formgroup",
+          "text": "edit"
+        },
+        {
+          "href": "/delete/Disc_TypeChange_mvmv6x4d?success%5Bmark%5D=%2Aprevious&success%5Bredirect%5D=true",
+          "text": "Delete"
+        },
+        {
+          "href": "#tab-disc_type_change_mvmv6x4d-3-engage",
+          "text": "Engage"
+        },
+        {
+          "href": "#tab-disc_type_change_mvmv6x4d-4-history",
+          "text": "History"
+        },
+        {
+          "href": "#tab-disc_type_change_mvmv6x4d-5-related",
+          "text": "Related"
+        },
+        {
+          "href": "#tab-disc_type_change_mvmv6x4d-6-rule",
+          "text": "Rules"
+        }
+      ],
+      "rows": [
+        "row",
+        "card-slot edit_name_row-view ALL TYPE-plain_text SELF-disc_type_change",
+        "card-slot edit_type_row-view ALL TYPE-plain_text SELF-disc_type_change",
+        "form-group card-editor",
+        "form-group button-form-group"
+      ]
+    }
+  },
+  "leg": "ts",
+  "row": "new-cardtype-form-fields"
+}

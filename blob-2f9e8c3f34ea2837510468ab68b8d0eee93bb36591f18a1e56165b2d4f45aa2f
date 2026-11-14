@@ -1,0 +1,6 @@
+# The oracle app with batched nest loading: stock Decko 0.20.0 (the gems pinned
+# in Gemfile) plus this repository's card-mod-batched-nests. Selected with
+# BUNDLE_GEMFILE; run-adapter.sh does that when given "batched".
+eval_gemfile File.expand_path("Gemfile", __dir__)
+
+gem "card-mod-batched-nests", path: "../../../ruby/card-mod-batched-nests"

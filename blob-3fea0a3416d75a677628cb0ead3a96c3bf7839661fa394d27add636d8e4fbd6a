@@ -1,0 +1,53 @@
+{
+  "contract": "A cardtype with a pointer slot renders the pointer radio input for that pointer, and a selection persists.",
+  "facts": {
+    "input_class": "\"pointer-radio-button form-check-input",
+    "input_id_pattern": "pointer-radio-#{option_name.to_name.key}",
+    "input_name_pattern": "pointer_radio_button-#{card.key}",
+    "item_class": "%li.pointer-radio.radio.form-check",
+    "list_class": "%ul.pointer-radio-list",
+    "options_hash_owner": "def options_hash",
+    "pointer_widgets": "%w[select radio autocomplete]"
+  },
+  "gem_home": "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
+  "oracle": {
+    "options_api": {
+      "file_sha256": "1344c7fd9a44eac70e9533d0d4d9bc2608272628c72ab0d48ca321804a1f1d98",
+      "first_line": 3,
+      "gem": "card-mod-layout-0.20.0",
+      "last_line": 18,
+      "marker": "def options_hash",
+      "marker_line": 4,
+      "path": "set/abstract/items/options_api.rb",
+      "source": "\ndef options_hash\n  json_options? ? options_card.parse_content : option_hash_from_names\nend\n\ndef json_options?\n  options_card&.type_id == JsonID\nend\n\ndef option_hash_from_names\n  option_names.each_with_object({}) do |name, hash|\n    hash[name] = name\n  end\nend\n\ndef option_names"
+    },
+    "pointer_type": {
+      "file_sha256": "463152fe9da9e8cfe58c10cfbf620007074c7db6f846d3d26aa64079f09cc951",
+      "first_line": 8,
+      "gem": "card-mod-edit-0.20.0",
+      "last_line": 11,
+      "marker": "def input_type_content_options",
+      "marker_line": 9,
+      "path": "set/type/pointer.rb",
+      "source": "\ndef input_type_content_options\n  %w[select radio autocomplete]\nend"
+    },
+    "radio_input_template": {
+      "file_sha256": "2c128c4246f0d94d3e6dec41f544bbdc6c08b8c67a1bcf875ae62ac50c651624",
+      "first_line": 1,
+      "gem": "card-mod-list-0.20.0",
+      "last_line": 12,
+      "marker": "pointer_radio_button-",
+      "marker_line": 6,
+      "path": "set/abstract/01_list/html_views/radio_input.haml",
+      "source": "%ul.pointer-radio-list\n  - options_hash = card.options_hash\n  - if options_hash.empty?\n    no options\n  - else\n    - input_name = \"pointer_radio_button-#{card.key}\"\n    - options_hash.each do |option_label, option_name|\n      - checked = option_name == card.first_name\n      - id = \"pointer-radio-#{option_name.to_name.key}\"\n      %li.pointer-radio.radio.form-check\n        = radio_button_tag input_name, option_name, checked,\n                           id: id, class: \"pointer-radio-button form-check-input #{'_submit-on-change' if submit_on_change}\""
+    }
+  },
+  "rendered": {
+    "bytes": "<ul class='pointer-radio-list'>\n<li class='pointer-radio radio form-check'>\n<input type=\"radio\" name=\"pointer_radio_button-harnesspointer\" id=\"pointer-radio-harnessoptionone\" value=\"harnessoptionone\" class=\"pointer-radio-button form-check-input \" checked=\"checked\" />\n<label class=\"form-check-label\" for=\"pointer-radio-harnessoptionone\">Harness Option One</label>\n</li>\n<li class='pointer-radio radio form-check'>\n<input type=\"radio\" name=\"pointer_radio_button-harnesspointer\" id=\"pointer-radio-harnessoptiontwo\" value=\"harnessoptiontwo\" class=\"pointer-radio-button form-check-input \" />\n<label class=\"form-check-label\" for=\"pointer-radio-harnessoptiontwo\">Harness Option Two</label>\n</li>\n</ul>\n",
+    "probe_card_key": "harnesspointer",
+    "probe_options": {
+      "Harness Option One": "harnessoptionone",
+      "Harness Option Two": "harnessoptiontwo"
+    }
+  }
+}

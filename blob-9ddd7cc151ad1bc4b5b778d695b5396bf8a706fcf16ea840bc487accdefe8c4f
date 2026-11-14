@@ -1,0 +1,39 @@
+// Test fixtures that run a repository source file in an isolated copy must copy
+// every file that file reaches, not a hand-written list. This module computes
+// the static relative-import closure of the entry files (import/export ... from
+// "./x", import "./x", and import("./x")) and copies all of it. A missing
+// target throws, so a fixture can never quietly run with an unresolvable import.
+
+import { copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import path from "node:path";
+
+const RELATIVE_SPECIFIER = /\b(?:from|import)\s*\(?\s*["'](\.{1,2}\/[^"']+)["']/g;
+
+/** Repository-relative (POSIX) paths of the entries and everything they import. */
+export function staticImportClosure(repoRoot, entries) {
+  const seen = new Set();
+  const pending = [...entries];
+  while (pending.length > 0) {
+    const relative = pending.pop();
+    if (seen.has(relative)) continue;
+    const absolute = path.join(repoRoot, relative);
+    if (!existsSync(absolute)) throw new Error(`fixture source is missing from the repository: ${relative}`);
+    seen.add(relative);
+    const source = readFileSync(absolute, "utf8");
+    for (const match of source.matchAll(RELATIVE_SPECIFIER)) {
+      pending.push(path.posix.normalize(path.posix.join(path.posix.dirname(relative), match[1])));
+    }
+  }
+  return [...seen].sort();
+}
+
+/** Copies the closure of `entries` from `repoRoot` into `destinationRoot`; returns the copied paths. */
+export function copyStaticImportClosure(repoRoot, entries, destinationRoot) {
+  const files = staticImportClosure(repoRoot, entries);
+  for (const file of files) {
+    const destination = path.join(destinationRoot, file);
+    mkdirSync(path.dirname(destination), { recursive: true });
+    copyFileSync(path.join(repoRoot, file), destination);
+  }
+  return files;
+}

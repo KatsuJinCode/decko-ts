@@ -1,0 +1,82 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdirSync,mkdtempSync,readFileSync,rmSync,statSync,writeFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import path from 'node:path';
+import {sourceExportPermissions,sourceExportModeEvidence,verifySourceExportFile,writeSourceExportFile,SourceExportPlatformError} from '../../tools/platform/source-export-file.mjs';
+import {assertTinyMceExportCustody} from '../../tools/handover/tinymce-export-custody.mjs';
+import {selected} from '../../tools/handover/package.mjs';
+
+function filesystem({chmodError=false,wrongMode=false,wrongBytes=false,writeError=false,special=0}={}){
+  const calls=[];let bytes,mode;
+  return {calls,writeFileSync(file,value,options){calls.push({operation:'write',file,options});if(writeError)throw Error('synthetic write denied');bytes=Buffer.from(value);mode=options.mode&~0o077;},chmodSync(file,value){calls.push({operation:'chmod',file,mode:value});if(chmodError)throw Error('synthetic chmod denied');mode=value;},lstatSync(){return {isFile:()=>true,isSymbolicLink:()=>false,mode:0o100000|(wrongMode?0o600:mode)|special};},readFileSync(){return wrongBytes?Buffer.from('different'):bytes;}};
+}
+test('Windows writer retains the original mode as custody without claiming POSIX bits',()=>{
+ const io=filesystem(),result=writeSourceExportFile('synthetic.exe-source',Buffer.from('original'),'100755',{platform:'win32',filesystem:io});
+ assert.equal(result.mode,'100755');assert.equal(io.calls[0].options.mode,0o755);assert.equal(io.calls[0].options.flag,'wx');assert.equal(io.calls.some(x=>x.operation==='chmod'),false);
+ assert.match(sourceExportModeEvidence('win32'),/not qualified/);
+});
+test('Linux branch explicitly restores permissions after umask and verifies readback using an injected filesystem',()=>{
+ for(const gitMode of ['100644','100755']){const io=filesystem();assert.equal(writeSourceExportFile('synthetic',Buffer.from('original'),gitMode,{platform:'linux',filesystem:io}).mode,gitMode);assert.equal(io.calls[1].operation,'chmod');assert.equal(io.calls[1].mode,sourceExportPermissions(gitMode));}
+});
+test('unsupported platforms and nonregular Git modes refuse before a write',()=>{
+ const io=filesystem();assert.throws(()=>writeSourceExportFile('synthetic','bytes','100755',{platform:'unknown',filesystem:io}),SourceExportPlatformError);assert.equal(io.calls.length,0);
+ for(const mode of ['120000','160000',undefined,'755'])assert.throws(()=>writeSourceExportFile('synthetic','bytes',mode,{platform:'win32',filesystem:io}),SourceExportPlatformError);
+ assert.equal(io.calls.length,0);
+});
+test('write chmod byte and permission errors remain loud refusals',()=>{
+ for(const flags of [{writeError:true},{chmodError:true},{wrongMode:true},{wrongBytes:true}])assert.throws(()=>writeSourceExportFile('synthetic','original','100755',{platform:'linux',filesystem:filesystem(flags)}),error=>error instanceof SourceExportPlatformError&&error.cause instanceof Error);
+});
+test('Linux permission readback refuses unrequested setuid setgid and sticky bits',()=>{
+ const records=[0o4000,0o2000,0o1000].map(special=>{
+  const io=filesystem({special});let result,error;
+  try{result=writeSourceExportFile('synthetic','original','100755',{platform:'linux',filesystem:io});}catch(cause){error=cause;}
+  return {declaredGitMode:'100755',observedPermissionBits:(0o755|special).toString(8),expectedRefusal:true,actualRefusal:!!error,result:result??null,error:error?String(error):null,originalCause:error?.cause?String(error.cause):null,calls:io.calls};
+ });
+ if(process.env.SOURCE_EXPORT_SPECIAL_BIT_RECEIPT)writeFileSync(process.env.SOURCE_EXPORT_SPECIAL_BIT_RECEIPT,JSON.stringify({scope:'Injected Linux filesystem only; no native POSIX claim',records},null,2)+'\n',{flag:'wx'});
+ assert.equal(records.every(row=>row.actualRefusal),true,'Unrequested special permission bits must not be masked out');
+});
+const prefix='third-party-source/tinymce-5.10.7/',manifest=JSON.parse(readFileSync(new URL('../../'+prefix+'SOURCE-MANIFEST.json',import.meta.url)));
+const content=new Map(),modes=new Map();
+for(const file of ['PROVENANCE.md','SOURCE-MANIFEST.json']){content.set(prefix+file,readFileSync(new URL('../../'+prefix+file,import.meta.url)));modes.set(prefix+file,'100644');}
+for(const file of manifest.files){const name=prefix+'upstream/'+file.path;content.set(name,readFileSync(new URL('../../'+name,import.meta.url)));modes.set(name,file.mode);}
+content.set(manifest.bundledBinary.path,readFileSync(new URL('../../'+manifest.bundledBinary.path,import.meta.url)));
+test('exact held export custody includes all source bytes and 17 original executable modes',()=>{
+ const result=assertTinyMceExportCustody(content,modes);assert.equal(result.files,4214);assert.equal(result.upstreamFiles,4212);assert.equal(result.executableFiles,17);
+});
+test('export custody independently refuses missing or altered intended provenance',()=>{
+ const name=prefix+'PROVENANCE.md';for(const value of [undefined,Buffer.from('unrelated synthetic provenance')]){const copy=new Map(content);if(value===undefined)copy.delete(name);else copy.set(name,value);assert.throws(()=>assertTinyMceExportCustody(copy,modes),/custody differs or is missing: PROVENANCE/);}
+});
+test('export custody refuses source omissions changes extras and mode loss',()=>{
+ const name=prefix+'upstream/'+manifest.files[0].path;
+ const missing=new Map(content);missing.delete(name);assert.throws(()=>assertTinyMceExportCustody(missing,modes),/source bytes\/mode differ/);
+ const changed=new Map(content);changed.set(name,Buffer.from('changed'));assert.throws(()=>assertTinyMceExportCustody(changed,modes),/source bytes\/mode differ/);
+ const extra=new Map(content);extra.set(prefix+'private-extra.txt',Buffer.from('synthetic'));assert.throws(()=>assertTinyMceExportCustody(extra,modes),/Unexpected TinyMCE export/);
+ const wrongModes=new Map(modes);const executable=manifest.files.find(f=>f.mode==='100755');wrongModes.set(prefix+'upstream/'+executable.path,'100644');assert.throws(()=>assertTinyMceExportCustody(content,wrongModes),/source bytes\/mode differ/);
+});
+test('export custody refuses editable binary and manifest rebinding',()=>{
+ const copy=new Map(content);copy.set(manifest.bundledBinary.path,Buffer.from('changed binary'));assert.throws(()=>assertTinyMceExportCustody(copy,modes),/bundled identity differs/);
+ copy.set(prefix+'SOURCE-MANIFEST.json',Buffer.from(JSON.stringify({...manifest,bundledBinary:{...manifest.bundledBinary,sha256:'0'.repeat(64)}})));assert.throws(()=>assertTinyMceExportCustody(copy,modes),/custody differs or is missing: SOURCE-MANIFEST/);
+});
+test('pending native compiler runtime declaration and entrypoint paths are positively selected',()=>{
+ for(const name of ['tools/platform/native-typescript-compiler.mjs','tools/platform/native-typescript-compiler.d.mts','tools/typescript/typecheck.mjs'])assert.equal(selected(name),true,name);
+ for(const name of ['docs/reports/issue212-export-modes/report.md','tests/handover/export-file-modes.test.mjs','tools/platform/source-export-file.mjs','tools/handover/tinymce-export-custody.mjs'])assert.equal(selected(name),false,name);
+});
+test('native filesystem round trip keeps the Git mode of a runnable setup script and of a plain file',()=>{
+ // Real files in a throwaway directory. On POSIX hosts the on-disk permission bits must equal the Git mode;
+ // on Windows the execute bit is not qualified, so only bytes and recorded custody are asserted there.
+ const directory=mkdtempSync(path.join(tmpdir(),'decko-export-native-'));
+ const cases=[
+  ['setup/install-example.sh',Buffer.from('#!/bin/sh\necho ready\n'),'100755'],
+  ['README-example.md',Buffer.from('plain text\n'),'100644'],
+ ];
+ try{
+  for(const [name,bytes,mode] of cases){
+   const destination=path.join(directory,...name.split('/'));
+   mkdirSync(path.dirname(destination),{recursive:true});
+   assert.equal(writeSourceExportFile(destination,bytes,mode).mode,mode,name);
+   verifySourceExportFile(destination,bytes,mode);
+   if(process.platform!=='win32')assert.equal(statSync(destination).mode&0o7777,sourceExportPermissions(mode),name);
+  }
+ }finally{rmSync(directory,{recursive:true,force:true});}
+});

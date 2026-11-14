@@ -1,0 +1,197 @@
+# Unknown database outcomes
+
+## Mechanism
+
+A remote database can commit before its successful response is lost. Replaying
+that mutation applies it twice. Rejecting the caller does not undo the commit,
+and deleting an uploaded file on that rejection can leave a committed card
+pointing at missing bytes. Local SQLite-backed Hrana fault controls reproduce
+both paths (private issues 99 and 105).
+
+## Contract
+
+- Bunny retries only proven read-only standalone pipelines. Mutations and
+  unclassified statements are sent once, including mixed batches. A transport,
+  HTTP or acknowledgement failure on that path reports an unknown statement
+  outcome. An in-band SQL error remains its normal statement error; it is not
+  replayed. Unknown mutations also invalidate read-phase caches.
+- Bunny and libSQL report a lost COMMIT acknowledgement as
+  `DatabaseOutcomeUnknownError`: `code: database-outcome-unknown`,
+  `outcome: unknown`, `operation: commit`, `retrySafe: false`.
+  A failed rollback acknowledgement also reports uncertainty, retaining both
+  the original work error and the rollback error as causes.
+- A confirmed rollback still cleans up the save's new files and restores
+  overwritten derived files. An unknown outcome does neither: destructive
+  cleanup is unsafe while a committed row may reference those bytes.
+- The action engine throws `SaveOutcomeUnknownError` with card, action and act
+  IDs when the callback reached its prepared result, file identities, and an
+  `afterCommitPending` flag. It clears speculative caches and does not run
+  integration effects without a confirmed commit. It does not retry the save.
+- The write response is HTTP 409, `Cache-Control: no-store`, no redirect and no
+  `Retry-After`. JSON explicitly carries `retry_safe: false` and reconciliation
+  identities. HTML tells the writer that the save may have completed, that
+  uploaded files were kept, and to reload the card and check its history before
+  saving again. The response expires the attempted card's host render cache
+  even though it is not a success response.
+
+## Reconciliation
+
+The response is an unresolved outcome, not an acceptance or rollback receipt.
+Read the reported card and its action/act history through the normal authorized
+read path. Compare the attempted action identity and the stored attachment
+identifier before deciding whether the save committed. Do not submit the save
+again simply because its request rejected. Retained external files and pending
+integration effects require reconciliation after the database outcome is known;
+this change does not automatically replay notifications or delete orphan files.
+The response's metadata is the caller's reconciliation receipt; it is not a
+durable background reconciliation service.
+
+## Verification and preserved controls
+
+The five original attacker assertions all failed unchanged on `7e77fa62b`.
+The affected production files also match engine `ec720020fd5dd4a23f097df2956152d46cdcda7a`;
+the attacker independently reproduced the same five failures there.
+Original tests are retained byte for byte in private runtime evidence under
+`.runtime/ambiguous-original-tests/` and in attacker commits `df0573ac5`,
+`a626e00d1`, and `592b6ba14`. The raw original failure report is
+`.runtime/ambiguous-outcome-before.json`.
+
+The original two mutation-replay tests and uploaded-byte preservation test pass
+without changing their assertions. The two original contract tests demanded a
+rolled-back row after a server-confirmed commit; they remain failed controls of
+that retired claim. Their current replacements assert typed uncertainty,
+forbidden replay and the actually committed row, rather than inventing rollback.
+The original files and fixture/support bytes were not changed in the attacker
+checkout.
+
+Additional checks cover safe read retries, invalidating a cached read after an
+unknown mutation, JSON/HTML reconciliation responses and card cache expiry.
+Existing atomic-save controls still exercise definite rollback cleanup and
+post-commit integration ordering. Raw result reports are retained under
+`.runtime/ambiguous-*.json` and `.runtime/unknown-outcome-final-focused.json`.
+These are executed local fault controls with no result-cache reuse or automatic
+retry of tests; Vitest may reuse unchanged compiled transforms. They are not
+hosted-provider or complete release acceptance.
+
+## Other adapter classification
+
+The same classification gap was reproduced in PostgreSQL over PGlite, the
+MySQL client seam backed by SQLite, and the D1 compensating journal over SQLite
+(private issue 116). PostgreSQL and MySQL now distinguish work failure with a
+confirmed rollback from an unconfirmed COMMIT. The journal records whether its
+rollback actually executed; a missing ownership lock after an uncertain commit
+does not prove that another holder restored the journal. A refused atomic commit
+whose journal is still owned can be rolled back and remains a definite failure.
+Corrected controls are retained in `.runtime/unknown-other-adapters-before-final.json`;
+the first fixture attempts are retained separately and do not establish product
+failures. No native MySQL or hosted D1 acceptance is implied by these controls.
+
+## Recoverable derived assets and terminal stream cleanup
+
+Independent re-attack found two additional paths (private issues 117 and 119).
+The original 117 control lost the only preimage of an overwritten stylesheet
+after an unknown rollback. The original 119 controls left an uncommitted Hrana
+stream holding its database lock when COMMIT never reached the server. Raw
+failed controls are `.runtime/unknown-asset-before.json` (one failure) and
+`.runtime/unknown-commit-close-before.json` (two failures).
+
+Before replacing an existing derived output, the engine now stores its prior
+bytes under a unique recovery extension through the same attachment store.
+Recovery copies use the normal files area, not `tmp/`, whose abandoned-upload
+sweep deletes by age. The original and replacement SHA-256 values and the
+target/backup identities are carried in `reconciliation.recoveries`.
+
+An unknown outcome retains both the replacement and the recovery copy. A
+confirmed rollback restores the old bytes before discarding its backup; a
+confirmed commit discards only the backup. A confirmed commit whose backup
+cleanup fails reports `save-committed-cleanup-pending`, `outcome: committed`,
+and `retrySafe: false`, rather than claiming the save failed or rolled back.
+The HTTP message distinguishes that state from an unknown database result.
+Stores without discard/remove support expose that cleanup failure explicitly.
+
+`reconcileAssetRecoveries` is the first-class file reconciliation operation.
+Its caller must first confirm the database outcome by reading the reported
+card/action history. It rejects an unknown outcome. For confirmed rollback it
+verifies both the backup and the current replacement hashes, refuses to
+overwrite a later save's different bytes, restores in reverse write order,
+and retains all backups until restoration finishes. A confirmed commit keeps
+the replacement and removes its recovery copies. No background service chooses
+the outcome or replays a save.
+
+Both Hrana adapters now attempt close-only cleanup using their last known baton
+after a terminal request fails. COMMIT is never replayed. If COMMIT did not
+arrive, close releases its still-open transaction; if it already committed and
+closed, the failed close is retained with the original uncertainty. A cleanup
+attempt does not turn an unknown commit into a claimed rollback.
+
+The two unchanged new attack files pass with these repairs. Targeted asset,
+reconciliation and stream checks recorded 17 passes, no skips, including a
+refusal to overwrite a later save. The broader local Bunny/libSQL/atomic-save
+selection recorded 98 passes and 62 credential/filter skips. Full TypeScript
+typechecking passed. These scopes remain local; provider qualification is
+unchanged.
+
+## Conditional restoration custody
+
+Independent issue 122 reproduced a write landing after the recovery read took
+its snapshot. The former hash check authorized an unconditional store, which
+overwrote the newer bytes and deleted the backup. The unchanged attacker control
+is retained as `tests/card/actions/asset-recovery-concurrent-write.attack.test.ts`;
+the raw failing record is `.runtime/asset-recovery-race-before.json`.
+
+Rollback reconciliation now requires `AttachmentStore.restoreIfUnchanged`.
+The storage implementation must bind comparison of the expected current bytes
+to replacement using a genuine conditional write or exclusive custody honored
+by every writer. A read followed by unconditional store is explicitly not that
+capability. The helper checks the returned outcome and retains backups on
+refusal or failure; even an already-restored read snapshot does not bypass this
+requirement before cleanup.
+
+The current BlobAttachmentStore exposes no conditional-write capability, so
+automatic rollback reconciliation on it reports
+`asset-recovery-custody-required` and preserves both target and backup. This
+change does not claim a conditional-write implementation for a native or hosted
+provider. Confirmed-commit backup cleanup remains available. The local positive
+control uses a synthetic map whose comparison and replacement execute together
+without an intervening await; a separate control lands a conflicting write at
+that conditional operation and verifies refusal.
+
+The original race control now passes unchanged. Additional checks cover absent
+capability, conditional rejection, unknown-outcome refusal and retained backups.
+These controls establish guarded behavior, not hosted storage qualification.
+Read buffers are copied before hashing and conditional replacement, so a store
+returning a borrowed byte buffer cannot change the expected comparison bytes
+after verification. The final local race/reconciliation/style selection recorded
+19 passes with no skips; full TypeScript typechecking passed.
+
+## PostgreSQL and MySQL terminal cleanup
+
+Independent issue 125 found that COMMIT classification alone left a PostgreSQL
+transaction open when its request was never delivered. The before-control
+reported uncommitted `n=1` on the same actual PGlite connection and accepted a
+SAVEPOINT after the driver returned its error. The final before-regression
+record is `.runtime/terminal-commit-cleanup-before.json`: four failing controls,
+covering before-delivery and consumed-successful-reply paths in PostgreSQL/PGlite
+and the SQLite-backed MySQL client seam.
+
+Both drivers now attempt ROLLBACK after COMMIT rejection while still holding
+their transaction gate. They preserve the original unknown outcome and never
+resend COMMIT: cleanup after a commit already landed cannot undo that commit.
+If rollback cleanup fails, they retire an owned client before returning and
+retain the original, rollback and shutdown errors. A retired driver rejects
+queries, batches and subsequent transactions instead of serving an uncertain
+connection. PostgreSQL clients explicitly marked borrowed are not forcibly
+closed; the driver becomes unusable and reports that its connection owner must
+release the client. A failed shutdown is retained as an error, not a claim that
+the connection was released.
+
+The unchanged lead probe was rerun from this checkout against the repaired
+source. It observed `BEGIN, COMMIT, ROLLBACK`, refused SAVEPOINT outside a
+transaction, and read `n=0` before its own final probe cleanup. Its receipt is
+`.runtime/postgres-undelivered-commit-reproduction.json`.
+The paired consumed-reply controls retain committed `n=1`. A separate subsequent
+transaction succeeds, and fallback controls verify actual owned PGlite closure
+or the MySQL client-seam disconnect and refusal of further driver operations.
+The local terminal/adapter/PostgreSQL selection recorded 29 passes, no skips;
+full TypeScript typechecking passed. These controls establish local PostgreSQL
+WASM and client-seam behavior, not native PostgreSQL/MySQL server qualification.

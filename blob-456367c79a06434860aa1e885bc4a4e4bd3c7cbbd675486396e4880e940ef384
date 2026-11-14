@@ -1,0 +1,59 @@
+import {describe, expect, it} from "vitest";
+import fs from "node:fs";
+import path from "node:path";
+import {ModLoader} from "../../../src/card/mod-loader.js";
+import cardModFormat from "../../../src/card/mod-loader/mods/card-mod-format.js";
+import {RenderEngine} from "../../../src/card/render.js";
+import {RenderFormat} from "../../../src/card/render/format.js";
+import {HTML_VIEWS} from "../../../src/card/render/views.js";
+import {FetchEngine} from "../../../src/card/fetch.js";
+import {LocalSqliteDriver} from "../../../src/server/drivers/local-sqlite.js";
+import {ensureFreshnessStamp} from "../../../src/server/freshness-stamp.js";
+
+describe("structured error format registration", () => {
+  it("preserves JSON aliases, shared errors and local status across sequential renders", async () => {
+    const directory = fs.mkdtempSync(path.resolve(".runtime/structured-error-fixture-"));
+    const database = path.join(directory, "deck.sqlite3");
+    fs.copyFileSync("reference-harness/fixtures/synthetic-v1/deck/deck.sqlite3", database);
+    const driver = new LocalSqliteDriver({path: database});
+    const loader = new ModLoader([{manifest: cardModFormat}], {...HTML_VIEWS});
+    try {
+      await ensureFreshnessStamp(driver); loader.load();
+      const engine = new RenderEngine(new FetchEngine(driver)); engine.modLoader = loader;
+      await engine.render("Topic 001", "name");
+      const card = engine.fetchRenderCard("Topic 001");
+      if (card === undefined) throw Error("Prepared fixture card missing");
+      const root = new RenderFormat(card, engine, {formatName: "json"});
+      const child = new RenderFormat(card, engine, {formatName: "json", parent: root, errorStatus: 409});
+      engine.attachedErrorsByKey.set(card.key, [{attribute: "name", message: "first"}, {attribute: "name", message: "last"}]);
+      for (const view of ["errors", "server_error", "denial", "not_found"]) {
+        expect(root.renderView(view)).toEqual({error_status: null, errors: {name: "last"}});
+        expect(child.renderView(view)).toEqual({error_status: 409, errors: {name: "last"}});
+      }
+      expect(root.renderView("bad_address")).toEqual({error_status: 404, errors: {name: "last", address: "404: Bad Address"}});
+      expect(child.renderView("bad_address")).toEqual({error_status: 409, errors: {name: "last", address: "404: Bad Address"}});
+      expect(engine.attachedErrorsByKey.get(card.key)).toHaveLength(4);
+      expect(engine.pageErrorStatus).toBe(404);
+      const ld = new RenderFormat(card, engine, {formatName: "jsonld", errorStatus: 422});
+      const ldChild = new RenderFormat(card, engine, {formatName: "jsonld", parent: ld, errorStatus: 409});
+      expect(ldChild.renderView("format_unsupported")).toBe('{"@context":"https://www.w3.org/ns/hydra/core#","@type":"hydra:Error","hydra:title":"406 | JSON-LD is not available for this resource"}');
+      expect([ld.errorStatus, ldChild.errorStatus, engine.pageErrorStatus]).toEqual([406, 409, 406]);
+      for (const formatName of ["json", "email_text", "css", "csv", "yaml", "xml"]) {
+        const format = new RenderFormat(card, engine, {formatName});
+        if (!["css", "csv"].includes(formatName)) expect(format.renderView("unknown")).toBe("");
+        expect(format.renderView("compact_missing")).toBe("");
+        const unknown = {...card, unknown: true};
+        let createCalls = 0;
+        engine.taskAllowed = () => {createCalls++; return true;};
+        const unknownRoot = new RenderFormat(unknown, engine, {formatName});
+        unknownRoot.renderView("unregistered_unknown_probe");
+        expect(unknownRoot.errorStatus).toBe(404);
+        expect(createCalls).toBe(0);
+      }
+    } finally {
+      loader.reset(); driver.close();
+      expect(path.dirname(directory)).toBe(path.resolve(".runtime"));
+      fs.rmSync(directory, {recursive: true});
+    }
+  });
+});

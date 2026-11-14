@@ -1,0 +1,71 @@
+{
+  "format": "decko-ts-promised-deliverable-capture/1",
+  "row": "pd-4",
+  "family": "promised-deliverable",
+  "capturedAt": "2026-10-25T20:05:42.989Z",
+  "tree": {
+    "commit": "c17906dbb39220a3dd1bcd58847d0fa0d1c9696b",
+    "branch": "port/workbatch-h-20261025",
+    "note": "the newest pushed tip of deploy/full-candidate-20261101, the roll this branch starts from"
+  },
+  "command": "GEM_HOME=C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0 node tools/compat-report/generate-mod-compat-report.mjs",
+  "exitCode": 0,
+  "gemHome": "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0",
+  "gemsScanned": 35,
+  "figure": {
+    "scanned": 35,
+    "declaredComplete": 31,
+    "partial": 3,
+    "missing": 0,
+    "ignored": 1,
+    "labelsMeasure": "declarations only, not behaviour (docs/decisions/0004-mods-compiled-into-the-view-registry.md)"
+  },
+  "partialMods": [
+    "card-mod-ace_editor-0.20.0",
+    "card-mod-monkey-0.20.0",
+    "card-mod-platypus-0.20.0"
+  ],
+  "ignoredMods": [
+    "card-mod-defaults-0.20.0"
+  ],
+  "missingByConstruction": {
+    "claim": "missing cannot occur for any of the 35 scanned mods",
+    "derivation": [
+      "32 of the 35 mods have a set/ tree; every one of those 32 scores patternsCoverage 100, so the partial arm of the ladder is taken before the missing fallthrough",
+      "card-mod-defaults-0.20.0 is returned by the LEGACY_MODS gate before the ladder",
+      "card-mod-delayed_job-0.20.0 is returned by the BACKEND_PORTS gate before the ladder",
+      "card-mod-platypus-0.20.0 has no set/ tree but has lib/ ruby, so the partial arm is taken on libRbFiles > 0",
+      "no installed gem has the shape (no set/ tree, no lib/ ruby) that the data-only gate reads"
+    ],
+    "verifiedOn": "the regenerated report at this commit, mod by mod"
+  },
+  "behaviouralVerdict": {
+    "behaviourCompleteMods": 3,
+    "evaluatedMods": 34,
+    "declaredViews": 565,
+    "viewsGradedIdentical": 378,
+    "viewsGradedDifferent": 178,
+    "viewsNotExercised": 3,
+    "declaredEvents": 126,
+    "eventsGradedIdentical": 9,
+    "eventsGradedDifferent": 1,
+    "eventsRanNoEffectSeen": 105,
+    "eventsNoProbePossible": 0
+  },
+  "previousCommittedReport": {
+    "generatedAt": "2026-10-15T20:41:46.432Z",
+    "scanned": 33,
+    "declaredComplete": 31,
+    "partial": 1,
+    "missing": 0,
+    "ignored": 1
+  },
+  "difference": {
+    "addedMods": [
+      "card-mod-monkey-0.20.0",
+      "card-mod-platypus-0.20.0"
+    ],
+    "statusChanges": [],
+    "note": "the two gems are installed in the pinned gem home now and were not when the committed report was generated; both land on partial"
+  }
+}

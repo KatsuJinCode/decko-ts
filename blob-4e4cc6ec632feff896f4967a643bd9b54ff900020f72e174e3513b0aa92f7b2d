@@ -1,0 +1,58 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { spawnSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import { publishComparisonArtifact } from "../lib/comparison-artifacts.mjs";
+import { copyStaticImportClosure } from "../../runner/test/copy-static-import-closure.mjs";
+
+function fixture(t) {
+  const root=mkdtempSync(path.join(tmpdir(),"decko-comparison-artifacts-"));
+  t.after(()=>rmSync(root,{recursive:true}));
+  // The captured coordinator is the full static import closure of run-all
+  // (it reaches runner/platform-shell.mjs), not a hand-written file list.
+  copyStaticImportClosure(fileURLToPath(new URL("../../../",import.meta.url)),["reference-harness/browser/run-all.mjs"],root);
+  const browser=path.join(root,"reference-harness/browser");
+  mkdirSync(path.join(browser,"journeys"));
+  writeFileSync(path.join(browser,"journeys/synthetic-v1.json"),JSON.stringify({journeys:[{id:"home",steps:[]}]}));
+  const comparator=path.join(browser,"compare-journeys.mjs");
+  // The actual coordinator and artifact module run unchanged. Only the child
+  // comparator boundary is synthetic; no engine/browser/host can be reached.
+  const positive="import fs from 'node:fs'; const file=process.argv[process.argv.indexOf('--report')+1]; fs.writeFileSync(file,JSON.stringify({verdict:'pass',evidenceValid:true,integrity:{problems:[]},journeys:{pass:1,graded:1,total:1},kinds:{completion:{pass:1,total:1}},perJourney:[{id:'home',status:'pass'}]}));";
+  writeFileSync(comparator,positive);
+  const out=path.join(root,"evidence"),summary=path.join(root,"summary.md");
+  const run=()=>spawnSync(process.execPath,[path.join(browser,"run-all.mjs"),"--out",out,"--report-only","1","--candidate","a".repeat(40),"--summary",summary],{encoding:"utf8",windowsHide:true});
+  return {root,out,summary,comparator,run};
+}
+
+for(const [name,broken] of [
+  ["comparator crash","throw new Error('SyntheticComparatorCrash');"],
+  ["missing fresh report","// Successful child exit without a report is not a grade."],
+  ["malformed fresh report","import fs from 'node:fs'; fs.writeFileSync(process.argv[process.argv.indexOf('--report')+1],'{unfinished');"],
+]) test(`${name} cannot reuse a prior passing report or summary`,t=>{
+  const f=fixture(t);const positive=f.run();assert.equal(positive.status,0,positive.stdout+positive.stderr);
+  const report=readFileSync(path.join(f.out,"report.json")),summary=readFileSync(f.summary);
+  assert.match(summary.toString(),/1 \/ 1 graded journeys pass/);
+  writeFileSync(f.comparator,broken);
+  const failed=f.run();assert.notEqual(failed.status,0,failed.stdout+failed.stderr);
+  const current=JSON.parse(readFileSync(path.join(f.out,"report.json")));
+  assert.equal(current.evidenceValid,false);assert.equal(current.verdict,"fail");
+  assert.ok(current.comparisonExecution.reportError);
+  const text=readFileSync(f.summary,"utf8");assert.match(text,/NOT A GRADE/);
+  assert.doesNotMatch(text,/graded journeys pass|\| item \| pass \|/);
+  const oldReport=readdirSync(f.out).find(file=>file.startsWith("report.json.previous-"));
+  const oldSummary=readdirSync(f.root).find(file=>file.startsWith("summary.md.previous-"));
+  assert.deepEqual(readFileSync(path.join(f.out,oldReport)),report);
+  assert.deepEqual(readFileSync(path.join(f.root,oldSummary)),summary);
+  assert.equal(readdirSync(f.out).some(file=>file.includes(".pending-")),false);
+});
+
+test("publication refuses a directory target without changing its contents",t=>{
+  const root=mkdtempSync(path.join(tmpdir(),"decko-artifact-publication-"));t.after(()=>rmSync(root,{recursive:true}));
+  const target=path.join(root,"report.json");mkdirSync(target);writeFileSync(path.join(target,"kept"),"retained");
+  assert.throws(()=>publishComparisonArtifact(target,"replacement",randomUUID()),/RedirectedComparisonArtifact/);
+  assert.equal(readFileSync(path.join(target,"kept"),"utf8"),"retained");
+});

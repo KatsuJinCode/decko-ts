@@ -1,0 +1,118 @@
+# mx-B-062: the card the member tried to delete is still there
+
+The roster row `mx-B-062-8-ordinary-non-admin-account-p` (surface "8.
+ordinary (non-admin) account permissions") reads "the card the member
+tried to delete is still there", verdict PASS, bucket DONE. The
+registry's ledger entry for the row
+(C:/localProjects/brandonDojoTech/docs/registry/instrument-coverage-matrix.json,
+action ACT-062, check_ids ["B-062"]) records the live-acceptance-lane
+entry pass (the live run of 2026-10-16T14:01:03Z) and the whole-harness
+entry pass. This receipt is the family's own adjudication of the row at
+this tip.
+
+## What the row is
+
+The refusal of the member's delete (the row before this one) must be a
+refusal and nothing else: the target card survives with its identity,
+its content and its live status exactly as they were, and still
+answers its page.
+
+## The instrument
+
+"the card the member tried to delete is still there"
+(tools/edge-signed-in-exercise/lib/member-delete.mjs:20-22, the same
+journey wired at tools/edge-signed-in-exercise.mjs:915 and :1353): the
+journey reads the target's card row BEFORE the attempt (:7, `SELECT
+id, name, db_content, trash FROM cards WHERE name = ? AND trash = 0`),
+and after the refused DELETE (:14-17) re-reads the row by id (:20,
+`SELECT id, name, db_content, trash FROM cards WHERE id = ?`) and
+requests the card's own page (:21). PASS requires BOTH the before and
+after rows byte-identical (`JSON.stringify(before) ===
+JSON.stringify(after)`) AND the fresh page answering 200 (:22). The
+journey refuses to run against a target that is not a live fixture
+card (:8), so the check cannot pass on a card that was never there.
+
+## The oracle
+
+RUBY'S REFUSED SAVE STORES NOTHING. The permission event that refuses
+the delete is a :validate event
+(card-mod-permissions-0.20.0/set/all/permissions.rb:22-25), and a save
+that fails validation never reaches the store stage, so the card's
+row, content and trash flag are untouched. Ruby's own captured refusal
+is the committed write-battery capture
+(reference-harness/fixtures/write-battery-v1/expected/side-effects-ruby.json,
+step "after-signout-write" at :9550): status 403 with a delta of zero
+on every recorded table (cards, card_acts, card_actions, card_changes,
+card_references, card_revisions, card_virtuals, sessions, users,
+delayed_jobs, all 0) and no actions beyond the rejected save's own
+bookkeeping events. Ruby's own captured SUCCESSFUL delete of the same
+class (step "signed-in-delete-card" at :8615, the administrator
+deleting Parity_Number_Good) shows what a delete that DOES run
+changes: status 303, the event ladder ending `observer_delete`,
+`update_ancestor_timestamps`, `notify_followers_after_delete`, and a
+cards delta of 0 because Ruby's delete is a trash write (the row
+survives with trash set; trash.rb:11-21 `add_to_trash { update! }`),
+not a row removal.
+
+THE PORT GRADING IS THE SAME FACT READ DIRECTLY. The port's permission
+gate (`assertCanWrite(card, "delete")`,
+src/card/actions/card-action-engine.ts:4118) throws before any write
+in `deleteCardInner` (:4096-4118), so the target's row is never
+touched: the instrument's before/after row comparison grades exactly
+that, and the fresh GET answers 200 from the same store the engine
+serves.
+
+## What is oracle-matched and what is not, stated plainly
+
+Oracle-matched: a permission-refused delete leaves the card in place
+with its name, content and live flag intact (Ruby's :validate-stage
+refusal with its captured zero delta; the port's pre-write gate and
+the journey's own row comparison), and the surviving card still serves
+its page (the instrument's 200).
+
+NOT oracle-matched, and stated rather than glossed over: the capture
+set records no Ruby arm of a member's refused DELETE against a still
+present card specifically; the row's oracle is the captured refusal's
+zero delta plus Ruby's own source chain (the :validate event and the
+trash mechanics), and the port's side is graded by the instrument's
+direct row read rather than by a byte comparison against Ruby output.
+The card-level "unchanged" the check grades covers id, name,
+db_content and trash (the columns the journey reads,
+member-delete.mjs:7 and :20), the columns that define the card's
+identity and content, not the row's timestamps.
+
+## The measurement at this tip
+
+    node tools/edge-signed-in-exercise.mjs \
+      --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 \
+      --out .runtime/signed-in-exercise-round12b-20261026/rows-r4/report.md
+
+    source 3e4791cb61d9260e9f69b0df69e5e30222747630, started
+    2026-10-26T03:43:16.527Z, completed 2026-10-26T04:08:30.378Z,
+    the source files clean
+    verdict: PASS
+
+The named check in this run:
+
+    the card the member tried to delete is still there
+        {"actorId":53047,"target":"Harness_richtext_mvopplma_renamed","unchanged":true,"status":200}
+
+with the refusal it follows (this receipt's sibling row):
+
+    a member's delete attempt is refused with a clear message, not a form
+        {"status":403,"actorId":53047,"target":"Harness_richtext_mvopplma_renamed"}
+
+The run's capability coverage binds both member-delete checks to
+ledger row R5 (tools/edge-signed-in-exercise/capabilities.json
+:762-774, committed status covered), with both named in the binding's
+verifiedChecks. The run as a whole graded 251 of 253 checks passed;
+the two failures are the owner-audit search-suggestion latency rows,
+neither of them this row.
+
+## What this receipt does NOT claim
+
+- The row's port side is what the instrument grades, and it is green.
+  This receipt does not claim anything about the live deployment: no
+  live request was made by the lane, and nothing deploys.
+- The row's DONE condition in the roster is not changed by this
+  receipt; this receipt adds the family's own evidence for the row.

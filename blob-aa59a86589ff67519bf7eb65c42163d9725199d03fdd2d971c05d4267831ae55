@@ -1,0 +1,113 @@
+import fs from "node:fs";
+import path from "node:path";
+import { createHash } from "node:crypto";
+import { createRequire } from "node:module";
+
+export function validatedWasmAssetBase(value) {
+  if (typeof value !== "string") throw Error("--wasm-asset-base requires an explicit HTTPS directory URL");
+  let url;
+  try { url = new URL(value); } catch { throw Error("--wasm-asset-base requires an explicit HTTPS directory URL"); }
+  if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash || !url.pathname.endsWith("/")) {
+    throw Error("--wasm-asset-base requires an explicit HTTPS directory URL without credentials, query or fragment");
+  }
+  return url.href;
+}
+
+/** Externalize raw binary data only. No remote JavaScript imports, top-level
+ *  asset fetch, compression or upload is performed by this plugin. */
+export function rawWasmAssetsPlugin({ repoRoot, assetBaseUrl }) {
+  const base = validatedWasmAssetBase(assetBaseUrl);
+  const require = createRequire(path.join(repoRoot, "package.json"));
+  const assets = new Map();
+  const loaderPath = path.join(repoRoot, "src/server/verified-wasm-asset.ts");
+  const sassProvider = path.resolve(repoRoot, "vendor/libsass-wasm/libsass-3.6.4-wasm-base64.js");
+  function seat(bytes, source, license, licenseSource, licensePath = path.resolve(repoRoot, licenseSource)) {
+    const sha256 = createHash("sha256").update(bytes).digest("hex");
+    const filename = `${sha256}.wasm`;
+    const descriptor = { url: new URL(filename, base).href, byteLength: bytes.length, sha256 };
+    assets.set(filename, { ...descriptor, filename, source, license, licenseSource, licensePath, bytes: Buffer.from(bytes) });
+    return descriptor;
+  }
+  const plugin = {
+    name: "raw-wasm-assets",
+    setup(build) {
+      build.onLoad({ filter: /libsass-3\.6\.4-wasm-base64\.js$/ }, async ({ path: file }) => {
+        if (fs.realpathSync(file) !== fs.realpathSync(sassProvider)) {
+          throw Error("LibSass raw asset requires the canonical vendored provider path");
+        }
+        // Import precisely the bytes just read. A file URL would reuse Node's
+        // cached export after a same-process rebuild changes that file.
+        const sourceBytes = fs.readFileSync(file);
+        const text = (await import(`data:text/javascript;base64,${sourceBytes.toString("base64")}`)).default;
+        if (typeof text !== "string") throw Error("LibSass data module no longer exports base64 text");
+        const descriptor = seat(Buffer.from(text, "base64"), "vendor/libsass-wasm/libsass-3.6.4-wasm-base64.js", "MIT", "vendor/libsass-wasm/LICENSE");
+        return { loader: "js", resolveDir: repoRoot, contents:
+          `import {loadVerifiedWasmAsset} from ${JSON.stringify(loaderPath)};\n` +
+          `export default function loadLibsassBinary(){return loadVerifiedWasmAsset(${JSON.stringify(descriptor)});}\n` };
+      });
+      build.onResolve({ filter: /^@cf-wasm\/photon$/ }, () => ({ path: "photon-raw-binary", namespace: "decko-wasm-assets" }));
+      build.onLoad({ filter: /.*/, namespace: "decko-wasm-assets" }, () => {
+        const source = require.resolve("@cf-wasm/photon/photon.wasm");
+        const descriptor = seat(fs.readFileSync(source), "@cf-wasm/photon@0.4.0/photon.wasm", "Apache-2.0", "@cf-wasm/photon@0.4.0/LICENSE.md", path.join(path.dirname(require.resolve("@cf-wasm/photon/package.json")), "LICENSE.md"));
+        const packageInfo = JSON.parse(fs.readFileSync(require.resolve("@cf-wasm/photon/package.json"), "utf8"));
+        if (packageInfo.version !== "0.4.0" || packageInfo.license !== "Apache-2.0") throw Error("Review changed Photon binary provider before building");
+        return { loader: "js", resolveDir: repoRoot, contents:
+          `export * from "@cf-wasm/photon/others";\n` +
+          `import {initPhoton as initialize} from "@cf-wasm/photon/others";\n` +
+          `import {loadVerifiedWasmAsset} from ${JSON.stringify(loaderPath)};\n` +
+          `let pending;\n` +
+          `export const initPhoton={ensure(){\n` +
+          ` if(initialize.initialized)return initialize.ensure();\n` +
+          ` return pending??=(async()=>{const bytes=await loadVerifiedWasmAsset(${JSON.stringify(descriptor)});\n` +
+          ` const module=await WebAssembly.compile(bytes);initialize.sync({module});return initialize.ensure();\n` +
+          ` })().catch(error=>{pending=undefined;throw error;});\n` +
+          `}};\n` };
+      });
+    },
+  };
+  return { plugin, assets };
+}
+
+/** Caller invokes this only after validating the JavaScript build. Read back
+ *  every raw output; the manifest includes license bytes as hashed artifacts. */
+export function writeRawWasmAssets({ assets, outputDirectory }) {
+  // Snapshot and admit the whole request before creating any output. In
+  // particular, callers of this exported helper do not supply path names.
+  const prepared = [];
+  const destinations = new Set();
+  // Sorted by digest-derived filename: the order assets were loaded in depends
+  // on esbuild's scheduling, and the manifest must be the same on every build.
+  const ordered = [...assets.values()].sort((a, b) => (a.filename < b.filename ? -1 : a.filename > b.filename ? 1 : 0));
+  for (const asset of ordered) {
+    const { filename, sha256, byteLength, bytes, licensePath, ...metadata } = asset;
+    if (typeof sha256 !== "string" || !/^[a-f0-9]{64}$/.test(sha256) || filename !== `${sha256}.wasm`) {
+      throw Error("Raw WebAssembly asset requires its digest-derived filename");
+    }
+    if (!Buffer.isBuffer(bytes) || !Number.isSafeInteger(byteLength) || byteLength <= 0 || bytes.length !== byteLength) {
+      throw Error("Raw WebAssembly asset byte length differs");
+    }
+    const snapshot = Buffer.from(bytes);
+    if (createHash("sha256").update(snapshot).digest("hex") !== sha256) throw Error("Raw WebAssembly asset digest differs");
+    const licenseBytes = fs.readFileSync(licensePath);
+    const licenseFilename = `${sha256}.LICENSE.txt`;
+    for (const name of [filename, licenseFilename]) {
+      const destination = path.join(outputDirectory, name);
+      if (destinations.has(destination) || fs.lstatSync(destination, { throwIfNoEntry: false }) !== undefined) throw Error("Raw WebAssembly output already exists");
+      destinations.add(destination);
+    }
+    prepared.push({ ...metadata, filename, sha256, byteLength, bytes: snapshot, licenseBytes, licenseFilename });
+  }
+  const outputs = [];
+  for (const asset of prepared) {
+    const out = path.join(outputDirectory, asset.filename);
+    fs.writeFileSync(out, asset.bytes, { flag: "wx" });
+    const readback = fs.readFileSync(out);
+    if (readback.length !== asset.byteLength || createHash("sha256").update(readback).digest("hex") !== asset.sha256) throw Error("Raw WebAssembly asset readback differs");
+    const { licenseBytes, licenseFilename } = asset;
+    fs.writeFileSync(path.join(outputDirectory, licenseFilename), licenseBytes, { flag: "wx" });
+    if (!fs.readFileSync(path.join(outputDirectory, licenseFilename)).equals(licenseBytes)) throw Error("WebAssembly license readback differs");
+    const { bytes, licenseBytes: ignoredLicenseBytes, ...entry } = asset;
+    outputs.push({ ...entry, licenseFilename, licenseSha256: createHash("sha256").update(licenseBytes).digest("hex") });
+  }
+  return outputs;
+}

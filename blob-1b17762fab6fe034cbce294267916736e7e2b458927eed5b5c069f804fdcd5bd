@@ -1,0 +1,25 @@
+import {expect,it} from 'vitest';
+import {readFileSync} from 'node:fs';
+import {DeckoName} from '../../../src/card/name.js';
+import {applyDeckInflections} from '../../../src/card/name/inflect.js';
+
+const oracle=JSON.parse(readFileSync(new URL('./original-name-stabilization.json',import.meta.url),'utf8')) as {
+ rows:{enabled:boolean,input:string,key:string}[]
+};
+// Original cardname_spec.rb switches the public Cardname.stabilize setting.
+// This bridge expresses that original switch without changing the key oracle.
+// An equivalent documented port configuration can replace this bridge.
+for(const row of oracle.rows)it(`original stabilization ${row.enabled} for ${row.input}`,()=>{
+ const prior=Object.getOwnPropertyDescriptor(DeckoName,'stabilize');
+ try{
+  Reflect.set(DeckoName,'stabilize',row.enabled);
+  // The original spec resets the name cache after changing the switch.
+  // This existing public no-op inflection update clears all name/key memos.
+  applyDeckInflections({});
+  expect(DeckoName.parse(row.input).key).toBe(row.key);
+ }finally{
+  if(prior)Object.defineProperty(DeckoName,'stabilize',prior);
+  else Reflect.deleteProperty(DeckoName,'stabilize');
+  applyDeckInflections({});
+ }
+});

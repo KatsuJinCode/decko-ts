@@ -1,0 +1,113 @@
+import { describe, expect, it } from "vitest";
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { removeScratchDir, scratchDir } from "../support/scratch-dir.mjs";
+
+const root = fileURLToPath(new URL("../..", import.meta.url));
+const cli = join(root, "tools/migrate/prove-deck-migration.mjs");
+
+function run(missingSource: string, work: string) {
+  return spawnSync(process.execPath, [cli, "--deck", missingSource, "--work", work], {
+    cwd: root, encoding: "utf8", windowsHide: true,
+  });
+}
+
+describe("migration proof workspace ownership", () => {
+  it("refuses an existing directory before failed copying can delete its contents", () => {
+    const scratch = scratchDir("migration-proof-existing-");
+    try {
+      const work = join(scratch, "existing");
+      mkdirSync(work);
+      const retained = join(work, "source.sqlite3");
+      writeFileSync(retained, "existing database bytes");
+      const result = run(join(scratch, "missing.sqlite3"), work);
+      expect(result.error).toBeUndefined();
+      expect(result.status).not.toBe(0);
+      expect(existsSync(retained)).toBe(true);
+      expect(readFileSync(retained, "utf8")).toBe("existing database bytes");
+      expect(result.stderr).toContain("EEXIST");
+    } finally { removeScratchDir(scratch); }
+  });
+
+  it("does not adopt or remove an existing empty directory", () => {
+    const scratch = scratchDir("migration-proof-empty-");
+    try {
+      const work = join(scratch, "existing-empty");
+      mkdirSync(work);
+      const result = run(join(scratch, "missing.sqlite3"), work);
+      expect(result.error).toBeUndefined();
+      expect(result.status).not.toBe(0);
+      expect(existsSync(work)).toBe(true);
+      expect(result.stderr).toContain("EEXIST");
+    } finally { removeScratchDir(scratch); }
+  });
+
+  it("removes only its newly created workspace after a source-copy failure", () => {
+    const scratch = scratchDir("migration-proof-owned-");
+    try {
+      const work = join(scratch, "new-owned-work");
+      const retained = join(scratch, "outside.txt");
+      writeFileSync(retained, "outside the owned workspace");
+      const result = run(join(scratch, "missing.sqlite3"), work);
+      expect(result.error).toBeUndefined();
+      expect(result.status).toBe(1);
+      expect(existsSync(work)).toBe(false);
+      expect(readFileSync(retained, "utf8")).toBe("outside the owned workspace");
+      const report = JSON.parse(result.stdout);
+      expect(report.failed).toContain("ENOENT");
+    } finally { removeScratchDir(scratch); }
+  });
+
+  it("cleans its new workspace when an importer child exits unsuccessfully", () => {
+    const scratch = scratchDir("migration-proof-child-failed-");
+    try {
+      const work = join(scratch, "new-owned-work");
+      const source = join(scratch, "invalid.sqlite3");
+      writeFileSync(source, "invalid SQLite input for the importer failure control");
+      const result = run(source, work);
+      expect(result.error).toBeUndefined();
+      expect(result.status).toBe(1);
+      expect(existsSync(work)).toBe(false);
+      expect(readFileSync(source, "utf8")).toBe("invalid SQLite input for the importer failure control");
+      const report = JSON.parse(result.stdout);
+      expect(report.steps.copy.shaMatch).toBe(true);
+      expect(report.failed).toContain("import-deck failed");
+      expect(result.stderr).toContain("import-deck failed");
+    } finally { removeScratchDir(scratch); }
+  });
+
+  it("refuses cleanup when the owned directory is replaced during copying", () => {
+    const scratch = scratchDir("migration-proof-replaced-");
+    try {
+      const work = join(scratch, "new-owned-work");
+      const retired = join(scratch, "retired-owned-work");
+      const retained = join(work, "retained.txt");
+      const preload = join(scratch, "replace-workspace.cjs");
+      // Simulate another filesystem actor replacing this run's directory.
+      // Every affected path belongs to this test's disposable scratch root.
+      writeFileSync(preload, `
+const fs = require('node:fs');
+const { syncBuiltinESMExports } = require('node:module');
+const original = fs.copyFileSync;
+fs.copyFileSync = function(source, target, ...rest) {
+  if (target !== ${JSON.stringify(join(work, "source.sqlite3"))}) return original(source, target, ...rest);
+  fs.renameSync(${JSON.stringify(work)}, ${JSON.stringify(retired)});
+  fs.mkdirSync(${JSON.stringify(work)});
+  fs.writeFileSync(${JSON.stringify(retained)}, 'replacement directory data');
+  throw new Error('copy interrupted after workspace replacement');
+};
+syncBuiltinESMExports();
+`);
+      const result = spawnSync(process.execPath, ["--require", preload, cli, "--deck", join(scratch, "missing.sqlite3"), "--work", work], {
+        cwd: root, encoding: "utf8", windowsHide: true,
+      });
+      expect(result.error).toBeUndefined();
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain("workspace ownership changed; cleanup refused");
+      expect(readFileSync(retained, "utf8")).toBe("replacement directory data");
+      expect(existsSync(retired)).toBe(true);
+    } finally { removeScratchDir(scratch); }
+  });
+});

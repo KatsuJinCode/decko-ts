@@ -1,0 +1,207 @@
+{
+  "lane": "lane-one-trip-serve-2026-10-04",
+  "generatedAt": "2026-10-04T13:35:30.376Z",
+  "servingSurface": "deploy/bunny-worker-src/bunny-edge-engine-handler.ts (deploy-union-final 6f35429a)",
+  "localBoot": "node:http on 127.0.0.1; BunnyDbDriver Hrana seam stubbed over LocalSqliteDriver on the trial-deck mirror copy; one posture per process; cache stack UNARMED (DECKO_EDGE_CACHE absent) and requests cookieless = cache BYPASSED",
+  "probePages": [
+    "Home",
+    "Aikido",
+    "About",
+    "Eagle",
+    "Taking_Stock"
+  ],
+  "requestPlan": [
+    "/_status",
+    "/Home",
+    "/Aikido",
+    "/About",
+    "/Eagle",
+    "/Taking_Stock",
+    "/Home",
+    "/Aikido",
+    "/About",
+    "/Eagle",
+    "/Taking_Stock"
+  ],
+  "statusRequests": {
+    "off": {
+      "path": "/_status",
+      "status": 200,
+      "wallMs": 233,
+      "trips": 4,
+      "statements": 4,
+      "bytes": 370,
+      "contentType": "application/json; charset=utf-8"
+    },
+    "on": {
+      "path": "/_status",
+      "status": 200,
+      "wallMs": 215,
+      "trips": 4,
+      "statements": 4,
+      "bytes": 370,
+      "contentType": "application/json; charset=utf-8"
+    }
+  },
+  "store": {
+    "path": "C:\\localProjects\\decko-ts-lane-one-trip-serve-2026-10-04\\benchmarks\\one-trip-render\\serving-line-proof-run\\one-trip-store.serving-line.sqlite3",
+    "buildMs": 5045,
+    "liveCards": 19482,
+    "edges": 73408,
+    "pageClosures": {
+      "Home": {
+        "pageId": 80,
+        "closureSize": 3525
+      },
+      "Aikido": {
+        "pageId": 947,
+        "closureSize": 3530
+      },
+      "About": {
+        "pageId": 9923,
+        "closureSize": 3525
+      },
+      "Eagle": {
+        "pageId": 34823,
+        "closureSize": 3526
+      },
+      "Taking_Stock": {
+        "pageId": 3252,
+        "closureSize": 3526
+      }
+    }
+  },
+  "pages": [
+    {
+      "name": "Home",
+      "path": "/Home",
+      "offStatus": 200,
+      "onStatus": 200,
+      "offBytes": 22054,
+      "onBytes": 22054,
+      "byteIdentical": true,
+      "offColdTrips": 789,
+      "onColdTrips": 391,
+      "offWarmTrips": 23,
+      "onWarmTrips": 12,
+      "offColdWallMs": 2131,
+      "onColdWallMs": 1887,
+      "gate": {
+        "coldOnLeColdOff": true,
+        "warmOnLe1": false,
+        "warmOffLe1": false,
+        "statusOk": true
+      },
+      "onColdAttach": 1,
+      "onColdDataFetch": 1,
+      "onColdResidue": 557,
+      "offColdStatements": 952
+    },
+    {
+      "name": "Aikido",
+      "path": "/Aikido",
+      "offStatus": 200,
+      "onStatus": 200,
+      "offBytes": 84474,
+      "onBytes": 84474,
+      "byteIdentical": true,
+      "offColdTrips": 6721,
+      "onColdTrips": 2132,
+      "offWarmTrips": 4,
+      "onWarmTrips": 0,
+      "offColdWallMs": 8183,
+      "onColdWallMs": 6348,
+      "gate": {
+        "coldOnLeColdOff": true,
+        "warmOnLe1": true,
+        "warmOffLe1": false,
+        "statusOk": true
+      },
+      "onColdAttach": 0,
+      "onColdDataFetch": 1,
+      "onColdResidue": 2220,
+      "offColdStatements": 6823
+    },
+    {
+      "name": "About",
+      "path": "/About",
+      "offStatus": 200,
+      "onStatus": 200,
+      "offBytes": 20965,
+      "onBytes": 20965,
+      "byteIdentical": true,
+      "offColdTrips": 2533,
+      "onColdTrips": 907,
+      "offWarmTrips": 2,
+      "onWarmTrips": 0,
+      "offColdWallMs": 4980,
+      "onColdWallMs": 2622,
+      "gate": {
+        "coldOnLeColdOff": true,
+        "warmOnLe1": true,
+        "warmOffLe1": false,
+        "statusOk": true
+      },
+      "onColdAttach": 0,
+      "onColdDataFetch": 1,
+      "onColdResidue": 938,
+      "offColdStatements": 2577
+    },
+    {
+      "name": "Eagle",
+      "path": "/Eagle",
+      "offStatus": 200,
+      "onStatus": 200,
+      "offBytes": 20939,
+      "onBytes": 20939,
+      "byteIdentical": true,
+      "offColdTrips": 567,
+      "onColdTrips": 119,
+      "offWarmTrips": 0,
+      "onWarmTrips": 0,
+      "offColdWallMs": 1011,
+      "onColdWallMs": 661,
+      "gate": {
+        "coldOnLeColdOff": true,
+        "warmOnLe1": true,
+        "warmOffLe1": true,
+        "statusOk": true
+      },
+      "onColdAttach": 0,
+      "onColdDataFetch": 1,
+      "onColdResidue": 130,
+      "offColdStatements": 576
+    },
+    {
+      "name": "Taking_Stock",
+      "path": "/Taking_Stock",
+      "offStatus": 200,
+      "onStatus": 200,
+      "offBytes": 13659,
+      "onBytes": 13659,
+      "byteIdentical": true,
+      "offColdTrips": 54,
+      "onColdTrips": 37,
+      "offWarmTrips": 0,
+      "onWarmTrips": 0,
+      "offColdWallMs": 114,
+      "onColdWallMs": 182,
+      "gate": {
+        "coldOnLeColdOff": true,
+        "warmOnLe1": true,
+        "warmOffLe1": true,
+        "statusOk": true
+      },
+      "onColdAttach": 0,
+      "onColdDataFetch": 1,
+      "onColdResidue": 40,
+      "offColdStatements": 58
+    }
+  ],
+  "verdict": {
+    "byteIdentityAll5": true,
+    "servingLineComparativeGate": true,
+    "hopsLawAbsoluteClausesHoldOnCorpus": false,
+    "note": "The hops law's absolute clauses (cold <= 14, warm <= 1) are FIXTURE-scoped (hops-per-render-one-page-law.test.ts and its ON-posture variant hops-gate-one-trip-posture.test.ts — suite members, green separately). On the 19,482-card mirror they hold in NEITHER posture: the OFF numbers above are the proof (OFF cold up to 6,721; OFF warm 23/4/2). The serving-line gate this run records is COMPARATIVE — cold ON <= cold OFF and warm ON <= warm OFF, data fetch = 1 per page, byte-identity 5/5 — with the one-trip deployment boot (gate armed -> raised Temporary cap)."
+  }
+}

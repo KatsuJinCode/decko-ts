@@ -1,0 +1,29 @@
+import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { test } from 'node:test';
+import { localPythonInvocation } from '../platform/python-runtime.mjs';
+import { qualifyLocalComparisonResult } from './platform/ruby-comparison-vm.mjs';
+
+test('native producer preserves raw evidence across every spool failure boundary', () => {
+  const script = fileURLToPath(new URL('../../tests/tools/ruby-comparison-spool-custody.test.py', import.meta.url));
+  const python = localPythonInvocation();
+  const result = spawnSync(python.command, [...python.prefix, '-I', script], { windowsHide: true, encoding: 'utf8' });
+  assert.equal(result.error, undefined);
+  assert.equal(result.signal, null);
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+});
+
+test('the real local receiver syncs and verifies its owned result file', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'decko-result-sync-control-'));
+  try {
+    const file = path.join(root, 'owned-result.json'), bytes = Buffer.from('{"owned":true}');
+    writeFileSync(file, bytes, { flag: 'wx' });
+    const receipt = { bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') };
+    assert.deepEqual(qualifyLocalComparisonResult(receipt, file), { owned: true });
+  } finally { rmSync(root, { recursive: true }); }
+});

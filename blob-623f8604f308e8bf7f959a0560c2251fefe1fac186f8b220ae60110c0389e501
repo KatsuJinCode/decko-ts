@@ -1,0 +1,93 @@
+# Automatic-name rule fixture qualification: issue 178
+
+## Exact before/after source comparison
+
+The unchanged `tests/card/actions/create.test.ts` is byte-identical on both
+requested source pins and the retained fixer before editing. Its SHA-256 is
+`0e42f36e0f2d69f008d77facb059f656f4d2c566b8e60f34e09d41b4c1975c3c`.
+This file executes 18 tests, including eight automatic-name cases; the broader
+independent operations selections have different denominators and are not
+reported as this file's case count.
+
+An isolated immutable-source loader reads every production module and helper
+test from Git, records the ref/path/SHA-256, and disables persistent Vitest
+module caching for the comparison. It writes no root checkout files. Only
+the corrected create test is read from the working folder in after controls.
+
+| Exact production pin | Original fixture | Corrected fixture |
+| --- | --- | --- |
+| Parent `022ffd28e0c1930c44c2b49b48092372474e9740` | 18 pass, zero failures/skips | 18 pass, zero failures/skips |
+| Selected `9c93fa3fcc0189993c389b579e6207df5784014e` | 13 pass, five failures, zero skips | 18 pass, zero failures/skips |
+
+The selected-before failures reproduce all five reported cases: advancing the
+seed, trash reuse, canonical collision succession, rollback on an invalid child,
+and concurrent allocation. Four reach blank-name validation; the rollback case
+gets the same blank-parent error instead of the expected incomplete-child error.
+
+## Mechanism and correction
+
+The local `autonameFixture` created a valid Set trunk and pattern codename,
+but no registered Setting type; its `*autoname` tag used the default content
+type. Original `Card::Rule::Cache` SQL requires a Set-typed trunk and a
+Setting-typed tag. Its key construction additionally requires the pattern and
+setting codenames. The selected rule lookup correctly refuses this unqualified
+row. No rule reaches automatic naming, so the unchanged blank-name check fires.
+
+Original `mod/core/set/all/autoname.rb` gates naming on `rule(:autoname).present?`,
+sets the name and updates the rule's seed without ordinary rule history.
+Original `lib/card/name/all.rb` advances occupied names through `name.next`.
+These installed card-1.110.0 sources and their hashes were inspected directly.
+The native cache source remains SHA-256
+`17a240a32aed7c2ea07c69df21bfb78190a4cd501583171f2b23403de1f7736d`.
+
+The correction adds the Setting type to this local helper and gives the
+`*autoname` tag that type. It does not change `seedStandardDeck`, a shared
+constructor, any production source, or any rule qualification. The existing
+rule ID, content, Set trunk, codenames, seed and expected generated names stay
+the same. The test text from the first `describe(` through EOF is byte-identical
+to the original parent: SHA-256
+`3bce6818bac57a9b247996aa8886fb04813945c2e433aea171a5accdf3c0fedc`.
+
+All original tests run, including the named-card, blank-rule and denied-create
+negative controls. Their validation outcomes, history assertions, rollback
+assertions and exact expected names are unchanged. No exception is added for
+unqualified rules and no malformed-rule negative is edited.
+
+## Qualification evidence and limits
+
+The exact selected production pin is the same one already exercised by the
+unchanged 36 qualification/key/receiving-pattern controls in issue176. That
+retained receipt includes ten executions of actual original Ruby SQL/methods
+through minimal SQLite-backed Card adapters. Those controls reject non-Set
+trunks, non-Setting tags and missing/changed codenames. The receipt is reused
+for identical immutable production, not counted as newly executed coverage:
+`compat176-pinned-security-controls.log`, SHA-256
+`28349169382bb1598367f734a7d4f41d7dfd5b584ca2b142bbc0f9b1cadcf08a`.
+The issue176 package and those controls are unchanged. This does not establish
+Rails/ActiveRecord/RSpec or release acceptance.
+
+Fresh issue178 typecheck runs in its own native subprocess and records status
+zero, signal/error null and empty diagnostics. No later command can mask that
+result. The explicit single-file platform scan reports zero command landmines;
+whitespace validation passes. No full gate or issue165 patch-selection check
+was run here. The independently reviewed compound repair remains separate.
+
+## Retained receipts
+
+All ignored receipts are under `.runtime/adapter123/`:
+
+- `autoname178.config.mjs`: exact-source comparison control.
+- `autoname178-parent-before.log`, `autoname178-selected-before.log`.
+- `autoname178-parent-after.log`, `autoname178-selected-after.log`.
+- `autoname178-parent-inputs.jsonl`, `autoname178-selected-inputs.jsonl`:
+  actual immutable module refs and hashes.
+- `autoname178-assertion-custody.json`, `autoname178-native-source-custody.json`.
+- `autoname178-typecheck.log`, `autoname178-typecheck-receipt.json` and
+  `autoname178-platform-scan.log`.
+
+Assertions and fixture database work executed locally without model grading,
+test retry, install, hosted request or live reference call. Compilation/OS
+caches may be warm. The existing in-memory test storage closes each automatic-
+name fixture in its original finally block. No new DB directory, server,
+dependency, checkout, schedule or root write was introduced. Independent
+exact-source reattack and selection remain with the release owner.

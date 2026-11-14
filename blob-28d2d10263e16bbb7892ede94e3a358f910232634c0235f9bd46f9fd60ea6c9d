@@ -1,0 +1,18 @@
+import { readFileSync } from "node:fs";
+import { expect, it } from "vitest";
+import { DiffSummary } from "../../../src/card/history/content-diff.js";
+
+const oracle=JSON.parse(readFileSync(new URL("./unicode-summary-boundaries.json",import.meta.url),"utf8")) as {
+  rows: {name:string;length:number;joint?:string;actions:["add"|"delete"|"omit",string|null][];rendered:string;omits_content:boolean}[];
+};
+it.each(oracle.rows)("matches native Ruby character accounting: $name", row=>{
+  const summary=new DiffSummary({length:row.length,joint:row.joint});
+  for(const [action,text] of row.actions) {
+    if(action==="omit") summary.omit();
+    else summary[action](text!);
+  }
+  expect(summary.rendered).toBe(row.rendered);
+  expect(summary.omitsContent()).toBe(row.omits_content);
+  const unpairedSurrogates=Array.from(summary.rendered).filter(character=>/^[\uD800-\uDFFF]$/.test(character));
+  expect(unpairedSurrogates).toEqual([]);
+});
