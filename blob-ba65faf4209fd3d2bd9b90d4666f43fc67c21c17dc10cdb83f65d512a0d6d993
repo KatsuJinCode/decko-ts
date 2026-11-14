@@ -1,0 +1,118 @@
+// The deck the 422/:errors parity suite renders its refusal pages through.
+//
+// A shared module, not a second copy: the parity suite seeds it, and the
+// correctness-gate guard (tests/server/user-error-422-fixture.test.ts) seeds
+// the SAME deck to prove the layout rule those pages need is one the
+// original rule cache admits.
+//
+// WHY A MODULE AND NOT A SECOND SEED: the parity suite's file name puts it
+// in the PARITY gate ("at merge"), so a guard that lives only there does not
+// run on every change. The guard has to touch the very same seed rows, and a
+// test file cannot be imported by another test file (its describe/it blocks
+// would register twice), so the deck lives here and both suites use it.
+//
+// THE SETTING TYPES ARE LOAD-BEARING, NOT COSMETIC. Ruby's rule cache
+// (card-1.110.0 lib/card/rule/cache.rb:18-19) filters its rows with the
+// deck's own Set and Setting type ids:
+//
+//     WHERE sets.type_id = #{SetID} AND settings.type_id = #{SettingID}
+//
+// A rule row whose right-hand card is NOT a Setting never enters that cache,
+// so the lookup never finds it. The captured original deck says what the
+// types are - tests/fixtures/pods/oracle-deck-after-probe.ruby.yml:
+//
+//     - :name: "Setting"   :type: :cardtype :codename: :setting
+//     - :name: "*all"      :type: :set      :codename: :all
+//     - :name: "*default"  :type: :setting  :codename: :default
+//     - :name: "*layout"   :type: :setting  :codename: :layout
+//
+// The port's half of that same filter is ruleCacheStatement in
+// src/card/rules/rule-cache.ts, and the lookup that consults it is findRule
+// in src/card/rules/lookup.ts.
+//
+// So the deck below seeds a Setting type card (typed Basic, as the captured
+// deck types it) and types *default and *layout with it. With them typed as
+// Basic instead, the layout rule drops out of the cache, findRule answers
+// nothing, the error pages cannot find the deck's layout, and the refusal
+// answers fall back to the bare alert document with no page around them -
+// which is what broke the four page assertions in the parity suite.
+
+import { seedCard, seedReference, type RenderTestStorage } from "../card/render/render-test-storage.js";
+
+/** The deck's Set type id (the *all trunk's type). */
+export const SET_TYPE_ID = 2;
+
+/** The deck's Setting type id - the id of the card carrying the codename
+ *  "setting", the type the original cache filters its settings on. */
+export const SETTING_TYPE_ID = 13;
+
+/** The account the refusal pages act on. */
+export const JOE_ID = 90;
+
+/** The layout rule row: *all (a Set trunk) + *layout (a Setting tag). */
+export const LAYOUT_RULE_ID = 54;
+
+/** The card the refused type change acts on. */
+export const REFUSED_CARD_ID = 105;
+
+/** Seed the refusal deck. The layout rule's Set trunk and Setting tag are
+ *  the ones the captured deck has; see this file's header for why. */
+export async function seedUserErrorDeck(s: RenderTestStorage): Promise<void> {
+  await seedCard(s, { id: 1, name: "*all", codename: "all", typeId: SET_TYPE_ID });
+  await seedCard(s, { id: 2, name: "Set", codename: "set", typeId: SET_TYPE_ID });
+  // The Setting type card, typed Basic the way the captured deck types it.
+  await seedCard(s, { id: SETTING_TYPE_ID, name: "Setting", codename: "setting", typeId: 14 });
+  await seedCard(s, { id: 3, name: "*update", codename: "update", typeId: SET_TYPE_ID });
+  await seedCard(s, { id: 4, name: "*create", codename: "create", typeId: SET_TYPE_ID });
+  await seedCard(s, { id: 5, name: "*delete", codename: "delete", typeId: SET_TYPE_ID });
+  await seedCard(s, { id: 6, name: "Anyone", codename: "anyone", typeId: SET_TYPE_ID });
+  await seedCard(s, { id: 7, name: "Anyone Signed In", codename: "anyone_signed_in", typeId: SET_TYPE_ID });
+  await seedCard(s, { id: 8, name: "*type", codename: "type", typeId: SET_TYPE_ID });
+  await seedCard(s, { id: 10, leftId: 1, rightId: 3, dbContent: "[[Anyone Signed In]]" });
+  await seedReference(s, 10, 7, "anyone signed in");
+  await seedCard(s, { id: 11, leftId: 1, rightId: 4, dbContent: "[[Anyone Signed In]]" });
+  await seedReference(s, 11, 7, "anyone signed in");
+  await seedCard(s, { id: 12, leftId: 1, rightId: 5, dbContent: "[[Anyone Signed In]]" });
+  await seedReference(s, 12, 7, "anyone signed in");
+  await seedCard(s, { id: 17, leftId: 1, rightId: 18, typeId: 14 });
+  await seedCard(s, { id: 18, name: "*default", codename: "default", typeId: SETTING_TYPE_ID });
+  await seedCard(s, { id: 14, name: "Basic", typeId: 14 });
+  await seedCard(s, { id: 15, leftId: 2, rightId: 8, typeId: SET_TYPE_ID });
+  await seedCard(s, { id: JOE_ID, name: "Joe User" });
+  // The type-change refusal's surface (the Decision-2 finding, item 3): the
+  // deck's layout rule (so the refusal page has a real page frame to sit
+  // in), the Bootswatch skin machinery's codenames, and the refused save's
+  // two cards - the skin whose type change is refused, listing one RichText
+  // item. The expected refusal bytes are the recorded Ruby page's own main
+  // slot (write-battery-v1 step admin-skin-type-change): heading "Problems
+  // with Parity Old Skin", message "+*STYLESHEETS: Parity Probe Card has an
+  // invalid type: RichText. Allowed types: CSS and SCSS.".
+  await seedCard(s, { id: 50, name: "Html", codename: "html", typeId: 14 });
+  await seedCard(s, { id: 51, name: "Layout", codename: "layout_type", typeId: 14 });
+  await seedCard(s, { id: 55, name: "*header", codename: "header", typeId: 50, dbContent: '<div class="seed-header"></div>' });
+  await seedCard(s, { id: 56, name: "*footer", codename: "footer", typeId: 50, dbContent: '<div class="seed-footer"></div>' });
+  await seedCard(s, {
+    id: 52,
+    name: "Default Layout",
+    typeId: 51,
+    dbContent:
+      '<body class="d-flex flex-column h-100">\n' +
+      "  <header>{{:header|core}}</header>\n" +
+      '  <article class="container flex-shrink-0" role="main">{{_main|titled}}</article>\n' +
+      '  <footer class="footer mt-auto py-3">{{:footer|content}}</footer>\n' +
+      "</body>",
+  });
+  await seedCard(s, { id: 53, name: "*layout", codename: "layout", typeId: SETTING_TYPE_ID });
+  await seedCard(s, { id: LAYOUT_RULE_ID, leftId: 1, rightId: 53, typeId: 14, dbContent: "Default Layout" });
+  await seedReference(s, LAYOUT_RULE_ID, 52, "default layout");
+  await seedCard(s, { id: 100, name: "RichText", typeId: 14 });
+  await seedCard(s, { id: 101, name: "CSS", typeId: 14, codename: "css" });
+  await seedCard(s, { id: 102, name: "SCSS", typeId: 14, codename: "scss" });
+  await seedCard(s, { id: 103, name: "Bootswatch skin", typeId: 14, codename: "bootswatch_skin" });
+  await seedCard(s, { id: 104, name: "Parity Probe Card", typeId: 100 });
+  await seedCard(s, { id: REFUSED_CARD_ID, name: "Parity Old Skin", typeId: 14, dbContent: "[[Parity Probe Card]]" });
+  // The sign-in failure page's rescue card: the *signin card exists in every
+  // deck (codename signin), and the recorded signin refusal pages are its
+  // :errors view (the write-battery's recorded title: "*signin - My Deck").
+  await seedCard(s, { id: 106, name: "*signin", codename: "signin", typeId: 14 });
+}

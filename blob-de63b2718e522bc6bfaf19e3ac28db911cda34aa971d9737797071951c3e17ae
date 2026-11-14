@@ -1,0 +1,559 @@
+{
+  "source": "3baed9b6baba8ed33bd0780947e70a35b1b39620",
+  "productionOrTestEdits": false,
+  "selections": [
+    {
+      "file": ".runtime/fleet-parity-a-initial.xml",
+      "sha256": "d4605bfd077802ccfaf50b37a37bfee7b9e654ce31f5775f111da487627379da",
+      "tests": 60,
+      "failures": 0,
+      "errors": 0,
+      "suites": [
+        {
+          "name": "tests/card/actions/compound-conflict-connections.attack.test.ts",
+          "tests": 10,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "built-in: independent connections contend for one compound identity",
+            "built-in: warmed misses and rename collision observe another connection's nested commit",
+            "built-in: stale positive identity cannot block reuse after another connection renames it",
+            "built-in: rollback removes partial identities before the other connection creates",
+            "built-in: real unrelated UNIQUE error is not relabeled and partial save rolls back",
+            "registered event: independent connections contend for one compound identity",
+            "registered event: warmed misses and rename collision observe another connection's nested commit",
+            "registered event: stale positive identity cannot block reuse after another connection renames it",
+            "registered event: rollback removes partial identities before the other connection creates",
+            "registered event: real unrelated UNIQUE error is not relabeled and partial save rolls back"
+          ]
+        },
+        {
+          "name": "tests/card/actions/compound-name-conflict.test.ts",
+          "tests": 8,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "compound name conflicts use live junction identity > built-in guard, warm lookup refuses a live nested junction before writes",
+            "compound name conflicts use live junction identity > built-in guard, cold lookup refuses a live nested junction before writes",
+            "compound name conflicts use live junction identity > registered event, warm lookup refuses a live nested junction before writes",
+            "compound name conflicts use live junction identity > registered event, cold lookup refuses a live nested junction before writes",
+            "compound name conflicts use live junction identity > two concurrent creates of one compound name produce one winner and one typed refusal",
+            "compound name conflicts use live junction identity > a cached miss cannot hide a junction committed by another engine",
+            "compound name conflicts use live junction identity > a trashed junction revives instead of being classified as a live name conflict",
+            "compound name conflicts use live junction identity > an unrelated storage constraint is propagated unchanged and the failed save rolls back"
+          ]
+        },
+        {
+          "name": "tests/card/actions/create.test.ts",
+          "tests": 18,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "createCard autoname rule (installed core autoname_spec.rb) > uses the seed, then advances past existing names without rule history",
+            "createCard autoname rule (installed core autoname_spec.rb) > reuses the stored seed when its previous card is trashed",
+            "createCard autoname rule (installed core autoname_spec.rb) > treats canonical-name collisions as occupied and uses Ruby succession",
+            "createCard autoname rule (installed core autoname_spec.rb) > rolls back the counter, cards and history if a child validation fails",
+            "createCard autoname rule (installed core autoname_spec.rb) > leaves the counter unchanged for an explicitly named card",
+            "createCard autoname rule (installed core autoname_spec.rb) > keeps blank-name validation when the rule is blank",
+            "createCard autoname rule (installed core autoname_spec.rb) > does not advance the seed or write history for a denied create",
+            "createCard autoname rule (installed core autoname_spec.rb) > allocates distinct names across concurrent saves on separate engines",
+            "createCard — simple create (Set) > writes the cards row, one act, one create action, NO change rows",
+            "createCard — simple create (Set) > resolves an explicit type by code, by name, and falls back to the default rule",
+            "createCard — simple create (Set) > rejects illegal names (validate_legality_of_name, name_events.rb:35-47)",
+            "createCard — simple create (Set) > rejects duplicate names (validate_uniqueness_of_name, name_events.rb:19-26)",
+            "createCard — simple create (Set) > rejects anonymous actors before any row is written",
+            "createCard — simple create (Set) > an actor NAMED *anonymous is id-keyed: it acts as its own account, never as Anonymous",
+            "createCard — simple create (Set) > honors the canWrite permission seam",
+            "createCard — junction create (compound names) > creates a junction row with NULL name/key; missing sides become subcards",
+            "createCard — junction create (compound names) > dedupes repeated sides (A+A gets ONE new side card, Director.card staging)",
+            "createCard — junction create (compound names) > rejects a compound create whose name already exists (live junction)"
+          ]
+        },
+        {
+          "name": "tests/card/mod-loader/adversarial-cardtype-empty-group.test.ts",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "independent Cardtype group separator mapping > keeps the nil-group separator when Custom is empty, as Ruby map/flatten/join does",
+            "independent Cardtype group separator mapping > renders the Custom group between Upload and Organize when it has an item"
+          ]
+        },
+        {
+          "name": "tests/card/mod-loader/card-mod-format-async-head-views.test.ts",
+          "tests": 9,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "the async-view seam: the head read-set is warm after prepare > preloads the setting cards the head views read",
+            "the async-view seam: the head read-set is warm after prepare > is idempotent: a warm re-render adds no round trips beyond the freshness gate",
+            "the five head views through the mod (A/B) > WITHOUT the mod: every head view raises UnsupportedViewError",
+            "the five head views through the mod (A/B) > WITH the mod: :page_title joins safe_name and the title setting with ' - ' (head.rb:19-23)",
+            "the five head views through the mod (A/B) > WITH the mod: :page_title_tag wraps :page_title in <title> (head.rb:33-35)",
+            "the five head views through the mod (A/B) > WITH the mod: :favicon_tag emits the :small carrierwave link (head.rb:37-39)",
+            "the five head views through the mod (A/B) > WITH the mod: :stylesheet_tags emits the remote tag then the main asset-output tag (head.rb:61-63)",
+            "the five head views through the mod (A/B) > WITH the mod: :head joins basket[:head_views] with a newline (head.rb:29-31)",
+            "byte parity with the page path (the anti-drift block) > each head view's bytes equal the corresponding line of the served <head>"
+          ]
+        },
+        {
+          "name": "tests/card/mod-loader/core-mod-type-events.test.ts",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "validate_type — the structure lock (type.rb:26-28) > changing a structured field's type away from the rule card's type refuses",
+            "validate_type — the structure lock (type.rb:26-28) > changing the structured field's type TO the rule card's type saves",
+            "validate_type — the structure lock (type.rb:26-28) > creating a structured field with a type of its own saves (the lock guards a CHANGE)",
+            "validate_type — the no-such-type arm (type.rb:25) > an assigned type id with no live type card refuses"
+          ]
+        },
+        {
+          "name": "tests/card/mod-loader/pointer-options-all-arm-default-limit.test.ts",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "the Card[:all] options arm carries Ruby's search default_limit (100) > the select editor of a *all-arm pointer lists at most blank + 100 standard + selected",
+            "the Card[:all] options arm carries Ruby's search default_limit (100) > the bound is the search default_limit itself: exactly 100 standard options on a deck larger than 100"
+          ]
+        },
+        {
+          "name": "tests/server/comment-author-http-session.test.ts",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "two anonymous requests preserve the first declared author and original append bytes",
+            "another visitor does not inherit the previous visitor's author",
+            "a blank first comment still stores the author before the next request",
+            "signed-in signatures use the authenticated name while the declared author remains session-local",
+            "permission denial changes no card/reference/history row and sets no author cookie",
+            "cross-origin cookie-authenticated comments are refused before rows or author state change",
+            "sign-out resets the remembered author before the next anonymous comment"
+          ]
+        }
+      ]
+    },
+    {
+      "file": ".runtime/fleet-parity-a-ruby-controls.xml",
+      "sha256": "14a6f6453bb934ad16456a4b02664564797035f7674c6b09edacdde69be4c653",
+      "tests": 36,
+      "failures": 0,
+      "errors": 0,
+      "suites": [
+        {
+          "name": "tests/card/rules/adversarial-original-rule-storage.test.ts",
+          "tests": 10,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "original new Book type rule returns authorize",
+            "original banana self rule returns pebbles",
+            "original user preference value: own",
+            "original user preference value: all",
+            "original user preference value: override",
+            "original user-id cache finds both explicit users on the Book set",
+            "rule lookup preserves original cache qualification: trunk-type",
+            "rule lookup preserves original cache qualification: setting-type",
+            "rule lookup preserves original cache qualification: setting-code",
+            "rule lookup preserves original cache qualification: empty-follow"
+          ]
+        },
+        {
+          "name": "tests/card/rules/adversarial-pattern-scope-boundaries.test.ts",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "keeps a suspended receiver separate while another receiver finishes and resets",
+            "propagates a receiver pattern-name read error without changing another receiver or ambient state",
+            "propagates explicit empty and partial maps through both pattern constructors and name algebra"
+          ]
+        },
+        {
+          "name": "tests/card/rules/adversarial-receiving-pattern-names.test.ts",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "keeps receiving compound-pattern names when another engine warms an aliased pattern",
+            "keeps receiving all-pattern names when another engine uses a distinct alias",
+            "resolves receiving renamed compound patterns with an unrelated engine installed"
+          ]
+        },
+        {
+          "name": "tests/card/rules/adversarial-rule-cache-key.test.ts",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "matches the original requested cache key: setting-code-changed, fallback=false",
+            "matches the original requested cache key: setting-code-changed, fallback=true",
+            "matches the original requested cache key: pattern-code-changed, fallback=false",
+            "matches the original requested cache key: pattern-code-changed, fallback=true"
+          ]
+        },
+        {
+          "name": "tests/card/rules/lookup-key-identity.test.ts",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "preserves unstarred named-setting lookup using its registered code",
+            "allows an original requested code to accompany an aliased starred name",
+            "keeps canonical multiword setting names on their underscore code",
+            "does not substitute a changed anchorless pattern code for the requested all key",
+            "resolves a compound pattern anchor in the receiving fetcher's own database"
+          ]
+        },
+        {
+          "name": "tests/card/rules/lookup-qualification.test.ts",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "continues to a qualified fallback when the specific rule loses its Set type",
+            "revokes and restores warmed setting and anchored pattern codenames after cache reset",
+            "excludes a trashed set after a warm lookup",
+            "excludes a trashed rule after a warm lookup",
+            "excludes a trashed setting after a warm lookup",
+            "excludes only empty/null follow content while preserving whitespace and empty other rules",
+            "keeps the specialized legacy side-less compound self rule qualified by ids"
+          ]
+        },
+        {
+          "name": "tests/card/rules/lookup-save-revocation.test.ts",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "revokes and restores a warmed follow rule through ordinary saves without a manual cache reset"
+          ]
+        },
+        {
+          "name": "tests/card/rules/receiving-pattern-name-scope.test.ts",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "keeps overlapping receiving name reads separate without replacing the ambient environment",
+            "refreshes receiving aliases after reset while another deck remains ambient",
+            "uses canonical defaults for missing entries in an explicit scope instead of ambient aliases"
+          ]
+        }
+      ]
+    }
+  ],
+  "nativeObservations": [
+    {
+      "file": "tmp/attack-rule-key-native.json",
+      "sha256": "426913c774db634dbc51e7d239e767a7d68ff3604d14e4fd2e0a19d54bfd86a4",
+      "observations": [
+        {
+          "scope": "Original rule/cache/preference SQL and methods with minimal SQLite-backed Card adapters; no Rails/RSpec",
+          "runtime": "ruby 3.4.11 (2026-09-23 revision 592f1ffdb3) +PRISM [x64-mingw-ucrt]",
+          "sqliteGem": "2.9.6",
+          "sources": {
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule.rb": "cf4abacfda1503083d372642071c29743abd0abcd796485752e2e438cabcd7ec",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/cache.rb": "17a240a32aed7c2ea07c69df21bfb78190a4cd501583171f2b23403de1f7736d",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/preference_cache.rb": "cb5739e2321b09eb1b8b79a785e0028080e5afa7664898b52a932ec23908a605",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/all.rb": "ebfa3e7538ee22937c941e8ec0b07cb3ccc4e04e1debefb5fa67dd3051d40b49"
+          },
+          "mutation": "setting-code-changed",
+          "fallback": false,
+          "request": null,
+          "value": null
+        },
+        {
+          "scope": "Original rule/cache/preference SQL and methods with minimal SQLite-backed Card adapters; no Rails/RSpec",
+          "runtime": "ruby 3.4.11 (2026-09-23 revision 592f1ffdb3) +PRISM [x64-mingw-ucrt]",
+          "sqliteGem": "2.9.6",
+          "sources": {
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule.rb": "cf4abacfda1503083d372642071c29743abd0abcd796485752e2e438cabcd7ec",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/cache.rb": "17a240a32aed7c2ea07c69df21bfb78190a4cd501583171f2b23403de1f7736d",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/preference_cache.rb": "cb5739e2321b09eb1b8b79a785e0028080e5afa7664898b52a932ec23908a605",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/all.rb": "ebfa3e7538ee22937c941e8ec0b07cb3ccc4e04e1debefb5fa67dd3051d40b49"
+          },
+          "mutation": "setting-code-changed",
+          "fallback": true,
+          "request": null,
+          "value": null
+        },
+        {
+          "scope": "Original rule/cache/preference SQL and methods with minimal SQLite-backed Card adapters; no Rails/RSpec",
+          "runtime": "ruby 3.4.11 (2026-09-23 revision 592f1ffdb3) +PRISM [x64-mingw-ucrt]",
+          "sqliteGem": "2.9.6",
+          "sources": {
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule.rb": "cf4abacfda1503083d372642071c29743abd0abcd796485752e2e438cabcd7ec",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/cache.rb": "17a240a32aed7c2ea07c69df21bfb78190a4cd501583171f2b23403de1f7736d",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/preference_cache.rb": "cb5739e2321b09eb1b8b79a785e0028080e5afa7664898b52a932ec23908a605",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/all.rb": "ebfa3e7538ee22937c941e8ec0b07cb3ccc4e04e1debefb5fa67dd3051d40b49"
+          },
+          "mutation": "pattern-code-changed",
+          "fallback": false,
+          "request": null,
+          "value": null
+        },
+        {
+          "scope": "Original rule/cache/preference SQL and methods with minimal SQLite-backed Card adapters; no Rails/RSpec",
+          "runtime": "ruby 3.4.11 (2026-09-23 revision 592f1ffdb3) +PRISM [x64-mingw-ucrt]",
+          "sqliteGem": "2.9.6",
+          "sources": {
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule.rb": "cf4abacfda1503083d372642071c29743abd0abcd796485752e2e438cabcd7ec",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/cache.rb": "17a240a32aed7c2ea07c69df21bfb78190a4cd501583171f2b23403de1f7736d",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/preference_cache.rb": "cb5739e2321b09eb1b8b79a785e0028080e5afa7664898b52a932ec23908a605",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/all.rb": "ebfa3e7538ee22937c941e8ec0b07cb3ccc4e04e1debefb5fa67dd3051d40b49"
+          },
+          "mutation": "pattern-code-changed",
+          "fallback": true,
+          "request": null,
+          "value": "general"
+        }
+      ]
+    },
+    {
+      "file": "tmp/attack-original-rule-storage-native.json",
+      "sha256": "5b80aa1261f756662b8f5c06ad836f3be82276ce67a1f8a0afda8dcef6893897",
+      "observations": [
+        {
+          "scope": "Original rule/cache/preference SQL and methods with minimal SQLite-backed Card adapters; no Rails/RSpec",
+          "runtime": "ruby 3.4.11 (2026-09-23 revision 592f1ffdb3) +PRISM [x64-mingw-ucrt]",
+          "sqliteGem": "2.9.6",
+          "sources": {
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule.rb": "cf4abacfda1503083d372642071c29743abd0abcd796485752e2e438cabcd7ec",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/cache.rb": "17a240a32aed7c2ea07c69df21bfb78190a4cd501583171f2b23403de1f7736d",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/preference_cache.rb": "cb5739e2321b09eb1b8b79a785e0028080e5afa7664898b52a932ec23908a605",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/all.rb": "ebfa3e7538ee22937c941e8ec0b07cb3ccc4e04e1debefb5fa67dd3051d40b49"
+          },
+          "mutation": null,
+          "fallback": null,
+          "request": {
+            "mode": "rule",
+            "keys": [
+              "911+type",
+              "all"
+            ],
+            "setting": "help"
+          },
+          "value": "authorize"
+        },
+        {
+          "scope": "Original rule/cache/preference SQL and methods with minimal SQLite-backed Card adapters; no Rails/RSpec",
+          "runtime": "ruby 3.4.11 (2026-09-23 revision 592f1ffdb3) +PRISM [x64-mingw-ucrt]",
+          "sqliteGem": "2.9.6",
+          "sources": {
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule.rb": "cf4abacfda1503083d372642071c29743abd0abcd796485752e2e438cabcd7ec",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/cache.rb": "17a240a32aed7c2ea07c69df21bfb78190a4cd501583171f2b23403de1f7736d",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/preference_cache.rb": "cb5739e2321b09eb1b8b79a785e0028080e5afa7664898b52a932ec23908a605",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/all.rb": "ebfa3e7538ee22937c941e8ec0b07cb3ccc4e04e1debefb5fa67dd3051d40b49"
+          },
+          "mutation": null,
+          "fallback": null,
+          "request": {
+            "mode": "rule",
+            "keys": [
+              "914+self",
+              "all"
+            ],
+            "setting": "help"
+          },
+          "value": "pebbles"
+        },
+        {
+          "scope": "Original rule/cache/preference SQL and methods with minimal SQLite-backed Card adapters; no Rails/RSpec",
+          "runtime": "ruby 3.4.11 (2026-09-23 revision 592f1ffdb3) +PRISM [x64-mingw-ucrt]",
+          "sqliteGem": "2.9.6",
+          "sources": {
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule.rb": "cf4abacfda1503083d372642071c29743abd0abcd796485752e2e438cabcd7ec",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/cache.rb": "17a240a32aed7c2ea07c69df21bfb78190a4cd501583171f2b23403de1f7736d",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/preference_cache.rb": "cb5739e2321b09eb1b8b79a785e0028080e5afa7664898b52a932ec23908a605",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/all.rb": "ebfa3e7538ee22937c941e8ec0b07cb3ccc4e04e1debefb5fa67dd3051d40b49"
+          },
+          "mutation": null,
+          "fallback": null,
+          "request": {
+            "mode": "preference",
+            "keys": [
+              "911+type",
+              "all"
+            ],
+            "setting": "follow",
+            "user": 912
+          },
+          "value": "*always"
+        },
+        {
+          "scope": "Original rule/cache/preference SQL and methods with minimal SQLite-backed Card adapters; no Rails/RSpec",
+          "runtime": "ruby 3.4.11 (2026-09-23 revision 592f1ffdb3) +PRISM [x64-mingw-ucrt]",
+          "sqliteGem": "2.9.6",
+          "sources": {
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule.rb": "cf4abacfda1503083d372642071c29743abd0abcd796485752e2e438cabcd7ec",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/cache.rb": "17a240a32aed7c2ea07c69df21bfb78190a4cd501583171f2b23403de1f7736d",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/preference_cache.rb": "cb5739e2321b09eb1b8b79a785e0028080e5afa7664898b52a932ec23908a605",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/all.rb": "ebfa3e7538ee22937c941e8ec0b07cb3ccc4e04e1debefb5fa67dd3051d40b49"
+          },
+          "mutation": null,
+          "fallback": null,
+          "request": {
+            "mode": "preference",
+            "keys": [
+              "911+type",
+              "all"
+            ],
+            "setting": "follow",
+            "user": 912
+          },
+          "value": "*always"
+        },
+        {
+          "scope": "Original rule/cache/preference SQL and methods with minimal SQLite-backed Card adapters; no Rails/RSpec",
+          "runtime": "ruby 3.4.11 (2026-09-23 revision 592f1ffdb3) +PRISM [x64-mingw-ucrt]",
+          "sqliteGem": "2.9.6",
+          "sources": {
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule.rb": "cf4abacfda1503083d372642071c29743abd0abcd796485752e2e438cabcd7ec",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/cache.rb": "17a240a32aed7c2ea07c69df21bfb78190a4cd501583171f2b23403de1f7736d",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/preference_cache.rb": "cb5739e2321b09eb1b8b79a785e0028080e5afa7664898b52a932ec23908a605",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/all.rb": "ebfa3e7538ee22937c941e8ec0b07cb3ccc4e04e1debefb5fa67dd3051d40b49"
+          },
+          "mutation": null,
+          "fallback": null,
+          "request": {
+            "mode": "preference",
+            "keys": [
+              "911+type",
+              "all"
+            ],
+            "setting": "follow",
+            "user": 912
+          },
+          "value": "*never"
+        },
+        {
+          "scope": "Original rule/cache/preference SQL and methods with minimal SQLite-backed Card adapters; no Rails/RSpec",
+          "runtime": "ruby 3.4.11 (2026-09-23 revision 592f1ffdb3) +PRISM [x64-mingw-ucrt]",
+          "sqliteGem": "2.9.6",
+          "sources": {
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule.rb": "cf4abacfda1503083d372642071c29743abd0abcd796485752e2e438cabcd7ec",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/cache.rb": "17a240a32aed7c2ea07c69df21bfb78190a4cd501583171f2b23403de1f7736d",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/preference_cache.rb": "cb5739e2321b09eb1b8b79a785e0028080e5afa7664898b52a932ec23908a605",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/all.rb": "ebfa3e7538ee22937c941e8ec0b07cb3ccc4e04e1debefb5fa67dd3051d40b49"
+          },
+          "mutation": null,
+          "fallback": null,
+          "request": {
+            "mode": "users",
+            "keys": [],
+            "set_key": "911+type",
+            "setting": "follow"
+          },
+          "value": null
+        },
+        {
+          "scope": "Original rule/cache/preference SQL and methods with minimal SQLite-backed Card adapters; no Rails/RSpec",
+          "runtime": "ruby 3.4.11 (2026-09-23 revision 592f1ffdb3) +PRISM [x64-mingw-ucrt]",
+          "sqliteGem": "2.9.6",
+          "sources": {
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule.rb": "cf4abacfda1503083d372642071c29743abd0abcd796485752e2e438cabcd7ec",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/cache.rb": "17a240a32aed7c2ea07c69df21bfb78190a4cd501583171f2b23403de1f7736d",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/preference_cache.rb": "cb5739e2321b09eb1b8b79a785e0028080e5afa7664898b52a932ec23908a605",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/all.rb": "ebfa3e7538ee22937c941e8ec0b07cb3ccc4e04e1debefb5fa67dd3051d40b49"
+          },
+          "mutation": null,
+          "fallback": null,
+          "request": {
+            "mode": "rule",
+            "keys": [
+              "911+type",
+              "all"
+            ],
+            "setting": "help"
+          },
+          "value": null
+        },
+        {
+          "scope": "Original rule/cache/preference SQL and methods with minimal SQLite-backed Card adapters; no Rails/RSpec",
+          "runtime": "ruby 3.4.11 (2026-09-23 revision 592f1ffdb3) +PRISM [x64-mingw-ucrt]",
+          "sqliteGem": "2.9.6",
+          "sources": {
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule.rb": "cf4abacfda1503083d372642071c29743abd0abcd796485752e2e438cabcd7ec",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/cache.rb": "17a240a32aed7c2ea07c69df21bfb78190a4cd501583171f2b23403de1f7736d",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/preference_cache.rb": "cb5739e2321b09eb1b8b79a785e0028080e5afa7664898b52a932ec23908a605",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/all.rb": "ebfa3e7538ee22937c941e8ec0b07cb3ccc4e04e1debefb5fa67dd3051d40b49"
+          },
+          "mutation": null,
+          "fallback": null,
+          "request": {
+            "mode": "rule",
+            "keys": [
+              "911+type",
+              "all"
+            ],
+            "setting": "help"
+          },
+          "value": null
+        },
+        {
+          "scope": "Original rule/cache/preference SQL and methods with minimal SQLite-backed Card adapters; no Rails/RSpec",
+          "runtime": "ruby 3.4.11 (2026-09-23 revision 592f1ffdb3) +PRISM [x64-mingw-ucrt]",
+          "sqliteGem": "2.9.6",
+          "sources": {
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule.rb": "cf4abacfda1503083d372642071c29743abd0abcd796485752e2e438cabcd7ec",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/cache.rb": "17a240a32aed7c2ea07c69df21bfb78190a4cd501583171f2b23403de1f7736d",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/preference_cache.rb": "cb5739e2321b09eb1b8b79a785e0028080e5afa7664898b52a932ec23908a605",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/all.rb": "ebfa3e7538ee22937c941e8ec0b07cb3ccc4e04e1debefb5fa67dd3051d40b49"
+          },
+          "mutation": null,
+          "fallback": null,
+          "request": {
+            "mode": "rule",
+            "keys": [
+              "911+type",
+              "all"
+            ],
+            "setting": "help"
+          },
+          "value": null
+        },
+        {
+          "scope": "Original rule/cache/preference SQL and methods with minimal SQLite-backed Card adapters; no Rails/RSpec",
+          "runtime": "ruby 3.4.11 (2026-09-23 revision 592f1ffdb3) +PRISM [x64-mingw-ucrt]",
+          "sqliteGem": "2.9.6",
+          "sources": {
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule.rb": "cf4abacfda1503083d372642071c29743abd0abcd796485752e2e438cabcd7ec",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/cache.rb": "17a240a32aed7c2ea07c69df21bfb78190a4cd501583171f2b23403de1f7736d",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/preference_cache.rb": "cb5739e2321b09eb1b8b79a785e0028080e5afa7664898b52a932ec23908a605",
+            "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/rule/all.rb": "ebfa3e7538ee22937c941e8ec0b07cb3ccc4e04e1debefb5fa67dd3051d40b49"
+          },
+          "mutation": null,
+          "fallback": null,
+          "request": {
+            "mode": "rule",
+            "keys": [
+              "911+type",
+              "all"
+            ],
+            "setting": "follow"
+          },
+          "value": null
+        }
+      ]
+    }
+  ]
+}

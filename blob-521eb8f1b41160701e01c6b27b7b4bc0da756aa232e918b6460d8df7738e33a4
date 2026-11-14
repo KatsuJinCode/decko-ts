@@ -1,0 +1,272 @@
+// Controlled, anonymous HTTP comparison. Never contacts a hosted endpoint.
+// The test lead owns hosted execution and must bind the serving release/data.
+import { createHash } from 'node:crypto';
+import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { normalizeRender } from '../../reference-harness/runner/normalize.mjs';
+import { snapshot, rawDelta, CARD_TABLES } from '../../reference-harness/runner/deck-state.mjs';
+
+const repo = fileURLToPath(new URL('../../', import.meta.url));
+const fixture = path.join(repo, 'reference-harness/fixtures/synthetic-v1');
+const sha = bytes => createHash('sha256').update(bytes).digest('hex');
+const read = file => JSON.parse(readFileSync(file, 'utf8'));
+const write = (file, value) => writeFileSync(file, JSON.stringify(value, null, 2) + '\n', { flag: 'wx' });
+const logicalState = file => {
+  const state = snapshot(file);
+  return Object.fromEntries(CARD_TABLES.map(table => [table, [...state[table]].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)]));
+};
+
+function qualifiedHtml(bytes, contentType) {
+  // Normalization is a typed operation, never a lossy interpretation of bytes.
+  // Require an explicit UTF-8 HTML declaration; an unknown encoding stays raw.
+  if (typeof contentType !== 'string' || !/^text\/html\s*;\s*charset\s*=\s*(?:utf-8|"utf-8")\s*$/i.test(contentType)) return null;
+  try {
+    const decoded = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes);
+    return Buffer.from(decoded, 'utf8').equals(bytes) ? decoded : null;
+  } catch { return null; } // Invalid UTF-8 is compared exactly, never normalized.
+}
+
+const PROFILE_FIELDS = ['origin', 'defaultHtmlView', 'assetRefresh', 'fontAwesome', 'raiseAllRenderingErrors', 'viewCache'];
+function runtimeConfigurationProblems(profile) {
+  if (profile === null || typeof profile !== 'object' || Array.isArray(profile) ||
+      ![Object.prototype, null].includes(Object.getPrototypeOf(profile))) return ['profile must be a plain record'];
+  const problems = [];
+  for (const field of PROFILE_FIELDS) {
+    const descriptor = Object.getOwnPropertyDescriptor(profile, field);
+    if (!descriptor) problems.push('missing ' + field);
+    else if (!Object.hasOwn(descriptor, 'value') || !descriptor.enumerable) problems.push(field + ' must be an observed data value');
+  }
+  if (Reflect.ownKeys(profile).some(field => !PROFILE_FIELDS.includes(field))) problems.push('unrecognized runtime setting');
+  if (problems.length) return problems;
+  let originValid = false;
+  if (typeof profile.origin === 'string') {
+    try {
+      const origin = new URL(profile.origin);
+      originValid = ['http:', 'https:'].includes(origin.protocol) && origin.origin === profile.origin && !origin.username && !origin.password;
+    } catch { /* A malformed origin is unqualified metadata. */ }
+  }
+  if (!originValid) problems.push('origin must be a canonical HTTP or HTTPS origin without credentials');
+  if (typeof profile.defaultHtmlView !== 'string' || !profile.defaultHtmlView ||
+      profile.defaultHtmlView.trim() !== profile.defaultHtmlView || /[\u0000-\u001f\u007f]/.test(profile.defaultHtmlView)) problems.push('defaultHtmlView must be a nonempty view name');
+  if (!['never', 'cautious', 'eager'].includes(profile.assetRefresh)) problems.push('assetRefresh must be never, cautious or eager');
+  if (!['stock', 'local'].includes(profile.fontAwesome)) problems.push('fontAwesome must be stock or local');
+  for (const field of ['raiseAllRenderingErrors', 'viewCache']) if (typeof profile[field] !== 'boolean') problems.push(field + ' must be boolean');
+  return problems;
+}
+
+export function comparisonPlan() {
+  const deck = read(path.join(fixture, 'deck.json'));
+  const requests = [];
+  const add = (pathname, purpose) => requests.push({ id: `http-${String(requests.length + 1).padStart(4, '0')}`, method: 'GET', path: pathname, actor: 'anonymous', purpose });
+  add('/', 'root page');
+  for (const card of deck.cards) {
+    const mark = encodeURIComponent(card.name);
+    for (const suffix of ['', '/content', '/title', '/closed', '/history']) add(`/${mark}${suffix}`, `${card.name}: ${suffix || 'page'}`);
+  }
+  for (const route of ['/ComparisonMissingCard', '/ComparisonMissingCard.rss', '/new/Note', '/new/ComparisonUnknownType', '/*signin', '/Setting', '/Home.rss', '/Home/view/open.rss']) add(route, 'route and error boundary');
+  const ops = Object.fromEntries(readdirSync(path.join(fixture, 'ops')).filter(name => name.endsWith('.jsonl')).map(name => [name, readFileSync(path.join(fixture, 'ops', name), 'utf8').split('\n').filter(line => line.trim()).map(line => JSON.parse(line))]));
+  const journeys = read(path.join(repo, 'reference-harness/browser/journeys/synthetic-v1.json'));
+  return {
+    schema: 'decko-ruby-bunny-plan/1', fixture: 'synthetic-v1',
+    fixtureDatabaseSha256: sha(readFileSync(path.join(fixture, 'deck/deck.sqlite3'))),
+    deckSpecSha256: sha(readFileSync(path.join(fixture, 'deck.json'))),
+    clock: deck.clock, requests, operations: ops, scenarios: read(path.join(fixture, 'ops/scenarios.json')), journeys,
+    configuration: { origin: deck.environment?.origin, defaultHtmlView: 'content', assetRefresh: 'never', fontAwesome: 'stock', raiseAllRenderingErrors: false, viewCache: false },
+    scope: 'HTTP reads plus separately enumerated adapter operations and browser journeys; HTTP capture alone is not full contract acceptance',
+    comparison: 'status, content-type, location, raw body bytes; separate existing normalizeRender diagnostic; no shell stripping or deployment rewrites',
+    modelJudge: false, resultCache: false, automaticRetries: 0,
+  };
+}
+
+export async function collectResponses(plan, invoke, out) {
+  mkdirSync(path.join(out, 'bodies'), { recursive: true });
+  const responses = [];
+  for (const request of plan.requests) {
+    let response;
+    const chunks = [];
+    try {
+      response = await invoke(request);
+      if (response.body) for await (const chunk of response.body) chunks.push(Buffer.from(chunk));
+      const body = Buffer.concat(chunks);
+      writeFileSync(path.join(out, 'bodies', request.id + '.bin'), body, { flag: 'wx' });
+      responses.push({ id: request.id, status: response.status, headers: [...response.headers], contentType: response.headers.get('content-type'), location: response.headers.get('location'), bodySha256: sha(body), bodyBytes: body.length, bodyComplete: true });
+    } catch (error) {
+      const body = Buffer.concat(chunks);
+      if (response) writeFileSync(path.join(out, 'bodies', request.id + '.bin'), body, { flag: 'wx' });
+      responses.push({ id: request.id, ...(response ? { status: response.status, headers: [...response.headers], bodySha256: sha(body), bodyBytes: body.length } : {}), bodyComplete: false, error: { name: error.name, message: error.message } });
+    }
+  }
+  return responses;
+}
+
+export function compareCaptures(plan, left, right, loadBody) {
+  if (!Array.isArray(plan.requests) || plan.requests.length === 0) throw Error('Comparison requires a nonempty request inventory');
+  const expected = plan.requests.map(row => row.id);
+  if (expected.some(id => typeof id !== 'string' || id.length === 0) || new Set(expected).size !== expected.length) throw Error('Invalid or duplicate planned request identifier');
+  const profileProblems = [['plan', plan.configuration], ['left', left.effectiveConfiguration], ['right', right.effectiveConfiguration]]
+    .map(([source, profile]) => ({ source, problems: runtimeConfigurationProblems(profile) })).filter(row => row.problems.length);
+  const configKey = value => value == null ? null : JSON.stringify(Object.keys(value).sort().map(key => [key, value[key]]));
+  const sameConfiguration = profileProblems.length === 0 && configKey(left.effectiveConfiguration) === configKey(right.effectiveConfiguration) && configKey(left.effectiveConfiguration) === configKey(plan.configuration);
+  if (!sameConfiguration) return { schema: 'decko-ruby-bunny-comparison/1', sameConfiguration: false, profileProblems, counts: {}, rows: [], strictExactAccepted: false, qualifiedNormalizedAccepted: false, accepted: false, fullContractAcceptance: false, refusalReason: 'Effective runtime configuration is incomplete, invalid or unequal; refused before body grading' };
+  function index(capture) {
+    const rows = new Map();
+    for (const row of capture.responses) {
+      if (!expected.includes(row.id) || rows.has(row.id)) throw Error('Unexpected or duplicate response: ' + row.id);
+      rows.set(row.id, row);
+    }
+    return rows;
+  }
+  const a = index(left), b = index(right);
+  const rows = expected.map(id => {
+    const x = a.get(id), y = b.get(id);
+    if (!x || !y || x.error || y.error || x.bodyComplete !== true || y.bodyComplete !== true || !Number.isInteger(x.status) || !Number.isInteger(y.status) || x.status < 200 || x.status > 599 || y.status < 200 || y.status > 599) return { id, result: 'unexecuted-or-error', left: x ?? null, right: y ?? null };
+    const xb = loadBody('left', id), yb = loadBody('right', id);
+    if (sha(xb) !== x.bodySha256 || sha(yb) !== y.bodySha256 || xb.length !== x.bodyBytes || yb.length !== y.bodyBytes) throw Error('Body digest or length mismatch: ' + id);
+    const sameHeaders = ['status', 'contentType', 'location'].every(key => x[key] === y[key]);
+    const exact = sameHeaders && xb.equals(yb);
+    // Preserve exact bytes and report canonical agreement independently.
+    const xhtml = qualifiedHtml(xb, x.contentType), yhtml = qualifiedHtml(yb, y.contentType);
+    const normalizedEqual = sameHeaders && xhtml !== null && yhtml !== null && normalizeRender({ html: xhtml }).html === normalizeRender({ html: yhtml }).html;
+    return { id, result: exact ? 'exact' : normalizedEqual ? 'normalized-only' : 'difference', left: x, right: y };
+  });
+  const samePlan = left.planSha256 === right.planSha256 && left.planSha256 === sha(JSON.stringify(plan));
+  const sameData = JSON.stringify(left.startingCardState) === JSON.stringify(right.startingCardState) && left.startingCardState != null;
+  const sameEndingData = left.endingCardState != null && JSON.stringify(left.endingCardState) === JSON.stringify(right.endingCardState);
+  const sameMail = left.mail != null && JSON.stringify(left.mail) === JSON.stringify(right.mail);
+  const counts = rows.reduce((counts, row) => ({ ...counts, [row.result]: (counts[row.result] ?? 0) + 1 }), {});
+  const commonGates = samePlan && sameData && sameEndingData && sameMail && sameConfiguration;
+  const strictExactAccepted = commonGates && rows.every(row => row.result === 'exact');
+  const qualifiedNormalizedAccepted = commonGates && rows.every(row => ['exact', 'normalized-only'].includes(row.result));
+  return { schema: 'decko-ruby-bunny-comparison/1', samePlan, sameData, sameEndingData, sameMail, sameConfiguration, counts, rows, strictExactAccepted, qualifiedNormalizedAccepted, accepted: qualifiedNormalizedAccepted, fullContractAcceptance: false };
+}
+
+async function prepareLocalComparisonFixture(out, { LocalSqliteDriver, runAuthMigrations, ensureFreshnessStamp }) {
+  const database = path.join(out, 'deck.sqlite3');
+  copyFileSync(path.join(fixture, 'deck/deck.sqlite3'), database);
+  const filesRoot = path.join(out, 'files');
+  cpSync(path.join(fixture, 'deck/files'), filesRoot, { recursive: true });
+  const startingCardState = logicalState(database);
+  const driver = new LocalSqliteDriver({ path: database });
+  try { await runAuthMigrations(driver, { migrationsDir: path.join(repo, 'db/migrations') }); await ensureFreshnessStamp(driver); }
+  finally { driver.close(); }
+  if (JSON.stringify(startingCardState) !== JSON.stringify(logicalState(database))) throw Error('Provisioning changed contract card tables');
+  return { database, filesRoot, startingCardState, before: snapshot(database) };
+}
+
+export async function captureLocalBunny(plan, out, {
+  loadModule = relative => import(new URL('../../' + relative, import.meta.url)),
+  prepareFixture = prepareLocalComparisonFixture,
+} = {}) {
+  const configuration = plan.configuration;
+  const profileProblems = runtimeConfigurationProblems(configuration);
+  if (profileProblems.length) throw Error('Invalid paired runtime configuration: ' + profileProblems.join('; '));
+  if (configuration.viewCache !== false || configuration.raiseAllRenderingErrors !== false) throw Error('Direct-handler comparison requires explicit cache-off and SDK production error configuration; Ruby smart-view-cache is a separate unsupported profile');
+  const originalFetch = globalThis.fetch;
+  const dist = relative => loadModule('dist/' + relative);
+  const [{ startMockHranaServer }, { handleBunnyEngineRequest, initializeBunnyServingRenderPolicy }, { LocalSqliteDriver }, { runAuthMigrations }, { ensureFreshnessStamp }, { setCaptureWallClock }, { CaptureTransport }] = await Promise.all([
+    dist('tests/server/drivers/mock-hrana-server.js'), dist('deploy/bunny-worker-src/bunny-edge-engine-handler.js'), dist('src/server/drivers/local-sqlite.js'), dist('src/card/auth/migrations.js'), dist('src/server/freshness-stamp.js'), dist('src/card/wall-clock.js'), dist('src/card/notify/transport.js'),
+  ]);
+  const { database, filesRoot, startingCardState, before } = await prepareFixture(out, { LocalSqliteDriver, runAuthMigrations, ensureFreshnessStamp });
+  const { startMockBunnyStorage } = await loadModule('tests/server/mock-bunny-storage.mjs');
+  const hrana = await startMockHranaServer({ path: database });
+  let storage;
+  const deniedNetwork = [];
+  const restoreState = [];
+  let captureFailure;
+  let captureFailed = false;
+  try {
+    storage = await startMockBunnyStorage({ filesRoot });
+    globalThis.fetch = (input, init) => {
+      const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url);
+      if (url.origin === `https://${storage.host}`) return originalFetch(`http://${storage.host}${url.pathname}${url.search}`, init);
+      if (url.origin !== hrana.url) { deniedNetwork.push(url.origin); throw Error('Comparison refused external network: ' + url.origin); }
+      return originalFetch(input, init);
+    };
+    const mail = new CaptureTransport('ruby-bunny-comparison-local');
+    const { setDeckEnvironment, pageDefaultHtmlView, envOriginForSurface } = await dist('src/card/render/deck-origin.js');
+    const { setRaiseAllRenderingErrors, allRenderingErrorsRaise } = await dist('src/card/render/format.js');
+    const previousRaiseSetting = allRenderingErrorsRaise();
+    restoreState.push(() => setRaiseAllRenderingErrors(previousRaiseSetting));
+    // The SDK entry and direct handler install the same serving posture.
+    initializeBunnyServingRenderPolicy();
+    restoreState.push(() => setDeckEnvironment(undefined));
+    setDeckEnvironment({ origin: configuration.origin, defaultHtmlView: configuration.defaultHtmlView });
+    const env = { DECKO_DB_URL: hrana.url, DECKO_DB_TOKEN: 'comparison-local-only', DECKO_DECK_ORIGIN: configuration.origin, DECKO_ORIGIN: configuration.origin, DECKO_ASSET_REFRESH: configuration.assetRefresh, DECKO_FONT_AWESOME: configuration.fontAwesome, DECKO_WRITE_PATH: '1', DECKO_TOKEN_SECRET: 'comparison-owned-fixture-only', DECKO_STORAGE_ZONE: storage.zone, DECKO_STORAGE_PASSWORD: storage.password, DECKO_STORAGE_HOST: storage.host };
+    restoreState.push(() => setCaptureWallClock(undefined));
+    setCaptureWallClock(new Date(plan.clock));
+    const responses = await collectResponses(plan, row => handleBunnyEngineRequest(new Request(new URL(row.path, 'http://deck.example'), { method: row.method }), env, { accountMail: { transport: mail, token: { secret: env.DECKO_TOKEN_SECRET, now: () => new Date(plan.clock).getTime() / 1000 }, origin: env.DECKO_ORIGIN, siteTitle: 'My Deck' } }), out);
+    const effectiveConfiguration = { origin: envOriginForSurface(true), defaultHtmlView: pageDefaultHtmlView(), assetRefresh: env.DECKO_ASSET_REFRESH, fontAwesome: env.DECKO_FONT_AWESOME, raiseAllRenderingErrors: allRenderingErrorsRaise(), viewCache: false };
+    return { engine: 'actual-bunny-handler-node-local-hrana', productionRuntime: false, planSha256: sha(JSON.stringify(plan)), effectiveConfiguration, startingCardState, endingCardState: logicalState(database), responses, persistenceDelta: rawDelta(before, snapshot(database)), mail: mail.captured(), deniedNetwork, hranaViolations: hrana.violations, build: read(path.join(repo, '.runtime/browser-build.json')) };
+  } catch (error) {
+    captureFailed = true;
+    captureFailure = error;
+    throw error;
+  } finally {
+    const actions = [() => { globalThis.fetch = originalFetch; }, ...restoreState.reverse(), () => hrana.close(), ...(storage ? [() => storage.stop()] : [])];
+    const cleanup = await Promise.allSettled(actions.map(action => Promise.resolve().then(action)));
+    const errors = cleanup.filter(row => row.status === 'rejected').map(row => row.reason);
+    if (errors.length) throw new AggregateError([...(captureFailed ? [captureFailure] : []), ...errors], 'Owned comparison cleanup failed');
+  }
+}
+
+async function main() {
+  const [mode, ...args] = process.argv.slice(2);
+  const plan = comparisonPlan();
+  if (mode === 'plan') { write(path.resolve(args[0]), plan); return; }
+  if (mode === 'local-bunny') {
+    const out = path.resolve(args[0]);
+    if (existsSync(out)) throw Error('Refuse reused capture directory');
+    mkdirSync(out, { recursive: true });
+    const selectedPlan = args[1] ? read(path.resolve(args[1])) : plan;
+    write(path.join(out, 'plan.json'), selectedPlan);
+    const capture = await captureLocalBunny(selectedPlan, out);
+    write(path.join(out, 'capture.json'), capture);
+    const errors = capture.responses.filter(row => row.error);
+    console.log(JSON.stringify({ out, requests: capture.responses.length, errors: errors.length, deniedNetwork: capture.deniedNetwork, statuses: capture.responses.reduce((counts, row) => ({ ...counts, [row.status ?? 'error']: (counts[row.status ?? 'error'] ?? 0) + 1 }), {}), comparedToRuby: false }));
+    if (errors.length || capture.deniedNetwork.length || capture.hranaViolations.length) process.exitCode = 1;
+    return;
+  }
+  if (mode === 'ruby-vm') {
+    const [directory, configFile, planFile] = args;
+    const selectedPlan = planFile ? read(path.resolve(planFile)) : plan;
+    const profileProblems = runtimeConfigurationProblems(selectedPlan.configuration);
+    if (profileProblems.length) throw Error('Invalid native reference configuration: ' + profileProblems.join('; '));
+    const out = path.resolve(directory);
+    if (existsSync(out)) throw Error('Refuse reused capture directory');
+    const config = read(path.resolve(configFile));
+    mkdirSync(out, { recursive: true });
+    write(path.join(out, 'plan.json'), selectedPlan);
+    const { runRubyComparisonOnVm } = await import('./platform/ruby-comparison-vm.mjs');
+    const raw = path.join(out, 'platform.json');
+    await runRubyComparisonOnVm({ ...config, repo, fixture, plan: selectedPlan, output: raw });
+    const result = read(raw);
+    const control = read(raw + '.control.json');
+    if (result.error || result.exit !== 0 || !result.processEnded || control.originalScratchRemoved !== true || control.cleanupError || !result.capture) throw Error('Ruby platform execution failed; see retained platform.json and control receipt');
+    const capture = { ...result.capture, planSha256: sha(JSON.stringify(selectedPlan)), prebootCardState: result.startingCardState };
+    if (!capture.startingCardState || !capture.endingCardState) throw Error('Ruby did not qualify actual before/after request state');
+    mkdirSync(path.join(out, 'bodies'));
+    for (const row of capture.responses) {
+      if (row.error) continue;
+      const bytes = Buffer.from(row.bodyBase64, 'base64');
+      if (sha(bytes) !== row.bodySha256 || bytes.length !== row.bodyBytes) throw Error('Invalid Ruby response bytes');
+      writeFileSync(path.join(out, 'bodies', row.id + '.bin'), bytes, { flag: 'wx' });
+      delete row.bodyBase64;
+    }
+    write(path.join(out, 'capture.json'), capture);
+    console.log(JSON.stringify({ out, requests: capture.responses.length, errors: capture.responses.filter(row => row.error).length, runtime: capture.gems, processEnded: result.processEnded, scratchRemoved: control.originalScratchRemoved }));
+    if (capture.responses.some(row => row.error)) process.exitCode = 1;
+    return;
+  }
+  if (mode === 'compare') {
+    const [left, right, report] = args.map(value => path.resolve(value));
+    const recordedPlan = read(path.join(left, 'plan.json'));
+    const result = compareCaptures(recordedPlan, read(path.join(left, 'capture.json')), read(path.join(right, 'capture.json')), (side, id) => readFileSync(path.join(side === 'left' ? left : right, 'bodies', id + '.bin')));
+    write(report, result);
+    console.log(JSON.stringify({ report, accepted: result.accepted, strictExactAccepted: result.strictExactAccepted, qualifiedNormalizedAccepted: result.qualifiedNormalizedAccepted, counts: result.counts, samePlan: result.samePlan, sameData: result.sameData, sameEndingData: result.sameEndingData, sameMail: result.sameMail, sameConfiguration: result.sameConfiguration, profileProblems: result.profileProblems, refusalReason: result.refusalReason, fullContractAcceptance: false }));
+    process.exitCode = result.accepted ? 0 : 1;
+    return;
+  }
+  throw Error('usage: ruby-bunny-comparison.mjs plan <file> | local-bunny <new-dir> | ruby-vm <new-dir> <private-runtime-config.json> | compare <ruby-dir> <bunny-dir> <report>');
+}
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await main();

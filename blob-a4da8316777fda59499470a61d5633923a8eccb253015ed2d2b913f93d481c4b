@@ -1,0 +1,7 @@
+{
+  "name": "ruby",
+  "description": "Stock Ruby Decko (decko 0.20.0, card 1.110.0) on the operator's VM: a second instance of the vm-ruby application the shadow router records, bound to a loopback port, seeded from the same synthetic-v1 fixture, reached by the documented SSH recipe over a local tunnel. The browser stays local.",
+  "command": ["bash", "vm-session.sh"],
+  "remote": true,
+  "ready": "/__harness/ready"
+}

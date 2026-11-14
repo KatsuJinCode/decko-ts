@@ -1,0 +1,10 @@
+// A Bun parent is insufficient evidence if the test pool silently starts Node.
+// Keep this check outside the source-pinned five-case database matrix suite.
+if (process.env.DECKO_MATRIX_RUNTIME === "bun") {
+  if (!process.versions.bun) {
+    throw new Error("native Bun matrix requested but the test process is not Bun");
+  }
+  console.info("native-bun-test-process", JSON.stringify({
+    executable: process.execPath, pid: process.pid, bun: process.versions.bun,
+  }));
+}

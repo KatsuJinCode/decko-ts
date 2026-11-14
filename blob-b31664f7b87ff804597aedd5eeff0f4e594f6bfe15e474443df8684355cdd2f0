@@ -1,0 +1,179 @@
+{
+  "row": "reg-routes-C1",
+  "gemset": "decko-0.20.0 + card-mod-format-0.20.0 (pinned)",
+  "respondLadder": [
+    {
+      "label": "a 302 status REDIRECTS: the redirect answers the hard_redirect default 302",
+      "statusArg": 302,
+      "error": null,
+      "rendered": null,
+      "redirected": {
+        "url": "PAGE",
+        "status": 302
+      },
+      "sentFile": null,
+      "logged": []
+    },
+    {
+      "label": "a 303 status REDIRECTS TOO, and the redirect answers 302 - the 303 is not carried",
+      "statusArg": 303,
+      "error": null,
+      "rendered": null,
+      "redirected": {
+        "url": "PAGE",
+        "status": 302
+      },
+      "sentFile": null,
+      "logged": []
+    },
+    {
+      "label": "a file format at 200 SENDS THE FILE instead of rendering",
+      "statusArg": 200,
+      "error": null,
+      "rendered": null,
+      "redirected": null,
+      "sentFile": [
+        "FILE-PAGE"
+      ],
+      "logged": []
+    },
+    {
+      "label": "a file format at 302 REDIRECTS: the redirect arm outranks the file arm",
+      "statusArg": 302,
+      "error": null,
+      "rendered": null,
+      "redirected": {
+        "url": [
+          "FILE-PAGE"
+        ],
+        "status": 302
+      },
+      "sentFile": null,
+      "logged": []
+    },
+    {
+      "label": "anything else RENDERS with the format's mime type and the status it was given",
+      "statusArg": 200,
+      "error": null,
+      "rendered": {
+        "body": "PAGE",
+        "status": 200,
+        "content_type": "text/html"
+      },
+      "redirected": null,
+      "sentFile": null,
+      "logged": []
+    },
+    {
+      "label": "a 404 renders with its own status (not a redirect, not a file)",
+      "statusArg": 404,
+      "error": null,
+      "rendered": {
+        "body": "NOT-FOUND",
+        "status": 404,
+        "content_type": "text/html"
+      },
+      "redirected": null,
+      "sentFile": null,
+      "logged": []
+    },
+    {
+      "label": "the cache log line fires only when the config asks for it",
+      "statusArg": 200,
+      "error": null,
+      "rendered": {
+        "body": "PAGE",
+        "status": 200,
+        "content_type": "text/html"
+      },
+      "redirected": null,
+      "sentFile": null,
+      "logged": [
+        ""
+      ]
+    }
+  ],
+  "registeredFormats": [
+    "css",
+    "csv",
+    "html",
+    "js",
+    "json",
+    "jsonld",
+    "rss",
+    "scss",
+    "text",
+    "txt",
+    "xml",
+    "yaml",
+    "yml"
+  ],
+  "rigArtifacts": [
+    "the file format the capture answers the file arm with is an instance of a SUBCLASS of the PINNED mod's own Card::Format::FileFormat, so the is_a? check respond makes is the pinned class check; the subclass adds only the mime_type the render arm would read.",
+    "the recorded redirect URL is the rig's shape: the rig's hard_redirect stand-in does not make the URL absolute (the pinned card_url does, response.rb:41 - row C2's evidence), and the rig's FormatDouble answers a fixed mime type."
+  ],
+  "sources": {
+    "respond": [
+      {
+        "line": 10,
+        "text": "    def respond format, result, status"
+      },
+      {
+        "line": 11,
+        "text": "      Rails.logger.info Card::Cache.tallies if Cardio.config.cache_log_level"
+      },
+      {
+        "line": 12,
+        "text": "      if status.in? [302, 303]"
+      },
+      {
+        "line": 13,
+        "text": "        hard_redirect result"
+      },
+      {
+        "line": 14,
+        "text": "      elsif format.is_a?(Card::Format::FileFormat) && status == 200"
+      },
+      {
+        "line": 15,
+        "text": "        send_file(*result)"
+      },
+      {
+        "line": 16,
+        "text": "      else"
+      },
+      {
+        "line": 17,
+        "text": "        render_response result.to_s.html_safe, status, format.mime_type"
+      },
+      {
+        "line": 18,
+        "text": "      end"
+      },
+      {
+        "line": 19,
+        "text": "    end"
+      }
+    ],
+    "renderResponse": [
+      {
+        "line": 21,
+        "text": "    def render_response body, status, content_type"
+      },
+      {
+        "line": 22,
+        "text": "      render body: body, status: status, content_type: content_type"
+      },
+      {
+        "line": 23,
+        "text": "    end"
+      }
+    ],
+    "hardRedirectDefault": [
+      {
+        "line": 40,
+        "text": "    def hard_redirect url, status=302"
+      }
+    ]
+  }
+}

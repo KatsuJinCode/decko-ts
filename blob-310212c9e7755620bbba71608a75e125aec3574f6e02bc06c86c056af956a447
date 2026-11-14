@@ -1,0 +1,20 @@
+{
+  "what": "the final browser asset audit, re-run on the local signed-in exercise at this tranche's base",
+  "row": "mx-B-110-final-main-browser-asset-audit",
+  "check": "no script, stylesheet, font or image failed during the complete main browser journey",
+  "command": "node tools/edge-signed-in-exercise.mjs --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 --out .runtime/matrix-journey-tranche2-20261021/full-run-base/report.md",
+  "source": "eaf5149b22626a795c30228ef88bf8edb784559a",
+  "result": "PASS",
+  "evidence": {
+    "contexts": 28,
+    "failures": []
+  },
+  "fixture": {
+    "retiredWidgetEmbeds": "0 rows still embed the retired widgets.twimg.com script in the local fixture deck after tranche 1's guarded CAS migration (tools/deck-fixtures/migrate-retired-twitter-widget-embeds-cas.mjs, applied with --include-trashed)",
+    "reRun": "the migration tool's own dry run: 0 candidates, admission matches 0, one version row - the fixture is clean and a re-run is a no-op"
+  },
+  "liveSide": {
+    "status": "a different deck under a different authorisation",
+    "note": "the live deck's migration is on record at brandonDojoTech/recovery/release/private-probes/private-tool-repairs-20261018/remote-widget-cas/plan.json (2026-10-18). Nothing in this tranche deploys and nothing in it touches live."
+  }
+}

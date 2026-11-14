@@ -1,0 +1,95 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import vm from 'node:vm';
+import {createHash} from 'node:crypto';
+import {fileURLToPath,pathToFileURL} from 'node:url';
+import * as profile from '../../tools/runtime-db-matrix/source-profile.mjs';
+import {scratchDir} from '../support/scratch-dir.mjs';
+const base=path.dirname(fileURLToPath(import.meta.url)),root=process.env.DECKO_AUX_SCOPE_CONTROL_ROOT??scratchDir('auxiliary-scope-');
+fs.mkdirSync(root,{recursive:true});let sequence=0;
+const original=fs.readFileSync(path.join(base,'runtime-db-matrix-auxiliary-inputs.test.mjs'),'utf8');
+const cfSource=vm.runInNewContext(original.match(/const cfSource=([\s\S]*?);\nconst tokenSource=/)[1]);
+const tokenSource=vm.runInNewContext(original.match(/const tokenSource=([\s\S]*?);\nfunction fixture/)[1]);
+function fixture(){
+ const directory=path.join(root,String(++sequence)),home=path.join(directory,'home'),data=path.join(directory,'data');
+ for(const [file,text]of Object.entries({'node_modules/miniflare/dist/src/index.js':cfSource,'node_modules/vitest/dist/chunks/consumer.js':tokenSource,'node_modules/.mf/cf.json':'{"owned":true}'})){
+  fs.mkdirSync(path.dirname(path.join(directory,file)),{recursive:true});fs.writeFileSync(path.join(directory,file),text);
+ }
+ const token=path.join(data,'vitest/.vitest-secret-token');fs.mkdirSync(path.dirname(token),{recursive:true});fs.writeFileSync(token,'owned-scope-control');
+ return{directory,token,cf:path.join(directory,'node_modules/.mf/cf.json'),options:{backends:['sqlite','d1'],environment:{LOCALAPPDATA:data,USERPROFILE:home},home,platform:'win32'}};
+}
+const capture=f=>profile.inspectMatrixAuxiliaryRuntime(f.directory,f.options);
+test('a missing D1 cache leaves the mixed selection SQLite projection qualified',()=>{
+ const f=fixture();fs.renameSync(f.cf,f.cf+'.retained');const snapshot=capture(f);
+ assert.equal(snapshot.status,'INCOMPLETE');
+ assert.equal(profile.selectMatrixAuxiliaryRuntime(snapshot,['sqlite']).status,'QUALIFIED');
+ assert.equal(profile.selectMatrixAuxiliaryRuntime(snapshot,['d1']).status,'INCOMPLETE');
+ assert.equal(profile.verifyMatrixAuxiliaryRuntime(snapshot,{...f.options,backends:['sqlite']}),true);
+});
+test('an unsupported D1 consumer does not discard the independent primary-token declaration',()=>{
+ const f=fixture();fs.writeFileSync(path.join(f.directory,'node_modules/miniflare/dist/src/index.js'),'unsupported consumer');
+ const snapshot=capture(f);assert.equal(profile.selectMatrixAuxiliaryRuntime(snapshot,['sqlite']).status,'QUALIFIED');
+ const d1=profile.selectMatrixAuxiliaryRuntime(snapshot,['d1']);assert.equal(d1.status,'INCOMPLETE');assert.equal(d1.roles.find(r=>r.kind==='cf-cache').status,'INCOMPLETE');
+ assert.equal(profile.verifyMatrixAuxiliaryRuntime(snapshot,{...f.options,backends:['sqlite']}),true);
+});
+test('unused CF input drift is ignored only by the unrelated cell',()=>{
+ const f=fixture(),snapshot=capture(f);fs.writeFileSync(f.cf,'{"changed":true}');
+ assert.equal(profile.verifyMatrixAuxiliaryRuntime(snapshot,{...f.options,backends:['sqlite']}),true);
+ assert.throws(()=>profile.verifyMatrixAuxiliaryRuntime(snapshot,{...f.options,backends:['d1']}),/identity changed/i);
+});
+test('the common token cannot be removed from either selected cell',()=>{
+ const f=fixture(),snapshot=capture(f);fs.writeFileSync(f.token,'changed');
+ for(const backend of ['sqlite','d1'])assert.throws(()=>profile.verifyMatrixAuxiliaryRuntime(snapshot,{...f.options,backends:[backend]}),/identity changed/i);
+});
+test('unknown applicability and scope expansion fail closed',()=>{
+ const f=fixture(),snapshot=capture(f);
+ assert.throws(()=>profile.selectMatrixAuxiliaryRuntime(snapshot,['postgres']),/subset/);
+ const wrong=structuredClone(snapshot);wrong.roles[0].backends=['d1'];
+ assert.throws(()=>profile.selectMatrixAuxiliaryRuntime(wrong,['sqlite']),/applicability changed/);
+ const unknown=structuredClone(snapshot);unknown.roles[0].kind='unknown-role';
+ assert.throws(()=>profile.selectMatrixAuxiliaryRuntime(unknown,['sqlite']),/Unknown auxiliary/);
+});
+test('loaded-source coverage cannot borrow an unselected CF cache binding',()=>{
+ const f=fixture(),auxiliary=capture(f),file=path.join(f.directory,'entry.mjs'),bytes=Buffer.from('owned source'),sha=b=>createHash('sha256').update(b).digest('hex');
+ fs.writeFileSync(file,bytes);
+ const source={path:'entry.mjs',physicalPath:file,bytes:bytes.length,sha256:sha(bytes)};
+ const model={source:{root:f.directory,files:[source]},runtime:{auxiliary,node:{...source,path:file},files:[],packages:[]},tools:[],caseContract:{file:'entry.mjs',sha256:sha(bytes)}};
+ const scoped=profile.matrixProfileForBackends(model,['sqlite']),cache=auxiliary.roles.find(role=>role.kind==='cf-cache').inventory;
+ const result=profile.verifyMatrixLoadedSourceCoverage(scoped,{transforms:[{id:file,bytes:bytes.length,sha256:sha(bytes)}],observations:[{event:'input',path:file,bytes:bytes.length,sha256:sha(bytes)},{event:'input',path:cache.path,bytes:cache.bytes,sha256:cache.sha256}],generatedRoots:[]});
+ const native={success:true,testResults:[{status:'passed',assertionResults:profile.MATRIX_CASE_TITLES.map(title=>({title,status:'passed'}))}]};
+ const classified=profile.classifyMatrixCellWithSourceCoverage({code:0,error:null},native,result);
+ assert.equal(classified.result,'INCOMPLETE');
+ assert(classified.unqualifiedNonSourceInputs.some(input=>path.resolve(input.path)===path.resolve(cache.path)));
+});
+const runnerFile=path.resolve(base,'../../docs/reports/issue207-controls/matrix-run.mjs'),runner=fs.readFileSync(runnerFile,'utf8'),pin='1'.repeat(40);
+async function runVM({child=false,selected=['sqlite','d1'],missing='cf',backendEnvironment}={}){
+ const output=new Map(),activity={scratch:0,imports:0,spawn:0,verified:[]};
+ const roles=[{role:'Vitest existing primary API token',kind:'opaque-runtime-control',status:missing==='token'?'INCOMPLETE':'QUALIFIED'},...(selected.includes('d1')?[{role:'Miniflare existing default Request.cf cache',kind:'cf-cache',status:missing==='cf'?'INCOMPLETE':'QUALIFIED'}]:[])];
+ const snapshot={source:{commit:pin,files:[],scope:{}},runtime:{auxiliary:{backends:selected,status:roles.every(r=>r.status==='QUALIFIED')?'QUALIFIED':'INCOMPLETE',roles},nativeInventory:[]},obligations:[]};
+ const source=path.join(root,'vm-source'),out=path.join(root,'vm-out'),temporary=path.join(root,'vm-temp');
+ const placement={source:{path:source,identity:'owned-source'},evidence:{path:out},tempParent:{path:temporary}};
+ const argv=['node','matrix-run.mjs',...(child?['child',selected[0]]:[]),source,out,temporary,'--source-commit',pin,'--run-local','--backends',selected.join(',')];
+ const context={process:{argv,execPath:process.execPath,env:backendEnvironment===undefined?{}:{DECKO_MATRIX_BACKEND:backendEnvironment},exitCode:0},console:{log(){},error(){}},Buffer,URL,path,pathToFileURL,fileURLToPath,createHash,spawn:()=>{activity.spawn++;throw Error('NO_BACKEND');},spawnSync:()=>({status:0,stdout:pin+'\n'}),fs:{writeFileSync:(p,b)=>output.set(p,String(b)),mkdirSync(){},existsSync:()=>false,readFileSync:p=>{if(!output.has(p))throw Error('Unexpected fixture read');return output.get(p);},readdirSync:()=>[]},inspectReadOnlyMatrixPaths:()=>placement,prepareMatrixProfile:()=>snapshot,verifyMatrixProfile:(_profile,options)=>{activity.verified.push(options?.backends??'global');return true;},localMatrixExecutionEnvironment:()=>({}),createOwnedLocalMatrixTempRoot:()=>{activity.scratch++;throw Error('STOP_BEFORE_BACKEND');},inspectLocalD1TempRoot:()=>({}),createMatrixTransformedSourceVerifier:()=>()=>{},verifyMatrixLoadedSourceCoverage(){},classifyMatrixCellWithSourceCoverage(){},matrixProfileForBackends(){}};
+ const code=runner.replace(/^import .*;\r?\n/gm,'').replaceAll('import.meta.url',JSON.stringify(pathToFileURL(runnerFile).href));
+ let error=null;try{await new vm.Script('(async()=>{\n'+code+'\n})()',{importModuleDynamically:()=>{activity.imports++;throw Error('NO_PACKAGE_IMPORT');}}).runInNewContext(context);}catch(value){error=value.message;}
+ return{error,activity,exitCode:context.process.exitCode,outputs:[...output].map(([file,text])=>({file,value:JSON.parse(text)}))};
+}
+test('the parent revalidates the selected SQLite scope immediately before owned scratch',async()=>{
+ const result=await runVM();assert.equal(result.error,'STOP_BEFORE_BACKEND');assert.equal(result.activity.scratch,1);
+ assert(result.activity.verified.some(backends=>JSON.stringify(backends)==='["sqlite"]'));
+ assert.equal(result.activity.imports,0);assert.equal(result.activity.spawn,0);
+});
+test('a missing primary token holds every parent cell before backend startup',async()=>{
+ const result=await runVM({missing:'token'});assert.equal(result.error,null);assert.equal(result.activity.scratch,0);
+ assert.equal(result.exitCode,2);assert.equal(result.activity.spawn,0);
+});
+test('a qualified child refuses an execution backend outside its declared auxiliary scope',async()=>{
+ const result=await runVM({child:true,selected:['sqlite'],missing:'none',backendEnvironment:'d1'});
+ assert.match(result.error,/backend execution must match/);assert.equal(result.activity.imports,0);assert.equal(result.activity.spawn,0);
+});
+test('a qualified child requires an explicit matching backend execution environment',async()=>{
+ const result=await runVM({child:true,selected:['sqlite'],missing:'none'});
+ assert.match(result.error,/backend execution must match/);assert.equal(result.activity.imports,0);assert.equal(result.activity.spawn,0);
+});

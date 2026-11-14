@@ -1,0 +1,91 @@
+# Executes the stock Rails application through Rack on the public fixture.
+# No socket listener, external request, mail provider or live account is used.
+require "bundler/setup"
+require "json"
+require "base64"
+require "digest"
+require "rack/mock"
+root = ENV.fetch("COMPARISON_ROOT")
+require File.join(root, "app/config/environment")
+require File.join(root, "harness_env")
+require File.join(root, "sqlite_regexp")
+plan = JSON.parse(File.read(File.join(root, "plan.json")))
+spec = JSON.parse(File.read(File.join(root, "deck.json")))
+HarnessEnv.freeze_clock!(spec.fetch("clock"))
+HarnessEnv.apply_environment!(spec.fetch("environment"))
+configuration = plan.fetch("configuration")
+Cardio.config.deck_origin = configuration.fetch("origin")
+Cardio.config.default_html_view = configuration.fetch("defaultHtmlView").to_sym
+Cardio.config.asset_refresh = configuration.fetch("assetRefresh").to_sym
+Cardio.config.view_cache = configuration.fetch("viewCache") if configuration.key?("viewCache")
+Cardio.config.raise_all_rendering_errors = configuration.fetch("raiseAllRenderingErrors") if configuration.key?("raiseAllRenderingErrors")
+HarnessSQLiteRegexp.install_active_record!
+Card::Auth.instance_variable_set(:@needs_setup, false)
+Cardio.config.rescue_all_in_controller = true
+Cardio.config.consider_all_requests_local = false
+CardController.rescue_from_class StandardError
+raise "Mail transport is not local test capture" unless ActionMailer::Base.delivery_method == :test
+database = File.join(root, "deck.sqlite3")
+binding = ActiveRecord::Base.connection.select_all("PRAGMA database_list").to_a
+raise "Rails did not bind the owned fixture" unless binding.any? { |row| row["file"] == database }
+def comparison_card_state(database)
+  db = SQLite3::Database.new(database, readonly: true)
+  begin
+    db.results_as_hash = true
+    %w[cards card_acts card_actions card_changes card_references card_virtuals].to_h do |table|
+      exists = db.get_first_value("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?", table)
+      rows = exists == 0 ? [] : db.execute("SELECT * FROM \"#{table}\"")
+      [table, rows.map { |row| ["id:#{row.fetch('id')}", row] }.sort_by(&:first)]
+    end
+  ensure
+    db.close
+  end
+end
+starting_card_state = comparison_card_state(database)
+depth_raises = []
+depth_trace = if plan.dig("diagnostics", "depthRaises")
+  TracePoint.new(:raise) do |event|
+    error = event.raised_exception
+    next unless error.message.include?("Too many levels of nests")
+    owner = event.self
+    format = owner.is_a?(Card::Format) ? owner : (owner.is_a?(Card::View) ? owner.format : nil)
+    depth_raises << {class: error.class.name, message: error.message, path: event.path, line: event.lineno,
+      card: format&.card&.name&.to_s, format_depth: format&.depth, view_depth: format&.voo&.depth,
+      view: format&.voo&.requested_view, focal: format&.focal?, backtrace: error.backtrace}
+  end
+end
+depth_trace&.enable
+responses = plan.fetch("requests").map do |request|
+  begin
+    env = Rack::MockRequest.env_for("http://deck.example" + request.fetch("path"), method: request.fetch("method"), "HTTP_ACCEPT" => "text/html")
+    status, headers, body = Rails.application.call(env)
+    bytes = +"".b
+    begin
+      body.each { |part| bytes << part.b }
+    ensure
+      body.close if body.respond_to?(:close)
+    end
+    canonical_headers = headers.to_h.transform_keys(&:downcase)
+    {id: request.fetch("id"), status: status, headers: headers.to_a, contentType: canonical_headers["content-type"], location: canonical_headers["location"], bodyComplete: true,
+     bodySha256: Digest::SHA256.hexdigest(bytes), bodyBytes: bytes.bytesize, bodyBase64: Base64.strict_encode64(bytes)}
+  rescue StandardError => error
+    {id: request.fetch("id"), error: {name: error.class.name, message: error.message}}
+  end
+end
+depth_trace&.disable
+gems = %w[decko card rails sqlite3 rack].to_h { |name| [name, Gem.loaded_specs[name]&.version&.to_s] }
+mail = ActionMailer::Base.deliveries.map { |message| {to: message.to, subject: message.subject, text: message.body.decoded} }
+source_bindings = [Card::Format.instance_method(:monitor_depth), Card::Format.instance_method(:render!),
+                   Card::View.instance_method(:process), Card::View.instance_method(:ok_view),
+                   Card::View.instance_method(:cache_render)].map do |method|
+  source, line = method.source_location
+  {method: "#{method.owner}##{method.name}", file: source, line: line, sha256: Digest::SHA256.file(source).hexdigest}
+end
+File.write(File.join(root, "result.json"), JSON.generate({engine: "native-ruby-rails-rack", ruby: RUBY_DESCRIPTION,
+  gems: gems, clock: plan.fetch("clock"), assetRefresh: Cardio.config.asset_refresh, viewCache: Cardio.config.view_cache,
+  effectiveConfiguration: {origin: Cardio.config.deck_origin, defaultHtmlView: Cardio.config.default_html_view.to_s,
+    assetRefresh: Cardio.config.asset_refresh.to_s, fontAwesome: "stock", raiseAllRenderingErrors: Cardio.config.raise_all_rendering_errors, viewCache: Cardio.config.view_cache},
+  databaseBinding: binding, startingCardState: starting_card_state, endingCardState: comparison_card_state(database),
+  bundleLockSha256: Digest::SHA256.file(File.join(root, "app/Gemfile.lock")).hexdigest,
+  captureSourceSha256: Digest::SHA256.file(__FILE__).hexdigest, loadedSourceBindings: source_bindings,
+  responses: responses, mail: mail, depthRaises: depth_raises}))

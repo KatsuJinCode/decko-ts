@@ -1,0 +1,19 @@
+// Verification child preload: no non-loopback network is permitted.
+import net from 'node:net';
+import dns from 'node:dns';
+import dgram from 'node:dgram';
+import fs from 'node:fs';
+const local=host=>host===undefined||['127.0.0.1','localhost','::1','[::1]'].includes(String(host).toLowerCase());
+function refuse(host){
+  fs.appendFileSync(process.env.DEPLOYMENT159_NETWORK_LOG,JSON.stringify({blockedHost:String(host)})+'\n');
+  throw Error('Verification forbids non-loopback network');
+}
+const connect=net.Socket.prototype.connect;
+net.Socket.prototype.connect=function(...args){const first=Array.isArray(args[0])?args[0][0]:args[0];const host=typeof first==='object'?first.host:typeof first==='number'?typeof args[1]==='string'?args[1]:undefined:first;if(!local(host))refuse(host);return connect.apply(this,args);};
+const lookup=dns.lookup;
+dns.lookup=function(host,...args){if(!local(host))refuse(host);return lookup.call(this,host,...args);};
+const promised=dns.promises.lookup;
+dns.promises.lookup=async function(host,...args){if(!local(host))refuse(host);return promised.call(this,host,...args);};
+dgram.Socket.prototype.send=function(){refuse('udp');};
+const originalFetch=globalThis.fetch;
+globalThis.fetch=(input,options)=>{const url=new URL(typeof input==='string'||input instanceof URL?input:input.url);if(!local(url.hostname))refuse(url.hostname);return originalFetch(input,options);};

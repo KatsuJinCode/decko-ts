@@ -1,0 +1,67 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.1 [39m[90mC:/localProjects/decko-ts-lane-a1-mods-validation-2026-10-06[39m
+
+[90mstdout[2m | tests/card/render/render-engine.test.ts[2m > [22m[2mbatched inclusion prefetch: queries per render (decko#1282)[2m > [22m[2mrenders chains of depth 1/2/4/8 with a CONSTANT query count
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l2","nestName":"chain_l2"}
+
+[90mstdout[2m | tests/card/render/render-engine.test.ts[2m > [22m[2mbatched inclusion prefetch: queries per render (decko#1282)[2m > [22m[2mrenders chains of depth 1/2/4/8 with a CONSTANT query count
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l2","nestName":"chain_l2"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l3","nestName":"chain_l3"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l4","nestName":"chain_l4"}
+
+[90mstdout[2m | tests/card/render/render-engine.test.ts[2m > [22m[2mbatched inclusion prefetch: queries per render (decko#1282)[2m > [22m[2mrenders chains of depth 1/2/4/8 with a CONSTANT query count
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l2","nestName":"chain_l2"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l3","nestName":"chain_l3"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l4","nestName":"chain_l4"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l5","nestName":"chain_l5"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l6","nestName":"chain_l6"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l7","nestName":"chain_l7"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l8","nestName":"chain_l8"}
+
+[90mstdout[2m | tests/card/render/render-engine.test.ts[2m > [22m[2mbatched inclusion prefetch: queries per render (decko#1282)[2m > [22m[2mrenders a warm closure with exactly ONE statement (the freshness stamp)
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l2","nestName":"chain_l2"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l3","nestName":"chain_l3"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l4","nestName":"chain_l4"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l5","nestName":"chain_l5"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l6","nestName":"chain_l6"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l7","nestName":"chain_l7"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l8","nestName":"chain_l8"}
+
+[90mstdout[2m | tests/card/render/render-engine.test.ts[2m > [22m[2mbatched inclusion prefetch: queries per render (decko#1282)[2m > [22m[2mrenders a warm closure with exactly ONE statement (the freshness stamp)
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l2","nestName":"chain_l2"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l3","nestName":"chain_l3"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l4","nestName":"chain_l4"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l5","nestName":"chain_l5"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l6","nestName":"chain_l6"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l7","nestName":"chain_l7"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l8","nestName":"chain_l8"}
+
+[90mstdout[2m | tests/card/render/render-engine.test.ts[2m > [22m[2mbatched inclusion prefetch: queries per render (decko#1282)[2m > [22m[2mfalls back to per-level fetching when the SQL walk cannot match a reference (plural-stem key)
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"Oracle Basics","nestName":"Oracle Basics"}
+
+[90mstdout[2m | tests/card/render/render-engine.test.ts[2m > [22m[2mbatched inclusion prefetch: queries per render (decko#1282)[2m > [22m[2mresolves compound references through the fallback (junction rows have NULL key columns)
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"Parent Card+rich_child","nestName":"Parent Card+rich_child"}
+
+[90mstdout[2m | tests/card/render/render-engine.test.ts[2m > [22m[2mbatched inclusion prefetch: queries per render (decko#1282)[2m > [22m[2mrenders an absent nest target as Ruby's unknown view (empty: create denied)
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"ghost","unknown":true,"nestName":"ghost"}
+
+ [32m✓[39m tests/card/render/render-engine.test.ts [2m([22m[2m22 tests[22m[2m)[22m[32m 65[2mms[22m[39m
+[90mstdout[2m | tests/card/render/junction-depth-closure.test.ts[2m > [22m[2mdepth-3+ junction inclusion closure (deploy-notes finding 2 fix)[2m > [22m[2mrenders a depth-3 junction inclusion chain, covered by the per-key closure rounds
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"chain_c1+chain_c2+chain_c3","nestName":"chain_c1+chain_c2+chain_c3"}
+
+[90mstdout[2m | tests/card/render/junction-depth-closure.test.ts[2m > [22m[2mdepth-3+ junction inclusion closure (deploy-notes finding 2 fix)[2m > [22m[2mrenders a depth-4 junction inclusion chain, covered by the per-key closure rounds
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"chain_c1+chain_c2+chain_c3+chain_c4","nestName":"chain_c1+chain_c2+chain_c3+chain_c4"}
+
+[90mstdout[2m | tests/card/render/junction-depth-closure.test.ts[2m > [22m[2mdepth-3+ junction inclusion closure (deploy-notes finding 2 fix)[2m > [22m[2mresolves a depth-3 junction through the recursive side-id fallback when the SQL key transform misses
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"chain_c1+Oracle Basics+chain_c3","nestName":"chain_c1+Oracle Basics+chain_c3"}
+
+[90mstdout[2m | tests/card/render/junction-depth-closure.test.ts[2m > [22m[2mdepth-3+ junction inclusion closure (deploy-notes finding 2 fix)[2m > [22m[2mkeeps a depth-2 junction render at the constant query shape (no regression)
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"chain_c1+chain_c2","nestName":"chain_c1+chain_c2"}
+
+ [32m✓[39m tests/card/render/junction-depth-closure.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 38[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m2 passed[39m[22m[90m (2)[39m
+[2m      Tests [22m [1m[32m26 passed[39m[22m[90m (26)[39m
+[2m   Start at [22m 00:23:32
+[2m   Duration [22m 1.40s[2m (transform 68%, import 22%, tests 10%)[22m
+

@@ -1,0 +1,67 @@
+import {afterAll,beforeAll,describe,expect,it} from 'vitest';
+import {Miniflare,convertV4MiniflareOptions} from 'miniflare';
+import {MemoryBlobDriver} from '../../src/blob/memory.js';
+import {R2BlobDriver,type R2BucketLike} from '../../src/blob/r2.js';
+
+const bytes=(value:string)=>new TextEncoder().encode(value);
+it('memory ordinary put owns Node Buffer bytes after the caller reuses its buffer',async()=>{
+ const driver=new MemoryBlobDriver(),input=Buffer.from('A');
+ await driver.put('ordinary-buffer',input);
+ input[0]='B'.charCodeAt(0);
+ expect(await driver.getBytes('ordinary-buffer')).toEqual(bytes('A'));
+});
+it('memory conditional replacement owns Node Buffer bytes after successful recovery',async()=>{
+ const driver=new MemoryBlobDriver(),replacement=Buffer.from('O');
+ await driver.put('conditional-buffer',bytes('A'));
+ expect(await driver.putIfUnchanged('conditional-buffer',bytes('A'),replacement)).toBe(true);
+ replacement[0]='X'.charCodeAt(0);
+ expect(await driver.getBytes('conditional-buffer')).toEqual(bytes('O'));
+});
+
+describe('Node Buffer ownership across actual local R2 conditional writes',()=>{
+ let mf:Miniflare|undefined,bucket:R2BucketLike;
+ beforeAll(async()=>{
+  mf=new Miniflare(convertV4MiniflareOptions({modules:true,
+   script:"export default { fetch() { return new Response('ok'); } }",
+   r2Buckets:{BLOB:'independent-buffer-ownership'}}));
+  bucket=await mf.getR2Bucket('BLOB') as unknown as R2BucketLike;
+ },120_000);
+ afterAll(async()=>{await mf?.dispose();});
+ function delayedGet(){
+  let release!:()=>void,started!:()=>void;
+  const gate=new Promise<void>(resolve=>{release=resolve;});
+  const readStarted=new Promise<void>(resolve=>{started=resolve;});
+  const wrapped:R2BucketLike={
+   get:async key=>{started();await gate;return bucket.get(key);},
+   put:bucket.put.bind(bucket),head:bucket.head.bind(bucket),
+   delete:bucket.delete.bind(bucket),list:bucket.list.bind(bucket),
+  };
+  return {driver:new R2BlobDriver(wrapped),readStarted,release};
+ }
+ it('does not let Buffer reuse change the expected bytes and overwrite a raw newer writer',async()=>{
+  const key='expected-buffer-race',expected=Buffer.from('A'),f=delayedGet();
+  await bucket.put(key,bytes('A'));
+  const pending=f.driver.putIfUnchanged(key,expected,bytes('O'));
+  try{
+   await f.readStarted;
+   expected[0]='B'.charCodeAt(0);
+   await bucket.put(key,bytes('B'));
+   f.release();
+   const replaced=await pending;
+   expect.soft(replaced).toBe(false);
+   expect(await f.driver.getBytes(key)).toEqual(bytes('B'));
+  }finally{f.release();await pending.catch(()=>{});}
+ });
+ it('does not let Buffer reuse change replacement bytes while GET is pending',async()=>{
+  const key='replacement-buffer-race',replacement=Buffer.from('O'),f=delayedGet();
+  await bucket.put(key,bytes('A'));
+  const pending=f.driver.putIfUnchanged(key,bytes('A'),replacement);
+  try{
+   await f.readStarted;
+   replacement[0]='X'.charCodeAt(0);
+   f.release();
+   expect(await pending).toBe(true);
+   expect(await f.driver.getBytes(key)).toEqual(bytes('O'));
+  }finally{f.release();await pending.catch(()=>{});}
+ });
+});

@@ -1,0 +1,28 @@
+// check-hosted-build.mjs — command-line form of the hosted-build guard.
+//
+//   node tools/hosted-build-guard/check-hosted-build.mjs --base-url https://<host> [--expect <commit-ish>]
+//
+// Exit 0 and one line when the deployed build equals the commit under test
+// (default: this checkout's HEAD). Exit 1 and a plain refusal message otherwise.
+// Sends one GET to <base-url>/_status and nothing else.
+
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
+import { requireHostedBuildMatchesCommit, resolveCommitUnderTest } from "./assert-hosted-build-matches-commit.mjs";
+
+const here = dirname(fileURLToPath(import.meta.url));
+const repoRoot = resolve(here, "../..");
+
+function argument(name) {
+  const index = process.argv.indexOf(`--${name}`);
+  return index === -1 ? undefined : process.argv[index + 1];
+}
+
+const baseUrl = argument("base-url");
+if (baseUrl === undefined) {
+  console.error("usage: node tools/hosted-build-guard/check-hosted-build.mjs --base-url https://<host> [--expect <commit-ish>]");
+  process.exit(1);
+}
+const expect = argument("expect");
+const expectedCommit = expect === undefined ? undefined : resolveCommitUnderTest(repoRoot, expect);
+await requireHostedBuildMatchesCommit({ baseUrl, repoRoot, expectedCommit });

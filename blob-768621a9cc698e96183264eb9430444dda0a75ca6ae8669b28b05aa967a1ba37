@@ -1,0 +1,38 @@
+[
+  {
+    "name": "compress_true_plain",
+    "card_name": "probe.js",
+    "core": "var x = 1;\n",
+    "compress_assets": true
+  },
+  {
+    "name": "compress_true_comment",
+    "card_name": "decko.js",
+    "core": "// a leading comment\nvar greet = function (name) {\n  return 'hi ' + name;\n};\n",
+    "compress_assets": true
+  },
+  {
+    "name": "compress_false_identity",
+    "card_name": "identity.js",
+    "core": "var x = 1;\n",
+    "compress_assets": false
+  },
+  {
+    "name": "compress_false_keeps_core",
+    "card_name": "unminified.js",
+    "core": "// a leading comment\nvar greet = function (name) {\n  return 'hi ' + name;\n};\n",
+    "compress_assets": false
+  },
+  {
+    "name": "compress_true_empty_core",
+    "card_name": "empty.js",
+    "core": "",
+    "compress_assets": true
+  },
+  {
+    "name": "compress_true_syntax_error",
+    "card_name": "broken.js",
+    "core": "function ( {\n",
+    "compress_assets": true
+  }
+]

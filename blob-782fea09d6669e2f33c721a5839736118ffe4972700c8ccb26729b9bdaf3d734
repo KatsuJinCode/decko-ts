@@ -1,0 +1,137 @@
+# The held-mx closeout round: the three held rows re-proven and their residuals re-named, and the whole-family exercise's regression named to its introducing commit
+
+Branch `port/held-mx-closeout-20261026` (lane checkout
+`C:/localProjects/decko-ts-held-mx-20261026`, an owned worktree of the
+family's shared git directory created by the worktree tool), from the
+newest pushed tip `86e147b6` (branch `port/d1d2-verify-20261025`, "Decision
+evidence for the two issue slots"; the newest of 654 pushed refs by
+committer date, verified with `git ls-remote` and the GitHub branches API;
+it contains the canonical roll `deploy/full-candidate-20261102` at
+`c29e4c3f`, the v23 candidate).
+
+The ask had two parts. Three roster rows sitting at FAIL held
+(mx-B-081, mx-B-086, mx-155) are re-proven at this tip: each row's own
+surface is re-run green, each row's named blocker is adjudicated real or
+cleared, and each row closes or its exact residual is recorded, one
+receipt and one commit per row. The whole-family exercise runs once at the
+branch's final commit; the 253-of-253 baseline holds or the regression is
+named and fixed.
+
+## 1. The three held rows: re-proven green, residuals re-named
+
+| row | the instrument at this tip | the result | the residual |
+|---|---|---|---|
+| mx-B-081 (nest image editor, E8) | `--only cover-b --case E8`, 6 / 6 | PASS, receipt `docs/reports/row-mx-B-081-nest-image-editor-held-residual-2026-10-26.md` (commit b1d7d31d) | the never-fired guarded live deploy to live 96867, blocked on the files-area pair the account does not have (row `files-area-arming-decko-storage-pair-absent`, BLOCKED) |
+| mx-B-086 (upload create forms, F1/F3/F5/F7) | `--only cover-b --case F1,F3,F5,F7`, 11 / 11 | PASS, receipt `docs/reports/row-mx-B-086-upload-create-forms-held-residual-2026-10-26.md` (commit 124dbfe99) | the same never-fired guarded live deploy; the four legs are proven on the local stack only |
+| mx-155 (followers list and all-followed-cards, W4 + W1/W3/W5/W6/R1) | three slices: cover-b `W1,W3,R1` 10 / 10, `w4-follow-views` 9 / 9, `content-flows` 25 / 25 | PASS, receipt `docs/reports/row-mx-155-capability-catalog-follow-held-residual-2026-10-26.md` (commit ef322b05a) | the ACT-155 LIVE leg and the DONE condition wait on the same deploy; every local leg is green and the later lanes' unfollow fix is verified in place (the evaluator at `docs/runs/follow-compound-create-fix-2026-10-25/` reads 3 of 3) |
+
+All three adjudications found the named blocker REAL at this tip: the row
+ledger (roster timestamp `2026-10-25T22:35:52.211Z`) still holds
+`files-area-arming-decko-storage-pair-absent` at verdict BLOCKED (the
+DECKO_STORAGE_ZONE / DECKO_STORAGE_PASSWORD values do not exist in the
+Bunny account, so the arm script has never fired), and no receipt at this
+tip records an armed pair or a landed guarded deploy. Each receipt carries
+the exact residual sentence. The rows' verdicts and buckets are the row
+ledger's to move, and this lane did not write it, as the earlier rounds
+did not.
+
+## 2. The whole-family exercise at the branch's final commit
+
+    node tools/edge-signed-in-exercise.mjs \
+      --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 \
+      --out .runtime/held-mx-closeout-20261026/final/report.md
+
+    source ef322b05afb475bff0d215b8ac980c1438feedeb (the commit carrying the
+    three row receipts), started 2026-10-26T02:16:53.255Z, completed
+    2026-10-26T02:52:50.536Z, the source files clean, 6,645 engine requests
+    Result: 319 / 324 checks passed; capability coverage 93 covered,
+    1 partial, 0 not covered, 1 out of scope (of 96); exit code 1 by the
+    tool's own rule (tools/edge-signed-in-exercise.mjs:1931)
+
+**THE BASELINE DOES NOT HOLD.** The grade line is 319 of 324, and the
+check count itself moved from the 253 the round-12 baseline recorded to
+324: the roll lanes merged after round 12 (the v15 through v23 candidate
+rolls, sixteen lanes in v23 alone) added the caps-legs module's new groups
+and other checks, and no receipt on the roll line records a whole-family
+browser-exercise grade between round 12's 253 / 253 (commit 723f0b42, an
+ancestor of this branch's base) and this run. The five failing checks:
+
+1. `the RichText editor toolbar applies formats and lists and offers
+   table and insert` (caps-legs M1): `tableOffered: false` against a
+   TinyMCE config whose plugins and menubar name table.
+2. `N9 the applied layout renders header, body, and footer around the
+   User card` (caps-legs): header and footer markers render, the body
+   marker does not (render order `0,-1,294`).
+3. `P5 *type_plus_right Set: a +*type_plus_right+*structure rule renders
+   for members and not outside the set` (caps-legs): the three-segment set
+   name answers 422 and stores nothing, so the rule card cannot exist.
+4. `C20 the stored row is the junction joining the card's +*right set to
+   the member` (role-plus-right): the set seed (`<card>+*right`, type
+   List) answers 422 (`setSeedStatus: 422`) and the set row never stores,
+   so no junction row can join the member.
+5. `no signed-in page exceeded 3 s of server time` (timings): the slow
+   pages are junction create forms and a junction edit
+   (`/new/Search?card[name]=...+*righ...` 6.6 s, `/new/Pointer?...`
+   11.8 s, `/X+Y/edit` 9.5 s; render-heavy, db-heavy).
+
+## 3. The regression is NAMED: first-bad commit db68cdfc1; the fix is NOT landed
+
+The lane's own commits touch no code (three receipt files), so every
+failure is inherited from the base. The bisect was run at route level with
+the family's own instrument module:
+
+- **723f0b42 (round 12's final commit, the last graded-good tree): GREEN.**
+  `node tools/edge-signed-in-exercise.mjs --only role-plus-right` on an
+  owned probe worktree at that commit, with that tree's own instrument:
+  14 / 14 checks passed; C20 green.
+- **db68cdfc1 ("the boot creates the mod script input cards (the
+  Cardio::Mod.ensure_installed port)", the regfix-row22 lane's first
+  commit, whose parent IS 723f0b42): RED.** The same probe: C20 fails with
+  `setSeedStatus: 422`, rightSetStored false. 14 / 15.
+- The two later commits of the same lane (d9e85c009 "the list validator
+  reads items the way Card.fetch answers", 814992b13 "the list
+  validator's membership arm joins the serving walk") and the lane tip
+  0d31ba3d6: RED, same signature.
+- v22 `c17906db` and this branch's tip: RED, same signature.
+
+**First bad commit: `db68cdfc1`.** The regfix-row22 lane's boot cascade is
+the first-bad; the two commits after it in that lane did not cause the C20
+break, though 814992b13's own header comment says the list validator's
+wiring was waiting on exactly this cascade.
+
+What the failure IS, so far as this lane measured it:
+
+- The engine's own `createCard` is CLEAN at the tip: driven directly
+  against the built local deck with a real seeded administrator, all three
+  shapes (`X+*right` as List, `Basic+X+*type_plus_right`, and the `X+plain`
+  control) create fine. The refusal lives in the serving route layer
+  (the composed serving mod-event runtime and permission walk that the
+  boot cascade's cards newly activate), not in card storage.
+- The common shape of the refused creates: junction SET-ANCHOR cards,
+  names ending in a set-pattern segment (`X+*right`,
+  `Basic+X+*type_plus_right`), posted as type List with empty content.
+  The `X+plain` control creates, and the P5 self and right structure rule
+  names store through the same routes.
+
+**The fix is NOT landed in this lane.** What a fixing lane needs first is
+the route-level refusal text for one set-anchor POST at `db68cdfc1` (the
+exercise records the status only; this lane's attempts to drive the POST
+out-of-process could not get a session the serving route honours, and that
+harness gap is recorded here so the next lane does not rebuild it). Done
+looks like: the refusal message captured, the mechanism named against the
+cascade's created cards (36 mod cards and the `*all+*script` rule row the
+cascade seeds), the serving walk or the cascade repaired so the three
+shapes create exactly as they did at 723f0b42, and the family exercise
+re-run green at the fixing branch's final commit. The bisect trail above
+is the fixing lane's starting map.
+
+## 4. What this round does NOT claim
+
+- **The roster was not folded.** It lives in the operator's repository,
+  and this lane did not write to it.
+- **The live deployment.** No live request was made by this lane, and
+  nothing deploys. The exercise's own run records show zero requests to
+  the live host; the only external reads are the tool's standing
+  third-party asset fetches.
+- **A fixed family grade.** Section 2's grade line is the run's own
+  output, and Section 3 says plainly that the fix is not landed.

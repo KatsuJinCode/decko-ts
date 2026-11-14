@@ -1,0 +1,53 @@
+// Finite controller-owned resources. No adoption, exit cleanup or purge marker.
+import fs from 'node:fs';
+import path from 'node:path';
+import {randomUUID,createHash} from 'node:crypto';
+const marker='assembled-host-resource-owner.json';
+const prefixes={host:'full-host-owned-',deployment:'deployment-owned-',runtime:'runtime-owned-'};
+const sha=value=>createHash('sha256').update(value).digest('hex');
+function identity(file){const stat=fs.lstatSync(file,{bigint:true});if(!stat.isDirectory()||stat.isSymbolicLink())throw Error('Resource is not an ordinary directory: '+file);return{dev:String(stat.dev),ino:String(stat.ino),birth:String(stat.birthtimeNs)};}
+function equal(a,b){return JSON.stringify(a)===JSON.stringify(b);}
+function inside(parent,file){const relative=path.relative(parent,file);return relative===''||(!relative.startsWith('..')&&!path.isAbsolute(relative));}
+function gone(pid){if(!Number.isSafeInteger(pid)||pid<=0)throw Error('Owned worker identity missing');try{process.kill(pid,0);}catch(error){if(error.code==='ESRCH')return;throw error;}throw Error('Owned worker still present: '+pid);}
+function measure(root){let bytes=0;for(const entry of fs.readdirSync(root,{withFileTypes:true})){const file=path.join(root,entry.name);if(entry.isSymbolicLink())throw Error('Linked resource is retained: '+file);if(entry.isDirectory())bytes+=measure(file);else if(entry.isFile())bytes+=fs.statSync(file).size;else throw Error('Nonordinary resource is retained: '+file);}return bytes;}
+export function createProfileResources(output){
+  const workspace=fs.realpathSync(path.resolve(import.meta.dirname,'..')),root=fs.realpathSync(output),runtime=path.join(workspace,'.runtime');
+  const purge=path.resolve(process.env.DECKO_TEST_TEMP_ROOT??path.join(workspace,'tmp/test-scratch'));
+  if(root===runtime||!inside(runtime,root)||inside(purge,root)||inside(root,purge))throw Error('Profile resources must be outside shared scratch purge custody');
+  const rootIdentity=identity(root),nonce=randomUUID(),ownerPid=process.pid,resources=new Map();let state='allocating';
+  const verifyRoot=()=>{if(!equal(identity(root),rootIdentity))throw Error('Controller output identity changed');};
+  function verify(resource){
+    verifyRoot();if(!equal(identity(resource.path),resource.identity))throw Error('Controller resource identity changed: '+resource.path);
+    const file=path.join(resource.path,marker),stat=fs.lstatSync(file);if(!stat.isFile()||stat.isSymbolicLink()||sha(fs.readFileSync(file))!==resource.markerSha256)throw Error('Controller resource ownership changed: '+resource.path);
+  }
+  const snapshot=()=>({format:'assembled-host-controller-resources/1',ownerPid,nonce,root,rootIdentity,state,resources:[...resources.values()].map(resource=>structuredClone(resource))});
+  return{
+    allocate(kind){
+      if(state!=='allocating'||!Object.hasOwn(prefixes,kind)||resources.has(kind))throw Error('Invalid or repeated controller resource allocation');verifyRoot();
+      const directory=fs.mkdtempSync(path.join(root,prefixes[kind])),id=identity(directory);
+      const content=Buffer.from(JSON.stringify({format:'assembled-host-controller-resource/1',ownerPid,nonce,kind,path:directory,identity:id})+'\n');
+      fs.writeFileSync(path.join(directory,marker),content,{flag:'wx'});resources.set(kind,{kind,path:directory,identity:id,markerSha256:sha(content)});return directory;
+    },
+    snapshot,
+    retain(reason){state='retained';return{...snapshot(),reason:String(reason)};},
+    cleanup(pids){
+      if(state!=='allocating'||resources.size!==3)throw Error('Complete fresh controller ownership required before cleanup');
+      if(!Array.isArray(pids)||new Set(pids).size!==pids.length)throw Error('Unique owned worker settlement required');pids.forEach(gone);
+      for(const resource of resources.values())verify(resource);
+      const ownership=snapshot(),cleaned=[];let logicalBytesRemoved=0;
+      // Preserve the actual verified marker bytes outside the resources before
+      // removal. The saved summary is reconciled with this separate evidence.
+      const markers=[...resources.values()].map(resource=>{verify(resource);const content=fs.readFileSync(path.join(resource.path,marker),'utf8');if(sha(Buffer.from(content,'utf8'))!==resource.markerSha256)throw Error('Controller marker encoding changed');return{kind:resource.kind,content};});
+      verifyRoot();fs.writeFileSync(path.join(root,'controller-ownership.json'),JSON.stringify({format:'assembled-host-controller-evidence/1',ownership,markers},null,2)+'\n',{flag:'wx'});
+      try{
+        for(const resource of resources.values()){
+          verify(resource);const bytes=measure(resource.path);verify(resource);
+          fs.rmSync(resource.path,{recursive:true,force:false});
+          try{fs.lstatSync(resource.path);throw Error('Resource remains after cleanup');}catch(error){if(error.code!=='ENOENT')throw error;}
+          logicalBytesRemoved+=bytes;cleaned.push(resource.path);
+        }
+      }catch(error){state='retained';throw error;}
+      state='cleaned';return{complete:true,cleaned,pidsGone:pids,logicalBytesRemoved,ownership:{...ownership,state},measurement:'Final ordinary file lengths before removal; physical allocation unmeasured'};
+    }
+  };
+}

@@ -1,0 +1,132 @@
+{
+  "row": "reg-routes-A13",
+  "gemset": "decko-0.20.0 + card-1.110.0 (pinned)",
+  "typedCreateRoute": {
+    "verb": "post",
+    "patterns": [
+      "/type/:type"
+    ],
+    "requirements": {},
+    "action": "card#create",
+    "order": 15
+  },
+  "markedCreateRoute": {
+    "verb": "match",
+    "patterns": [
+      ":mark(.:format)"
+    ],
+    "requirements": {
+      "via": "post"
+    },
+    "action": "card#create",
+    "order": 16
+  },
+  "beforeActionsForCreate": [
+    "setup",
+    "authenticate",
+    "load_card",
+    "refresh_card"
+  ],
+  "uriFetch": [
+    {
+      "label": "the URL segment is the type, the name rides the body or the EMPTY name",
+      "params": {
+        "action": "create",
+        "type": "Foo"
+      },
+      "newAsks": [
+        {
+          "type": "Foo",
+          "name": ""
+        }
+      ],
+      "error": null
+    },
+    {
+      "label": "the body's card[type] WINS over the segment (the ||)",
+      "params": {
+        "action": "create",
+        "type": "Foo",
+        "card": {
+          "type": "Bar",
+          "name": "Target"
+        }
+      },
+      "newAsks": [
+        {
+          "type": "Bar",
+          "name": "Target"
+        }
+      ],
+      "error": null
+    },
+    {
+      "label": "a suffixed segment stays IN the type: the route declares no .:format capture",
+      "params": {
+        "action": "create",
+        "type": "Foo.json"
+      },
+      "newAsks": [
+        {
+          "type": "Foo.json",
+          "name": ""
+        }
+      ],
+      "error": null
+    }
+  ],
+  "sources": {
+    "route": [
+      {
+        "line": 33,
+        "text": "  post  \"/type/:type\" => \"card#create\""
+      },
+      {
+        "line": 34,
+        "text": ""
+      },
+      {
+        "line": 35,
+        "text": "  # RESTful (with mark)"
+      },
+      {
+        "line": 36,
+        "text": "  match \":mark(.:format)\" => \"card#create\", via: :post"
+      },
+      {
+        "line": 37,
+        "text": "  match \":mark(.:format)\" => \"card#update\", via: %i[put patch]"
+      },
+      {
+        "line": 38,
+        "text": "  match \":mark(.:format)\" => \"card#delete\", via: :delete"
+      }
+    ],
+    "uriFetchOpts": [
+      {
+        "line": 128,
+        "text": "      def uri_fetch_opts params"
+      },
+      {
+        "line": 129,
+        "text": "        Env.hash(params[:card]).tap do |opts|"
+      },
+      {
+        "line": 130,
+        "text": "          opts[:type] ||= params[:type] if params[:type] # for /new/:type shortcut."
+      },
+      {
+        "line": 131,
+        "text": "          opts[:name] ||= Name[params[:mark]]&.tr \"_\", \" \""
+      },
+      {
+        "line": 132,
+        "text": "        end"
+      },
+      {
+        "line": 133,
+        "text": "      end"
+      }
+    ]
+  }
+}

@@ -1,0 +1,124 @@
+# Qualified relocation of recorded asset roots
+
+Plane: DECKO-754. GitHub: #247. Base: `f6c437775384d442a0bdea276b31662c74b3e9b0`.
+
+## Problem and resulting behavior
+
+The compile-engine fixture records 33 asset directories under a retired Ruby
+3.3 installation. All are absent, so the required folder-group assertion skips
+even when its approved card-mod 0.20.0 sources already exist elsewhere.
+
+The test now accepts an explicit child-only GEM_HOME selecting the same
+gem/version-relative directories. Admission checks the entire approved asset
+snapshot: every required directory, exactly 81 regular source files, their
+lengths and SHA-256 hashes. Linked paths, malformed or unpinned mappings, changed
+bytes, extra/missing files and absent explicit sources refuse visibly. An
+explicit selection never falls back. With no selected home, absent original
+prerequisites retain their original skipped state.
+
+The three original style/account relative-path comparisons are unchanged.
+Only their directory inputs are resolved. The captured fixture, its expected
+lists, the native source tree and the engine implementation are unchanged.
+The selected source is checked again after the three original comparisons.
+
+## Existing provenance, not newly blessed reference bytes
+
+Issue 247 already contained an unmerged path resolver at
+`a022d0f7e266cae31118ecff5b422417f9ba8e6f`. It preserved gem/version-relative
+names but did not itself qualify source bytes. This change retains its useful
+path-mapping mechanism and adds source admission; it does not import the old
+commit's unrelated ledger, migration and comparison material.
+
+`tests/fixtures/reference-asset-sources.json` contains relative names and hashes
+derived from that existing commit's
+`docs/runs/fleet-area3-environment-2026-11-01/final-asset/inputs-before.json`.
+The original receipt SHA-256 is
+`cfda87b503c1b719b403bb54ce1c8c84fe06e854b7611073952542af8d258cf8`.
+All 81 approved asset hashes match the existing source tree, with no missing
+or extra files. No runtime/source payload is copied into the profile.
+
+The source profile is
+`da4738f22467b41b254151c14fd2a3f6b2321b3efd4e5502332238d7d0c51c1e`.
+The unchanged capture fixture SHA-256 is
+`0eccb6284a28cb89b195401abc2230a9b105d13df723b803c777bec5ef590cbf`.
+The profile qualifies this approved source snapshot for asset enumeration;
+it does not authenticate a publisher or establish complete application parity.
+
+## Reproduction before the repair
+
+`node review-754-run-asset.mjs baseline` runs the unchanged original test file
+with only the folder-group case selected, using the already available approved
+GEM_HOME. All 33 original directories are missing, and the original required
+case reports `skipped`. The native process exits zero because no selected
+assertion runs. Its 19 other cases are filtered out, not additional prerequisite
+failures. Original raw reporter output and receipt remain in the existing
+review folder; this historical result is never relabelled passed.
+
+Before implementing admission, the new regression was executed against the
+earlier path-only mechanism. `node --test tests/tools/recorded-asset-roots.test.mjs`
+reported 3 passed and 5 failed, exit 1. The missing rejections cover changed
+source bytes, surplus membership, missing input, unpinned mapping and invalid
+pin metadata. These are assertion failures, not a missing-module failure.
+
+## Verification after the repair
+
+| Check | Native result | Scope |
+| --- | --- | --- |
+| `node --test tests/tools/recorded-asset-roots.test.mjs` | 8 passed, 0 failed/skipped; exit 0 | Synthetic owned fixtures; exact mapping and fail-closed admission |
+| `node review-754-run-asset.mjs repaired` | 1 passed, 0 failed; exit 0 | The original required asset-walk identity; 19 unrelated cases filtered |
+| `node tools/test-gates.mjs check` | exit 0 | 1510 files classified; 181 use node:test at this base plus this new test |
+| Explicit changed-file platform scanner | exit 0, 0 unguarded commands | Helper, Node regression, affected original test |
+| `npm run typecheck` | exit 1 | Only the existing issue 301 `deploy-9.test.ts:174` TS2339 remains |
+
+The new module has a TypeScript declaration; all diagnostics introduced by this
+change were corrected. The retained compiler error is unchanged base source,
+not a claimed passing typecheck. Its separate reviewed repair belongs to the
+integration owner.
+
+The finite asset command is:
+
+```text
+node node_modules/vitest/vitest.mjs run tests/card/mod-loader/compile-engines-pin.test.ts --testNamePattern=folder-group walk: Dir.glob --reporter=json --outputFile=<fresh owned output>
+```
+
+The exact argv is stored as JSON in the run receipt, so the pattern above is
+one argument rather than shell-split words. Child-only GEM_HOME selected
+`C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0`. A fresh empty owned
+DECKO_TEST_TEMP_ROOT confined this older base's startup purge; no existing
+scratch or source was selected for cleanup. No Sass build or unrelated compile
+case ran.
+
+## Separately retained capture discrepancy
+
+Qualification also found that the captured Bootstrap colorpicker compiler
+source string uses `rhbq` where the approved source uses `rgba`. Both strings
+have 13,640 bytes; the first difference is offset 8804. Eleven other compiler
+source strings match their approved files exactly. This is not normalized,
+rewritten or claimed equivalent. GitHub #305 records both hashes and the
+unverified cause.
+
+The selected folder-group case compares the style/account directory walks;
+it does not compile or render that Bootstrap file. Asset enumeration admission
+binds the historical approved source snapshot. It does not resolve the distinct
+compiler-capture discrepancy or establish Bootstrap compiler-source parity.
+
+## Evidence and handoff
+
+Raw evidence remains under the reused
+`C:/localProjects/decko-ts-review-280-5f7e04da` folder:
+`review-754-baseline-receipt.json`, `review-754-baseline.json`,
+`review-754-admission-red.log`, `review-754-admission-final.log`,
+`review-754-repaired-receipt.json`, `review-754-repaired.json`,
+`review-754-typecheck-final.log`, `review-754-platform.log` and
+`review-754-source-mismatch.json`. The controller is `review-754-run-asset.mjs`.
+The original review branches and PR280/298/DECKO-256 receipts remain intact.
+
+Counts are fresh native reporter summaries, without automatic test retries or
+model grading. Compilation and OS caches may be warm; no test-result cache
+verdict is used. No install, new checkout, source copy, compatibility link,
+global setting, privilege, approval or cleanup-policy change occurred. Existing
+test helpers retire only their own synthetic unit-test allocations.
+
+The integration owner must obtain an independent exact-head review before
+merging. No broad gate, whole-candidate, Ruby framework or release acceptance
+is claimed by these finite controls.

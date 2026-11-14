@@ -1,0 +1,18 @@
+source "http://rubygems.org"
+
+# Stock Decko at the oracle's versions (decko 0.20.0, card 1.110.0), run in
+# its cucumber environment so Decko's own browser scenarios can drive it.
+# No local patches. The cucumber support gem is not published with these
+# versions installed here, so it comes from the decko source tree at the
+# same release, extracted by ../run-features.mjs into ../.work/decko-src.
+gem "decko", "0.20.0"
+gem "card-mod-defaults", "0.20.0"
+gem "sqlite3", ">= 1.4"
+gem "thin"
+
+# Windows: TZInfo needs the bundled zone data (no /usr/share/zoneinfo).
+gem "tzinfo-data"
+
+group :test, :cucumber do
+  gem "decko-cucumber", path: "../.work/decko-src/support"
+end

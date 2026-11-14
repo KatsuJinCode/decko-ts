@@ -1,0 +1,151 @@
+require "minitest/autorun"
+require "tmpdir"
+require "ostruct"
+require_relative "../../tools/migrate/serving-restoration-observer"
+
+# Local mechanism fixture only. These stubs do not establish a loaded Rails
+# profile, real sign-in or deployed permission acceptance.
+module Rails
+  class FixtureApplication
+    def initialized? = true
+    def config = OpenStruct.new(cache_store: :memory_store)
+  end
+  def self.application = FixtureApplication.new
+  def self.env = "test"
+  class << self; attr_accessor :root; end
+end
+module Cardio
+  def self.config = OpenStruct.new(read_only: false, no_authentication: false, view_cache: true, default_html_view: :content, deck_origin: "http://127.0.0.1:3100", asset_refresh: :never, rescue_all_in_controller: true, consider_all_requests_local: false)
+end
+module ActionMailer
+  class Base
+    def self.perform_deliveries = false
+    def self.delivery_method = :test
+  end
+end
+module ActiveRecord
+  class Base
+    class << self; attr_accessor :raw; end
+    def self.connection = OpenStruct.new(raw_connection: raw)
+  end
+end
+class Card
+  AnonymousID = 1
+  DeckoBotID = 2
+  module Auth
+    class << self; attr_accessor :current_id, :admin; end
+    def self.always_ok? = admin
+  end
+  def self.fetch(id) = new(id)
+  def self.connection = ActiveRecord::Base.connection
+  def initialize(id) = @id = id
+  def real? = true
+  def ok?(_task) = Auth.admin || @id == 10
+end
+
+class RestorationObserverTest < Minitest::Test
+  def setup
+    @dir = Dir.mktmpdir("restoration-local-")
+    Rails.root = @dir
+    FileUtils.mkdir_p(File.join(@dir, "config"))
+    %w[Gemfile Gemfile.lock config.ru config/application.rb config/database.yml].each { |name| File.write(File.join(@dir, name), "synthetic source fixture") }
+    @db_path = File.join(@dir, "source.sqlite")
+    @db = SQLite3::Database.new(@db_path)
+    @db.execute("PRAGMA journal_mode=WAL")
+    @db.execute("PRAGMA wal_autocheckpoint=0")
+    @db.execute("CREATE TABLE sample(value)")
+    @db.execute("INSERT INTO sample VALUES ('committed-in-wal')")
+    ActiveRecord::Base.raw = @db
+    @controls = [
+      { "id" => "member-login", "kind" => "login", "role" => "member", "actorId" => 20, "method" => "POST", "path" => "/signin", "status" => 303 },
+      { "id" => "admin-login", "kind" => "login", "role" => "admin", "actorId" => 21, "method" => "POST", "path" => "/signin", "status" => 303 },
+      { "id" => "member-allow", "kind" => "permission", "role" => "member", "actorId" => 20, "method" => "GET", "path" => "/shared", "status" => 200, "cardId" => 10, "task" => "read", "allow" => true },
+      { "id" => "member-deny", "kind" => "permission", "role" => "member", "actorId" => 20, "method" => "GET", "path" => "/private", "status" => 403, "cardId" => 11, "task" => "read", "allow" => false },
+      { "id" => "admin-allow", "kind" => "permission", "role" => "admin", "actorId" => 21, "method" => "GET", "path" => "/private", "status" => 200, "cardId" => 11, "task" => "read", "allow" => true }
+    ]
+    @plan = { "stateId" => "new-fixture", "parentStateId" => "original-fixture", "changes" => [{ "kind" => "comparison-accounts", "actorIds" => [20, 21] }], "sourceFiles" => [__FILE__], "controls" => @controls }
+    @observer = ServingRestorationObserver.new(plan: @plan, output: File.join(@dir, "receipt"), token: "synthetic-local-control-key-32-bytes")
+  end
+
+  def teardown
+    @observer.abort
+    @db.close
+    # All entries are this test's own closed synthetic files.
+    raise "scratch-custody-failed" unless File.realpath(@dir).start_with?(File.realpath(Dir.tmpdir) + File::SEPARATOR) && File.basename(@dir).start_with?("restoration-local-")
+    FileUtils.remove_entry(@dir)
+  end
+
+  def observe(control, actor: control["actorId"])
+    Card::Auth.current_id = actor
+    Card::Auth.admin = control["role"] == "admin"
+    request = OpenStruct.new(request_method: control["method"], path: control["path"])
+    request.define_singleton_method(:get_header) { |_name| control["id"] }
+    @observer.observe(OpenStruct.new(request: request, response: OpenStruct.new(status: control["status"])))
+  end
+
+  def freeze_observer
+    @observer.start
+    @controls.select { |c| c["kind"] == "login" }.each { |c| observe(c) }
+    @observer.freeze_state
+  end
+
+  def test_wal_snapshot_and_write_hold_and_release
+    assert File.size(@db_path + "-wal").positive?
+    freeze_observer
+    copy = SQLite3::Database.new(File.join(@dir, "receipt", "snapshot.sqlite"), readonly: true)
+    assert_equal "committed-in-wal", copy.get_first_value("SELECT value FROM sample")
+    copy.close
+    assert_raises(SQLite3::BusyException) { @db.execute("INSERT INTO sample VALUES ('blocked')") }
+    @controls.select { |c| c["kind"] == "permission" }.each { |c| observe(c) }
+    result = @observer.finish
+    assert_equal Process.pid, result.dig("servingProfile", "process", "pid")
+    assert_equal 5, result["controls"].length
+    assert_equal "new-fixture", result.dig("plan", "stateId")
+    assert_equal result.dig("snapshot", "fileSha256"), Digest::SHA256.file(File.join(@dir, "receipt", "snapshot.sqlite")).hexdigest
+    @db.execute("INSERT INTO sample VALUES ('released')")
+  end
+
+  def test_incomplete_or_spoofed_native_actor_cannot_finish
+    @observer.start
+    assert_raises(RuntimeError) { observe(@controls.first, actor: 1) }
+    assert_raises(RuntimeError) { @observer.freeze_state }
+    refute File.exist?(File.join(@dir, "receipt", "ruby-receipt.json"))
+  end
+
+  def test_loopback_key_gate_and_unrelated_request_barrier
+    app = @observer.middleware(->(_env) { [204, {}, []] })
+    bad = { "PATH_INFO" => "/__restoration/start", "REQUEST_METHOD" => "POST", "REMOTE_ADDR" => "192.0.2.1", "HTTP_X_RESTORATION_KEY" => "synthetic-local-control-key-32-bytes" }
+    assert_equal 404, app.call(bad)[0]
+    @observer.start
+    assert_equal 503, app.call({ "PATH_INFO" => "/unrelated", "REQUEST_METHOD" => "GET" })[0]
+  end
+
+  def test_abort_releases_write_hold_without_deleting_snapshot
+    freeze_observer
+    @observer.abort
+    @db.execute("INSERT INTO sample VALUES ('after-abort')")
+    assert File.exist?(File.join(@dir, "receipt", "snapshot.sqlite"))
+    refute File.exist?(File.join(@dir, "receipt", "ruby-receipt.json"))
+  end
+
+  def test_new_state_and_account_declarations_are_mandatory
+    @plan["stateId"] = @plan["parentStateId"]
+    assert_raises(RuntimeError) { ServingRestorationObserver.new(plan: @plan, output: File.join(@dir, "other"), token: "synthetic-local-control-key-32-bytes") }
+  end
+
+  def test_changed_loaded_source_refuses_receipt_and_releases_hold
+    freeze_observer
+    @controls.select { |c| c["kind"] == "permission" }.each { |c| observe(c) }
+    File.write(File.join(@dir, "Gemfile"), "changed source fixture")
+    assert_raises(RuntimeError) { @observer.finish }
+    refute File.exist?(File.join(@dir, "receipt", "ruby-receipt.json"))
+    @db.execute("INSERT INTO sample VALUES ('hold released after failure')")
+  end
+
+  def test_proc_parser_handles_spaces_and_parentheses_in_process_name
+    fields = Array.new(22, "0")
+    fields[0] = "R"
+    fields[19] = "987654321"
+    assert_equal({ "pid" => 55, "start" => "987654321", "boot" => "fixture-boot" }, RestorationPlatform.linux_identity("55 (name ) with spaces) #{fields.join(' ')}", "fixture-boot\n", 55))
+  end
+end

@@ -1,0 +1,170 @@
+import assert from "node:assert/strict";
+import {isDeepStrictEqual} from "node:util";
+
+const denial = (format, posture, locale) => ({format, posture, ...(locale === undefined ? {} : {locale}), kind: "denial"});
+export const nativeCaseInventory = [
+  ...["en", "de"].flatMap(locale => [denial("base", "root", locale), denial("base", "nested_after_root", locale)]),
+  ...["nested_before_root", "root", "nested_after_root", "root_with_errors"].map(posture => denial("json", posture)),
+  ...["nested_before_root", "root", "nested_after_root"].map(posture => denial("jsonld", posture)),
+  ...["root", "child"].map(posture => ({format: "json", posture: `base_bad_address_${posture}`, kind: "writer"})),
+  ...[0, 1, 2].map(index => ({format: "json", posture: `unknown_${index}`, kind: "unknown"})),
+];
+export const structuredCaseInventory = [
+  ...["root", "child"].flatMap(posture => ["errors", "server_error", "denial", "not_found", "bad_address", "errors"].map((view, index) => ({format: "json", posture, view, index}))),
+  ...["root", "child"].map(posture => ({format: "jsonld", posture, view: "format_unsupported"})),
+];
+export const nativeSourceSuffixes = [
+  "activesupport-7.2.4/lib/active_support/core_ext/array/wrap.rb",
+  "activesupport-7.2.4/lib/active_support/core_ext/object/inclusion.rb",
+  "card-1.110.0/lib/card/view/permission.rb",
+  "card-1.110.0/lib/card/format/error.rb",
+  "card-1.110.0/lib/card/format.rb",
+  "card-1.110.0/lib/card/format/nesting/subformat.rb",
+  "card-mod-format-0.20.0/set/all/error.rb",
+  "card-mod-format-0.20.0/config/locales/en.yml",
+  "card-mod-format-0.20.0/config/locales/de.yml",
+];
+export const nativeCaseKey = row => JSON.stringify([row.format, row.locale ?? null, row.posture]);
+export const structuredCaseKey = row => JSON.stringify([row.format, row.posture, row.view, row.index ?? null]);
+export const observationKey = (kind, registeredCore, row) => `${kind}|${registeredCore}|${kind === "native" ? nativeCaseKey(row) : structuredCaseKey(row)}`;
+
+function record(value, label) {
+  assert.ok(value !== null && typeof value === "object" && !Array.isArray(value), `${label}: expected object`);
+}
+function keys(value, expected, label) {
+  record(value, label);
+  assert.deepEqual(Object.keys(value).sort(), [...expected].sort(), `${label}: exact row schema required`);
+}
+function status(value, label) {
+  assert.ok(value === null || Number.isSafeInteger(value), `${label}: expected integer or null status`);
+}
+function jsonErrors(value, label) {
+  keys(value, ["error_status", "errors"], label); status(value.error_status, label);
+  record(value.errors, label);
+  for (const message of Object.values(value.errors)) assert.equal(typeof message, "string", `${label}: error message`);
+}
+function inventory(rows, expected, key, label) {
+  assert.ok(Array.isArray(rows), `${label}: expected array`);
+  assert.deepEqual(rows.map(key), expected.map(key), `${label}: missing, duplicate, unknown or reordered scenario`);
+}
+
+const nativeFields = spec => spec.kind === "denial" ? ["depth", "focal", "selected", "checked", "status", "transport_status", "body"]
+  : spec.kind === "writer" ? ["body", "status", "transport_status", "errors_body"]
+    : ["selected", "depth", "status", "transport_status"];
+function validateNativeRow(row, spec, label) {
+  const identity = ["format", "posture", ...(spec.locale === undefined ? [] : ["locale"])];
+  keys(row, [...identity, ...nativeFields(spec)], label);
+  status(row.status, label); status(row.transport_status, label);
+  if (spec.kind !== "writer") {
+    assert.ok(Number.isSafeInteger(row.depth) && row.depth >= 0, `${label}: depth`);
+    assert.equal(typeof row.selected, "string");
+  }
+  if (spec.kind === "denial") {
+    assert.equal(typeof row.focal, "boolean"); assert.ok(Array.isArray(row.checked));
+    row.checked.forEach(task => assert.equal(typeof task, "string"));
+    if (row.format === "json") jsonErrors(row.body, label);
+    else assert.equal(typeof row.body, "string");
+  } else if (spec.kind === "writer") {
+    assert.equal(typeof row.body, "string"); jsonErrors(row.errors_body, label);
+  }
+}
+const structuredFields = spec => ["body", "status", "transport_status", ...(spec.format === "json" ? ["errors"] : [])];
+function validateStructuredRow(row, label) {
+  keys(row, ["format", "posture", "view", ...(row.format === "json" ? ["index"] : []), ...structuredFields(row)], label);
+  status(row.status, label); status(row.transport_status, label);
+  if (row.format === "json") {
+    jsonErrors(row.body, label); assert.ok(Array.isArray(row.errors));
+    row.errors.forEach(error => {keys(error, ["attribute", "message"], label); assert.equal(typeof error.attribute, "string"); assert.equal(typeof error.message, "string");});
+  } else assert.equal(typeof row.body, "string");
+}
+
+/** Validate the finite declared reference before importing or running the subject. */
+export function validateErrorFormatReference(reference) {
+  keys(reference, ["scope", "runtime", "checker_sha256", "accessor", "sources", "cases", "structured_cases"], "reference");
+  assert.equal(typeof reference.scope, "string"); assert.equal(typeof reference.runtime, "string");
+  assert.match(reference.checker_sha256, /^[a-f0-9]{64}$/);
+  inventory(reference.cases, nativeCaseInventory, nativeCaseKey, "native cases");
+  inventory(reference.structured_cases, structuredCaseInventory, structuredCaseKey, "structured cases");
+  reference.cases.forEach((row, index) => validateNativeRow(row, nativeCaseInventory[index], `native case ${index}`));
+  reference.structured_cases.forEach((row, index) => validateStructuredRow(row, `structured case ${index}`));
+  record(reference.sources, "native sources");
+  const files = Object.keys(reference.sources);
+  assert.equal(files.length, nativeSourceSuffixes.length, "native sources: exact required source set");
+  let root;
+  const matched = new Set();
+  for (const file of files) {
+    const suffix = nativeSourceSuffixes.find(suffix => file.endsWith(`/${suffix}`));
+    assert.ok(suffix !== undefined && !matched.has(suffix), "native sources: missing, duplicate or unknown source");
+    matched.add(suffix);
+    const prefix = file.slice(0, -suffix.length);
+    root ??= prefix;
+    assert.equal(prefix, root, "native sources: mixed gem roots");
+    assert.match(reference.sources[file], /^[a-f0-9]{64}$/);
+  }
+  keys(reference.accessor, ["declaration", "source_location"], "accessor");
+  assert.equal(reference.accessor.declaration, "attr_accessor :form, :error_status, :rendered");
+  assert.ok(Array.isArray(reference.accessor.source_location));
+  assert.equal(reference.accessor.source_location.length, 2);
+  assert.equal(reference.accessor.source_location[0], `${root}card-1.110.0/lib/card/format.rb`);
+  assert.ok(Number.isSafeInteger(reference.accessor.source_location[1]) && reference.accessor.source_location[1] > 0);
+}
+
+export function validateErrorFormatObservationKeys(rows) {
+  const expected = [];
+  for (const registered of [false, true]) for (const row of nativeCaseInventory) {
+    if (!registered && row.kind === "writer") continue;
+    expected.push(observationKey("native", registered, row));
+  }
+  for (const row of structuredCaseInventory) expected.push(observationKey("structured", true, row));
+  assert.equal(rows.length, 44, "exactly 44 executed observation keys required");
+  const actual = rows.map(row => row.observationKey);
+  assert.equal(new Set(actual).size, actual.length, "duplicate executed observation key");
+  assert.deepEqual([...actual].sort(), expected.sort(), "missing or unknown executed observation keys");
+}
+
+/** Freeze the observed value in time before a later render mutates a bag. */
+export function snapshotErrorFormatObservation(value) {
+  function jsonValue(value) {
+    if (value === null || typeof value === "string" || typeof value === "boolean") return;
+    if (typeof value === "number") {assert.ok(Number.isFinite(value), "non-finite observation number"); return;}
+    assert.ok(value !== undefined && typeof value === "object", "unsupported observation type");
+    if (Array.isArray(value)) {
+      for (let index = 0; index < value.length; index++) {assert.ok(Object.hasOwn(value, index), "sparse observation array"); jsonValue(value[index]);}
+    } else {
+      assert.ok(Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null, "unsupported observation object");
+      Object.values(value).forEach(jsonValue);
+    }
+  }
+  jsonValue(value);
+  return structuredClone(value);
+}
+
+export function errorFormatMismatchKeys(actual, expected) {
+  return Object.keys(actual).filter(key => !Object.hasOwn(expected, key) || !isDeepStrictEqual(actual[key], expected[key]));
+}
+
+export function validateSavedErrorFormatObservations(rows, reference) {
+  validateErrorFormatReference(reference);
+  validateErrorFormatObservationKeys(rows);
+  const expected = new Map();
+  for (const registered of [false, true]) reference.cases.forEach((row, index) => {
+    if (!registered && nativeCaseInventory[index].kind === "writer") return;
+    expected.set(observationKey("native", registered, row), {kind:"native", spec:nativeCaseInventory[index], value:row});
+  });
+  for (const row of reference.structured_cases) expected.set(observationKey("structured", true, row), {kind:"structured", spec:row, value:row});
+  for (const row of rows) {
+    const contract = expected.get(row.observationKey);
+    assert.ok(contract !== undefined, "unknown saved observation identity");
+    assert.deepEqual(row.expected, contract.value, "saved reference differs from its declared observation identity");
+    if (contract.kind === "native") {
+      keys(row.actual, nativeFields(contract.spec), "saved native actual");
+      const {kind: _kind, ...identity} = contract.spec;
+      validateNativeRow({...identity, ...row.actual}, contract.spec, "saved native actual");
+    } else {
+      keys(row.actual, structuredFields(contract.spec), "saved structured actual");
+      validateStructuredRow({...contract.spec, ...row.actual}, "saved structured actual");
+    }
+    snapshotErrorFormatObservation(row.actual);
+    assert.deepEqual(row.mismatches, errorFormatMismatchKeys(row.actual, row.expected), "saved mismatch list differs from saved typed observation");
+  }
+}
