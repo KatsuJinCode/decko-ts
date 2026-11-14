@@ -1,0 +1,6 @@
+{
+  "name": "ts",
+  "description": "The TypeScript port, served by its own Node host (vm-staging-server.mjs) from this checkout's dist/ build.",
+  "command": ["node", "ts-server.mjs"],
+  "ready": "/__harness/ready"
+}

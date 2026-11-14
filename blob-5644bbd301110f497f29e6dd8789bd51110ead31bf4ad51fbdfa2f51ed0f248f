@@ -1,0 +1,36 @@
+import { expect, it } from "vitest";
+import { copyFileSync, mkdtempSync, mkdirSync, rmSync } from "node:fs";
+import { resolve } from "node:path";
+import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
+import { openSameDatabase } from "../../../src/server/same-database.js";
+import { FetchEngine } from "../../../src/card/fetch.js";
+import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
+import { actorBot } from "../../../src/card/auth/actor.js";
+import { defaultDeckLoader } from "../../../src/card/mod-loader/default-mod-deck.js";
+import { observedModEventRuntime } from "../../../src/server/write-routes.js";
+import { findRule } from "../../../src/card/rules/lookup.js";
+
+it("revokes and restores a warmed follow rule through ordinary saves without a manual cache reset", async () => {
+  mkdirSync(resolve("tmp"), { recursive: true });
+  const dir = mkdtempSync(resolve("tmp/area3-rule-revocation-"));
+  const database = resolve(dir, "deck.sqlite3");
+  copyFileSync(resolve("reference-harness/fixtures/synthetic-v1/deck/deck.sqlite3"), database);
+  const driver = new LocalSqliteDriver({ path: database });
+  try {
+    await openSameDatabase(driver); defaultDeckLoader();
+    const fetcher = new FetchEngine(driver); fetcher.installNameEnvironment();
+    const engine = new CardActionEngine(fetcher, { actor: await actorBot(driver),
+      modEvents: await observedModEventRuntime({ driver, fetcher }) });
+    const book = (await engine.createCard({ name: "Qualification Book", typeName: "Cardtype" })).cardId;
+    const rule = (await engine.createCard({ name: "Qualification Book+*type+*follow", content: "*always" })).cardId;
+    const card = { name: "", isNew: true, typeId: book, typeName: "Qualification Book" };
+    expect((await findRule(fetcher, card, "*follow"))?.rule.dbContent).toBe("*always");
+    await engine.updateCard({ cardId: rule, content: "" });
+    expect(await findRule(fetcher, card, "*follow")).toBeUndefined();
+    await engine.updateCard({ cardId: rule, content: "*never" });
+    expect((await findRule(fetcher, card, "*follow"))?.rule.dbContent).toBe("*never");
+  } finally {
+    driver.close();
+    rmSync(dir, { recursive: true });
+  }
+});

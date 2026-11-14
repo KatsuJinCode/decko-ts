@@ -1,0 +1,13 @@
+// Disposable Node IPC fixture. It is not workerd, an agent or a server.
+let held = false, draining = false;
+function finish() {
+  if (!draining || held) return;
+  process.stdout.write('fixture-response-complete\n', () => process.disconnect());
+}
+process.on('message', message => {
+  if (message === 'hold') {held = true; process.send('held');}
+  else if (message === 'drain') {draining = true; process.send('draining');finish();}
+  else if (message === 'release') {held = false;finish();}
+  else throw Error('Unexpected fixture command');
+});
+process.send('ready');

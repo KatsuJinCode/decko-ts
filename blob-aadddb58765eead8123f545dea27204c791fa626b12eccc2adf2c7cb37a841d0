@@ -1,0 +1,37 @@
+# Decko test lead: pending message receipts
+
+Several real work messages were reported delivered, but their receiving hooks
+were not confirmed in the available receipts. No message was replayed and no
+alternate route was used. This is a local incident record; the canonical
+Flightdeck log update was refused because another session holds its lease.
+
+Reporter: Codex native session `01a183a1-54c7-7690-92a0-51acbf130576` in the
+existing Decko integration recovery checkout.
+
+The last available command receipts establish the following:
+
+| Operation | Recipient and work | Available result |
+|---|---|---|
+| `6bbd76a6-7e36-414b-b388-3dc8314176d6` | Codex in decko-ts-zc-fix-native-20261101, Relay1357: PR275 review assignment | Sent yes, Delivered yes, Received not seen, CLI exit1; subsequent actual review/PR comment exists but does not manufacture a receiving-hook receipt |
+| `e5f2eba9-f7ba-4d79-8977-5712a8856a97` | Codex in decko-ts-i266-20261101, Relay1464: repair the independent review findings | Sent yes, Delivered yes, Received not seen in the available receipt; subsequent reviewed successor exists |
+| `a2d4f0d9-c300-4dd3-8867-c19b773abf8a` | Codex response lead1411: PR271 merge authorization evidence | Sent yes, Delivered yes, Received not seen, CLI exit1 |
+| `57986b4d-dbda-4f14-93d9-70f669adc72b` | Codex response lead1411: author272 dispatch recovery dependency | Sent yes, Delivered yes, Received not seen, CLI exit1; response lead later reported a separately recorded replacement assignment |
+| `725f8ae0-bae9-4253-8629-ff274e967d85` | Codex response lead1411: current hosted source/artifact handoff dependency | Sent yes, Delivered yes, Received not seen, CLI exit1; response lead later supplied address metadata, not a completed artifact |
+| `3b6789e4-5003-491f-b857-4abc65573ca7` | Codex triage lead in decko-ts-k-diffgrade-bind-20261101, Relay1517: saved hosted package-check failure evidence | Sent yes, Delivered yes, Received not seen, CLI exit1; no replay or alternate route |
+
+Earlier positively refused operation `8d08a701-b7bb-4e96-99ab-4b5683a3f653`
+required a wake reason and wrote no input. Supplying that required reason was
+recorded by the separate accepted operation above; no uncertain operation was
+replayed. Its post-refusal receipt reader also threw `No operation record`,
+already filed as system intake `rel-342df636-3c28-4669-878b-8b7bd14f49ce` before
+the later incident restriction.
+
+The named incident source document
+`juc-relay/docs/reports/2026-11-01-defcon1-flightdeck-messaging.md` was absent at
+both known exact checkout paths when read headlessly. The incident restrictions
+remain in force. No browser, desktop file/URL opening, Cursor, new harness lane
+or fallback messaging channel was used.
+
+Next: the incident owner completes receipt handling and the canonical incident
+record through its existing lease. This file does not claim recipient arrival
+or close the messaging incident.

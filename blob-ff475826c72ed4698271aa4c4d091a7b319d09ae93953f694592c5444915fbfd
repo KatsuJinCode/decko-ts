@@ -1,0 +1,73 @@
+{
+  "generatedAt": "2026-10-26T03:32:29.353Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "baseUrl": "http://127.0.0.1:3118",
+  "variants": {
+    "A": {
+      "title": "Culturesmith+Home Variant A - Culturesmith",
+      "bodyClass": "cs-home-a d-flex flex-column h-100",
+      "bodyBg": "rgb(39, 43, 48)",
+      "bodyFont": "16px system-ui, -apple-system, \"Segoe UI\", Roboto, \"H",
+      "articleMaxWidth": "992px",
+      "cardCount": 6,
+      "cardNames": [
+        "Culturesmith+Home Variant A",
+        "Culturesmith+Home Variant A+Hero Photo",
+        "Culturesmith+Home Variant A+Intro",
+        "Culturesmith+Home Variant A+Proposals Line",
+        "Culturesmith+Home Variant A+Connect Line",
+        "Culturesmith+Home Variant A+Meet Brandon"
+      ],
+      "introType": {
+        "fontSize": "18.72px",
+        "lineHeight": "32.76px",
+        "fontWeight": "400",
+        "color": "rgb(198, 202, 208)"
+      },
+      "heroImgNatural": "500x334",
+      "heroImgDisplayed": "500x334",
+      "heroLoaded": true,
+      "linkColor": "rgb(217, 178, 106)",
+      "pageHeight": 1445,
+      "logoShownByCss": true,
+      "blockedOutsideLoopback": 0,
+      "screenshot": "C:/localProjects/decko-ts-demo-scratch-20261025/tmp/homepage-variants-20261026/variant-a-1440x900-fullpage.png"
+    },
+    "B": {
+      "title": "Culturesmith+Home Variant B - Culturesmith",
+      "bodyClass": "cs-home-b d-flex flex-column h-100",
+      "bodyBg": "rgb(39, 43, 48)",
+      "bodyFont": "16px system-ui, -apple-system, \"Segoe UI\", Roboto, \"H",
+      "articleMaxWidth": "1184px",
+      "cardCount": 9,
+      "cardNames": [
+        "Culturesmith+Home Variant B",
+        "Culturesmith+Home Variant B+Hero Card",
+        "Culturesmith+Home Variant B+Intro Card",
+        "Culturesmith+Home Variant B+Door Practice",
+        "Culturesmith+Home Variant B+Door Team",
+        "Culturesmith+Home Variant B+Door Library",
+        "Culturesmith+Home Variant B+Proposals Card",
+        "Culturesmith+Home Variant B+Connect Card",
+        "Culturesmith+Home Variant B+Meet Brandon Card"
+      ],
+      "introType": {
+        "fontSize": "18.24px",
+        "lineHeight": "31.92px",
+        "fontWeight": "400",
+        "color": "rgb(198, 202, 208)"
+      },
+      "heroImgNatural": "500x334",
+      "heroImgDisplayed": "500x334",
+      "heroLoaded": true,
+      "linkColor": "rgb(255, 255, 255)",
+      "pageHeight": 1517,
+      "logoShownByCss": true,
+      "blockedOutsideLoopback": 0,
+      "screenshot": "C:/localProjects/decko-ts-demo-scratch-20261025/tmp/homepage-variants-20261026/variant-b-1440x900-fullpage.png"
+    }
+  }
+}

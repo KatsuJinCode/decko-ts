@@ -1,0 +1,24 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.1 [39m[90mC:/localProjects/decko-ts-lane-e16-compose-2026-10-06[39m
+
+ [32m✓[39m tests/server/write-routes.test.ts [2m([22m[2m22 tests[22m[2m)[22m[33m 818[2mms[22m[39m
+ [32m✓[39m tests/server/write-routes-recaptcha-armed-update-delete.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 106[2mms[22m[39m
+ [32m✓[39m tests/card/actions/anon-fix-fresh-variants.test.ts [2m([22m[2m23 tests[22m[2m)[22m[32m 110[2mms[22m[39m
+ [32m✓[39m tests/server/write-routes-edit-save-guards.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 219[2mms[22m[39m
+ [32m✓[39m tests/server/write-routes-multipart-upload.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 177[2mms[22m[39m
+ [32m✓[39m tests/server/write-routes-anonymous-permission-pins.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 167[2mms[22m[39m
+ [32m✓[39m tests/server/write-routes-recaptcha-seat.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 116[2mms[22m[39m
+ [32m✓[39m tests/server/post-save-cache-expiry.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 83[2mms[22m[39m
+ [32m✓[39m tests/server/write-routes-serving-mod-composition.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 68[2mms[22m[39m
+ [32m✓[39m tests/server/file-routes.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 73[2mms[22m[39m
+ [32m✓[39m tests/worker.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m tests/server/staging-server-recaptcha-env-config-pins.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m12 passed[39m[22m[90m (12)[39m
+[2m      Tests [22m [1m[32m118 passed[39m[22m[90m (118)[39m
+[2m   Start at [22m 06:55:34
+[2m   Duration [22m 8.46s[2m (tests 41%, import 35%, transform 23%, worker 1%)[22m
+
+[2m    Isolate [22m [33m12 workers spawned[39m[2m · ~300ms startup each (spawn + environment, per file)[22m
+[2m            [22m [2mat least ~3.31s faster with [22m[33misolate: false[39m[2m — reuses workers across files instead of one per file[22m
+

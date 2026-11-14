@@ -1,0 +1,22 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.1 [39m[90mC:/localProjects/decko-ts-lane-a1-mods-validation-2026-10-06[39m
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-bootswatch-skin-family.test.ts[2m > [22m[2mbootswatch_skin family (skin :core + the media bar_left)[2m > [22m[2mWITH the mod: :core renders the captured skin-configuration skeleton
+[22m[39mENGINE-NEST {"requested":"content","view":"content","card":"Media Probe Skin+Image","nestName":"+Image"}
+ENGINE-NEST {"requested":"accordion_bar","view":"accordion_bar","card":"Media Probe Skin+colors","unknown":true,"nestName":"+colors"}
+ENGINE-NEST {"requested":"accordion_bar","view":"accordion_bar","card":"Media Probe Skin+variables","unknown":true,"nestName":"+variables"}
+ENGINE-NEST {"requested":"accordion_bar","view":"accordion_bar","card":"Media Probe Skin+stylesheets","unknown":true,"nestName":"+stylesheets"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-bootswatch-skin-family.test.ts[2m > [22m[2mbootswatch_skin family (skin :core + the media bar_left)[2m > [22m[2mWITH the mod: :bar_bottom wraps the core in <code> (html_views.rb:69-73)
+[22m[39mENGINE-NEST {"requested":"content","view":"content","card":"Media Probe Skin+Image","nestName":"+Image"}
+ENGINE-NEST {"requested":"accordion_bar","view":"accordion_bar","card":"Media Probe Skin+colors","unknown":true,"nestName":"+colors"}
+ENGINE-NEST {"requested":"accordion_bar","view":"accordion_bar","card":"Media Probe Skin+variables","unknown":true,"nestName":"+variables"}
+ENGINE-NEST {"requested":"accordion_bar","view":"accordion_bar","card":"Media Probe Skin+stylesheets","unknown":true,"nestName":"+stylesheets"}
+
+ [32m✓[39m tests/card/mod-loader/card-mod-bootswatch-skin-family.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 40[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m4 passed[39m[22m[90m (4)[39m
+[2m   Start at [22m 23:56:26
+[2m   Duration [22m 1.27s[2m (transform 80%, import 15%, tests 5%)[22m
+

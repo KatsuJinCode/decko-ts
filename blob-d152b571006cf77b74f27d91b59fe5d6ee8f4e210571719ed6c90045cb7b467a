@@ -1,0 +1,129 @@
+// Actual loopback HTTP requests through the serving write handler. Synthetic
+// SQLite fixtures only; visitorCookie is committed as the production hosts do.
+import { afterEach, beforeEach, expect, it } from "vitest";
+import http from "node:http";
+import { createActionsTestStorage, seedCard, seedStandardDeck, type ActionsTestStorage } from "../card/actions/actions-test-storage.js";
+import { SessionStore, runAuthMigrations } from "../../src/card/auth/index.js";
+import { handleWriteRequest, SESSION_COOKIE_NAME } from "../../src/server/write-routes.js";
+import { readVisitorSession } from "../../src/card/session/visitor-session.js";
+
+let storage: ActionsTestStorage, server: http.Server, base: string, token: string;
+const frozen = () => new Date("2026-09-29T12:00:00Z");
+beforeEach(async () => {
+  storage = await createActionsTestStorage();
+  await seedStandardDeck(storage);
+  await seedCard(storage, { id: 1000, name: "Comment Target", dbContent: "original body" });
+  await seedCard(storage, { id: 2000, name: "Joe User" });
+  await seedCard(storage, { id: 2100, name: "Anonymous", codename: "anonymous" });
+  await runAuthMigrations(storage.driver);
+  token = (await new SessionStore({ driver: storage.driver }).createSession(2000)).token;
+  server = http.createServer(async (req, res) => {
+    try {
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) chunks.push(chunk as Buffer);
+      const url = new URL(req.url!, base);
+      const answer = await handleWriteRequest({ driver: storage.driver, fetcher: storage.engine, now: frozen }, {
+        method: req.method!, pathname: url.pathname, host: req.headers.host,
+        headers: req.headers as Record<string, string | undefined>, body: Buffer.concat(chunks).toString(),
+      });
+      if (answer === null) { res.writeHead(404).end(); return; }
+      const headers: http.OutgoingHttpHeaders = { ...answer.headers };
+      if (answer.visitorCookie !== undefined) {
+        const previous = headers["Set-Cookie"];
+        headers["Set-Cookie"] = [...(previous === undefined ? [] : Array.isArray(previous) ? previous : [String(previous)]), answer.visitorCookie];
+      }
+      res.writeHead(answer.status, headers).end(answer.body);
+    } catch (error) { res.writeHead(500).end(String(error)); }
+  });
+  await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
+  base = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+});
+afterEach(async () => {
+  if (server?.listening) await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+  if (server !== undefined) expect(server.listening).toBe(false);
+  storage?.close();
+});
+
+async function post(form: Record<string, string>, opts: { cookie?: string; bearer?: boolean; origin?: string; path?: string } = {}) {
+  const response = await fetch(base + (opts.path ?? "/update/Comment_Target.json"), { method: "POST", redirect: "manual",
+    headers: { "content-type": "application/x-www-form-urlencoded", origin: opts.origin ?? base,
+      ...(opts.cookie ? { cookie: opts.cookie } : {}), ...(opts.bearer ? { authorization: `Bearer ${token}` } : {}) },
+    body: new URLSearchParams({ _method: "patch", ...form }).toString(),
+  });
+  const cookies = response.headers.getSetCookie();
+  return { status: response.status, body: await response.text(), cookies,
+    cookie: cookies.find(value => value.startsWith("decko_visit="))?.split(";")[0] };
+}
+const content = async () => (await storage.selectOne<{ db_content: string }>("SELECT db_content FROM cards WHERE id=1000"))!.db_content;
+const block = (text: string, author: string) => `\n<hr>\n<p>${text}</p>\n<div class="w-comment-author">${author}.....2026-09-29 12:00:00 UTC</div>`;
+async function snapshot() {
+  const rows = await Promise.all(["cards", "card_references", "card_acts", "card_actions", "card_changes"].map(async table => [table, await storage.selectAll(`SELECT * FROM ${table} ORDER BY rowid`)]));
+  return Object.fromEntries(rows);
+}
+
+it("two anonymous requests preserve the first declared author and original append bytes", async () => {
+  const first = await post({ "card[comment]": "first", comment_author: "Zebra" });
+  expect(first.status, first.body).toBe(200); expect(first.cookie).toBeDefined();
+  expect(readVisitorSession(first.cookie).commentAuthor).toBe("Zebra");
+  const second = await post({ "card[comment]": "second", comment_author: "Ignored New Name" }, { cookie: first.cookie });
+  expect(second.status).toBe(200);
+  expect(await content()).toBe("original body" + block("first", "Zebra (Not signed in)") + block("second", "Zebra (Not signed in)"));
+  expect(await storage.count("card_acts")).toBe(2);
+  expect(await storage.count("card_actions")).toBe(2);
+  expect(await storage.count("card_changes")).toBe(2);
+});
+
+it("another visitor does not inherit the previous visitor's author", async () => {
+  await post({ "card[comment]": "first", comment_author: "Zebra" });
+  const separate = await post({ "card[comment]": "separate" });
+  expect(separate.status).toBe(200);
+  expect(await content()).toBe("original body" + block("first", "Zebra (Not signed in)") + block("separate", "Anonymous (Not signed in)"));
+});
+
+it("a blank first comment still stores the author before the next request", async () => {
+  const before = await content();
+  const first = await post({ "card[comment]": "", comment_author: "Blank First" });
+  expect(first.status).toBe(200); expect(await content()).toBe(before);
+  expect(readVisitorSession(first.cookie).commentAuthor).toBe("Blank First");
+  expect((await post({ "card[comment]": "later" }, { cookie: first.cookie })).status).toBe(200);
+  expect(await content()).toBe(before + block("later", "Blank First (Not signed in)"));
+});
+
+it("signed-in signatures use the authenticated name while the declared author remains session-local", async () => {
+  const first = await post({ "card[comment]": "member first", comment_author: "Declared Name" }, { bearer: true });
+  const second = await post({ "card[comment]": "member second" }, { bearer: true, cookie: first.cookie });
+  expect(first.status).toBe(200); expect(second.status).toBe(200);
+  expect(readVisitorSession(first.cookie).commentAuthor).toBe("Declared Name");
+  expect(await content()).toBe("original body" + block("member first", "[[Joe User]]") + block("member second", "[[Joe User]]"));
+});
+
+it("permission denial changes no card/reference/history row and sets no author cookie", async () => {
+  await storage.driver.query("DELETE FROM card_references WHERE referer_id=306", []);
+  await storage.driver.query("UPDATE cards SET db_content='' WHERE id=306", []);
+  const before = await snapshot();
+  const answer = await post({ "card[comment]": "denied", comment_author: "Denied Author" });
+  expect(answer.status).toBe(403); expect(answer.cookie).toBeUndefined();
+  expect(await snapshot()).toEqual(before);
+});
+
+it("cross-origin cookie-authenticated comments are refused before rows or author state change", async () => {
+  const first = await post({ "card[comment]": "first", comment_author: "Zebra" });
+  const before = await snapshot();
+  const answer = await post({ "card[comment]": "cross origin", comment_author: "Attack Name" }, {
+    cookie: `${SESSION_COOKIE_NAME}=${token}; ${first.cookie}`, origin: "https://other.example",
+  });
+  expect(answer.status).toBe(403); expect(answer.cookie).toBeUndefined();
+  expect(await snapshot()).toEqual(before);
+});
+
+it("sign-out resets the remembered author before the next anonymous comment", async () => {
+  const first = await post({ "card[comment]": "before sign-out", comment_author: "Zebra" }, { bearer: true });
+  const before = await snapshot();
+  const out = await post({ _method: "delete" }, { path: "/delete/*signin.json", cookie: `${SESSION_COOKIE_NAME}=${token}; ${first.cookie}` });
+  expect(out.status).toBeLessThan(400);
+  expect(await snapshot()).toEqual(before);
+  const nextCookie = out.cookie ?? first.cookie;
+  expect.soft(readVisitorSession(nextCookie).commentAuthor).toBeUndefined();
+  expect((await post({ "card[comment]": "after sign-out" }, { cookie: nextCookie })).status).toBe(200);
+  expect(await content()).toBe("original body" + block("before sign-out", "[[Joe User]]") + block("after sign-out", "Anonymous (Not signed in)"));
+});

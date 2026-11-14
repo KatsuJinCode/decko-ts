@@ -1,0 +1,186 @@
+{
+  "row": "validate-renaming",
+  "event": "validate_renaming",
+  "pinned_file": "card-1.110.0/mod/core/set/all/name_events.rb",
+  "pinned_declaration": "event :validate_renaming, :validate, on: :update, changed: :name, skip: :allowed do",
+  "pinned_declaration_line": 46,
+  "pinned_body": "  return if name_before_act&.to_name == name # just changing to new variant\n\n  errors.add :content, t(:core_cannot_change_content) if content_is_changing?\n  errors.add :type, t(:core_cannot_change_type) if type_is_changing?\n  detect_illegal_compound_names",
+  "pinned_body_lines": [
+    {
+      "line": 47,
+      "text": "  return if name_before_act&.to_name == name # just changing to new variant"
+    },
+    {
+      "line": 48,
+      "text": ""
+    },
+    {
+      "line": 49,
+      "text": "  errors.add :content, t(:core_cannot_change_content) if content_is_changing?"
+    },
+    {
+      "line": 50,
+      "text": "  errors.add :type, t(:core_cannot_change_type) if type_is_changing?"
+    },
+    {
+      "line": 51,
+      "text": "  detect_illegal_compound_names"
+    }
+  ],
+  "executed": true,
+  "notes": [],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a rename to a new variant of the same name: the body returns before it checks anything",
+      "supplied_answers": {
+        "attributes": [
+          "content_is_changing?",
+          "name",
+          "name_before_act",
+          "type_is_changing?"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "name_before_act",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "name",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    },
+    {
+      "scenario": "a rename that changes the content: the body refuses with the content text",
+      "supplied_answers": {
+        "attributes": [
+          "content_is_changing?",
+          "name",
+          "name_before_act",
+          "type_is_changing?"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "name_before_act",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "name",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "content_is_changing?",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "type_is_changing?",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "detect_illegal_compound_names",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [
+        {
+          "attribute": "content",
+          "message": "cannot change content while changing name"
+        }
+      ],
+      "outcome": {
+        "raised": null,
+        "returned": "Decko"
+      }
+    },
+    {
+      "scenario": "a rename that changes the type: the body refuses with the type text",
+      "supplied_answers": {
+        "attributes": [
+          "content_is_changing?",
+          "name",
+          "name_before_act",
+          "type_is_changing?"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "name_before_act",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "name",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "content_is_changing?",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "type_is_changing?",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "detect_illegal_compound_names",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [
+        {
+          "attribute": "type",
+          "message": "cannot change type while changing name"
+        }
+      ],
+      "outcome": {
+        "raised": null,
+        "returned": "Decko"
+      }
+    }
+  ]
+}

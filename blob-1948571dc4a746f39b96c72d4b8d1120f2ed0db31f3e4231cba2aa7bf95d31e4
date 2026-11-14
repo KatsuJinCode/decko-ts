@@ -1,0 +1,181 @@
+import assert from 'node:assert/strict';
+import {EventEmitter} from 'node:events';
+import path from 'node:path';
+import test from 'node:test';
+import {loadCandidate} from './test-gate-fixture.mjs';
+
+const {runGatePhases}=await loadCandidate();
+
+function deferred(){let resolve,reject;const promise=new Promise((yes,no)=>{resolve=yes;reject=no;});return{promise,resolve,reject};}
+const flush=async()=>{for(let i=0;i<6;i++)await Promise.resolve();};
+function fixture(){
+ const child=new EventEmitter(),node=deferred(),events=[],logs=[];
+ const options={root:path.resolve('.'),vitestFiles:['tests/card/one.test.ts'],nodeFiles:['tests/card/two.test.mjs'],generated:'owned-review.generated.ts',extra:['--maxWorkers=3','--isolate=false','--reporter=json','--outputFile=owned.json'],report:'owned-node.json'};
+ const dependencies={spawnVitest(){events.push('vitest:start');return child;},runNode(){events.push('node:start');return node.promise;},removeConfig(){events.push('cleanup');},log:line=>logs.push(line)};
+ return{child,node,events,logs,options,dependencies,start:()=>runGatePhases(options,dependencies)};
+}
+
+test('independent: a process error survives a later successful exit and close',async()=>{
+ const f=fixture(),pending=f.start();
+ f.child.emit('error',new Error('owned asynchronous failure'));
+ f.child.emit('exit',0,null);f.node.resolve({pass:true,filesExecuted:1});await flush();
+ assert(!f.events.includes('cleanup'));
+ f.child.emit('close',0,null);
+ assert.deepEqual(await pending,{vitestStatus:1,nodePass:true,cleanupPass:true});
+});
+
+for(const error of [null,undefined,false,0,''])test('regression: an error event with '+String(error)+' cannot return a clean gate',async()=>{
+ const f=fixture(),pending=f.start();f.child.emit('error',error);
+ f.child.emit('close',0,null);f.node.resolve({pass:true,filesExecuted:1});
+ const result=await pending;
+ console.log(JSON.stringify({control:'falsy-error-event',payload:String(error),result,events:f.events}));
+ assert.notEqual(result.vitestStatus,0,'An observed error event was erased by payload truthiness');
+});
+
+test('regression: failed config retirement cannot report a fully successful gate',async()=>{
+ const f=fixture();f.dependencies.removeConfig=()=>{throw Error('owned config remains locked');};
+ const pending=f.start();f.child.emit('close',0,null);f.node.resolve({pass:true,filesExecuted:1});
+ const result=await pending;
+ console.log(JSON.stringify({control:'cleanup-failed-after-green-phases',result,logs:f.logs}));
+ assert.deepEqual(result,{vitestStatus:0,nodePass:true,cleanupPass:false});
+});
+
+function virtualCommand({extra=[],workers='2',report='owned-node.json',writeFailure=false}={}){
+ const root=path.resolve('.'),child=new EventEmitter(),node=deferred(),events=[],writes=new Map(),logs=[];
+ const folders=new Map([
+  [root,['tests','tools']],
+  [path.join(root,'tests'),['card']],
+  [path.join(root,'tests/card'),['one.test.ts','two.test.mjs']],
+  [path.join(root,'tools'),['excluded.test.mjs']],
+ ]);
+ const directories=new Set([root,path.join(root,'tests'),path.join(root,'tests/card'),path.join(root,'tools')]);
+ const fakeProcess={execPath:process.execPath,pid:275,argv:['node','review-control.mjs','run','correctness',...extra],env:{DECKO_TEST_MAX_WORKERS:workers,NODE_TEST_REPORT:report},exit(code){throw Error('review-process-exit:'+code);}};
+ const overrides={process:fakeProcess,console:{log:line=>logs.push(line),error:line=>logs.push(line)},
+  randomUUID:()=> 'owned-config',
+  readdirSync(dir){return(folders.get(path.resolve(dir))??[]).map(name=>({name,isDirectory:()=>directories.has(path.resolve(dir,name))}));},
+  writeFileSync(file,contents){events.push('config:create');writes.set(file,contents);if(writeFailure)throw Error('owned partial config write failure');},
+  unlinkSync(file){events.push('config:remove');writes.delete(file);},
+  spawn(executable,args,options){events.push('vitest:start');overrides.vitestCall={executable,args,options};return child;},
+  runNodeTests(options){events.push('node:start');overrides.nodeCall=options;return node.promise;},
+ };
+ // Keep only import bindings; captured calls are attached after module load.
+ return{root,child,node,events,writes,logs,overrides,fakeProcess};
+}
+
+test('independent: actual command preserves selection, generated content, args, streams and report path',async()=>{
+ const f=virtualCommand({extra:['--isolate=false','--reporter=json','--outputFile=owned.json']});
+ const api=await loadCandidate(f.overrides),pending=api.command();
+ assert.deepEqual(f.events,['config:create','vitest:start','node:start']);
+ const [generated,contents]=[...f.writes][0];
+ assert(contents.includes('"tests/card/one.test.ts"'));
+ assert(!contents.includes('two.test.mjs'));assert(!contents.includes('excluded.test.mjs'));
+ assert.deepEqual(f.overrides.vitestCall,{executable:process.execPath,args:[path.join(api.REPO_ROOT,'node_modules/vitest/vitest.mjs'),'run','--config',generated,'--maxWorkers=2','--isolate=false','--reporter=json','--outputFile=owned.json'],options:{cwd:api.REPO_ROOT,stdio:'inherit',windowsHide:true}});
+ assert.deepEqual(f.overrides.nodeCall,{root:api.REPO_ROOT,files:['tests/card/two.test.mjs'],report:'owned-node.json'});
+ f.child.emit('exit',0,null);f.node.resolve({pass:true,filesExecuted:1,summary:{success:true}});await flush();
+ assert(f.writes.has(generated),'Config removed before real close');
+ f.child.emit('close',0,null);await pending;
+ assert.equal(f.writes.size,0);assert.equal(f.fakeProcess.exitCode,undefined);
+});
+
+for(const workers of ['0','-1','NaN','Infinity','1.5'])test('independent: invalid workers '+workers+' fail before config creation or either launch',async()=>{
+ const f=virtualCommand({workers}),api=await loadCandidate(f.overrides);
+ await assert.rejects(api.command(),/positive DECKO_TEST_MAX_WORKERS required/);
+ assert.deepEqual(f.events,[]);assert.equal(f.writes.size,0);
+});
+
+test('independent: explicit workers override invalid environment without changing other args',async()=>{
+ const f=virtualCommand({workers:'0',extra:['--maxWorkers','4','--isolate=false']}),api=await loadCandidate(f.overrides);
+ const pending=api.command();
+ assert.deepEqual(f.overrides.vitestCall.args.slice(-3),['--maxWorkers','4','--isolate=false']);
+ f.child.emit('close',0,null);f.node.resolve({pass:true,filesExecuted:1});await pending;
+ assert.equal(f.writes.size,0);
+});
+
+test('regression: a partial config write failure retires its owned generated file',async()=>{
+ const f=virtualCommand({writeFailure:true}),api=await loadCandidate(f.overrides);
+ await assert.rejects(api.command(),/owned partial config write failure/);
+ assert.equal(f.writes.size,0,'Failed write left a partially created generated config');
+ assert.deepEqual(f.events,['config:create','config:remove']);
+});
+
+test('partial write plus failed retirement preserves both errors and starts no framework',async()=>{
+ const f=virtualCommand(),writeError=Error('original partial write'),cleanupError=Error('owned cleanup failure');
+ f.overrides.writeFileSync=(file,contents)=>{f.events.push('config:create');f.writes.set(file,contents);throw writeError;};
+ f.overrides.unlinkSync=file=>{assert(f.writes.has(file));f.events.push('config:remove-failed');throw cleanupError;};
+ const api=await loadCandidate(f.overrides);
+ await assert.rejects(api.command(),error=>{
+  assert(error instanceof AggregateError);
+  assert.equal(error.cause,writeError);
+  assert.deepEqual(error.errors,[writeError,cleanupError]);
+  return true;
+ });
+ assert.deepEqual(f.events,['config:create','config:remove-failed']);
+ assert.equal(f.writes.size,1);
+});
+
+test('failed write before creation preserves original error when cleanup finds no file',async()=>{
+ const f=virtualCommand(),writeError=Error('write never created config');
+ f.overrides.writeFileSync=()=>{f.events.push('config:create-failed');throw writeError;};
+ f.overrides.unlinkSync=()=>{f.events.push('config:absent');throw Object.assign(Error('no owned config'),{code:'ENOENT'});};
+ const api=await loadCandidate(f.overrides);
+ await assert.rejects(api.command(),error=>error===writeError);
+ assert.deepEqual(f.events,['config:create-failed','config:absent']);
+ assert.equal(f.writes.size,0);
+});
+
+test('partial write and falsy cleanup throw retain both thrown values',async()=>{
+ const f=virtualCommand();
+ f.overrides.writeFileSync=()=>{f.events.push('config:create-failed');throw null;};
+ f.overrides.unlinkSync=()=>{f.events.push('config:remove-failed');throw false;};
+ const api=await loadCandidate(f.overrides);
+ await assert.rejects(api.command(),error=>{
+  assert(error instanceof AggregateError);
+  assert.equal(error.cause,null);
+  assert.deepEqual(error.errors,[null,false]);
+  return true;
+ });
+ assert.deepEqual(f.events,['config:create-failed','config:remove-failed']);
+});
+
+test('regression: actual command must fail when its generated config cannot be retired',async()=>{
+ const f=virtualCommand();
+ f.overrides.unlinkSync=()=>{f.events.push('config:remove-failed');throw Object.assign(Error('owned generated config is locked'),{code:'EBUSY'});};
+ const api=await loadCandidate(f.overrides),pending=api.command();
+ f.child.emit('close',0,null);f.node.resolve({pass:true,filesExecuted:1});await pending;
+ console.log(JSON.stringify({control:'actual-cli-cleanup-failure',exitCode:f.fakeProcess.exitCode??0,remainingConfigs:f.writes.size,logs:f.logs}));
+ assert.equal(f.fakeProcess.exitCode,1,'Actual command reports success despite EBUSY and a remaining generated config');
+});
+
+for(const phase of ['vitest','node'])for(const payload of [null,undefined,false,0,''])test('independent: synchronous '+phase+' throw '+String(payload)+' still settles the other phase',async()=>{
+ const f=fixture();
+ if(phase==='vitest')f.dependencies.spawnVitest=()=>{f.events.push('vitest:start');throw payload;};
+ else f.dependencies.runNode=()=>{f.events.push('node:start');throw payload;};
+ const pending=f.start();await flush();
+ assert.deepEqual(f.events,['vitest:start','node:start']);
+ f.child.emit('close',0,null);f.node.resolve({pass:true,filesExecuted:1});
+ assert.deepEqual(await pending,{vitestStatus:phase==='vitest'?1:0,nodePass:phase==='vitest',cleanupPass:true});
+ assert.equal(f.events.at(-1),'cleanup');
+});
+
+test('independent: empty selected inventory fails before any generated config',async()=>{
+ const f=virtualCommand();f.overrides.readdirSync=()=>[];
+ const api=await loadCandidate(f.overrides);
+ await assert.rejects(api.command(),/review-process-exit:1/);
+ assert.deepEqual(f.events,[]);assert.equal(f.writes.size,0);
+});
+
+test('independent: unclassified inventory fails before config or runner creation',async()=>{
+ const f=virtualCommand();f.overrides.readdirSync=()=>[{name:'unowned.test.ts',isDirectory:()=>false}];
+ const api=await loadCandidate(f.overrides);
+ await assert.rejects(api.command(),/no declared test gate/);
+ assert.deepEqual(f.events,[]);assert.equal(f.writes.size,0);
+});
+
+test('independent: actual Node-only command retains original reporting and selected files',async()=>{
+ const f=virtualCommand();f.fakeProcess.argv[3]='harness';
+ const api=await loadCandidate(f.overrides),pending=api.command();
+ assert.deepEqual(f.events,['config:create','node:start']);
+ assert.deepEqual(f.overrides.nodeCall,{root:api.REPO_ROOT,files:['tools/excluded.test.mjs'],report:'owned-node.json'});
+ f.node.resolve({pass:true,filesExecuted:1,summary:{success:true}});await pending;
+ assert.equal(f.writes.size,0);assert.equal(f.fakeProcess.exitCode,undefined);
+});

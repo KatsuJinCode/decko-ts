@@ -1,0 +1,91 @@
+{
+  "row": "verify-staging-probe-restoration",
+  "instrument": "recovery/release/private-probes/private-tool-repairs-20261018/verify-staging-probe-restoration.mjs",
+  "instrumentReceipt": "staging-probe-restoration-independent-20261019.json",
+  "receiptOfRecord": "staging-probe-restoration-independent-20261019.json",
+  "receiptOfRecordAt": "2026-10-19T02:00:16.830Z",
+  "measuredAt": "2026-10-25T04:46:08.224Z",
+  "scope": "Read-only known script metadata; only six non-secret flags exported. No mutation.",
+  "instrumentStatesAVerdict": false,
+  "rows": [
+    {
+      "id": 96895,
+      "origin": "https://culturesmith-b-edge.bunny.run",
+      "currentRelease": 1197225,
+      "earlierRelease": 1194138,
+      "releaseMoved": true,
+      "flags": {
+        "DECKO_EDGE_ISOLATE_PROBE": {
+          "now": "0",
+          "then": "0"
+        },
+        "DECKO_EDGE_CACHE": {
+          "now": "1",
+          "then": "1"
+        },
+        "DECKO_CONFLICT_RETRY": {
+          "now": "1",
+          "then": "1"
+        },
+        "DECKO_MATERIAL_ICONS": {
+          "now": "local",
+          "then": "local"
+        },
+        "DECKO_FONT_AWESOME": {
+          "now": "local",
+          "then": "local"
+        },
+        "DECKO_WRITE_PATH": {
+          "now": "1",
+          "then": "1"
+        }
+      },
+      "flagsUnchanged": true
+    },
+    {
+      "id": 96867,
+      "origin": "https://culturesmith-edge.bunny.run",
+      "currentRelease": 1194026,
+      "earlierRelease": 1194026,
+      "releaseMoved": false,
+      "flags": {
+        "DECKO_EDGE_ISOLATE_PROBE": {
+          "now": null,
+          "then": null
+        },
+        "DECKO_EDGE_CACHE": {
+          "now": "1",
+          "then": "1"
+        },
+        "DECKO_CONFLICT_RETRY": {
+          "now": "1",
+          "then": "1"
+        },
+        "DECKO_MATERIAL_ICONS": {
+          "now": "local",
+          "then": "local"
+        },
+        "DECKO_FONT_AWESOME": {
+          "now": "local",
+          "then": "local"
+        },
+        "DECKO_WRITE_PATH": {
+          "now": "1",
+          "then": "1"
+        }
+      },
+      "flagsUnchanged": true
+    }
+  ],
+  "rowsMeasured": 2,
+  "rowsWhoseFlagsAreUnchanged": 2,
+  "rowsWhoseReleaseMoved": 1,
+  "flagsCompared": [
+    "DECKO_EDGE_ISOLATE_PROBE",
+    "DECKO_EDGE_CACHE",
+    "DECKO_CONFLICT_RETRY",
+    "DECKO_MATERIAL_ICONS",
+    "DECKO_FONT_AWESOME",
+    "DECKO_WRITE_PATH"
+  ]
+}

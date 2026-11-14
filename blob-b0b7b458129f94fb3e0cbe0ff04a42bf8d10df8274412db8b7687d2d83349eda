@@ -1,0 +1,119 @@
+// Test-start reclamation is limited to fresh helper allocations whose recorded
+// process owner is positively absent. Age is a secondary filter, never custody.
+// Legacy/controller resources and ambiguous state remain retained. No timer,
+// detached cleaner, adoption API or external process query is used.
+import { lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, rmSync, statSync } from "node:fs";
+import { join, sep } from "node:path";
+import { inspectScratchOwnership, keepScratch, scratchRoot, SCRATCH_CLEANUP_REQUEST_FILE } from "./scratch-dir.mjs";
+
+const STALE_MS = 2 * 60 * 60 * 1000;
+type Identity = { dev: string; ino: string; birthtimeNs: string };
+type Custody = { version: 1; allocation: "scratchDir"; pid: number; processToken: string; identity: Identity; retained: boolean };
+export interface ScratchPurgeReport {
+  removed: string[];
+  retained: Array<{ directory: string; reason: string; cause?: unknown }>;
+}
+
+function qualifiedCustody(value: unknown): value is Custody {
+  if (value === null || typeof value !== "object") return false;
+  const c = value as Custody;
+  return c.version === 1 && c.allocation === "scratchDir" && Number.isSafeInteger(c.pid) && c.pid > 0 &&
+    typeof c.processToken === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(c.processToken) &&
+    typeof c.retained === "boolean" && c.identity !== null && typeof c.identity === "object" &&
+    [c.identity.dev, c.identity.ino, c.identity.birthtimeNs].every(v => typeof v === "string" && /^[0-9]+$/.test(v));
+}
+function identity(dir: string): Identity {
+  const entry = lstatSync(dir, { bigint: true });
+  if (!entry.isDirectory() || entry.isSymbolicLink()) throw new Error(`Scratch entry is no longer a real directory: ${dir}`);
+  return { dev: String(entry.dev), ino: String(entry.ino), birthtimeNs: String(entry.birthtimeNs) };
+}
+function sameIdentity(a: Identity, b: Identity): boolean {
+  return a.dev === b.dev && a.ino === b.ino && a.birthtimeNs === b.birthtimeNs;
+}
+function inside(dir: string, root: string): boolean {
+  const real = realpathSync(dir);
+  return real !== root && real.startsWith(root + sep);
+}
+function ownerState(pid: number): "live" | "absent" {
+  try { process.kill(pid, 0); return "live"; }
+  catch (error) { if ((error as NodeJS.ErrnoException).code === "ESRCH") return "absent"; throw error; }
+}
+function newestWrite(dir: string): number {
+  let newest = statSync(dir).mtimeMs;
+  if (!Number.isFinite(newest)) throw new Error(`Scratch timestamp is unreadable: ${dir}`);
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const file = join(dir, entry.name);
+    if (entry.isSymbolicLink()) throw new Error(`Scratch contains a linked resource: ${file}`);
+    const time = entry.isDirectory() ? newestWrite(file) : statSync(file).mtimeMs;
+    if (!Number.isFinite(time)) throw new Error(`Scratch timestamp is unreadable: ${file}`);
+    newest = Math.max(newest, time);
+  }
+  return newest;
+}
+
+/** Retained/unknown paths stay distinct from clean removal. Unknown candidate
+ * metadata is reported without blocking unrelated work; root-read and actual
+ * cleanup failures remain thrown failures with their original native causes. */
+export function purgeStaleVitestTempDetailed(now = Date.now(), root: string = scratchRoot()): ScratchPurgeReport {
+  const report: ScratchPurgeReport = { removed: [], retained: [] };
+  if (keepScratch()) { report.retained.push({ directory: root, reason: "explicit-run-retention" }); return report; }
+  if (!Number.isFinite(now)) throw new Error("Scratch purge requires a finite observation time");
+  mkdirSync(root, { recursive: true });
+  const rootEntry = lstatSync(root);
+  if (!rootEntry.isDirectory() || rootEntry.isSymbolicLink()) throw new Error(`Scratch root identity is ambiguous: ${root}`);
+  const realRoot = realpathSync(root);
+  const entries = readdirSync(root, { withFileTypes: true });
+  const failures: unknown[] = [], unresolved: string[] = [];
+  const retain = (directory: string, reason: string, cause?: unknown) => {
+    report.retained.push({ directory, reason, ...(cause === undefined ? {} : { cause }) });
+    if (cause !== undefined) console.warn(`Scratch purge retained unresolved metadata: ${directory}`, cause);
+  };
+  for (const entry of entries) {
+    const dir = join(root, entry.name);
+    if (!entry.isDirectory() || entry.isSymbolicLink()) { retain(dir, "non-directory-or-link"); continue; }
+    let observed: ReturnType<typeof inspectScratchOwnership>, custody: Custody, requestContents: string;
+    try {
+      if (!inside(dir, realRoot)) { retain(dir, "outside-root"); continue; }
+      observed = inspectScratchOwnership(dir);
+      if (!observed.matchesCheckout) { retain(dir, "foreign-checkout-or-machine"); continue; }
+      if (!qualifiedCustody(observed.manifest.custody)) { retain(dir, "legacy-or-unknown-process-custody"); continue; }
+      custody = observed.manifest.custody;
+      if (custody.retained) { retain(dir, "explicit-resource-retention"); continue; }
+      if (!sameIdentity(identity(dir), custody.identity)) { retain(dir, "allocation-identity-changed"); continue; }
+      // A dead allocation owner alone does not establish child/resource
+      // settlement. Require its explicit, identity-bound cleanup request.
+      try { requestContents = readFileSync(join(dir, SCRATCH_CLEANUP_REQUEST_FILE), "utf8"); }
+      catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") { retain(dir, "no-explicit-cleanup-request"); continue; } throw error; }
+      const request = JSON.parse(requestContents);
+      if (request === null || request.version !== 1 || request.disposition !== "remove" || request.pid !== custody.pid || request.processToken !== custody.processToken || !request.identity || !sameIdentity(request.identity, custody.identity)) { retain(dir, "unknown-cleanup-request-custody"); continue; }
+      if (ownerState(custody.pid) !== "absent") { retain(dir, "live-owner"); continue; }
+      if (now - newestWrite(dir) < STALE_MS) { retain(dir, "not-stale"); continue; }
+      // Revalidate immediately before removal; no await separates these
+      // checks from rmSync. Changed or unreadable custody stays retained.
+      if (keepScratch()) { retain(dir, "explicit-run-retention"); continue; }
+      if (ownerState(custody.pid) !== "absent") { retain(dir, "live-owner"); continue; }
+      const current = inspectScratchOwnership(dir);
+      if (current.contents !== observed.contents || readFileSync(join(dir, SCRATCH_CLEANUP_REQUEST_FILE), "utf8") !== requestContents || !inside(dir, realRoot) || !sameIdentity(identity(dir), custody.identity)) { retain(dir, "custody-changed-before-removal"); continue; }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") retain(dir, "missing-ownership-or-entry");
+      else retain(dir, "unknown-metadata-or-owner", error);
+      continue;
+    }
+    try {
+      rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+      try { lstatSync(dir); }
+      catch (error) {
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") { report.removed.push(dir); continue; }
+        throw error;
+      }
+      throw new Error(`Scratch directory remains after purge removal: ${dir}`);
+    } catch (error) { failures.push(error); unresolved.push(dir); retain(dir, "native-cleanup-unconfirmed"); }
+  }
+  if (failures.length) throw Object.assign(new AggregateError(failures, `Scratch purge failed; unresolved directories: ${unresolved.join(", ")}`), { report });
+  return report;
+}
+
+/** Compatibility result is the actual number removed, never a clean verdict. */
+export function purgeStaleVitestTemp(now = Date.now(), root: string = scratchRoot()): number {
+  return purgeStaleVitestTempDetailed(now, root).removed.length;
+}

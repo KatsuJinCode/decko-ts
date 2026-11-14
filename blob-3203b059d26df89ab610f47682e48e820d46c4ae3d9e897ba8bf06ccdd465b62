@@ -1,0 +1,28 @@
+import { expect, it } from "vitest";
+import Database from "better-sqlite3";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { importFromSqlite } from "../../tools/migrate/generalized-import.mjs";
+import { LocalSqliteToolDriver } from "../../tools/migrate/import.mjs";
+import { scratchDir, cleanupScratch } from "../support/scratch-dir.mjs";
+
+it("keeps SQLite NULLs, alias precedence and dropped-table counts while reusing a table mapping", async () => {
+  const root = scratchDir("sqlite-mapping-");
+  const sourcePath = join(root, "source.sqlite");
+  const source = new Database(sourcePath);
+  source.exec("CREATE TABLE cards(id INTEGER, name TEXT, key TEXT, content TEXT, db_content TEXT, trash INTEGER, type_id INTEGER, created_at TEXT, updated_at TEXT, creator_id INTEGER, updater_id INTEGER); CREATE TABLE unsupported(payload TEXT); INSERT INTO unsupported VALUES ('one'),('two');");
+  source.prepare("INSERT INTO cards VALUES (?,?,?,?,?,?,?,'2026-01-01','2026-01-01',1,1)").run(1, "First", "first", null, "unused alias", 0, 4);
+  source.prepare("INSERT INTO cards VALUES (?,?,?,?,?,?,?,'2026-01-01','2026-01-01',1,1)").run(2, "Second", "second", "preferred alias", "unused alias", 0, 4);
+  source.close();
+  const driver = new LocalSqliteToolDriver(join(root, "target.sqlite"));
+  try {
+    const stats = await importFromSqlite({ sourcePath, driver, ddlPath: fileURLToPath(new URL("../../db/schema.sqlite.sql", import.meta.url)) });
+    expect((await driver.query("SELECT id, db_content, left_id FROM cards ORDER BY id", [])).rows).toEqual([
+      { id: 1, db_content: null, left_id: null }, { id: 2, db_content: "preferred alias", left_id: null },
+    ]);
+    expect(stats.skippedTables).toEqual({ unsupported: 2 });
+    expect(stats.errors).toEqual([]);
+    expect(stats.warnings.some(message => message.includes("db_content"))).toBe(true);
+    expect(stats.tableElapsedMs.cards).toBeGreaterThanOrEqual(0);
+  } finally { driver.close(); cleanupScratch(); }
+});

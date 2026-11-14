@@ -1,0 +1,14 @@
+{
+  "name": "okp-smoke",
+  "id": "db_01SYNTHETIC0000000000000000",
+  "url": "libsql://01SYNTHETIC000000-okp-smoke.lite.bunnydb.net/",
+  "block_reads": false,
+  "block_writes": false,
+  "allow_attach": false,
+  "group_id": "group_01SYNTHETIC00000000000000",
+  "group_name": "okp-smoke-group",
+  "is_schema": false,
+  "version": "synthetic",
+  "size_max": "1 GB",
+  "current_size": "0 B"
+}

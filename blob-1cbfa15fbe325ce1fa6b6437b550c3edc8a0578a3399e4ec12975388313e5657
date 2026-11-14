@@ -1,0 +1,23 @@
+{
+  "row": "notable-exception-raised",
+  "event_file": "card-1.110.0/mod/core/set/all/result.rb",
+  "event": "notable_exception_raised",
+  "class_methods": {
+    "Card::Error": {
+      "current": {
+        "__calls__": {
+          "message": "something went wrong",
+          "backtrace": ["first frame", "second frame"]
+        }
+      }
+    },
+    "Rails": {
+      "logger": { "__record__": {} }
+    }
+  },
+  "scenarios": [
+    {
+      "name": "an error is in flight: the body logs its message and its backtrace at debug"
+    }
+  ]
+}

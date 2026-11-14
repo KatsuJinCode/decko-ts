@@ -1,0 +1,91 @@
+{
+  "row": "evaluate-follow-operations",
+  "leg": "ruby33",
+  "journeys": [
+    {
+      "id": "follow-admin-operation-persistence",
+      "completed": true,
+      "updateRequests": [
+        {
+          "method": "GET",
+          "path": "/update/Topic_008+*self+Ada_Admin+*follow",
+          "status": 200
+        }
+      ],
+      "finalObservation": {
+        "label": "follow state after fresh login and restart",
+        "text": "following more_horiz 2 followers all followed cards"
+      },
+      "mailUnfollowUrl": "/update/Mira_Member+*follow?card%5Bsubcards%5D%5B%2Aall%2BMira+Member%2B%2Afollow%5D=%2Anever",
+      "mailFollowedLabel": "everything"
+    },
+    {
+      "id": "unfollow-member-operation-persistence",
+      "completed": true,
+      "updateRequests": [
+        {
+          "method": "GET",
+          "path": "/update/Topic_009+*self+Mira_Member+*follow",
+          "status": 422
+        }
+      ],
+      "finalObservation": {
+        "label": "unfollow state after fresh login and restart",
+        "text": "following more_horiz 1 follower all followed cards"
+      },
+      "mailUnfollowUrl": null,
+      "mailFollowedLabel": null
+    },
+    {
+      "id": "unfollow-mail-operation-persistence",
+      "completed": true,
+      "updateRequests": [
+        {
+          "method": "GET",
+          "path": "/update/Mira_Member+*follow",
+          "status": 403
+        }
+      ],
+      "finalObservation": {
+        "label": "mail unfollow state after fresh login and restart",
+        "text": "following more_horiz 1 follower all followed cards"
+      },
+      "mailUnfollowUrl": "/update/Mira_Member+*follow?card%5Bsubcards%5D%5B%2Aall%2BMira+Member%2B%2Afollow%5D=%2Anever",
+      "mailFollowedLabel": "everything"
+    }
+  ],
+  "grader": {
+    "verdict": "fail",
+    "passed": 0,
+    "total": 3,
+    "perJourney": [
+      {
+        "id": "follow-admin-operation-persistence",
+        "pass": false
+      },
+      {
+        "id": "unfollow-member-operation-persistence",
+        "pass": false
+      },
+      {
+        "id": "unfollow-mail-operation-persistence",
+        "pass": false
+      }
+    ],
+    "problems": [
+      "follow-admin-operation-persistence: browser/runtime/network/mail/row evidence required",
+      "follow-admin-operation-persistence: required asset failed /1366963381.js",
+      "unfollow-member-operation-persistence: browser/runtime/network/mail/row evidence required",
+      "unfollow-member-operation-persistence: required asset failed /1366963381.js",
+      "unfollow-member-operation-persistence: successful GET /update/Topic_009+*self+Mira_Member+*follow required",
+      "unfollow-member-operation-persistence: persisted new card Topic 009+*self+Mira Member+*follow db_content=*never required",
+      "unfollow-member-operation-persistence: reload retains failed state following",
+      "unfollow-mail-operation-persistence: browser/runtime/network/mail/row evidence required",
+      "unfollow-mail-operation-persistence: required asset failed /1366963381.js",
+      "unfollow-mail-operation-persistence: successful observation required: after mail unfollow",
+      "unfollow-mail-operation-persistence: successful GET /update/Mira_Member+*follow required",
+      "unfollow-mail-operation-persistence: persisted 910 db_content=*never required",
+      "unfollow-mail-operation-persistence: reload retains failed state following"
+    ]
+  }
+}

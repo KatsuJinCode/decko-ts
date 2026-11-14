@@ -1,0 +1,74 @@
+# Engine event content repair
+
+Scope: issues 112 and 113 on exact engine parent
+`ec720020fd5dd4a23f097df2956152d46cdcda7a`. The older Bunny fixer branch is
+preserved separately; this branch does not merge its release range.
+
+## Admission and required behavior
+
+Update callbacks must retain this save's original content through integration,
+and integration must receive its saved current content. Named type-change
+callbacks must use the current engine's assigned/original receiver contract.
+Absent event options must be omitted; present invalid values remain rejected.
+
+Runtime ownership is separate: the runtime agent confirmed that 8700e40ad
+changes imports and atomicSave only. This repair changes only the update
+afterCommit integrate event snapshot, not transaction/unknown-outcome handling
+or upload cleanup.
+
+## Reproduction on the engine source
+
+The independent attacker corrected the absent changing-key fixture in
+`5550233293bab858d37bd5f718085865e08da5b2`. Its copied test file remained
+byte-identical, SHA-256
+`615c8b1d52c415ef88fd5dd9ea024028a13f1810dafb8f02e089283eb24e9169`.
+
+Before the production repair, its thirteen tests reported twelve passed and
+one failed. Validate, store and finalize observed `before`; integrate observed
+undefined instead. All three issue113 callback-selection cases passed.
+Therefore no new issue113 production correction is justified on this source.
+The older Bunny source's callback selection findings are not reattributed here.
+
+The integrate eventCard reconstructed the dirty fields and type/receiver
+identity but omitted both content values. The repair supplies current content
+from the store snapshot and original content from the save's original row.
+The empty string and null remain distinct values.
+
+## Checks and limits
+
+After the correction, the unchanged attacker file passes all thirteen cases.
+The additional update-integrate-content suite checks original string, empty
+string and null against actual saved current content/type using own synthetic
+SQLite copies. Existing update and save-path suites are included in the same
+run: four Vitest suites, thirty-six passed, zero failed/skipped.
+
+The Node source suites for type changes, dirty conditions and event override
+precedence report sixty-three passed, zero failed/cancelled/skipped/todo. These
+exercise actual source and local SQLite; no model, remote backend or original
+site was invoked. Existing transformation caches may be reused, not verdicts.
+
+The first copied attacker file failed TypeScript checking on four fixture
+declarations: three observedModEventRuntime calls omit required fetcher, and
+the viewer declares unsupported bot. The attacker was notified to correct
+the fixture without changing assertions. No registry guard was weakened.
+
+The attacker supplied typed fixture commit
+`7ece0f9881b8b81fca52037950f9a4830ba41c47`. Inspection confirms that its diff
+adds the required fetcher contexts and a supported signed-in bot viewer;
+assertions are unchanged. Both copied/attacker files have SHA-256
+`0212ef6f99f1068f9cc36238d9bca19968547a751b065c8c04b7a3896868269c`.
+The final typed fixture and four-suite run again pass thirty-six tests,
+with zero failures/skips. Whole-tree TypeScript checking passes.
+
+The exact typed fixture was also rerun with a Vite source-load override that
+supplies only the action engine's exact ec720020f blob at its original module
+path. It again reports twelve passes and the one integrate-prior-content
+failure; all three issue113 cases pass. The production working file was not
+reverted. The baseline source, override, full failing output and JUnit are
+retained locally under `.runtime/events112/`; `after.xml` retains the complete
+four-suite passing output. The override is an isolated verification instrument,
+not a second application or a deployed target.
+
+This is an engine regression correction, not a full-port, hosted-backend or
+deployment acceptance result. Independent re-attack on the controller's exact
+integrated candidate remains required.

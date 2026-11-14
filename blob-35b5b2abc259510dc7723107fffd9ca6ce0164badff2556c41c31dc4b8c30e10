@@ -1,0 +1,188 @@
+// The strict-parity flags (src/card/parity/strict-parity-flags.ts): the
+// config surface, and the sign-in flag's both modes against the recorded
+// Ruby answers. The route-level surfaces (the reset redirect, the crash
+// 500s, the bundle names) are pinned in
+// tests/server/write-routes-strict-parity.test.ts and by the side-effects
+// battery's strict run; this file pins the settings bag and the
+// authenticateAccount ladder.
+//
+// The recorded answers are the side-effects battery's pins
+// (tools/parity-side-effects/scenarios.json):
+//   signin-unknown         ruby "SIGNIN: Unrecognized email."
+//                          ts   "SIGNIN: Wrong email or password."
+//   signin-wrong-password  ruby "SIGNIN: Wrong password"
+//                          ts   "SIGNIN: Wrong email or password."
+// (the "SIGNIN:" key prefix is the errors view's attribute rendering, the
+// route's job; the ladder's message is what this file pins).
+
+import { createHash } from "node:crypto";
+import { afterEach, describe, expect, it } from "vitest";
+import { generatedEmail, generatedPassword } from "../../../src/testing/generated-credentials.js";
+import { runAuthMigrations, authenticateAccount } from "../../../src/card/auth/index.js";
+import {
+  configureSigninSecurity,
+  signinSecurityPolicy,
+  signinSecurityPolicyFromEnv,
+} from "../../../src/card/auth/signin-security.js";
+import { configurePasswordHashing } from "../../../src/card/auth/password-hash.js";
+import {
+  configureStrictParity,
+  strictParityFlags,
+  strictParityFlagsFromEnv,
+  STRICT_PARITY_ENV_NAMES,
+} from "../../../src/card/parity/strict-parity-flags.js";
+import { createAuthTestStorage, insertAccountCard, type AuthTestStorage } from "../auth/auth-test-storage.js";
+
+const IDS = { account: 9001, email: 9002, password: 9003, salt: 9004, status: 9005 } as const;
+const HOLDER = { id: 9100, name: "Joe User" };
+const JUNCTION_ID = 9101;
+const EMAIL = generatedEmail("joe");
+const SALT = "SALT";
+const PASSWORD = generatedPassword("parity");
+const DIGEST = createHash("sha1").update(`${SALT}--${PASSWORD}--`).digest("hex");
+const TS = "2026-09-20 11:00:00.000";
+
+function q(value: string | null): string {
+  return value === null ? "NULL" : `'${value.replace(/'/g, "''")}'`;
+}
+
+function insertCard(
+  storage: AuthTestStorage,
+  row: { id: number; name: string; codename?: string; left?: number; right?: number; content?: string | null },
+): void {
+  storage.exec(
+    `INSERT INTO cards
+       (id, name, key, codename, left_id, right_id, current_revision_id,
+        created_at, updated_at, creator_id, updater_id,
+        read_rule_class, read_rule_id, references_expired, trash, type_id, db_content)
+     VALUES (${row.id}, ${q(row.name)}, ${row.codename ? q(row.name.toLowerCase().replace(/[^a-z0-9]+/g, "_")) : "NULL"},
+       ${row.codename ? q(row.codename) : "NULL"}, ${row.left ?? "NULL"}, ${row.right ?? "NULL"}, NULL,
+       '${TS}', '${TS}', 1, 1, NULL, NULL, NULL, 0, 1, ${q(row.content ?? null)})`,
+  );
+}
+
+async function buildStorage(): Promise<AuthTestStorage> {
+  const storage = createAuthTestStorage();
+  await runAuthMigrations(storage.driver);
+  for (const [codename, id] of Object.entries(IDS)) insertCard(storage, { id, name: `*${codename}`, codename });
+  insertAccountCard(storage, HOLDER);
+  insertCard(storage, { id: JUNCTION_ID, name: `${HOLDER.name}+*account`, left: HOLDER.id, right: IDS.account });
+  insertCard(storage, { id: 9102, name: `${HOLDER.name}+*account+*email`, left: JUNCTION_ID, right: IDS.email, content: EMAIL });
+  insertCard(storage, { id: 9103, name: `${HOLDER.name}+*account+*password`, left: JUNCTION_ID, right: IDS.password, content: DIGEST });
+  insertCard(storage, { id: 9104, name: `${HOLDER.name}+*account+*salt`, left: JUNCTION_ID, right: IDS.salt, content: SALT });
+  insertCard(storage, { id: 9105, name: `${HOLDER.name}+*account+*status`, left: JUNCTION_ID, right: IDS.status, content: "active" });
+  return storage;
+}
+
+const HARDENED = signinSecurityPolicyFromEnv({});
+
+afterEach(() => {
+  configureStrictParity(undefined);
+  configureSigninSecurity(undefined);
+  configurePasswordHashing(undefined);
+});
+
+describe("strict-parity config surface", () => {
+  it("defaults every flag off: the improved behaviour is what hosts serve", () => {
+    expect(strictParityFlagsFromEnv(undefined)).toEqual({
+      signinDetailedErrors: false,
+      revisionRestore500: false,
+      skinCreate500: false,
+      scriptBundleClockNames: false,
+      mailUnfollowRefusal: false,
+    });
+    expect(strictParityFlagsFromEnv({})).toEqual(strictParityFlagsFromEnv(undefined));
+  });
+
+  it("reads each switch from its one documented name", () => {
+    expect(
+      strictParityFlagsFromEnv({
+        [STRICT_PARITY_ENV_NAMES.signinDetailedErrors]: "on",
+        [STRICT_PARITY_ENV_NAMES.revisionRestore500]: "on",
+        [STRICT_PARITY_ENV_NAMES.skinCreate500]: "on",
+        [STRICT_PARITY_ENV_NAMES.scriptBundleClockNames]: "on",
+        [STRICT_PARITY_ENV_NAMES.mailUnfollowRefusal]: "on",
+      }),
+    ).toEqual({
+      signinDetailedErrors: true,
+      revisionRestore500: true,
+      skinCreate500: true,
+      scriptBundleClockNames: true,
+      mailUnfollowRefusal: true,
+    });
+    expect(
+      strictParityFlagsFromEnv({ [STRICT_PARITY_ENV_NAMES.signinDetailedErrors]: " off " }).signinDetailedErrors,
+    ).toBe(false);
+  });
+
+  it("rejects a value it cannot honour, naming the setting", () => {
+    expect(() => strictParityFlagsFromEnv({ [STRICT_PARITY_ENV_NAMES.skinCreate500]: "maybe" })).toThrow(
+      /DECKO_STRICT_PARITY_SKIN_CREATE_500/,
+    );
+  });
+
+  it("rejects defined non-string settings instead of silently disabling compatibility", () => {
+    for (const name of Object.values(STRICT_PARITY_ENV_NAMES)) {
+      for (const value of [null, true, false, 0, 1, {}, [], Symbol("on"), 1n]) {
+        expect(() => strictParityFlagsFromEnv({[name]: value})).toThrow(new RegExp(`${name} must be`));
+      }
+    }
+  });
+
+  it("a host's settings bag wins until cleared, then process.env is the fallback", () => {
+    configureStrictParity({ signinDetailedErrors: true, revisionRestore500: false, skinCreate500: true, scriptBundleClockNames: false, mailUnfollowRefusal: false });
+    expect(strictParityFlags().signinDetailedErrors).toBe(true);
+    expect(strictParityFlags().skinCreate500).toBe(true);
+    configureStrictParity(undefined);
+    expect(strictParityFlags()).toEqual(strictParityFlagsFromEnv(undefined));
+  });
+});
+
+describe("DECKO_STRICT_PARITY_SIGNIN_DETAILED_ERRORS", () => {
+  it("the strict switch forces the uniform-failure policy off, whatever the policy bag says", () => {
+    configureSigninSecurity(HARDENED);
+    expect(signinSecurityPolicy().uniformFailure).toBe(true);
+    configureStrictParity({
+      signinDetailedErrors: true,
+      revisionRestore500: false,
+      skinCreate500: false,
+      scriptBundleClockNames: false,
+      mailUnfollowRefusal: false,
+    });
+    expect(signinSecurityPolicy().uniformFailure).toBe(false);
+  });
+
+  it("default (off): an unknown email and a wrong password answer uniformly, as recorded on the port", async () => {
+    const storage = await buildStorage();
+    try {
+      const unknown = await authenticateAccount(storage.driver, generatedEmail("nobody"), PASSWORD);
+      const wrong = await authenticateAccount(storage.driver, EMAIL, `${PASSWORD}x`);
+      expect(unknown).toEqual({ ok: false, reason: "invalid_credentials", message: "Wrong email or password." });
+      expect(wrong).toEqual({ ok: false, reason: "invalid_credentials", message: "Wrong email or password." });
+    } finally {
+      storage.close();
+    }
+  });
+
+  it("strict (on): the answers name the failed field, exactly as recorded on Ruby", async () => {
+    configureStrictParity({
+      signinDetailedErrors: true,
+      revisionRestore500: false,
+      skinCreate500: false,
+      scriptBundleClockNames: false,
+      mailUnfollowRefusal: false,
+    });
+    const storage = await buildStorage();
+    try {
+      // signin-unknown's ruby pin: "SIGNIN: Unrecognized email." (the key is
+      // the route's rendering; the ladder message is the pin's tail).
+      const unknown = await authenticateAccount(storage.driver, generatedEmail("nobody"), PASSWORD);
+      expect(unknown).toEqual({ ok: false, reason: "unknown_email", message: "Unrecognized email." });
+      // signin-wrong-password's ruby pin: "SIGNIN: Wrong password".
+      const wrong = await authenticateAccount(storage.driver, EMAIL, `${PASSWORD}x`);
+      expect(wrong).toEqual({ ok: false, reason: "wrong_password", message: "Wrong password" });
+    } finally {
+      storage.close();
+    }
+  });
+});

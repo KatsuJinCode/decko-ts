@@ -1,0 +1,11 @@
+// Shared file/syntax grammar for release, gate and standalone Node discovery.
+export function isTestFile(file) {
+  return typeof file === 'string' && /\.(?:test|spec)\.(?:ts|mts|cts|tsx|js|mjs|cjs|jsx)$/.test(file);
+}
+
+export function testSourceLanguage(file) {
+  if (/\.tsx$/.test(file)) return 'tsx';
+  if (/\.(?:ts|mts|cts)$/.test(file)) return 'ts';
+  if (/\.jsx$/.test(file)) return 'jsx';
+  return 'js';
+}
