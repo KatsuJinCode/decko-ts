@@ -1,0 +1,211 @@
+import { afterEach, describe, expect, it } from "vitest";
+import { ModLoader, setDefaultModLoader } from "../../../src/card/mod-loader.js";
+import type { ModSetModuleFile } from "../../../src/card/mod-loader/mod-manifest.js";
+import { createRenderTestStorage, seedCard } from "../render/render-test-storage.js";
+import { superView } from "../../../src/card/mod-loader/mod-view-helpers.js";
+
+type InclusionFile = ModSetModuleFile;
+const cleanups: Array<() => void> = [];
+afterEach(() => { while (cleanups.length) cleanups.pop()!(); setDefaultModLoader(undefined); });
+
+async function fixture(files: readonly InclusionFile[]) {
+  const storage = await createRenderTestStorage();
+  await seedCard(storage, { id: 2, name: "RichText", codename: "basic" });
+  await seedCard(storage, { id: 500, name: "Home", typeId: 2 });
+  const loader = new ModLoader([{ manifest: { name: "dynamic_inclusion", setModules: files } }], {});
+  cleanups.push(() => { loader.reset(); storage.close(); });
+  loader.load();
+  storage.engine.modLoader = loader;
+  setDefaultModLoader(loader);
+  return { storage, loader };
+}
+
+const defaults: InclusionFile = { setPath: "all/inclusion_default", formats: {
+  html: { views: [{ view: "inclusion_probe", config: { perms: "none" }, viewFn: () => "BASE" }] },
+} };
+const provider: InclusionFile = { setPath: "abstract/a_provider", formats: {
+  html: { views: [{ view: "inclusion_probe", config: { perms: "none" }, viewFn: () => "MIXIN" }] },
+} };
+
+describe("issue 77: dynamic set format inclusion through actual loader/render", () => {
+  it("renders a custom abstract format through the including type set", async () => {
+    const { storage, loader } = await fixture([defaults, provider,
+      { setPath: "type/basic", includeSetFormats: [{ setPath: "abstract/a_provider" }] },
+    ]);
+    expect(await storage.engine.render("Home", "inclusion_probe")).toBe("MIXIN");
+    expect(loader.viewChain("ALL TYPE-basic", "inclusion_probe").map(entry => entry.setModule))
+      .toEqual(["Abstract::AProvider", "All::InclusionDefault"]);
+  });
+  it("keeps local definitions above the dynamically included body during super dispatch", async () => {
+    const { storage } = await fixture([defaults, provider,
+      { setPath: "type/basic", includeSetFormats: [{ setPath: "abstract/a_provider" }], formats: {
+        html: { views: [{ view: "inclusion_probe", viewFn: ctx => `LOCAL:${superView(ctx, "Type::Basic", "inclusion_probe")}` }] },
+      } },
+    ]);
+    expect(await storage.engine.render("Home", "inclusion_probe")).toBe("LOCAL:MIXIN");
+  });
+  it("does not leak the mixin onto a card outside the including type", async () => {
+    const { storage } = await fixture([defaults, provider,
+      { setPath: "type/basic", includeSetFormats: [{ setPath: "abstract/a_provider" }] },
+    ]);
+    await seedCard(storage, { id: 600, name: "Other type", codename: "other_type" });
+    await seedCard(storage, { id: 601, name: "Other", typeId: 600 });
+    expect(await storage.engine.render("Other", "inclusion_probe")).toBe("BASE");
+    expect(await storage.engine.render("Home", "inclusion_probe")).toBe("MIXIN");
+  });
+  for (const [label, options, html, text] of [
+    ["all", {}, "MIXIN", "TEXT-MIXIN"],
+    ["only-html", { only: "html" }, "MIXIN", "TEXT-BASE"],
+    ["except-html", { except: "html" }, "BASE", "TEXT-MIXIN"],
+    ["except-wins", { only: ["html", "base"], except: ["html"] }, "BASE", "TEXT-BASE"],
+  ] as const) {
+    it(`applies the native ${label} format filter through real rendering`, async () => {
+      const { storage } = await fixture([
+        { ...defaults, formats: { ...defaults.formats,
+          email_text: { views: [{ view: "inclusion_probe", config: { perms: "none" }, viewFn: () => "TEXT-BASE" }] } } },
+        { ...provider, formats: { ...provider.formats,
+          email_text: { views: [{ view: "inclusion_probe", config: { perms: "none" }, viewFn: () => "TEXT-MIXIN" }] } } },
+        { setPath: "type/basic", includeSetFormats: [{ setPath: "abstract/a_provider", ...options }] },
+      ]);
+      const actualHtml = await storage.engine.render("Home", "inclusion_probe");
+      const actualText = await storage.engine.render("Home", "inclusion_probe", { format: "email_text" });
+      expect(actualHtml).toBe(html);
+      expect(actualText).toBe(text);
+      console.info("ISSUE77_FORMAT", JSON.stringify({ id: label, options, html: actualHtml, text: actualText }));
+    });
+  }
+  it("includes nested files from the target's shortname bucket", async () => {
+    const { storage, loader } = await fixture([defaults, provider,
+      { setPath: "abstract/a_provider/html_views", formats: { html: { views: [
+        { view: "inclusion_probe", viewFn: () => "NESTED" },
+      ] } } },
+      { setPath: "type/basic", includeSetFormats: [{ setPath: "abstract/a_provider" }] },
+    ]);
+    expect(await storage.engine.render("Home", "inclusion_probe")).toBe("NESTED");
+    expect(loader.viewChain("ALL TYPE-basic", "inclusion_probe").map(entry => entry.setModule))
+      .toEqual(["Abstract::AProvider::HtmlViews", "Abstract::AProvider", "All::InclusionDefault"]);
+  });
+  it("preserves shared-ancestor position and does not reorder repeated includes", async () => {
+    const files: InclusionFile[] = [defaults,
+      { setPath: "abstract/a_shared", formats: { html: { views: [
+        { view: "inclusion_probe", viewFn: ctx => `SHARED:${superView(ctx, "Abstract::AShared", "inclusion_probe")}` },
+      ] } } },
+      ...["b_first", "c_last"].map((anchor): InclusionFile => ({ setPath: `abstract/${anchor}`,
+        includeSetFormats: [{ setPath: "abstract/a_shared" }], formats: { html: { views: [
+          { view: "inclusion_probe", viewFn: ctx => `${anchor}:${superView(ctx, anchor === "b_first" ? "Abstract::BFirst" : "Abstract::CLast", "inclusion_probe")}` },
+        ] } } })),
+      { setPath: "type/basic", includeSetFormats: [
+        { setPath: "abstract/b_first" }, { setPath: "abstract/c_last" }, { setPath: "abstract/b_first" },
+      ] },
+    ];
+    const { storage, loader } = await fixture(files);
+    expect(await storage.engine.render("Home", "inclusion_probe")).toBe("c_last:b_first:SHARED:BASE");
+    expect(loader.viewChain("ALL TYPE-basic", "inclusion_probe").map(entry => entry.setModule))
+      .toEqual(["Abstract::CLast", "Abstract::BFirst", "Abstract::AShared", "All::InclusionDefault"]);
+  });
+  it("inherits permission settings and predicate helpers before the protected body", async () => {
+    let calls = 0;
+    const { storage, loader } = await fixture([defaults,
+      { setPath: "abstract/a_guard", formats: { html: {
+        methods: [{ name: "included_ok?", fn: () => false }],
+        views: [{ view: "inclusion_probe", config: { perms: "included_ok?" }, viewFn: () => { calls++; return "PRIVATE"; } }],
+      } } },
+      { setPath: "type/basic", includeSetFormats: [{ setPath: "abstract/a_guard" }] },
+    ]);
+    expect(loader.viewSettingForCard("ALL TYPE-basic", "inclusion_probe", "perms")).toBe("included_ok?");
+    expect(await storage.engine.render("Home", "inclusion_probe")).toContain("permission (false)");
+    expect(calls).toBe(0);
+  });
+  it("rejects a forward target that has not loaded", () => {
+    // Abstract modules load after all modules in Ruby. Their constants do
+    // not yet exist when an all-set declaration tries to reference them.
+    expect(() => {
+      const invalid = new ModLoader([{ manifest: { name: "forward", setModules: [
+        { setPath: "all/forward", includeSetFormats: [{ setPath: "abstract/a_provider" }] }, provider,
+      ] } }], {});
+      try { invalid.load(); } finally { invalid.reset(); }
+    }).toThrow("Set format include target has not loaded");
+  });
+  it("clears the per-loader include graph on reset and reload", async () => {
+    const { loader } = await fixture([defaults, provider,
+      { setPath: "type/basic", includeSetFormats: [{ setPath: "abstract/a_provider" }] },
+    ]);
+    expect(loader.viewChain("ALL TYPE-basic", "inclusion_probe")[0]?.setModule).toBe("Abstract::AProvider");
+    loader.reset();
+    expect(loader.viewChain("ALL TYPE-basic", "inclusion_probe")).toEqual([]);
+    loader.load();
+    expect(loader.viewChain("ALL TYPE-basic", "inclusion_probe")[0]?.setModule).toBe("Abstract::AProvider");
+  });
+  it("rejects a cyclic format inclusion rather than silently omitting it", async () => {
+    await expect(fixture([defaults,
+      { setPath: "abstract/a_cycle", formats: provider.formats,
+        includeSetFormats: [{ setPath: "abstract/a_cycle" }] },
+    ])).rejects.toThrow("Cyclic set format inclusion");
+  });
+  it("includes base-format modules through both HTML and text ancestry", async () => {
+    const { storage } = await fixture([
+      { setPath: "all/default", formats: { base: { views: [
+        { view: "base_include_probe", config: { perms: "none" }, viewFn: () => "BASE-DEFAULT" },
+      ] } } },
+      { setPath: "abstract/a_base", formats: { base: { views: [
+        { view: "base_include_probe", config: { perms: "none" }, viewFn: () => "BASE-MIXIN" },
+      ] } } },
+      { setPath: "type/basic", includeSetFormats: [{ setPath: "abstract/a_base", only: "base" }] },
+    ]);
+    expect(await storage.engine.render("Home", "base_include_probe")).toBe("BASE-MIXIN");
+    expect(await storage.engine.render("Home", "base_include_probe", { format: "email_text" })).toBe("BASE-MIXIN");
+  });
+  it("can include an already registered concrete set's formats", async () => {
+    const { storage } = await fixture([defaults,
+      { ...provider, setPath: "type/a_provider" },
+      { setPath: "type/basic", includeSetFormats: [{ setPath: "type/a_provider" }] },
+    ]);
+    expect(await storage.engine.render("Home", "inclusion_probe")).toBe("MIXIN");
+  });
+  it("keeps dynamically declared inclusion out of another loader", async () => {
+    const including = await fixture([defaults, provider,
+      { setPath: "type/basic", includeSetFormats: [{ setPath: "abstract/a_provider" }] },
+    ]);
+    const ordinary = await fixture([defaults, provider, { setPath: "type/basic" }]);
+    expect(await ordinary.storage.engine.render("Home", "inclusion_probe")).toBe("BASE");
+    expect(await including.storage.engine.render("Home", "inclusion_probe")).toBe("MIXIN");
+  });
+  it("prepares an inherited update directive before calling the protected body", async () => {
+    let calls = 0;
+    const { storage } = await fixture([defaults,
+      { setPath: "abstract/a_task", formats: { html: { views: [
+        { view: "inclusion_probe", config: { perms: "update" }, viewFn: () => { calls++; return "PRIVATE"; } },
+      ] } } },
+      { setPath: "type/basic", includeSetFormats: [{ setPath: "abstract/a_task" }] },
+    ]);
+    expect(await storage.engine.render("Home", "inclusion_probe")).toContain("permission (update)");
+    expect(storage.engine.taskAllowed(storage.engine.fetchRenderCard("Home")!, "update")).toBe(false);
+    expect(calls).toBe(0);
+  });
+  it("propagates a dynamic reopening through the existing stock include graph", async () => {
+    const { storage } = await fixture([defaults, provider,
+      { setPath: "abstract/css", includeSetFormats: [{ setPath: "abstract/a_provider" }] },
+      { setPath: "type/css" },
+    ]);
+    await seedCard(storage, { id: 602, name: "CSS", codename: "css" });
+    await seedCard(storage, { id: 603, name: "Sheet", typeId: 602 });
+    const output = await storage.engine.render("Sheet", "inclusion_probe");
+    expect(output).toBe("MIXIN");
+    console.info("ISSUE77_REOPEN", JSON.stringify({ id: "stock-reopen", output }));
+  });
+  it("sees a later reopening of a target module on an already used real engine", async () => {
+    const { storage, loader } = await fixture([defaults,
+      { ...provider, setPath: "type/a_provider" },
+      { setPath: "type/basic", includeSetFormats: [{ setPath: "type/a_provider" }] },
+    ]);
+    expect(await storage.engine.render("Home", "inclusion_probe")).toBe("MIXIN");
+    loader.add({ manifest: { name: "late_provider", setModules: [
+      { setPath: "type/a_provider", formats: { html: { views: [
+        { view: "inclusion_probe", viewFn: () => "LATE" },
+      ] } } },
+    ] } });
+    loader.resolveOrder({ gemMods: ["dynamic_inclusion", "late_provider"] });
+    loader.load();
+    expect(await storage.engine.render("Home", "inclusion_probe")).toBe("LATE");
+  });
+});

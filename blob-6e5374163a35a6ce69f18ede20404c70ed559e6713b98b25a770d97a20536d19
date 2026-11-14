@@ -1,0 +1,14 @@
+{
+  "root": "C:\\localProjects\\decko-ts-cmp-f188218c7\\.runtime\\eq245089373-oxc",
+  "responses": 1439,
+  "counts": {
+    "exact": 3,
+    "slotIdOnly": 707,
+    "slotIdAndClassOrder": 729,
+    "other": 0
+  },
+  "statusMismatches": [],
+  "lengthMismatches": [],
+  "otherIds": [],
+  "note": "A measurement of the raw bytes. The triage lead decides what these are."
+}

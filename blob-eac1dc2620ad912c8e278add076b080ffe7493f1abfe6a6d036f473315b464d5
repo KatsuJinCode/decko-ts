@@ -1,0 +1,15 @@
+// Vitest setup file: after each test file's own hooks have run, remove every
+// scratch directory the file created through scratchDir().
+import { afterAll } from "vitest";
+import { cleanupScratch, registeredScratch } from "./scratch-dir.mjs";
+import { cleanupProjectTestScratch } from "../../tools/cleanup-test-scratch.mjs";
+
+afterAll(async () => {
+  await cleanupProjectTestScratch({purge: () => {
+    const before = registeredScratch();
+    cleanupScratch();
+    const after = registeredScratch();
+    return {removed: before.filter(directory => !after.includes(directory)),
+      retained: after.map(directory => ({directory, reason: "explicit-run-retention"}))};
+  }});
+});

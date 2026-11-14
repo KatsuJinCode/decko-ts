@@ -1,0 +1,55 @@
+import { afterEach, expect, it } from "vitest";
+import { createRenderTestStorage, seedCard, type RenderTestStorage } from "./render-test-storage.js";
+
+// Original card-1.110.0/lib/card/rule/cache.rb SQL, with only the two
+// generated type constants bound as parameters. This independent storage
+// control does not call the port's ruleCacheStatement/key builder.
+const originalCacheSql = `SELECT rules.id AS rule_id, settings.id AS setting_id,
+  sets.id AS set_id, sets.left_id AS anchor_id, sets.right_id AS set_tag_id
+  FROM cards rules
+  JOIN cards sets ON rules.left_id = sets.id
+  JOIN cards settings ON rules.right_id = settings.id
+  WHERE sets.type_id = ? AND settings.type_id = ?
+    AND (settings.codename != 'follow' OR rules.db_content != '')
+    AND rules.trash is false AND sets.trash is false AND settings.trash is false`;
+
+let storage: RenderTestStorage | undefined;
+afterEach(() => { storage?.close(); storage = undefined; });
+
+for (const mutation of ["valid", "wrong-set-type", "wrong-setting-type", "missing-pattern-code", "missing-setting-code", "changed-setting-code"] as const) {
+  it(`cold options lookup preserves the requested native code: ${mutation}`, async () => {
+    const s = storage = await createRenderTestStorage();
+    for (const row of [
+      { id: 2, name: "Basic", codename: "basic", typeId: 5 },
+      { id: 5, name: "Cardtype", codename: "cardtype", typeId: 5 },
+      { id: 259, name: "Set", codename: "set", typeId: 5 },
+      { id: 278, name: "Setting", codename: "setting", typeId: 5 },
+      { id: 700, name: "*self", codename: mutation === "missing-pattern-code" ? null : "self", typeId: 259 },
+      { id: 701, name: "*content options", codename: mutation === "missing-setting-code" ? null : mutation === "changed-setting-code" ? "other_content_options" : "content_options", typeId: mutation === "wrong-setting-type" ? 2 : 278 },
+      { id: 900, name: "Options Host", typeId: 2 },
+      { id: 901, leftId: 900, rightId: 700, typeId: mutation === "wrong-set-type" ? 2 : 259 },
+      { id: 902, leftId: 901, rightId: 701, typeId: 2, dbContent: "native-qualified-options" },
+    ]) await seedCard(s, row);
+    const codes = new Map((await s.counting.query<{ id: number; codename: string }>("SELECT id,codename FROM cards WHERE codename IS NOT NULL", [])).rows.map(row => [row.id, row.codename]));
+    const rows = (await s.counting.query<{ rule_id: number; setting_id: number; anchor_id: number | null; set_id: number; set_tag_id: number | null }>(originalCacheSql, [259, 278])).rows;
+    const originalKeys = new Map<string, number>();
+    for (const row of rows) {
+      const pattern = codes.get(row.anchor_id === null ? row.set_id : row.set_tag_id!);
+      const setting = codes.get(row.setting_id);
+      if (pattern && setting) originalKeys.set([row.anchor_id, pattern, setting].filter(part => part !== null).join("+"), row.rule_id);
+    }
+    const expected = mutation === "valid" ? 902 : undefined;
+    expect(originalKeys.get("900+self+content_options")).toBe(expected);
+    // Keep the codehash cold, as on the first direct RenderEngine lookup.
+    // Raw SQL above intentionally does not warm the registry or name cache.
+    const snapshot = async () => Object.fromEntries(await Promise.all(
+      ["cards", "card_references", "card_acts", "card_actions", "card_changes"].map(async table =>
+        [table, (await s.counting.query(`SELECT * FROM ${table} ORDER BY rowid`, [])).rows]),
+    ));
+    const before = await snapshot();
+    const result = await s.engine.ruleCardForSetting({ name: "Options Host", id: 900, typeId: 2, typeName: "Basic" }, "content_options");
+    console.info("options-rule-native-sql", JSON.stringify({ mutation, rows, keys: [...originalKeys], selected: result?.id ?? null }));
+    expect(result?.id).toBe(expected);
+    expect(await snapshot()).toEqual(before);
+  });
+}

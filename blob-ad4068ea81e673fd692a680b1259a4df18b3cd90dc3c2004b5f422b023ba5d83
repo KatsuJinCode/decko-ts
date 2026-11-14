@@ -1,0 +1,12 @@
+import { expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { DeckoName } from "../../../src/card/name.js";
+
+type Row={input:string,s:string,key:string,urlKey:string,safeKey:string,decoded:string,stripped:string,parts:string[]};
+const oracle=JSON.parse(readFileSync(new URL("./original-unicode-name-results.json",import.meta.url),"utf8")) as {rows:Row[]};
+for(const row of oracle.rows)it(`matches native Card::Name for ${JSON.stringify(row.input)}`,()=>{
+  const actual=DeckoName.parse(row.input);
+  const {input,...expected}=row;
+  expect({s:actual.s,key:actual.key,urlKey:actual.urlKey,safeKey:actual.safeKey,decoded:actual.decoded,
+    stripped:actual.stripped.s,parts:actual.partNames.map(p=>p.s)}).toEqual(expected);
+});

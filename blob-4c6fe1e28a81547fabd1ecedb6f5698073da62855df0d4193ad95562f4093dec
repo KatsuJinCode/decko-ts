@@ -1,0 +1,12 @@
+{
+  "name": "ruby",
+  "description": "Canonical Windows Ruby 3.3 oracle, launched without shell/path ambiguity.",
+  "command": ["C:/Ruby33-x64/bin/ruby.exe", "ruby33-server.rb"],
+  "env": {
+    "RUBY_THREAD_VM_STACK_SIZE": "67108864",
+    "RUBY_THREAD_MACHINE_STACK_SIZE": "268435456",
+    "GEM_HOME": "C:/Ruby33-x64/lib/ruby/gems/3.3.0",
+    "GEM_PATH": "C:/Ruby33-x64/lib/ruby/gems/3.3.0"
+  },
+  "ready": "/__harness/ready"
+}

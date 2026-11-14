@@ -1,0 +1,1840 @@
+{
+  "step": 43,
+  "label": "create type-change subject",
+  "detail": {
+    "ok": true,
+    "kind": "create",
+    "value": 3400
+  },
+  "state": {
+    "probe_card_ids": [
+      3377,
+      3378,
+      3379,
+      3380,
+      3381,
+      3382,
+      3383,
+      3384,
+      3385,
+      3386,
+      3387,
+      3388,
+      3389,
+      3390,
+      3391,
+      3392,
+      3393,
+      3394,
+      3395,
+      3396,
+      3397,
+      3398,
+      3399,
+      3400
+    ],
+    "cards": [
+      {
+        "id": 3377,
+        "name": "PersistProbe Renamed",
+        "key": "persist_probe_renamed",
+        "codename": null,
+        "left_id": null,
+        "right_id": null,
+        "trash": 0,
+        "type_id": 2,
+        "db_content": "<p>hi</p> bad() <b>ok</b><a href=\"javascript:evil()\">l</a><div style=\"color:red\">d</div>",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*all",
+        "read_rule_id": 10,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2026-10-08 01:27:43.257715",
+        "updated_at": "2026-10-08 01:32:20.238338"
+      },
+      {
+        "id": 3378,
+        "name": "PersistProbe B",
+        "key": "persist_probe_b",
+        "codename": null,
+        "left_id": null,
+        "right_id": null,
+        "trash": 0,
+        "type_id": 2,
+        "db_content": "",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*all",
+        "read_rule_id": 10,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2026-10-08 01:28:01.251291",
+        "updated_at": "2026-10-08 01:28:01.251291"
+      },
+      {
+        "id": 3379,
+        "name": null,
+        "key": null,
+        "codename": null,
+        "left_id": 3377,
+        "right_id": 3378,
+        "trash": 1,
+        "type_id": 2,
+        "db_content": "beta",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*all plus",
+        "read_rule_id": 10,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2026-10-08 01:28:01.261453",
+        "updated_at": "2026-10-08 01:29:09.842722"
+      },
+      {
+        "id": 3380,
+        "name": null,
+        "key": null,
+        "codename": null,
+        "left_id": 3377,
+        "right_id": 3378,
+        "trash": 0,
+        "type_id": 2,
+        "db_content": "beta",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*all plus",
+        "read_rule_id": 10,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2026-10-08 01:29:32.460173",
+        "updated_at": "2026-10-08 01:29:32.460173"
+      },
+      {
+        "id": 3381,
+        "name": "PersistProbe Type Probe",
+        "key": "persist_probe_type_probe",
+        "codename": null,
+        "left_id": null,
+        "right_id": null,
+        "trash": 0,
+        "type_id": 3,
+        "db_content": "{{+:description|content}}\n{{_|add_button}}{{_|configure_button}}\n{{+:type+:by_name|content}}\n",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*all",
+        "read_rule_id": 10,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2026-10-08 01:30:19.281801",
+        "updated_at": "2026-10-08 01:30:19.281801"
+      },
+      {
+        "id": 3382,
+        "name": "PersistProbe Parent",
+        "key": "persist_probe_parent",
+        "codename": null,
+        "left_id": null,
+        "right_id": null,
+        "trash": 1,
+        "type_id": 2,
+        "db_content": "p",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*all",
+        "read_rule_id": 10,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2026-10-08 01:31:20.512947",
+        "updated_at": "2026-10-08 01:31:52.487031"
+      },
+      {
+        "id": 3383,
+        "name": "PersistProbe Child",
+        "key": "persist_probe_child",
+        "codename": null,
+        "left_id": null,
+        "right_id": null,
+        "trash": 0,
+        "type_id": 2,
+        "db_content": "",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*all",
+        "read_rule_id": 10,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2026-10-08 01:31:36.693808",
+        "updated_at": "2026-10-08 01:31:36.693808"
+      },
+      {
+        "id": 3384,
+        "name": null,
+        "key": null,
+        "codename": null,
+        "left_id": 3382,
+        "right_id": 3383,
+        "trash": 0,
+        "type_id": 2,
+        "db_content": "c",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*all plus",
+        "read_rule_id": 10,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2026-10-08 01:31:36.703125",
+        "updated_at": "2026-10-08 01:32:09.414140"
+      },
+      {
+        "id": 3385,
+        "name": "PersistProbe Bare",
+        "key": "persist_probe_bare",
+        "codename": null,
+        "left_id": null,
+        "right_id": null,
+        "trash": 0,
+        "type_id": 2,
+        "db_content": "",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*all",
+        "read_rule_id": 10,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2026-10-08 01:32:34.723078",
+        "updated_at": "2026-10-08 01:32:34.723078"
+      },
+      {
+        "id": 3386,
+        "name": "PersistProbe Plain",
+        "key": "persist_probe_plain",
+        "codename": null,
+        "left_id": null,
+        "right_id": null,
+        "trash": 1,
+        "type_id": 37,
+        "db_content": "<p>hi</p> bad() <b>ok</b><a href=\"javascript:evil()\">l</a><div style=\"color:red\">d</div>",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*all",
+        "read_rule_id": 10,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2026-10-08 01:32:49.972430",
+        "updated_at": "2026-10-08 01:35:04.906819"
+      },
+      {
+        "id": 3387,
+        "name": "PersistProbe Rev",
+        "key": "persist_probe_rev",
+        "codename": null,
+        "left_id": null,
+        "right_id": null,
+        "trash": 0,
+        "type_id": 2,
+        "db_content": "two",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*all",
+        "read_rule_id": 10,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2026-10-08 01:33:02.249920",
+        "updated_at": "2026-10-08 01:34:51.764597"
+      },
+      {
+        "id": 3388,
+        "name": "PersistProbe Moved Again",
+        "key": "persist_probe_moved_again",
+        "codename": null,
+        "left_id": null,
+        "right_id": null,
+        "trash": 0,
+        "type_id": 2,
+        "db_content": "m",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*all",
+        "read_rule_id": 10,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2026-10-08 01:48:58.300444",
+        "updated_at": "2026-10-08 01:49:54.800830"
+      },
+      {
+        "id": 3389,
+        "name": "PersistProbe Kid",
+        "key": "persist_probe_kid",
+        "codename": null,
+        "left_id": null,
+        "right_id": null,
+        "trash": 0,
+        "type_id": 2,
+        "db_content": "",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*all",
+        "read_rule_id": 10,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2026-10-08 01:49:08.109309",
+        "updated_at": "2026-10-08 01:49:08.109309"
+      },
+      {
+        "id": 3390,
+        "name": null,
+        "key": null,
+        "codename": null,
+        "left_id": 3396,
+        "right_id": 3397,
+        "trash": 0,
+        "type_id": 2,
+        "db_content": "k",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*all plus",
+        "read_rule_id": 10,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2026-10-08 01:49:08.113072",
+        "updated_at": "2026-10-08 01:50:02.746273"
+      },
+      {
+        "id": 3391,
+        "name": "PersistProbe Grand",
+        "key": "persist_probe_grand",
+        "codename": null,
+        "left_id": null,
+        "right_id": null,
+        "trash": 0,
+        "type_id": 2,
+        "db_content": "",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*all",
+        "read_rule_id": 10,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2026-10-08 01:49:16.926078",
+        "updated_at": "2026-10-08 01:49:16.926078"
+      },
+      {
+        "id": 3392,
+        "name": null,
+        "key": null,
+        "codename": null,
+        "left_id": 3390,
+        "right_id": 3391,
+        "trash": 0,
+        "type_id": 2,
+        "db_content": "g",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*all plus",
+        "read_rule_id": 10,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2026-10-08 01:49:16.931656",
+        "updated_at": "2026-10-08 01:49:16.931656"
+      },
+      {
+        "id": 3393,
+        "name": "PersistProbe Host",
+        "key": "persist_probe_host",
+        "codename": null,
+        "left_id": null,
+        "right_id": null,
+        "trash": 0,
+        "type_id": 2,
+        "db_content": "",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*all",
+        "read_rule_id": 10,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2026-10-08 01:49:26.954740",
+        "updated_at": "2026-10-08 01:49:26.954740"
+      },
+      {
+        "id": 3394,
+        "name": null,
+        "key": null,
+        "codename": null,
+        "left_id": 3393,
+        "right_id": 3388,
+        "trash": 0,
+        "type_id": 2,
+        "db_content": "h",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*all plus",
+        "read_rule_id": 10,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2026-10-08 01:49:26.959094",
+        "updated_at": "2026-10-08 01:49:26.959094"
+      },
+      {
+        "id": 3395,
+        "name": null,
+        "key": null,
+        "codename": null,
+        "left_id": 3398,
+        "right_id": 3399,
+        "trash": 0,
+        "type_id": 2,
+        "db_content": "[[PersistProbe Moved]] [[PersistProbe Moved+PersistProbe Kid]] {{PersistProbe Moved+PersistProbe Kid+PersistProbe Grand}} [[PersistProbe Host+PersistProbe Moved]]",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*all plus",
+        "read_rule_id": 10,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2026-10-08 01:49:37.686958",
+        "updated_at": "2026-10-08 01:50:11.534046"
+      },
+      {
+        "id": 3396,
+        "name": "PersistProbe Far",
+        "key": "persist_probe_far",
+        "codename": null,
+        "left_id": null,
+        "right_id": null,
+        "trash": 0,
+        "type_id": 2,
+        "db_content": "",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*all",
+        "read_rule_id": 10,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2026-10-08 01:50:02.736113",
+        "updated_at": "2026-10-08 01:50:02.736113"
+      },
+      {
+        "id": 3397,
+        "name": "PersistProbe Kid2",
+        "key": "persist_probe_kid2",
+        "codename": null,
+        "left_id": null,
+        "right_id": null,
+        "trash": 0,
+        "type_id": 2,
+        "db_content": "",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*all",
+        "read_rule_id": 10,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2026-10-08 01:50:02.742364",
+        "updated_at": "2026-10-08 01:50:02.742364"
+      },
+      {
+        "id": 3398,
+        "name": "PersistProbe Lnk",
+        "key": "persist_probe_lnk",
+        "codename": null,
+        "left_id": null,
+        "right_id": null,
+        "trash": 0,
+        "type_id": 2,
+        "db_content": "",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*all",
+        "read_rule_id": 10,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2026-10-08 01:50:11.521450",
+        "updated_at": "2026-10-08 01:50:11.521450"
+      },
+      {
+        "id": 3399,
+        "name": "PersistProbe Side",
+        "key": "persist_probe_side",
+        "codename": null,
+        "left_id": null,
+        "right_id": null,
+        "trash": 0,
+        "type_id": 2,
+        "db_content": "",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*all",
+        "read_rule_id": 10,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2026-10-08 01:50:11.529085",
+        "updated_at": "2026-10-08 01:50:11.529085"
+      },
+      {
+        "id": 3400,
+        "name": "PersistProbe Typed",
+        "key": "persist_probe_typed",
+        "codename": null,
+        "left_id": null,
+        "right_id": null,
+        "trash": 0,
+        "type_id": 2,
+        "db_content": "<p>t [[PersistProbe B]]</p>",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*all",
+        "read_rule_id": 10,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2026-10-08 03:07:03.030875",
+        "updated_at": "2026-10-08 03:07:03.030875"
+      }
+    ],
+    "card_acts": [
+      {
+        "id": 116060,
+        "card_id": 3377,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 01:27:43.348169"
+      },
+      {
+        "id": 116061,
+        "card_id": 3379,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 01:28:01.350703"
+      },
+      {
+        "id": 116062,
+        "card_id": 3377,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 01:28:19.625896"
+      },
+      {
+        "id": 116063,
+        "card_id": 3377,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 01:28:36.974346"
+      },
+      {
+        "id": 116064,
+        "card_id": 3377,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 01:28:53.830564"
+      },
+      {
+        "id": 116065,
+        "card_id": 3377,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 01:29:09.938750"
+      },
+      {
+        "id": 116066,
+        "card_id": 3380,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 01:29:32.550825"
+      },
+      {
+        "id": 116067,
+        "card_id": 3377,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 01:29:55.639672"
+      },
+      {
+        "id": 116068,
+        "card_id": 3381,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 01:30:19.463690"
+      },
+      {
+        "id": 116069,
+        "card_id": 3377,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 01:30:29.005766"
+      },
+      {
+        "id": 116070,
+        "card_id": 3377,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 01:30:40.373698"
+      },
+      {
+        "id": 116071,
+        "card_id": 3377,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 01:30:53.132318"
+      },
+      {
+        "id": 116072,
+        "card_id": 3377,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 01:31:06.276843"
+      },
+      {
+        "id": 116073,
+        "card_id": 3382,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 01:31:20.583881"
+      },
+      {
+        "id": 116074,
+        "card_id": 3384,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 01:31:36.773294"
+      },
+      {
+        "id": 116075,
+        "card_id": 3382,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 01:31:52.565044"
+      },
+      {
+        "id": 116076,
+        "card_id": 3384,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 01:32:09.442070"
+      },
+      {
+        "id": 116077,
+        "card_id": 3377,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 01:32:20.315242"
+      },
+      {
+        "id": 116078,
+        "card_id": 3385,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 01:32:34.804323"
+      },
+      {
+        "id": 116079,
+        "card_id": 3386,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 01:32:50.042199"
+      },
+      {
+        "id": 116080,
+        "card_id": 3387,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 01:33:02.343764"
+      },
+      {
+        "id": 116081,
+        "card_id": 3387,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 01:33:20.199933"
+      },
+      {
+        "id": 116082,
+        "card_id": 3387,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 01:33:37.414850"
+      },
+      {
+        "id": 116083,
+        "card_id": 3387,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 01:33:52.274734"
+      },
+      {
+        "id": 116084,
+        "card_id": 3387,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 01:34:02.848950"
+      },
+      {
+        "id": 116085,
+        "card_id": 3387,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 01:34:17.301886"
+      },
+      {
+        "id": 116086,
+        "card_id": 3387,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 01:34:35.612035"
+      },
+      {
+        "id": 116087,
+        "card_id": 3387,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 01:34:51.766886"
+      },
+      {
+        "id": 116088,
+        "card_id": 3386,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 01:35:04.933367"
+      },
+      {
+        "id": 116090,
+        "card_id": 3388,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 01:48:58.347267"
+      },
+      {
+        "id": 116091,
+        "card_id": 3390,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 01:49:08.151172"
+      },
+      {
+        "id": 116092,
+        "card_id": 3392,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 01:49:16.982999"
+      },
+      {
+        "id": 116093,
+        "card_id": 3394,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 01:49:27.003735"
+      },
+      {
+        "id": 116094,
+        "card_id": 3395,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 01:49:37.733833"
+      },
+      {
+        "id": 116095,
+        "card_id": 3388,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 01:49:45.473576"
+      },
+      {
+        "id": 116096,
+        "card_id": 3388,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 01:49:54.860879"
+      },
+      {
+        "id": 116097,
+        "card_id": 3390,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 01:50:02.796131"
+      },
+      {
+        "id": 116098,
+        "card_id": 3395,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 01:50:11.589429"
+      },
+      {
+        "id": 116099,
+        "card_id": 3400,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-08 03:07:03.116439"
+      }
+    ],
+    "card_actions": [
+      {
+        "id": 11479,
+        "card_id": 3377,
+        "card_act_id": 116060,
+        "super_action_id": null,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11480,
+        "card_id": 3379,
+        "card_act_id": 116061,
+        "super_action_id": null,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11481,
+        "card_id": 3378,
+        "card_act_id": 116061,
+        "super_action_id": 11480,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11482,
+        "card_id": 3377,
+        "card_act_id": 116062,
+        "super_action_id": null,
+        "action_type": 1,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11483,
+        "card_id": 3377,
+        "card_act_id": 116063,
+        "super_action_id": null,
+        "action_type": 1,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11484,
+        "card_id": 3377,
+        "card_act_id": 116064,
+        "super_action_id": null,
+        "action_type": 1,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11485,
+        "card_id": 3377,
+        "card_act_id": 116065,
+        "super_action_id": null,
+        "action_type": 2,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11486,
+        "card_id": 3379,
+        "card_act_id": 116065,
+        "super_action_id": 11485,
+        "action_type": 2,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11487,
+        "card_id": 3380,
+        "card_act_id": 116066,
+        "super_action_id": null,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11488,
+        "card_id": 3377,
+        "card_act_id": 116066,
+        "super_action_id": 11487,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11489,
+        "card_id": 3381,
+        "card_act_id": 116068,
+        "super_action_id": null,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11490,
+        "card_id": 3377,
+        "card_act_id": 116069,
+        "super_action_id": null,
+        "action_type": 1,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11491,
+        "card_id": 3377,
+        "card_act_id": 116070,
+        "super_action_id": null,
+        "action_type": 1,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11493,
+        "card_id": 3377,
+        "card_act_id": 116072,
+        "super_action_id": null,
+        "action_type": 1,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11494,
+        "card_id": 3382,
+        "card_act_id": 116073,
+        "super_action_id": null,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11495,
+        "card_id": 3384,
+        "card_act_id": 116074,
+        "super_action_id": null,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11496,
+        "card_id": 3383,
+        "card_act_id": 116074,
+        "super_action_id": 11495,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11497,
+        "card_id": 3382,
+        "card_act_id": 116075,
+        "super_action_id": null,
+        "action_type": 2,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11498,
+        "card_id": 3384,
+        "card_act_id": 116075,
+        "super_action_id": 11497,
+        "action_type": 2,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11499,
+        "card_id": 3384,
+        "card_act_id": 116076,
+        "super_action_id": null,
+        "action_type": 1,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11500,
+        "card_id": 3377,
+        "card_act_id": 116077,
+        "super_action_id": null,
+        "action_type": 1,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11501,
+        "card_id": 3385,
+        "card_act_id": 116078,
+        "super_action_id": null,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11502,
+        "card_id": 3386,
+        "card_act_id": 116079,
+        "super_action_id": null,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11503,
+        "card_id": 3387,
+        "card_act_id": 116080,
+        "super_action_id": null,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11504,
+        "card_id": 3387,
+        "card_act_id": 116081,
+        "super_action_id": null,
+        "action_type": 1,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11505,
+        "card_id": 3387,
+        "card_act_id": 116082,
+        "super_action_id": null,
+        "action_type": 1,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11506,
+        "card_id": 3387,
+        "card_act_id": 116083,
+        "super_action_id": null,
+        "action_type": 1,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11507,
+        "card_id": 3387,
+        "card_act_id": 116084,
+        "super_action_id": null,
+        "action_type": 1,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11508,
+        "card_id": 3387,
+        "card_act_id": 116085,
+        "super_action_id": null,
+        "action_type": 1,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11509,
+        "card_id": 3387,
+        "card_act_id": 116086,
+        "super_action_id": null,
+        "action_type": 2,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11510,
+        "card_id": 3387,
+        "card_act_id": 116087,
+        "super_action_id": null,
+        "action_type": 1,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11511,
+        "card_id": 3386,
+        "card_act_id": 116088,
+        "super_action_id": null,
+        "action_type": 1,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11513,
+        "card_id": 3388,
+        "card_act_id": 116090,
+        "super_action_id": null,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11514,
+        "card_id": 3390,
+        "card_act_id": 116091,
+        "super_action_id": null,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11515,
+        "card_id": 3389,
+        "card_act_id": 116091,
+        "super_action_id": 11514,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11516,
+        "card_id": 3392,
+        "card_act_id": 116092,
+        "super_action_id": null,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11517,
+        "card_id": 3391,
+        "card_act_id": 116092,
+        "super_action_id": 11516,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11518,
+        "card_id": 3394,
+        "card_act_id": 116093,
+        "super_action_id": null,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11519,
+        "card_id": 3393,
+        "card_act_id": 116093,
+        "super_action_id": 11518,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11520,
+        "card_id": 3395,
+        "card_act_id": 116094,
+        "super_action_id": null,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11521,
+        "card_id": 3388,
+        "card_act_id": 116095,
+        "super_action_id": null,
+        "action_type": 1,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11522,
+        "card_id": 3388,
+        "card_act_id": 116096,
+        "super_action_id": null,
+        "action_type": 1,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11523,
+        "card_id": 3390,
+        "card_act_id": 116097,
+        "super_action_id": null,
+        "action_type": 1,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11524,
+        "card_id": 3396,
+        "card_act_id": 116097,
+        "super_action_id": 11523,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11525,
+        "card_id": 3397,
+        "card_act_id": 116097,
+        "super_action_id": 11523,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11526,
+        "card_id": 3395,
+        "card_act_id": 116098,
+        "super_action_id": null,
+        "action_type": 1,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11527,
+        "card_id": 3398,
+        "card_act_id": 116098,
+        "super_action_id": 11526,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11528,
+        "card_id": 3399,
+        "card_act_id": 116098,
+        "super_action_id": 11526,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11529,
+        "card_id": 3400,
+        "card_act_id": 116099,
+        "super_action_id": null,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      }
+    ],
+    "card_changes": [
+      {
+        "id": 31991,
+        "card_action_id": 11479,
+        "field": 0,
+        "value": "PersistProbe A"
+      },
+      {
+        "id": 31992,
+        "card_action_id": 11479,
+        "field": 1,
+        "value": "2"
+      },
+      {
+        "id": 31993,
+        "card_action_id": 11479,
+        "field": 2,
+        "value": "alpha"
+      },
+      {
+        "id": 31994,
+        "card_action_id": 11479,
+        "field": 3,
+        "value": "f"
+      },
+      {
+        "id": 31995,
+        "card_action_id": 11479,
+        "field": 4,
+        "value": null
+      },
+      {
+        "id": 31996,
+        "card_action_id": 11479,
+        "field": 5,
+        "value": null
+      },
+      {
+        "id": 31997,
+        "card_action_id": 11482,
+        "field": 2,
+        "value": "alpha beta"
+      },
+      {
+        "id": 31998,
+        "card_action_id": 11483,
+        "field": 2,
+        "value": "alpha beta [[PersistProbe B]]"
+      },
+      {
+        "id": 31999,
+        "card_action_id": 11484,
+        "field": 0,
+        "value": "PersistProbe Renamed"
+      },
+      {
+        "id": 32000,
+        "card_action_id": 11485,
+        "field": 3,
+        "value": "t"
+      },
+      {
+        "id": 32001,
+        "card_action_id": 11480,
+        "field": 0,
+        "value": null
+      },
+      {
+        "id": 32002,
+        "card_action_id": 11480,
+        "field": 1,
+        "value": "2"
+      },
+      {
+        "id": 32003,
+        "card_action_id": 11480,
+        "field": 2,
+        "value": "beta"
+      },
+      {
+        "id": 32004,
+        "card_action_id": 11480,
+        "field": 3,
+        "value": "f"
+      },
+      {
+        "id": 32005,
+        "card_action_id": 11480,
+        "field": 4,
+        "value": "3377"
+      },
+      {
+        "id": 32006,
+        "card_action_id": 11480,
+        "field": 5,
+        "value": "3378"
+      },
+      {
+        "id": 32007,
+        "card_action_id": 11486,
+        "field": 3,
+        "value": "t"
+      },
+      {
+        "id": 32008,
+        "card_action_id": 11488,
+        "field": 0,
+        "value": "PersistProbe Renamed"
+      },
+      {
+        "id": 32009,
+        "card_action_id": 11488,
+        "field": 1,
+        "value": "2"
+      },
+      {
+        "id": 32010,
+        "card_action_id": 11488,
+        "field": 2,
+        "value": ""
+      },
+      {
+        "id": 32011,
+        "card_action_id": 11488,
+        "field": 3,
+        "value": "f"
+      },
+      {
+        "id": 32012,
+        "card_action_id": 11490,
+        "field": 2,
+        "value": "alpha beta [[PersistProbe B]] {{{PersistProbe Renamed|rich_text}}}}"
+      },
+      {
+        "id": 32013,
+        "card_action_id": 11491,
+        "field": 2,
+        "value": "alpha beta"
+      },
+      {
+        "id": 32015,
+        "card_action_id": 11493,
+        "field": 2,
+        "value": "alpha beta final"
+      },
+      {
+        "id": 32016,
+        "card_action_id": 11494,
+        "field": 0,
+        "value": "PersistProbe Parent"
+      },
+      {
+        "id": 32017,
+        "card_action_id": 11494,
+        "field": 1,
+        "value": "2"
+      },
+      {
+        "id": 32018,
+        "card_action_id": 11494,
+        "field": 2,
+        "value": "p"
+      },
+      {
+        "id": 32019,
+        "card_action_id": 11494,
+        "field": 3,
+        "value": "f"
+      },
+      {
+        "id": 32020,
+        "card_action_id": 11494,
+        "field": 4,
+        "value": null
+      },
+      {
+        "id": 32021,
+        "card_action_id": 11494,
+        "field": 5,
+        "value": null
+      },
+      {
+        "id": 32022,
+        "card_action_id": 11497,
+        "field": 3,
+        "value": "t"
+      },
+      {
+        "id": 32023,
+        "card_action_id": 11495,
+        "field": 0,
+        "value": null
+      },
+      {
+        "id": 32024,
+        "card_action_id": 11495,
+        "field": 1,
+        "value": "2"
+      },
+      {
+        "id": 32025,
+        "card_action_id": 11495,
+        "field": 2,
+        "value": "c"
+      },
+      {
+        "id": 32026,
+        "card_action_id": 11495,
+        "field": 3,
+        "value": "f"
+      },
+      {
+        "id": 32027,
+        "card_action_id": 11495,
+        "field": 4,
+        "value": "3382"
+      },
+      {
+        "id": 32028,
+        "card_action_id": 11495,
+        "field": 5,
+        "value": "3383"
+      },
+      {
+        "id": 32029,
+        "card_action_id": 11498,
+        "field": 3,
+        "value": "t"
+      },
+      {
+        "id": 32030,
+        "card_action_id": 11499,
+        "field": 3,
+        "value": "f"
+      },
+      {
+        "id": 32031,
+        "card_action_id": 11500,
+        "field": 2,
+        "value": "<p>hi</p> bad() <b>ok</b><a href=\"javascript:evil()\">l</a><div style=\"color:red\">d</div>"
+      },
+      {
+        "id": 32032,
+        "card_action_id": 11503,
+        "field": 0,
+        "value": "PersistProbe Rev"
+      },
+      {
+        "id": 32033,
+        "card_action_id": 11503,
+        "field": 1,
+        "value": "2"
+      },
+      {
+        "id": 32034,
+        "card_action_id": 11503,
+        "field": 2,
+        "value": "one [[PersistProbe B]]"
+      },
+      {
+        "id": 32035,
+        "card_action_id": 11503,
+        "field": 3,
+        "value": "f"
+      },
+      {
+        "id": 32036,
+        "card_action_id": 11503,
+        "field": 4,
+        "value": null
+      },
+      {
+        "id": 32037,
+        "card_action_id": 11503,
+        "field": 5,
+        "value": null
+      },
+      {
+        "id": 32038,
+        "card_action_id": 11504,
+        "field": 2,
+        "value": "two"
+      },
+      {
+        "id": 32039,
+        "card_action_id": 11505,
+        "field": 0,
+        "value": "PersistProbe Rev Renamed"
+      },
+      {
+        "id": 32040,
+        "card_action_id": 11506,
+        "field": 0,
+        "value": "PersistProbe Rev"
+      },
+      {
+        "id": 32041,
+        "card_action_id": 11507,
+        "field": 2,
+        "value": "one [[PersistProbe B]]"
+      },
+      {
+        "id": 32042,
+        "card_action_id": 11508,
+        "field": 2,
+        "value": "two"
+      },
+      {
+        "id": 32043,
+        "card_action_id": 11509,
+        "field": 3,
+        "value": "t"
+      },
+      {
+        "id": 32044,
+        "card_action_id": 11510,
+        "field": 3,
+        "value": "f"
+      },
+      {
+        "id": 32045,
+        "card_action_id": 11502,
+        "field": 0,
+        "value": "PersistProbe Plain"
+      },
+      {
+        "id": 32046,
+        "card_action_id": 11502,
+        "field": 1,
+        "value": "37"
+      },
+      {
+        "id": 32047,
+        "card_action_id": 11502,
+        "field": 2,
+        "value": "<p>hi</p> bad() <b>ok</b><a href=\"javascript:evil()\">l</a><div style=\"color:red\">d</div>"
+      },
+      {
+        "id": 32048,
+        "card_action_id": 11502,
+        "field": 3,
+        "value": "f"
+      },
+      {
+        "id": 32049,
+        "card_action_id": 11502,
+        "field": 4,
+        "value": null
+      },
+      {
+        "id": 32050,
+        "card_action_id": 11502,
+        "field": 5,
+        "value": null
+      },
+      {
+        "id": 32051,
+        "card_action_id": 11511,
+        "field": 3,
+        "value": "t"
+      },
+      {
+        "id": 32059,
+        "card_action_id": 11513,
+        "field": 0,
+        "value": "PersistProbe Mv"
+      },
+      {
+        "id": 32060,
+        "card_action_id": 11513,
+        "field": 1,
+        "value": "2"
+      },
+      {
+        "id": 32061,
+        "card_action_id": 11513,
+        "field": 2,
+        "value": "m"
+      },
+      {
+        "id": 32062,
+        "card_action_id": 11513,
+        "field": 3,
+        "value": "f"
+      },
+      {
+        "id": 32063,
+        "card_action_id": 11513,
+        "field": 4,
+        "value": null
+      },
+      {
+        "id": 32064,
+        "card_action_id": 11513,
+        "field": 5,
+        "value": null
+      },
+      {
+        "id": 32065,
+        "card_action_id": 11521,
+        "field": 0,
+        "value": "PersistProbe Moved"
+      },
+      {
+        "id": 32066,
+        "card_action_id": 11522,
+        "field": 0,
+        "value": "PersistProbe Moved Again"
+      },
+      {
+        "id": 32067,
+        "card_action_id": 11514,
+        "field": 0,
+        "value": null
+      },
+      {
+        "id": 32068,
+        "card_action_id": 11514,
+        "field": 1,
+        "value": "2"
+      },
+      {
+        "id": 32069,
+        "card_action_id": 11514,
+        "field": 2,
+        "value": "k"
+      },
+      {
+        "id": 32070,
+        "card_action_id": 11514,
+        "field": 3,
+        "value": "f"
+      },
+      {
+        "id": 32071,
+        "card_action_id": 11514,
+        "field": 4,
+        "value": "3388"
+      },
+      {
+        "id": 32072,
+        "card_action_id": 11514,
+        "field": 5,
+        "value": "3389"
+      },
+      {
+        "id": 32073,
+        "card_action_id": 11523,
+        "field": 4,
+        "value": "3396"
+      },
+      {
+        "id": 32074,
+        "card_action_id": 11523,
+        "field": 5,
+        "value": "3397"
+      },
+      {
+        "id": 32075,
+        "card_action_id": 11520,
+        "field": 0,
+        "value": "PersistProbe Linker"
+      },
+      {
+        "id": 32076,
+        "card_action_id": 11520,
+        "field": 1,
+        "value": "2"
+      },
+      {
+        "id": 32077,
+        "card_action_id": 11520,
+        "field": 2,
+        "value": "[[PersistProbe Moved]] [[PersistProbe Moved+PersistProbe Kid]] {{PersistProbe Moved+PersistProbe Kid+PersistProbe Grand}} [[PersistProbe Host+PersistProbe Moved]]"
+      },
+      {
+        "id": 32078,
+        "card_action_id": 11520,
+        "field": 3,
+        "value": "f"
+      },
+      {
+        "id": 32079,
+        "card_action_id": 11520,
+        "field": 4,
+        "value": null
+      },
+      {
+        "id": 32080,
+        "card_action_id": 11520,
+        "field": 5,
+        "value": null
+      },
+      {
+        "id": 32081,
+        "card_action_id": 11526,
+        "field": 0,
+        "value": null
+      },
+      {
+        "id": 32082,
+        "card_action_id": 11526,
+        "field": 4,
+        "value": "3398"
+      },
+      {
+        "id": 32083,
+        "card_action_id": 11526,
+        "field": 5,
+        "value": "3399"
+      }
+    ],
+    "card_references": [
+      {
+        "id": 5054,
+        "referer_id": 3381,
+        "referee_key": "persist_probe_type_probe+description",
+        "referee_id": null,
+        "ref_type": "I",
+        "is_present": null
+      },
+      {
+        "id": 5055,
+        "referer_id": 3381,
+        "referee_key": "description",
+        "referee_id": 12,
+        "ref_type": "P",
+        "is_present": null
+      },
+      {
+        "id": 5056,
+        "referer_id": 3381,
+        "referee_key": "persist_probe_type_probe+*type+by_name",
+        "referee_id": null,
+        "ref_type": "I",
+        "is_present": null
+      },
+      {
+        "id": 5057,
+        "referer_id": 3381,
+        "referee_key": "persist_probe_type_probe+*type",
+        "referee_id": null,
+        "ref_type": "P",
+        "is_present": null
+      },
+      {
+        "id": 5058,
+        "referer_id": 3381,
+        "referee_key": "*type",
+        "referee_id": 21,
+        "ref_type": "P",
+        "is_present": null
+      },
+      {
+        "id": 5059,
+        "referer_id": 3381,
+        "referee_key": "by_name",
+        "referee_id": 105,
+        "ref_type": "P",
+        "is_present": null
+      },
+      {
+        "id": 5071,
+        "referer_id": 3395,
+        "referee_key": "persist_probe_moved",
+        "referee_id": null,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5072,
+        "referer_id": 3395,
+        "referee_key": "persist_probe_moved+persist_probe_kid",
+        "referee_id": null,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5073,
+        "referer_id": 3395,
+        "referee_key": "persist_probe_kid",
+        "referee_id": 3389,
+        "ref_type": "P",
+        "is_present": null
+      },
+      {
+        "id": 5074,
+        "referer_id": 3395,
+        "referee_key": "persist_probe_moved+persist_probe_kid+persist_probe_grand",
+        "referee_id": null,
+        "ref_type": "I",
+        "is_present": null
+      },
+      {
+        "id": 5075,
+        "referer_id": 3395,
+        "referee_key": "persist_probe_grand",
+        "referee_id": 3391,
+        "ref_type": "P",
+        "is_present": null
+      },
+      {
+        "id": 5076,
+        "referer_id": 3395,
+        "referee_key": "persist_probe_host+persist_probe_moved",
+        "referee_id": null,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5077,
+        "referer_id": 3395,
+        "referee_key": "persist_probe_host",
+        "referee_id": 3393,
+        "ref_type": "P",
+        "is_present": null
+      },
+      {
+        "id": 5078,
+        "referer_id": 3400,
+        "referee_key": "persist_probe_b",
+        "referee_id": 3378,
+        "ref_type": "L",
+        "is_present": null
+      }
+    ],
+    "card_virtuals": []
+  }
+}

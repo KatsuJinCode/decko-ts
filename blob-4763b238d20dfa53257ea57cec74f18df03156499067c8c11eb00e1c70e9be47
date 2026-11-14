@@ -1,0 +1,53 @@
+{
+  "actors_note": "bot=Decko Bot(admin) — the engine's main render actor",
+  "deck_config": {
+    "action_mailer_perform_deliveries": false
+  },
+  "gem_cite": {
+    "self_admin_core": "card-1.110.0 mod/core set/self/admin.rb:59-61",
+    "self_admin_warning": "card-1.110.0 mod/core set/self/admin.rb:63-69"
+  },
+  "no_write_discipline": "render-only capture; card_actions count asserted unchanged across every render",
+  "no_write_proof": {
+    "actions_after": 5018,
+    "actions_before": 5018,
+    "unchanged": true
+  },
+  "normalizations": {
+    "collapse-id": "HASH",
+    "data-slot-id": "RANDOMIZED"
+  },
+  "targets": {
+    "admin_card": {
+      "meta": {
+        "codename": "admin",
+        "created_at": "2025-07-01T17:29:25Z",
+        "db_content": "",
+        "id": 13,
+        "key": "*admin",
+        "name": "*admin",
+        "type_code": "basic",
+        "type_id": 2,
+        "type_name": "RichText"
+      },
+      "views": {
+        "core": {
+          "rendered": {
+            "bytes": "<table class=\"table\"><thead><tr><th>Task</th>\n<th>Description</th></tr></thead>\n<tbody><tr><td><a class=\"known-card\" href=\"/update/*admin?task=empty_trash\">Empty Trash</a></td>\n<td>Empty Trash!</td></tr>\n<tr><td><a class=\"known-card\" href=\"/update/*admin?task=clear_cache\">Clear Cache</a></td>\n<td>Clear Cache!</td></tr>\n<tr><td><a class=\"known-card\" href=\"/update/*admin?task=regenerate_assets\">Regenerate Assets</a></td>\n<td>Regen!</td></tr>\n<tr><td><a class=\"known-card\" href=\"/update/*admin?task=delete_upload_tmp_files\">Delete upload tmp files</a></td>\n<td>Delete upload tmp files!</td></tr></tbody></table>",
+            "normalized_size": 612,
+            "raw_size": 612
+          },
+          "source_location": null
+        },
+        "warning": {
+          "rendered": {
+            "bytes": "<div class=\"alert alert-warning alert-dismissible \" role=\"alert\"><button type=\"button\" data-bs-dismiss=\"alert\" class=\"btn-close\" aria-label=\"Close\"></button>\n<h5>\nAdministrator Warning\n</h5>\n<ul><li>Email delivery is turned off. Change settings in config/application.rb to send sign up notifications.</li>\n<li><p>You are configured to use <a class=\"known-card\" href=\"/*captcha\">*captcha</a>, but for that to work you need new <a rel=\"nofollow\" class=\"edit-link slotter\" title=\"Edit\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal\" data-modal-class=\"modal-lg\" href=\"/*recaptcha_settings/edit\" data-remote=\"true\">recaptcha keys</a>.</p></li></ul>\n</div>",
+            "normalized_size": 681,
+            "raw_size": 681
+          },
+          "source_location": null
+        }
+      }
+    }
+  }
+}

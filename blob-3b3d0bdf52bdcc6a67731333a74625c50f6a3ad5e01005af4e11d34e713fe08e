@@ -1,0 +1,32 @@
+{
+  "scope": "Synthetic Card data with actual pinned Ruby event, dirty, module-registration and callback implementations; no Rails or database boot",
+  "patterns": [
+    {"code":"self","anchorPartsCount":1},
+    {"code":"type_plus_right","anchorPartsCount":2},
+    {"code":"right","anchorPartsCount":1},
+    {"code":"rule","anchorPartsCount":0},
+    {"code":"rstar","anchorPartsCount":0},
+    {"code":"star","anchorPartsCount":0},
+    {"code":"type","anchorPartsCount":1},
+    {"code":"all_plus","anchorPartsCount":0},
+    {"code":"all","anchorPartsCount":0}
+  ],
+  "cases": [
+    {"id":"dirty-neither","card":{"name":"Probe","typeId":1,"dirty":[]},"visits":[{"path":"all/dirty","events":[{"event":"audit","at":"validate","changed":["name"],"changing":["content"],"label":"audit"}]}]},
+    {"id":"dirty-name-only","card":{"name":"Probe","typeId":1,"dirty":["name"]},"visits":[{"path":"all/dirty","events":[{"event":"audit","at":"validate","changed":["name"],"changing":["content"],"label":"audit"}]}]},
+    {"id":"dirty-content-only","card":{"name":"Probe","typeId":1,"dirty":["db_content"]},"visits":[{"path":"all/dirty","events":[{"event":"audit","at":"validate","changed":["name"],"changing":["content"],"label":"audit"}]}]},
+    {"id":"dirty-both","card":{"name":"Probe","typeId":1,"dirty":["name","db_content"]},"visits":[{"path":"all/dirty","events":[{"event":"audit","at":"validate","changed":["name"],"changing":["content"],"label":"audit"}]}]},
+    {"id":"same-module-reopened","card":{"name":"Probe","typeId":1},"memberships":[{"path":"type/basic","typeId":1}],"visits":[{"path":"type/basic","events":[{"event":"audit","at":"validate","label":"A"}]},{"path":"type/basic","events":[{"event":"audit","at":"validate","label":"A2"}]}]},
+    {"id":"A-Z-A2","card":{"name":"Probe","typeId":1},"memberships":[{"path":"type/basic","typeId":1}],"visits":[{"path":"type/basic","events":[{"event":"audit","at":"validate","label":"A"}]},{"path":"type/basic/z","events":[{"event":"audit","at":"validate","label":"Z"}]},{"path":"type/basic","events":[{"event":"audit","at":"validate","label":"A2"}]}]},
+    {"id":"eventless-A-Z-A2","card":{"name":"Probe","typeId":1},"memberships":[{"path":"type/basic","typeId":1}],"visits":[{"path":"type/basic/a"},{"path":"type/basic/z","events":[{"event":"audit","at":"validate","label":"Z"}]},{"path":"type/basic/a","events":[{"event":"audit","at":"validate","label":"A2"}]}]},
+    {"id":"latest-callback-gate-false","card":{"name":"Probe","typeId":1},"memberships":[{"path":"type/basic","typeId":1}],"predicates":{"disabled":false},"visits":[{"path":"all/base","events":[{"event":"audit","at":"validate","label":"all"}]},{"path":"type/basic","events":[{"event":"audit","at":"validate","when":"disabled","label":"type"}]}]},
+    {"id":"overwritten-all-callback-does-not-resurrect","card":{"name":"Probe","typeId":1},"memberships":[{"path":"type/other","typeId":2}],"visits":[{"path":"all/base","events":[{"event":"audit","at":"validate","label":"all"}]},{"path":"type/other","events":[{"event":"audit","at":"validate","label":"other"}]}]},
+    {"id":"different-stages-same-method","stages":["validate","store"],"card":{"name":"Probe","typeId":1},"memberships":[{"path":"type/basic","typeId":1}],"visits":[{"path":"all/base","events":[{"event":"audit","at":"validate","label":"all"}]},{"path":"type/basic","events":[{"event":"audit","at":"store","label":"type"}]}]},
+    {"id":"same-symbol-before-and-after","card":{"name":"Probe","typeId":1},"visits":[{"path":"all/parent","events":[{"event":"parent","at":"validate","label":"parent"}]},{"path":"all/hook","events":[{"event":"hook","before":"parent","after":"parent","label":"old"},{"event":"hook","before":"parent","label":"new"}]}]},
+    {"id":"parent-redefinition-erases-hook","card":{"name":"Probe","typeId":1},"visits":[{"path":"all/parent","events":[{"event":"parent","at":"validate","label":"old-parent"}]},{"path":"all/hook","events":[{"event":"hook","before":"parent","label":"hook"}]},{"path":"all/parent","events":[{"event":"parent","at":"validate","label":"new-parent"}]}]},
+    {"id":"hook-after-final-parent-retained","card":{"name":"Probe","typeId":1},"visits":[{"path":"all/parent","events":[{"event":"parent","at":"validate","label":"old-parent"},{"event":"parent","at":"validate","label":"new-parent"}]},{"path":"all/hook","events":[{"event":"hook","before":"parent","label":"hook"}]}]},
+    {"id":"type-condition-original-attached-old-only","card":{"name":"Probe","typeId":2,"oldTypeId":1,"dirty":["type_id"],"refreshAssigned":false},"memberships":[{"path":"type/old","typeId":1},{"path":"type/new","typeId":2}],"visits":[{"path":"type/old","events":[{"event":"old_check","at":"validate","changing":["type"],"label":"old-changing"}]},{"path":"type/new","events":[{"event":"new_check","at":"validate","changed":["type"],"label":"new-changed"}]}]},
+    {"id":"type-condition-after-reset-and-reinclude","card":{"name":"Probe","typeId":2,"oldTypeId":1,"dirty":["type_id"],"refreshAssigned":true},"memberships":[{"path":"type/old","typeId":1},{"path":"type/new","typeId":2}],"visits":[{"path":"type/old","events":[{"event":"old_check","at":"validate","changing":["type"],"label":"old-changing"}]},{"path":"type/new","events":[{"event":"new_check","at":"validate","changed":["type"],"label":"new-changed"},{"event":"new_changing_check","at":"validate","changing":["type"],"label":"new-changing"}]}]},
+    {"id":"name-condition-after-reset-and-reinclude","card":{"name":"*new","oldName":"*old","typeId":1,"dirty":["name"],"refreshAssigned":true},"memberships":[{"path":"self/old","name":"*old"},{"path":"self/new","name":"*new"}],"visits":[{"path":"self/old","events":[{"event":"old_check","at":"validate","changing":["name"],"label":"old-changing"}]},{"path":"self/new","events":[{"event":"new_check","at":"validate","changed":["name"],"label":"new-changed"},{"event":"new_changing_check","at":"validate","changing":["name"],"label":"new-changing"}]}]}
+  ]
+}

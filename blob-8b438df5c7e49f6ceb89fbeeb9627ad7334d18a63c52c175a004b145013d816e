@@ -1,0 +1,77 @@
+import { afterEach, beforeEach, expect, it } from "vitest";
+import { createRenderTestStorage, seedCard, type RenderTestStorage } from "../render/render-test-storage.js";
+import { findRule } from "../../../src/card/rules/lookup.js";
+
+let storage: RenderTestStorage;
+beforeEach(async () => {
+  storage = await createRenderTestStorage({ bootstrapReadRules: false });
+  for (const row of [
+    { id: 1, name: "Set", codename: "set" },
+    { id: 2, name: "Setting", codename: "setting" },
+    { id: 3, name: "Basic", codename: "basic" },
+    { id: 4, name: "*all", codename: "all", typeId: 1 },
+    { id: 5, name: "*self", codename: "self", typeId: 1 },
+    { id: 6, name: "*help", codename: "help", typeId: 2 },
+    { id: 7, name: "*follow", codename: "follow", typeId: 2 },
+    { id: 8, name: "Example", typeId: 3 },
+    { id: 9, leftId: 8, rightId: 5, typeId: 1 },
+    { id: 10, leftId: 9, rightId: 6, dbContent: "specific" },
+    { id: 11, leftId: 4, rightId: 6, dbContent: "general" },
+  ]) await seedCard(storage, row);
+});
+afterEach(() => storage.close());
+const card = { id: 8, name: "Example" };
+
+it("continues to a qualified fallback when the specific rule loses its Set type", async () => {
+  expect((await findRule(storage.fetcher, card, "*help"))?.rule.id).toBe(10);
+  await storage.counting.query("UPDATE cards SET type_id = ? WHERE id = ?", [3, 9]);
+  storage.fetcher.resetCaches();
+  const result = await findRule(storage.fetcher, card, "*help");
+  expect(result?.rule.id).toBe(11);
+  expect(result?.setName).toBe("*all");
+  expect(result?.matchedIndex).toBe(result?.candidates.indexOf("*all+*help"));
+});
+
+it("revokes and restores warmed setting and anchored pattern codenames after cache reset", async () => {
+  expect((await findRule(storage.fetcher, card, "*help"))?.rule.id).toBe(10);
+  await storage.counting.query("UPDATE cards SET codename = NULL WHERE id = ?", [6]);
+  storage.fetcher.resetCaches();
+  expect(await findRule(storage.fetcher, card, "*help")).toBeUndefined();
+  await storage.counting.query("UPDATE cards SET codename = ? WHERE id = ?", ["help", 6]);
+  await storage.counting.query("UPDATE cards SET codename = NULL WHERE id = ?", [5]);
+  storage.fetcher.resetCaches();
+  expect((await findRule(storage.fetcher, card, "*help"))?.rule.id).toBe(11);
+  await storage.counting.query("UPDATE cards SET codename = ? WHERE id = ?", ["self", 5]);
+  storage.fetcher.resetCaches();
+  expect((await findRule(storage.fetcher, card, "*help"))?.rule.id).toBe(10);
+});
+
+for (const id of [9, 10, 6]) it(`excludes a trashed ${id === 9 ? "set" : id === 10 ? "rule" : "setting"} after a warm lookup`, async () => {
+  expect((await findRule(storage.fetcher, card, "*help"))?.rule.id).toBe(10);
+  await storage.counting.query("UPDATE cards SET trash = 1 WHERE id = ?", [id]);
+  storage.fetcher.resetCaches();
+  expect((await findRule(storage.fetcher, card, "*help"))?.rule.id).toBe(id === 6 ? undefined : 11);
+});
+
+it("excludes only empty/null follow content while preserving whitespace and empty other rules", async () => {
+  await seedCard(storage, { id: 12, leftId: 9, rightId: 7, dbContent: "" });
+  await seedCard(storage, { id: 13, leftId: 4, rightId: 7, dbContent: "fallback" });
+  expect((await findRule(storage.fetcher, card, "*follow"))?.rule.id).toBe(13);
+  await storage.counting.query("UPDATE cards SET db_content = NULL WHERE id = ?", [12]);
+  storage.fetcher.resetCaches();
+  expect((await findRule(storage.fetcher, card, "*follow"))?.rule.id).toBe(13);
+  await storage.counting.query("UPDATE cards SET db_content = ? WHERE id = ?", [" ", 12]);
+  await storage.counting.query("UPDATE cards SET db_content = ? WHERE id = ?", ["", 10]);
+  storage.fetcher.resetCaches();
+  expect((await findRule(storage.fetcher, card, "*follow"))?.rule.dbContent).toBe(" ");
+  expect((await findRule(storage.fetcher, card, "*help"))?.rule.dbContent).toBe("");
+});
+
+it("keeps the specialized legacy side-less compound self rule qualified by ids", async () => {
+  await seedCard(storage, { id: 14, name: "Legacy+Compound", typeId: 3 });
+  await seedCard(storage, { id: 15, leftId: 14, rightId: 5, typeId: 1 });
+  await seedCard(storage, { id: 16, leftId: 15, rightId: 6, dbContent: "legacy" });
+  const result = await findRule(storage.fetcher, { name: "Legacy+Compound", id: 14 }, "*help");
+  expect(result?.rule.id).toBe(16);
+  expect(result?.rule.name?.s).toBe("Legacy+Compound+*self+*help");
+});

@@ -1,0 +1,64 @@
+{
+  "row": "check-chain-join-plan",
+  "instrument": "tools/perf/check-chain-join-plan.mjs",
+  "tool": {
+    "complete": false,
+    "cards": 21670,
+    "parameterCount": 90,
+    "sqlite": "3.53.4",
+    "schemaIndexesApplied": 16,
+    "schemaIndexesSha256": "7859ccb1b4fff75a29449df10cf0f66059bd63fc64bafc1bb82c8ffe6061ccb6",
+    "sourceSha256": "f67f6edf75648473c22b022c0c801673ee2c34b09be35024148fb862275363fb",
+    "copiedSha256": "f67f6edf75648473c22b022c0c801673ee2c34b09be35024148fb862275363fb",
+    "measurements": [
+      {
+        "stats": false,
+        "kind": "original",
+        "ms": 181484.642,
+        "rows": 1,
+        "selectedCards": 30,
+        "byteLength": 5723,
+        "rowsSha256": "753e5585da73a1a47bd378490a6e77bf028f95ed5faa3099de9da6d080977668",
+        "identicalBytes": true
+      },
+      {
+        "stats": false,
+        "kind": "fixed",
+        "ms": 39.92489999998361,
+        "rows": 1,
+        "selectedCards": 30,
+        "byteLength": 5723,
+        "rowsSha256": "3f5ee693c9780f55b40d5167ad8f814b63f6bf86938cc953f17a95fcbee9604e",
+        "identicalBytes": false
+      }
+    ]
+  },
+  "deck": {
+    "source": "C:/localProjects/brandonDojoTech/tmp/smell-dep-restore-20261020/deck-rebuild/deck-better-sqlite3.sqlite3",
+    "sourceSha256": "c19c4d561ebbd4bee3dab3667af52400a6fa32affc151fd17adf1c5007640dfc",
+    "copySha256": "f67f6edf75648473c22b022c0c801673ee2c34b09be35024148fb862275363fb",
+    "rowsBefore": 21676,
+    "distinctIdsBefore": 21670,
+    "nullIdRowsDropped": 6,
+    "rowsAfter": 21670,
+    "distinctIdsAfter": 21670
+  },
+  "capture": {
+    "file": ".runtime/r4-chain-join/capture.sql",
+    "sha256": "3b804241aa6894ff4274a4e00d1527f6fc2a7975fded6a8dc0c2774cdbda4b67",
+    "boundKeys": 90,
+    "tuples": 30,
+    "note": "the SQL text of the surviving capture with its CROSS JOINs turned back into plain JOINs, plus a parameter array taken from the deck's own widenable junctions"
+  },
+  "resultSets": {
+    "tuples": 30,
+    "originalCards": 30,
+    "fixedCards": 30,
+    "sameSet": true,
+    "sameOrder": false
+  },
+  "committedEvidence": {
+    "file": "docs/junction-chain-join-evidence.json",
+    "note": "the differential the tool produced on 2026-10-15, whose capture returned zero cards"
+  }
+}

@@ -1,0 +1,89 @@
+# API-key view capture evidence checkpoint
+
+Status: source instrumentation and local regression checks. Issue 63 remains
+open for independent review and a qualified fresh capture; no native Decko
+application or database was run for this checkpoint.
+
+## Failure and correction
+
+The historical API-key fixture has rendered bytes but no observed actor. Its
+producer seeded inside `Auth.as_bot`, then rendered outside that scope. The
+pinned `card-1.110.0` authentication source was inspected directly: `Proxy#as`
+initializes the current actor only while it is nil, then restores the proxy.
+That block alone cannot establish the actor of a later render.
+
+The producer now records authentication initialization without invoking its
+initializing getters. New renders use an explicit current/effective bot scope,
+record both identities and observed permission verdicts before/after each
+render, and reject changes during the operation. Metadata includes runtime
+versions, producer/helper/authentication-source hashes, the target-attribute
+digest and connection identity. The connection digest names the configured
+adapter/database/host/port; it is **not** a database-content, permission-closure
+or immutable-snapshot digest. Full source/data admission remains separate.
+
+`tools/oracle/validate-api-key-view-capture.mjs` validates the observed evidence
+against a separately supplied expectation file. Its exported assertion and CLI
+reject absent or malformed evidence, missing views, runtime/source/target
+mismatches, another current actor behind a bot proxy, changed actors, absent
+permissions, failed bodies and missing external expectations. It does not
+authenticate a self-declared artifact, establish a complete runtime or perform
+the later byte comparison. The qualified reference controller must bind those
+inputs and outputs. Its CLI requires `--capture FILE --expected PIN_FILE` and
+exits nonzero on invalid evidence; it does not derive pins from the capture.
+
+## Probe and artifact preservation
+
+The former producer trashed both named probe cards even if they existed before
+the run, and converted render/cleanup exceptions into successful payload text.
+The revised helper records only actual newly created IDs, cleans those up in
+reverse order, refuses unknown/replaced identities, and propagates failures.
+Existing probes must match the synthetic seed's type and content and are never
+added to the cleanup inventory. Type selection uses the pinned core's BasicID
+constant, rather than a possibly absent type name.
+
+The producer requires a fresh explicit output path and uses exclusive creation,
+preserving the historical fixture. New rendered strings remain raw: slot IDs,
+card IDs and quote styles are no longer rewritten during capture. Any allowed
+nondeterminism must be handled and recorded at comparison time.
+
+Deleting created probes does not restore history, caches or external effects.
+The producer must run only in the separately qualified disposable reference
+environment, never on a production/shared deck. This source checkpoint grants
+no execution, deployment, publication or transfer approval.
+
+## Actual local checks
+
+- Ruby 3.4.11 helper tests: 17 tests, 40 assertions, no failures/errors/skips.
+  They use synthetic Ruby objects; they do not load Rails/Card or contact a DB.
+- Node capture-evidence tests: 26 passed, zero failed/skipped. The actual old
+  capture is explicitly rejected for missing actor evidence.
+- Existing API-key Vitest suite: 35 passed, zero failed/pending. Its historical
+  byte comparisons now say that the capture actor is unverified. These remain
+  authorized-actor diagnostics, not actor-qualified native parity.
+- Revised Ruby producer syntax check passed. TypeScript typechecking passed.
+  The test-gate inventory check recognized the new Node suite; its file count
+  is classification machinery, not behavioral coverage.
+
+Raw local outputs are retained in the sibling `.ruby-tests.txt`,
+`.node-tests.txt` and `.vitest.json` files. Tests executed rather than using
+cached results; Vite may reuse compiled transforms. No response cache,
+automatic retry, paid model verification, original database or live traffic
+was used. The full Ruby producer and its live metadata collection are not
+qualified by these helper tests.
+
+The historical fixture remains 6,989 bytes with SHA-256
+`e5e4212d342b15892acb3663b77196658be483289b229697f2044a414e5ad598`.
+No historical actor was relabelled. The bot-only three-view capture profile
+does not establish anonymous/proxy behavior, the full API-key surface, complete
+DSL support or any backend/runtime matrix score.
+
+Remaining: independently challenge this exact source; qualify the native
+reference and explicit expectation/data bindings; perform an isolated fresh
+capture and byte comparison; retain denied-actor and authentication lifecycle
+coverage under their own profiles. None of these pending items is complete
+because the local checks pass.
+
+The preflight is currently exposed as a strict CLI/library entrypoint. The
+legacy `scripts/release-check.mjs` does not invoke it or discover all Node
+evidence suites. Integration into authoritative release admission is tracked
+by engine issue 91; the standalone control does not establish that integration.

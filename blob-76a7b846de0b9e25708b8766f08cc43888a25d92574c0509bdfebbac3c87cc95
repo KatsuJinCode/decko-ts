@@ -1,0 +1,27 @@
+import { spawnSync } from "node:child_process";
+import { sourceGitEnvironment } from "../../reference-harness/runner/source-git-environment.mjs";
+
+// Pin independently before capture. Development assertions can compare a dirty
+// tree explicitly, but their diagnostic verdict never qualifies a candidate.
+export function pinParityTestSource(repo) {
+  const git = args => {
+    const result = spawnSync("git", ["--no-replace-objects", "-C", repo, ...args], {
+      encoding: "utf8", windowsHide: true, env: sourceGitEnvironment(),
+    });
+    if (result.error || result.status !== 0) throw new Error(`ParitySourceIdentityUnavailable: ${result.error?.message ?? result.stderr}`);
+    return result.stdout.trim();
+  };
+  const commit = git(["rev-parse", "HEAD"]);
+  if (!/^[a-f0-9]{40}$/.test(commit)) throw new Error("ParitySourceIdentityInvalid");
+  const dirty = git(["status", "--porcelain", "--untracked-files=normal"]) !== "";
+  return { commit, dirty, args: dirty ? ["--diagnostic"] : ["--candidate-commit", commit],
+    expectedExit: dirty ? 2 : 0, expectedVerdict: dirty ? "diagnostic-pass" : "pass" };
+}
+
+export function strictParityTestEnvironment() {
+  const env = { ...process.env };
+  for (const name of ["SIGNIN_DETAILED_ERRORS", "REVISION_RESTORE_500", "SKIN_CREATE_500", "SCRIPT_BUNDLE_CLOCK_NAMES", "MAIL_UNFOLLOW_REFUSAL"]) {
+    env[`DECKO_STRICT_PARITY_${name}`] = "on";
+  }
+  return env;
+}

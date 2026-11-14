@@ -1,0 +1,489 @@
+{
+  "builtAt": "2026-10-26T03:32:05.880Z",
+  "baseUrl": "http://127.0.0.1:3118",
+  "variants": {
+    "A": "Culturesmith+Home Variant A",
+    "B": "Culturesmith+Home Variant B",
+    "layoutA": "Home Variant A Layout",
+    "layoutB": "Home Variant B Layout"
+  },
+  "skin": {
+    "href": "/files/~45514/0000000001.css",
+    "bytes": 219593,
+    "sha256": "20189629f5770e09baaf9f50225ed971097d190dd183b34e303b4a40d588fb00"
+  },
+  "assets": {
+    "hero": "hero-27689-135167.jpg (files/27689/135167-large.jpg, 500x334, fetched once from the site's public asset host per the faithful-build precedent)",
+    "logo": "logo-3643-small.jpg (sha256 75bfba4d..., verified against the faithful build receipt)"
+  },
+  "guards": "English only; no em-dashes or en-dashes; no operator surname; the Opportunities menu item carrying a family surname is hidden by the variants' CSS; Brandon Williamscraig appears only as the live page's own meet-brandon label",
+  "cards": [
+    {
+      "name": "Culturesmith+Home Variant A",
+      "variant": "A",
+      "role": "variant A main card: nests the five sections in the live order",
+      "status": 303,
+      "readStatus": 200,
+      "bytes": 637
+    },
+    {
+      "name": "Culturesmith+Home Variant A+Hero Photo",
+      "variant": "A",
+      "role": "the live page's centered hero photo",
+      "status": 303,
+      "readStatus": 200,
+      "bytes": 55841
+    },
+    {
+      "name": "Culturesmith+Home Variant A+Intro",
+      "variant": "A",
+      "role": "the live intro paragraph, emphasis carried by one strong phrase",
+      "status": 303,
+      "readStatus": 200,
+      "bytes": 787
+    },
+    {
+      "name": "Culturesmith+Home Variant A+Proposals Line",
+      "variant": "A",
+      "role": "the live italic proposals line with Make Contact",
+      "status": 303,
+      "readStatus": 200,
+      "bytes": 559
+    },
+    {
+      "name": "Culturesmith+Home Variant A+Connect Line",
+      "variant": "A",
+      "role": "the live subscribe and Zoom classes line",
+      "status": 303,
+      "readStatus": 200,
+      "bytes": 601
+    },
+    {
+      "name": "Culturesmith+Home Variant A+Meet Brandon",
+      "variant": "A",
+      "role": "the live meet-brandon block with Recommendations and Learn more",
+      "status": 303,
+      "readStatus": 200,
+      "bytes": 667
+    },
+    {
+      "name": "Home Variant A Layout",
+      "variant": "A",
+      "role": "the variant's page shell (Layout card carrying the skin)",
+      "status": 303,
+      "readStatus": 200,
+      "bytes": 18055
+    },
+    {
+      "name": "Culturesmith+Home Variant A+*self+*layout",
+      "variant": "A",
+      "role": "the per-card layout rule seating the variant's shell",
+      "status": 303,
+      "readStatus": 200,
+      "bytes": 428
+    },
+    {
+      "name": "Culturesmith+Home Variant B",
+      "variant": "B",
+      "role": "variant B main card: the card composition, each element a real card",
+      "status": 303,
+      "readStatus": 200,
+      "bytes": 915
+    },
+    {
+      "name": "Culturesmith+Home Variant B+Hero Card",
+      "variant": "B",
+      "role": "the hero as a full-width card: the Conflict Done Well phrase as display line, the live photo under it",
+      "status": 303,
+      "readStatus": 200,
+      "bytes": 55943
+    },
+    {
+      "name": "Culturesmith+Home Variant B+Intro Card",
+      "variant": "B",
+      "role": "the intro as its own card",
+      "status": 303,
+      "readStatus": 200,
+      "bytes": 797
+    },
+    {
+      "name": "Culturesmith+Home Variant B+Door Practice",
+      "variant": "B",
+      "role": "the practice door: the individual line of the live intro",
+      "status": 303,
+      "readStatus": 200,
+      "bytes": 711
+    },
+    {
+      "name": "Culturesmith+Home Variant B+Door Team",
+      "variant": "B",
+      "role": "the team door: the leaders and teams line of the live intro",
+      "status": 303,
+      "readStatus": 200,
+      "bytes": 665
+    },
+    {
+      "name": "Culturesmith+Home Variant B+Door Library",
+      "variant": "B",
+      "role": "the library door: the recorded classes and the working library",
+      "status": 303,
+      "readStatus": 200,
+      "bytes": 736
+    },
+    {
+      "name": "Culturesmith+Home Variant B+Proposals Card",
+      "variant": "B",
+      "role": "the proposals line as a call-to-action card",
+      "status": 303,
+      "readStatus": 200,
+      "bytes": 551
+    },
+    {
+      "name": "Culturesmith+Home Variant B+Connect Card",
+      "variant": "B",
+      "role": "the subscribe and Zoom classes line as a quiet closing card",
+      "status": 303,
+      "readStatus": 200,
+      "bytes": 601
+    },
+    {
+      "name": "Culturesmith+Home Variant B+Meet Brandon Card",
+      "variant": "B",
+      "role": "the meet-brandon block as the page's closing card",
+      "status": 303,
+      "readStatus": 200,
+      "bytes": 677
+    },
+    {
+      "name": "Home Variant B Layout",
+      "variant": "B",
+      "role": "the variant's page shell (Layout card carrying the skin)",
+      "status": 303,
+      "readStatus": 200,
+      "bytes": 20783
+    },
+    {
+      "name": "Culturesmith+Home Variant B+*self+*layout",
+      "variant": "B",
+      "role": "the per-card layout rule seating the variant's shell",
+      "status": 303,
+      "readStatus": 200,
+      "bytes": 428
+    },
+    {
+      "name": "page Culturesmith+Home Variant A",
+      "variant": "A",
+      "role": "signed-out page render check",
+      "status": 200,
+      "bytes": 91497,
+      "checks": {
+        "status200": true,
+        "signedOut": true,
+        "allMarkersPresent": true,
+        "layoutSeated": true,
+        "skinLinked": true,
+        "navbarPresent": true,
+        "footerPresent": true
+      }
+    },
+    {
+      "name": "page Culturesmith+Home Variant B",
+      "variant": "B",
+      "role": "signed-out page render check",
+      "status": 200,
+      "bytes": 97925,
+      "checks": {
+        "status200": true,
+        "signedOut": true,
+        "allMarkersPresent": true,
+        "layoutSeated": true,
+        "skinLinked": true,
+        "navbarPresent": true,
+        "footerPresent": true
+      }
+    }
+  ],
+  "passed": 23,
+  "total": 23,
+  "steps": [
+    {
+      "name": "sign-in",
+      "ok": true,
+      "detail": "POST /_signin -> 200, session cookie issued",
+      "evidence": {
+        "status": 200
+      }
+    },
+    {
+      "name": "card: Culturesmith+Home Variant A",
+      "ok": true,
+      "detail": "PUT /Culturesmith%2BHome%20Variant%20A -> 303; read back 200, 637 bytes, type RichText; read rule -> 303",
+      "evidence": {
+        "status": 303,
+        "readStatus": 200,
+        "readType": "RichText",
+        "readRuleStatus": 303,
+        "error": ""
+      }
+    },
+    {
+      "name": "card: Culturesmith+Home Variant A+Hero Photo",
+      "ok": true,
+      "detail": "PUT /Culturesmith%2BHome%20Variant%20A%2BHero%20Photo -> 303; read back 200, 55841 bytes, type RichText; read rule -> 303",
+      "evidence": {
+        "status": 303,
+        "readStatus": 200,
+        "readType": "RichText",
+        "readRuleStatus": 303,
+        "error": ""
+      }
+    },
+    {
+      "name": "card: Culturesmith+Home Variant A+Intro",
+      "ok": true,
+      "detail": "PUT /Culturesmith%2BHome%20Variant%20A%2BIntro -> 303; read back 200, 787 bytes, type RichText; read rule -> 303",
+      "evidence": {
+        "status": 303,
+        "readStatus": 200,
+        "readType": "RichText",
+        "readRuleStatus": 303,
+        "error": ""
+      }
+    },
+    {
+      "name": "card: Culturesmith+Home Variant A+Proposals Line",
+      "ok": true,
+      "detail": "POST / -> 303; read back 200, 559 bytes, type RichText; read rule -> 303",
+      "evidence": {
+        "status": 303,
+        "readStatus": 200,
+        "readType": "RichText",
+        "readRuleStatus": 303,
+        "error": ""
+      }
+    },
+    {
+      "name": "card: Culturesmith+Home Variant A+Connect Line",
+      "ok": true,
+      "detail": "POST / -> 303; read back 200, 601 bytes, type RichText; read rule -> 303",
+      "evidence": {
+        "status": 303,
+        "readStatus": 200,
+        "readType": "RichText",
+        "readRuleStatus": 303,
+        "error": ""
+      }
+    },
+    {
+      "name": "card: Culturesmith+Home Variant A+Meet Brandon",
+      "ok": true,
+      "detail": "PUT /Culturesmith%2BHome%20Variant%20A%2BMeet%20Brandon -> 303; read back 200, 667 bytes, type RichText; read rule -> 303",
+      "evidence": {
+        "status": 303,
+        "readStatus": 200,
+        "readType": "RichText",
+        "readRuleStatus": 303,
+        "error": ""
+      }
+    },
+    {
+      "name": "view: Home Variant A Layout",
+      "ok": true,
+      "detail": "PUT /Home%20Variant%20A%20Layout -> 303; read back 200, 18055 bytes; read rule -> 303",
+      "evidence": {
+        "status": 303,
+        "readStatus": 200,
+        "readRuleStatus": 303,
+        "error": ""
+      }
+    },
+    {
+      "name": "view: Culturesmith+Home Variant A+*self+*layout",
+      "ok": true,
+      "detail": "PUT /Culturesmith%2BHome%20Variant%20A%2B*self%2B*layout -> 303; read rule -> 303",
+      "evidence": {
+        "status": 303,
+        "readRuleStatus": 303,
+        "error": ""
+      }
+    },
+    {
+      "name": "card: Culturesmith+Home Variant B",
+      "ok": true,
+      "detail": "PUT /Culturesmith%2BHome%20Variant%20B -> 303; read back 200, 915 bytes, type RichText; read rule -> 303",
+      "evidence": {
+        "status": 303,
+        "readStatus": 200,
+        "readType": "RichText",
+        "readRuleStatus": 303,
+        "error": ""
+      }
+    },
+    {
+      "name": "card: Culturesmith+Home Variant B+Hero Card",
+      "ok": true,
+      "detail": "PUT /Culturesmith%2BHome%20Variant%20B%2BHero%20Card -> 303; read back 200, 55943 bytes, type RichText; read rule -> 303",
+      "evidence": {
+        "status": 303,
+        "readStatus": 200,
+        "readType": "RichText",
+        "readRuleStatus": 303,
+        "error": ""
+      }
+    },
+    {
+      "name": "card: Culturesmith+Home Variant B+Intro Card",
+      "ok": true,
+      "detail": "PUT /Culturesmith%2BHome%20Variant%20B%2BIntro%20Card -> 303; read back 200, 797 bytes, type RichText; read rule -> 303",
+      "evidence": {
+        "status": 303,
+        "readStatus": 200,
+        "readType": "RichText",
+        "readRuleStatus": 303,
+        "error": ""
+      }
+    },
+    {
+      "name": "card: Culturesmith+Home Variant B+Door Practice",
+      "ok": true,
+      "detail": "PUT /Culturesmith%2BHome%20Variant%20B%2BDoor%20Practice -> 303; read back 200, 711 bytes, type RichText; read rule -> 303",
+      "evidence": {
+        "status": 303,
+        "readStatus": 200,
+        "readType": "RichText",
+        "readRuleStatus": 303,
+        "error": ""
+      }
+    },
+    {
+      "name": "card: Culturesmith+Home Variant B+Door Team",
+      "ok": true,
+      "detail": "PUT /Culturesmith%2BHome%20Variant%20B%2BDoor%20Team -> 303; read back 200, 665 bytes, type RichText; read rule -> 303",
+      "evidence": {
+        "status": 303,
+        "readStatus": 200,
+        "readType": "RichText",
+        "readRuleStatus": 303,
+        "error": ""
+      }
+    },
+    {
+      "name": "card: Culturesmith+Home Variant B+Door Library",
+      "ok": true,
+      "detail": "PUT /Culturesmith%2BHome%20Variant%20B%2BDoor%20Library -> 303; read back 200, 736 bytes, type RichText; read rule -> 303",
+      "evidence": {
+        "status": 303,
+        "readStatus": 200,
+        "readType": "RichText",
+        "readRuleStatus": 303,
+        "error": ""
+      }
+    },
+    {
+      "name": "card: Culturesmith+Home Variant B+Proposals Card",
+      "ok": true,
+      "detail": "PUT /Culturesmith%2BHome%20Variant%20B%2BProposals%20Card -> 303; read back 200, 551 bytes, type RichText; read rule -> 303",
+      "evidence": {
+        "status": 303,
+        "readStatus": 200,
+        "readType": "RichText",
+        "readRuleStatus": 303,
+        "error": ""
+      }
+    },
+    {
+      "name": "card: Culturesmith+Home Variant B+Connect Card",
+      "ok": true,
+      "detail": "PUT /Culturesmith%2BHome%20Variant%20B%2BConnect%20Card -> 303; read back 200, 601 bytes, type RichText; read rule -> 303",
+      "evidence": {
+        "status": 303,
+        "readStatus": 200,
+        "readType": "RichText",
+        "readRuleStatus": 303,
+        "error": ""
+      }
+    },
+    {
+      "name": "card: Culturesmith+Home Variant B+Meet Brandon Card",
+      "ok": true,
+      "detail": "PUT /Culturesmith%2BHome%20Variant%20B%2BMeet%20Brandon%20Card -> 303; read back 200, 677 bytes, type RichText; read rule -> 303",
+      "evidence": {
+        "status": 303,
+        "readStatus": 200,
+        "readType": "RichText",
+        "readRuleStatus": 303,
+        "error": ""
+      }
+    },
+    {
+      "name": "view: Home Variant B Layout",
+      "ok": true,
+      "detail": "PUT /Home%20Variant%20B%20Layout -> 303; read back 200, 20783 bytes; read rule -> 303",
+      "evidence": {
+        "status": 303,
+        "readStatus": 200,
+        "readRuleStatus": 303,
+        "error": ""
+      }
+    },
+    {
+      "name": "view: Culturesmith+Home Variant B+*self+*layout",
+      "ok": true,
+      "detail": "PUT /Culturesmith%2BHome%20Variant%20B%2B*self%2B*layout -> 303; read rule -> 303",
+      "evidence": {
+        "status": 303,
+        "readRuleStatus": 303,
+        "error": ""
+      }
+    },
+    {
+      "name": "page: variant A renders signed out",
+      "ok": true,
+      "detail": "GET /Culturesmith%2BHome%20Variant%20A -> 200, 91497 bytes",
+      "evidence": {
+        "status": 200,
+        "bytes": 91497,
+        "checks": {
+          "status200": true,
+          "signedOut": true,
+          "allMarkersPresent": true,
+          "layoutSeated": true,
+          "skinLinked": true,
+          "navbarPresent": true,
+          "footerPresent": true
+        },
+        "missing": []
+      }
+    },
+    {
+      "name": "page: variant B renders signed out",
+      "ok": true,
+      "detail": "GET /Culturesmith%2BHome%20Variant%20B -> 200, 97925 bytes",
+      "evidence": {
+        "status": 200,
+        "bytes": 97925,
+        "checks": {
+          "status200": true,
+          "signedOut": true,
+          "allMarkersPresent": true,
+          "layoutSeated": true,
+          "skinLinked": true,
+          "navbarPresent": true,
+          "footerPresent": true
+        },
+        "missing": []
+      }
+    },
+    {
+      "name": "guards: written bytes",
+      "ok": true,
+      "detail": "{\"noEmDash\":true,\"noEnDash\":true,\"englishOnlyAscii\":true,\"noOperatorSurname\":true}",
+      "evidence": {
+        "noEmDash": true,
+        "noEnDash": true,
+        "englishOnlyAscii": true,
+        "noOperatorSurname": true
+      }
+    }
+  ]
+}

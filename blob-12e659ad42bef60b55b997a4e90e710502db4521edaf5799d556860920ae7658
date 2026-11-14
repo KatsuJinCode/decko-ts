@@ -1,0 +1,140 @@
+{
+  "row": "reg-treewalk-c2-mark-rb",
+  "rubyFiles": 1,
+  "rubySources": [
+    "card-1.110.0/lib/card/mark.rb",
+    "lib/card/mark.rb",
+    "mark.rb"
+  ],
+  "defCount": 3,
+  "counts": {
+    "PORTED": 2,
+    "PORTED-INLINE": 1
+  },
+  "probeCount": 6,
+  "gapReason": {
+    "def": "cardish",
+    "reason": "The port carries two of the row's three defs: id_or_name (src/card/mod-loader/mods/card-mod-virtual.ts:400, which cites card-1.110.0 lib/card/mark.rb:20-23 by line, and src/card/fetch/retrieve.ts, whose `normalizeMark` carries the same behaviour) and id_from_mark (src/card/fetch/retrieve.ts:135, cited as lib/card/mark.rb). The one gap is `cardish` (mark.rb:9-15), the method that returns a Card instance UNCHANGED and fetches anything else with an empty options hash. The port's fetch path carries the BEHAVIOUR - a Card record mark resolves through src/card/fetch/retrieve.ts:154, `if (isCardRecord(mark)) return mark.id;`, which is the `is_a? Card` arm - but the port's own map does not claim mark.rb#cardish anywhere, and a name match in an unrelated file is not a claim. The row's verdict is that the behaviour is present and the citation is not.",
+    "note": true
+  },
+  "probes": [
+    {
+      "probe": "cardish with a String mark",
+      "method": "cardish",
+      "rubyFile": "card-1.110.0/lib/card/mark.rb",
+      "rubyStartLine": 9,
+      "rubyEndLine": 15,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "fetch",
+          "args": [
+            "Example",
+            "Hash"
+          ]
+        }
+      ],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "id_or_name with one Integer mark",
+      "method": "id_or_name",
+      "rubyFile": "card-1.110.0/lib/card/mark.rb",
+      "rubyStartLine": 20,
+      "rubyEndLine": 24,
+      "outcome": "returned",
+      "calls": [],
+      "resultClass": "Integer"
+    },
+    {
+      "probe": "id_or_name with a Symbol mark",
+      "method": "id_or_name",
+      "rubyFile": "card-1.110.0/lib/card/mark.rb",
+      "rubyStartLine": 20,
+      "rubyEndLine": 24,
+      "outcome": "returned",
+      "calls": [],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "id_or_name with a String mark",
+      "method": "id_or_name",
+      "rubyFile": "card-1.110.0/lib/card/mark.rb",
+      "rubyStartLine": 20,
+      "rubyEndLine": 24,
+      "outcome": "returned",
+      "calls": [],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "id_or_name with two marks",
+      "method": "id_or_name",
+      "rubyFile": "card-1.110.0/lib/card/mark.rb",
+      "rubyStartLine": 20,
+      "rubyEndLine": 24,
+      "outcome": "returned",
+      "calls": [],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "id_from_mark with an Integer",
+      "method": "id_from_mark",
+      "rubyFile": "card-1.110.0/lib/card/mark.rb",
+      "rubyStartLine": 28,
+      "rubyEndLine": 35,
+      "outcome": "returned",
+      "calls": [],
+      "resultClass": "Integer"
+    }
+  ],
+  "defs": [
+    {
+      "name": "cardish",
+      "file": "card-1.110.0/lib/card/mark.rb",
+      "line": 9,
+      "disposition": "PORTED",
+      "portBinding": "card/fetch.ts:624",
+      "portBindingCited": "card/fetch.ts:624 (lib/card/mark.rb)",
+      "inlineSite": "card/fetch.ts:619",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/fetch.ts:619 (lib/card/mark.rb#cardish)",
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "id_or_name",
+      "file": "card-1.110.0/lib/card/mark.rb",
+      "line": 20,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/fetch/retrieve.ts:95",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/fetch/retrieve.ts:3 (lib/card/mark.rb)",
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/fetch.rb:32"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "id_from_mark",
+      "file": "card-1.110.0/lib/card/mark.rb",
+      "line": 28,
+      "disposition": "PORTED",
+      "portBinding": "card/fetch/retrieve.ts:136",
+      "portBindingCited": "card/fetch/retrieve.ts:136 (lib/card/mark.rb)",
+      "inlineSite": null,
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    }
+  ]
+}
+

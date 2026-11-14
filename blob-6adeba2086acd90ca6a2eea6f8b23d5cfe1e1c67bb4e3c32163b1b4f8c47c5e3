@@ -1,0 +1,113 @@
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { createActionsTestStorage, seedCard, seedReference, seedStandardDeck, type ActionsTestStorage } from "../card/actions/actions-test-storage.js";
+import { CardActionEngine } from "../../src/card/actions/card-action-engine.js";
+import { RenderEngine } from "../../src/card/render.js";
+import { defaultDeckLoader } from "../../src/card/mod-loader/default-mod-deck.js";
+import { getDefaultModLoader, setDefaultModLoader } from "../../src/card/mod-loader.js";
+import { runAuthMigrations, SessionStore } from "../../src/card/auth/index.js";
+import { CaptureTransport } from "../../src/card/notify/transport.js";
+import { handleWriteRequest } from "../../src/server/write-routes.js";
+
+type Policy = "Anyone" | "Anyone Signed In" | "Administrator";
+type Actor = "guest" | "member" | "administrator";
+let storage: ActionsTestStorage | undefined;
+const originalLoader = getDefaultModLoader();
+beforeEach(() => vi.stubGlobal("fetch", vi.fn(() => { throw new Error("No network in invitation reattack"); })));
+afterEach(() => { storage?.close(); storage = undefined; vi.unstubAllGlobals(); setDefaultModLoader(originalLoader); });
+
+async function fixture(policy: Policy, actor: Actor, missingType = false) {
+  const s = storage = await createActionsTestStorage();
+  await seedStandardDeck(s);
+  for (const [id, name, codename, typeId] of [
+    [400, "Role", "role", 3], [401, "Administrator", "administrator", 400],
+    [404, "*members", "members", 2], [410, "*account", "account", 2],
+    [411, "*status", "status", 2], [414, "*email", "email", 2],
+    [415, "*password", "password", 2], [416, "*salt", "salt", 2],
+    [412, "Person", missingType ? "" : "user", 3], [413, "Sign up", "signup", 3],
+    [420, "Candidate", "", 413], [430, "Member", "", 412],
+    [431, "Owner", "", 412], [432, "Anonymous", "anonymous", 412],
+    [440, "Anyone Signed In", "anyone_signed_in", 400], [450, "*type", "type", 2],
+    [453, "*read", "read", 2],
+  ] as const) await seedCard(s, { id, name, codename: codename || undefined, typeId });
+  await seedCard(s, { id: 403, leftId: 401, rightId: 404, dbContent: "[[Owner]]" });
+  await seedReference(s, 403, 431, "owner");
+  await seedCard(s, { id: 421, leftId: 420, rightId: 410 });
+  await seedCard(s, { id: 422, leftId: 421, rightId: 411, dbContent: "unapproved" });
+  await seedCard(s, { id: 423, leftId: 421, rightId: 414, dbContent: "candidate@example.test" });
+  await seedCard(s, { id: 433, leftId: 430, rightId: 410 });
+  await seedCard(s, { id: 434, leftId: 433, rightId: 411, dbContent: "active" });
+  await seedCard(s, { id: 451, leftId: 412, rightId: 450, typeId: 300 });
+  await seedCard(s, { id: 452, leftId: 451, rightId: 301, dbContent: `[[${policy}]]` });
+  const party = policy === "Anyone" ? 304 : policy === "Anyone Signed In" ? 440 : 401;
+  await seedReference(s, 452, party, policy.toLowerCase().replaceAll(" ", "_"));
+  await seedCard(s, { id: 454, leftId: 7, rightId: 453, dbContent: "[[Anyone]]" });
+  await seedReference(s, 454, 304, "anyone");
+  s.engine.installNameEnvironment();
+  await runAuthMigrations(s.driver);
+  const sessions = new SessionStore({ driver: s.driver });
+  const token = actor === "guest" ? undefined : (await sessions.createSession(actor === "member" ? 430 : 431)).token;
+  const transport = new CaptureTransport("invitation-policy-independent");
+  const render = new RenderEngine(s.engine);
+  render.modLoader = defaultDeckLoader(); setDefaultModLoader(render.modLoader);
+  render.viewer = actor === "guest" ? { signedIn: false } : { signedIn: true, actorId: actor === "member" ? 430 : 431 };
+  render.pageSession = render.viewer;
+  const engine = () => new CardActionEngine(s.engine, { actor: actor === "guest" ? null : { id: actor === "member" ? 430 : 431, name: actor === "member" ? "Member" : "Owner" } });
+  const snapshot = async () => Object.fromEntries(await Promise.all(
+    ["cards", "card_references", "card_acts", "card_actions", "card_changes"].map(async table => [table, await s.selectAll(`SELECT * FROM ${table} ORDER BY rowid`)]),
+  ));
+  const newForm = () => render.render("", "new", { absentCard: true, focalRoot: true, newCard: { typeId: 413, typePreset: true } });
+  const request = (trigger: string) => handleWriteRequest(
+    { driver: s.driver, fetcher: s.engine, accountMail: { transport, token: { secret: "synthetic-invitation-key" }, origin: "http://deck.example", siteTitle: "Synthetic" } },
+    { method: "PATCH", pathname: "/update/Candidate.json", host: "deck.example", headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ card: { trigger } }) },
+  );
+  return { s, render, engine, snapshot, newForm, request, transport };
+}
+
+for (const policy of ["Anyone", "Anyone Signed In", "Administrator"] as const) {
+  for (const actor of ["guest", "member", "administrator"] as const) {
+    for (const missing of [false, true]) {
+      it(`new form ${policy}/${actor}/missing-accounted-type=${missing} agrees with approval and remains read only`, async () => {
+        const f = await fixture(policy, actor, missing);
+        const allowed = !missing && (actor === "administrator" || policy === "Anyone" || (policy === "Anyone Signed In" && actor === "member"));
+        expect(await f.engine().canApproveSignups()).toBe(allowed);
+        const before = await f.snapshot();
+        const html = await f.newForm();
+        expect(html).toContain('name="card[subcards][+*account][subcards][+*email][content]"');
+        expect(html.includes("Send Invitation")).toBe(actor !== "guest" && allowed);
+        expect(await f.snapshot()).toEqual(before);
+        if (!allowed) {
+          for (const trigger of ["approve_with_verification", "approve_without_verification"]) {
+            expect((await f.request(trigger))?.status).toBe(422);
+            expect(await f.snapshot()).toEqual(before);
+          }
+        }
+        expect(f.transport.captured()).toHaveLength(0);
+        expect(fetch).not.toHaveBeenCalled();
+      });
+    }
+  }
+}
+
+for (const actor of ["guest", "member"] as const) {
+  it(`warm ${actor} rendering observes actual rule grant and revocation`, async () => {
+    const f = await fixture("Administrator", actor);
+    const writer = new CardActionEngine(f.s.engine, { actor: { id: 431, name: "Owner" } });
+    const check = async (allowed: boolean) => {
+      expect(await f.engine().canApproveSignups()).toBe(allowed);
+      const before = await f.snapshot();
+      expect((await f.newForm()).includes("Send Invitation")).toBe(actor !== "guest" && allowed);
+      const core = await f.render.render("Candidate", "core");
+      expect(core.includes("approve_with_verification")).toBe(allowed);
+      expect(core.includes("approve_without_verification")).toBe(allowed);
+      if (!allowed) expect((await f.request("approve_without_verification"))?.status).toBe(422);
+      expect(await f.snapshot()).toEqual(before);
+      expect(f.transport.captured()).toHaveLength(0);
+    };
+    await check(false);
+    expect(await writer.updateCard({ cardId: 452, content: "[[Anyone]]" })).not.toBeNull();
+    await check(true);
+    expect(await writer.updateCard({ cardId: 452, content: "[[Administrator]]" })).not.toBeNull();
+    await check(false);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+}

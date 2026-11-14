@@ -1,0 +1,17 @@
+{
+  "row": "insert-item-event",
+  "event_file": "card-mod-list-0.20.0/set/abstract/01_list/events.rb",
+  "event": "insert_item_event",
+  "scenarios": [
+    {
+      "name": "a save that posted an item and its index: the body inserts the item at that index",
+      "env_params": { "item_index": "2" },
+      "returns": { "item_to_insert": "New+Card" }
+    },
+    {
+      "name": "a save that posted an item with no index: the body inserts it at the start",
+      "env_params": {},
+      "returns": { "item_to_insert": "New+Card" }
+    }
+  ]
+}

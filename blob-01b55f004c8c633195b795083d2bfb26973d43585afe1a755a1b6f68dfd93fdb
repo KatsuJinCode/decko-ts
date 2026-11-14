@@ -1,0 +1,297 @@
+// Pointer/list item inner body identity: when the host's item_type_name
+// resolves to a non-BasicCs type, the inner `<div class="bar ...">` body
+// of an UNKNOWN read-denied item must carry that host type (its
+// data-card-type-id/name and ALL TYPE-* class chip), not the deck's
+// configured phantom fallback (BasicCs / basic_c).
+//
+// Bug shape: an unresolved content divergence on a cluster of
+// entity-named pages whose pointer/list items are unknown and
+// read-denied — every page in that cluster funnels through this code
+// path:
+//
+//   <div id="<item>-mini_bar-view" class="card-slot mini_bar-view ALL TYPE-consideration"
+//        data-card-type-id="2979" data-card-type-name="consideration"
+//        data-slot="...&quot;type&quot;:&quot;consideration&quot;}">
+//     <!-- EXPECTED inner body uses the host's item type: -->
+//     <div class='bar ALL TYPE-consideration with-bar-menu nodblclick d-flex _card-link'
+//          data-card-type-id='2979' data-card-type-name='consideration'>
+//       <!-- bar-left with the card-title span (the readable-item bar.haml body) -->
+//     </div>
+//   </div>
+//
+//   <!-- DEFECTIVE inner body uses the default phantom type: -->
+//   <div class='bar ALL TYPE-basic_c with-bar-menu nodblclick d-flex _card-link'
+//        data-card-type-id='22281' data-card-type-name='BasicCs'>
+//     <span class="denied">...</span>
+//     <span class="denied">...</span>
+//   </div>
+//
+// The OUTER slot wrap already carries the host type
+// (pointerListItemSlot reads phantom.typeId/typeName — set by
+// phantomPointerListItem(name, phantomIdentity(hostItemType))); the
+// INNER body is built by pointerListItemBodyForUnknown WITHOUT the
+// host type (views.ts:1588). Ruby's item.rb#new_unknown_item_args
+// folds the host item_type into the phantom's type attrs BOTH in the
+// outer nest wrap and the inner bar.haml body — the port has the
+// outer right and the inner wrong.
+//
+// This is a same-tree, same-DB, single-engine-byte diff: fixing the
+// inner body identity chain flips the expected bytes byte-exact for
+// every page in the content-divergence population whose only divergence
+// was the inner TYPE-* class chip + data-card-type-* attrs on the inner
+// bar div.
+
+import { describe, it, expect, afterEach } from "vitest";
+import { pointerListItemBodyForUnknown } from "../../../src/card/render/pointer-list.js";
+import { createRenderTestStorage, seedCard, seedReference, type RenderTestStorage } from "./render-test-storage.js";
+import { CONFIGURED_PHANTOM_ITEM_TYPE } from "../../deploy/fixtures/configured-deck-served-deltas.js";
+
+/** The cardtype cards the codename registry needs for typeCode gates. */
+async function seedCardtypes(s: RenderTestStorage): Promise<void> {
+  await seedCard(s, { id: 2, name: "Basic", codename: "basic", typeId: 2 });
+  await seedCard(s, { id: 5, name: "Cardtype", codename: "cardtype", typeId: 5 });
+  await seedCard(s, { id: 30, name: "Search", codename: "search_type", typeId: 5 });
+  // Role: the type Ruby's seed gives Administrator (decko setup: Administrator
+  // is typed Role, Anyone and Anyone Signed In likewise).
+  await seedCard(s, { id: 31, name: "Role", codename: "role", typeId: 5 });
+  await seedCard(s, { id: 47, name: "List", codename: "list", typeId: 5 });
+  await seedCard(s, { id: 259, name: "Set", codename: "set", typeId: 5 });
+  await seedCard(s, { id: 278, name: "Setting", codename: "setting", typeId: 5 });
+  await seedCard(s, { id: 34843, name: "Pointer", codename: "pointer", typeId: 5 });
+}
+
+/** The settings/sides the rule walks and junction fetches resolve. */
+async function seedSettings(s: RenderTestStorage): Promise<void> {
+  await seedCard(s, { id: 700, name: "*right", codename: "right", typeId: 259 });
+  await seedCard(s, { id: 701, name: "*content options", codename: "content_options", typeId: 278 });
+  await seedCard(s, { id: 702, name: "*input type", codename: "input_type", typeId: 278 });
+  await seedCard(s, { id: 703, name: "*layout", codename: "layout", typeId: 278 });
+  await seedCard(s, { id: 704, name: "*read", codename: "read", typeId: 278 });
+  await seedCard(s, { id: 708, name: "*self", codename: "self", typeId: 259 });
+  await seedCard(s, { id: 274, name: "*all", codename: "all", typeId: 259, dbContent: "fr" });
+}
+
+let storage: RenderTestStorage | undefined;
+
+afterEach(() => {
+  storage?.close();
+  storage = undefined;
+});
+
+describe("entity-cluster phantom pointer/list item: inner body carries host item type, not BasicCs fallback", () => {
+  // -------------------------------------------------------------------------
+  // UNIT: pin the inner-body builder's identity acceptance. Pointer-list's
+  // pointerListItemBodyForUnknown (the function the phantom path calls)
+  // already accepts an identity override; these tests pin its contract
+  // so the call-site fix can rely on it without re-deriving the chip math.
+  // -------------------------------------------------------------------------
+  it("unit: no identity -> the DECK's configured phantom type (the no-host-type fallback pin)", () => {
+    // The fallback is the deck's own `*all+*default` template type, which is
+    // deployment CONFIGURATION rather than an
+    // engine constant. This case hands the builder the deck's configured
+    // phantom type and pins that those bytes still come out right.
+    const body = pointerListItemBodyForUnknown(
+      "phantom item",
+      undefined,
+      CONFIGURED_PHANTOM_ITEM_TYPE,
+    );
+    expect(body).toMatch(/<div class='bar [^']*TYPE-basic_c[^']*with-bar-menu/);
+    expect(body).toContain(`data-card-type-id='${CONFIGURED_PHANTOM_ITEM_TYPE.typeId}'`);
+    expect(body).toContain("data-card-type-name='BasicCs'");
+    expect(body).not.toContain("TYPE-consideration");
+    expect(body).not.toContain("data-card-type-id='2979'");
+  });
+
+  it("unit: no identity AND no configured phantom type -> no type chip at all", () => {
+    // The counterpart, and the regression guard for the defect itself: a
+    // deck with no `*all+*default` rule renders unknown items with NO type
+    // chip and no type attributes — Ruby's template walk answers nil there,
+    // so the new card carries no type at all. It must NOT quietly fall back
+    // to another deck's type.
+    const body = pointerListItemBodyForUnknown("phantom item");
+    expect(body).toMatch(/<div class='bar [^']*with-bar-menu/);
+    expect(body).not.toContain("TYPE-");
+    expect(body).not.toContain("data-card-type-id");
+    expect(body).not.toContain("data-card-type-name");
+    expect(body).not.toContain("22281");
+    expect(body).not.toContain("BasicCs");
+  });
+
+  it("unit: with consideration identity -> inner body carries consideration", () => {
+    const identity = { typeName: "consideration", typeId: 2979, setKeys: "ALL TYPE-consideration" };
+    const body = pointerListItemBodyForUnknown(
+      "phantom item",
+      identity,
+      CONFIGURED_PHANTOM_ITEM_TYPE,
+    );
+    expect(body).toMatch(/<div class='bar [^']*TYPE-consideration[^']*with-bar-menu/);
+    expect(body).toContain("data-card-type-id='2979'");
+    expect(body).toContain("data-card-type-name='consideration'");
+    expect(body).not.toContain("TYPE-basic_c");
+    expect(body).not.toContain("data-card-type-id='22281'");
+  });
+
+  it("unit: with Project identity -> inner body carries Project (Project-typed sample)", () => {
+    const identity = { typeName: "Project", typeId: 398, setKeys: "ALL TYPE-project" };
+    const body = pointerListItemBodyForUnknown("Improving Project Success through Myth Discovery", identity);
+    expect(body).toMatch(/<div class='bar [^']*TYPE-project[^']*with-bar-menu/);
+    expect(body).toContain("data-card-type-id='398'");
+    expect(body).toContain("data-card-type-name='Project'");
+    expect(body).not.toContain("TYPE-basic_c");
+  });
+
+  // -------------------------------------------------------------------------
+  // INTEGRATION: pin the FULL render path through a host whose
+  // *content_options rule card carries {"type":"consideration"} — the
+  // unknown read-denied pointer/list-item shape. RED until views.ts:1588
+  // passes the phantom's identity to pointerListItemBodyForUnknown.
+  // -------------------------------------------------------------------------
+  it(
+    "integration: a List host with consideration item_type renders its UNKNOWN item's inner body with consideration (not BasicCs)",
+    async () => {
+      storage = await createRenderTestStorage();
+      await seedCardtypes(storage);
+      await seedSettings(storage);
+      // The consideration cardtype — what the host's cql-typed
+      // *content_options rule points at.
+      await seedCard(storage, { id: 2979, name: "consideration", typeId: 5 });
+      // The host list card (a type-47 List whose one item does NOT exist in
+      // the deck).
+      await seedCard(storage, {
+        id: 99146,
+        name: "entity cluster host",
+        typeId: 47,
+        dbContent: "phantom item",
+      });
+      // *self set rule card on the host (the rule-walk's most-specific
+      // candidate for "this host" + *content_options).
+      await seedCard(storage, {
+        id: 99147,
+        name: "entity cluster host+*self",
+        leftId: 99146,
+        rightId: 708,
+        typeId: 259,
+      });
+      // The host's *content_options rule card carrying
+      // {"type":"consideration"} — the cql-item-type spec shape. The
+      // cql-item-type-id walk (render.ts:2211-2234) parses this and returns
+      // { typeName: "consideration", typeId: 2979 }.
+      await seedCard(storage, {
+        id: 99148,
+        name: "entity cluster host+*self+*content options",
+        leftId: 99147,
+        rightId: 701,
+        typeId: 30,
+        dbContent: '{"type":"consideration"}',
+      });
+
+      const html = await storage.engine.render("entity cluster host", "content");
+
+      // OUTER slot wrap carries the host type (already correct pre-fix;
+      // pinned here so a future regression on the outer wrap also fails
+      // the test, not silently).
+      expect(html).toContain('id="phantom_item-mini_bar-view"');
+      expect(html).toMatch(/class="card-slot mini_bar-view [^"]*TYPE-consideration[^"]*"/);
+      expect(html).toContain('data-card-type-id="2979"');
+      expect(html).toContain('data-card-type-name="consideration"');
+      expect(html).toContain('&quot;type&quot;:&quot;consideration&quot;');
+
+      // INNER body identity: the bar div must carry the host type attrs
+      // (data-card-type-id/name and ALL TYPE-consideration class chip),
+      // not the deck's default phantom BasicCs/22281/basic_c. The
+      // mismatch was the unresolved content divergence — the inner body
+      // had TYPE-basic_c / data-card-type-id='22281' / data-card-type-name='BasicCs'.
+      expect(html).toMatch(/<div class='bar [^']*TYPE-consideration[^']*with-bar-menu/);
+      expect(html).toContain("data-card-type-id='2979'");
+      expect(html).toContain("data-card-type-name='consideration'");
+      expect(html).not.toContain("TYPE-basic_c");
+      expect(html).not.toContain("data-card-type-id='22281'");
+      expect(html).not.toContain("data-card-type-name='BasicCs'");
+    },
+  );
+  // -------------------------------------------------------------------------
+  // INTEGRATION (CQL item-typing): a COMPOUND unknown item whose
+  // host item type carries a TYPE-LEVEL *structure rule is VIRTUAL
+  // (states.rb:44-50 virtual? = compound && structure.present?) hence
+  // KNOWN (states.rb:65) - Ruby's alter_unknown returns early and the
+  // denial runs on the requested :bar view itself: the plain quiet denial
+  // span, NO mini_bar wrap. A phantom typed Tracked Item via a *content
+  // options rule, with a Tracked Item+*type+*structure rule present,
+  // renders `<div class="pointer-item item-bar"><span class="denied">` in
+  // the expected bytes where the engine's mini_bar two-span body was the
+  // defect. The SIMPLE-named fixture above stays on the mini_bar arm:
+  // name.simple? short-circuits virtual? whatever the type (states.rb:45).
+  // -------------------------------------------------------------------------
+  it(
+    "integration: a COMPOUND unknown item whose host item type has a type-level *structure rule renders the bare quiet denial span (virtual/known, no mini_bar wrap)",
+    async () => {
+      storage = await createRenderTestStorage();
+      await seedCardtypes(storage);
+      await seedSettings(storage);
+      // The Tracked Item cardtype + its TYPE-LEVEL *structure rule (set
+      // card "Tracked Item+*type").
+      await seedCard(storage, { id: 2079, name: "Tracked Item", typeId: 5 });
+      await seedCard(storage, { id: 710, name: "*type", codename: "type", typeId: 259 });
+      await seedCard(storage, { id: 2080, name: "Tracked Item+*type", leftId: 2079, rightId: 710, typeId: 259 });
+      await seedCard(storage, {
+        id: 2081,
+        name: "Tracked Item+*type+*structure",
+        leftId: 2080,
+        rightId: 709,
+        typeId: 30,
+        dbContent: "<p>Due: {{+due date}}</p>",
+      });
+      await seedCard(storage, { id: 709, name: "*structure", codename: "structure", typeId: 278 });
+      // The read restriction on the item's type (Tracked Item+*type+*read),
+      // the rule the item's candidate walk reaches BEFORE the catch-all
+      // (set/all/permissions.rb: the first candidate that names a live rule
+      // decides). It grants only the Administrator role, which the anonymous
+      // viewer does not hold, so the item is read-DENIED (the denial this
+      // test pins), while the deck's catch-all *all+*read still grants Anyone
+      // everything else. Without it the catch-all would make the item
+      // readable and the bar would render in full.
+      await seedCard(storage, { id: 2082, name: "Tracked Item+*type+*read", leftId: 2080, rightId: 704, typeId: 47, dbContent: "Administrator" });
+      await seedCard(storage, { id: 19, name: "Administrator", codename: "administrator", typeId: 31 });
+      await seedReference(storage, 2082, 19, "administrator");
+
+      // The host list card with a *content options rule typing its items
+      // Tracked Item (the host is COMPOUND with right part "Plans", so
+      // the rule walk's RIGHT-pattern candidate finds the rule) and one
+      // COMPOUND item that does not exist.
+      await seedCard(storage, { id: 99245, name: "Plans", typeId: 2 });
+      await seedCard(storage, {
+        id: 99247,
+        name: "Plans+*right",
+        leftId: 99245,
+        rightId: 700,
+        typeId: 259,
+      });
+      await seedCard(storage, {
+        id: 99248,
+        name: "Plans+*right+*content options",
+        leftId: 99247,
+        rightId: 701,
+        typeId: 30,
+        dbContent: '{"type":"Tracked Item"}',
+      });
+      await seedCard(storage, { id: 99249, name: "Plans Holder", typeId: 2 });
+      await seedCard(storage, {
+        id: 99246,
+        name: "Plans Holder+Plans",
+        leftId: 99249,
+        rightId: 99245,
+        typeId: 47,
+        dbContent: "Sample Card 112+Sample Card 160+SMD",
+      });
+
+      const html = await storage.engine.render("Plans Holder+Plans", "content");
+
+      // The virtual/known phantom: Ruby's plain quiet denial span inside
+      // the pointer-item wrap, NO mini_bar slot, NO bar body.
+      expect(html).toContain("<div class=\"pointer-item item-bar\"><span class=\"denied\">");
+      expect(html).not.toContain("mini_bar-view");
+      expect(html).not.toContain("<div class='bar ");
+      expect(html).toContain("Sorry, you don't have permission (read)");
+    },
+  );
+});

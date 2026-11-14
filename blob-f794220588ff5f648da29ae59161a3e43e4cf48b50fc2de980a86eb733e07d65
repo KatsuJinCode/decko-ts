@@ -1,0 +1,68 @@
+# Deterministic isolated race-fixture setup (issue 151)
+
+Base: `6396853ddef7dda305c3daf84d12bb1260eb2a7a`.
+Only the race fixture, its controls and this receipt change. Production
+drivers, gates, schema, canonical seed and root integration are unchanged.
+
+## Measured mechanism
+
+The selected local D1 double-click case initialized its fresh database with
+100 individual driver queries and zero batches. Instrumented setup took
+6514.3168 ms; the entire case took 10134 ms. The earlier uninstrumented
+single-case run took 5735 ms, illustrating run variance rather than a fixed
+baseline. Both selected runs passed and selected out the other 34 cases;
+neither was a full-suite run.
+
+The new helper executes the unchanged canonical seed once on a private local
+in-memory database and records its actual ordered statements, including the
+generated IDs determined by its readbacks. It closes that database and restores
+the previous name environment. The immutable statement plan is cached once
+per test process; each target receives fresh statement/parameter arrays.
+The existing optional PRAGMA stays outside the batch. Schema and seed execute
+in one target batch. No database instance or race state is shared or reused.
+
+The same selected case then used one query plus one batch: setup 2095.1063 ms,
+whole case 6724 ms. A subsequent bounded two-case D1 slice measured setup
+1034.2062 and 838.7195 ms, again one query/one batch each. These are actual
+performance.now intervals including fixture compilation when cold and local
+workerd IPC; they are not model estimates or hosted-provider measurements.
+Compilation caches may be reused. Test answers and target database state are
+fresh; only the deterministic statement plan is intentionally reused.
+
+## Isolation and preserved behavior
+
+Three new controls verify canonical serial schema/all-table row equality,
+two actual local D1 bindings with independent state, refusal to reseed an
+existing mutated database without destroying it, unchanged name environment,
+fresh parameter/statement ownership, the two-call setup budget, and exact
+batch-error propagation without replay. Miniflare disposal is awaited.
+
+All original scenario bodies, expected answers, provider allocation and
+teardown code after the fixture helper remain byte-identical to the base.
+The preserved source tail SHA-256 is
+`52c688f39aa6fba78ba72f32f21a492947382ba922b305aaffa757aeda9abc74`.
+No race timeout, skip, concurrency, history expectation or isolation weakened.
+
+Only after the measured slice and isolation checks passed, one full
+verification ran: all 35 original race cases plus three new controls passed,
+zero failed/skipped. The original race file reports 58769 ms; total invocation
+60.19 seconds. The prior Area4 observation of 129758 ms belongs to a different
+run/context and is not treated as a controlled same-run benchmark. In this
+full verification, 12 actual local D1 setups each used one query and one batch;
+their setup intervals ranged 450.666–804.190 ms, totaling 6985.266 ms.
+Remaining D1 race operations keep their original production statement paths.
+
+Typecheck exits zero. Named-file platform scanner: three fixture/test files,
+zero command hits. Whitespace check passes. Hosted target was unset. No
+hosted-provider/cloud/VM/model call, download or install occurred; local workerd and
+Hrana test servers are the original suite's owned test infrastructure. Issue
+156 and every production driver/gate are unchanged. Independent review and
+application over the release owner's frozen integration source remain separate.
+
+Full raw evidence under `.runtime/adapter123/`:
+`race151-before-slice.log`, `race151-before-setup-measurement.log`,
+`race151-after-slice.log`, `race151-cold-warm-slice.log`,
+`race151-fixture-controls.log`, `race151-full-verification.log`, and typechecks.
+The full verification SHA-256 is
+`da59e61fd3970ab14e302ed7c216b5b88c53d63b4a4014e45a32d29cb42b31fb`.
+No original fixture or proof was deleted.
