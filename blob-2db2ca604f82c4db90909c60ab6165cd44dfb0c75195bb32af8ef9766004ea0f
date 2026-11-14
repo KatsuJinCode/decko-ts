@@ -1,0 +1,80 @@
+# Contract acceptance disposition
+
+Record scope: documentation reconciliation against source
+`7f88f3fe1ab8ee6c7279fa8b64dce7de5afac453`, using existing local records only.
+This document assigns no new overall score. Current full compatibility
+acceptance remains open under [decision 0013](../decisions/0013-complete-parity-acceptance.md)
+and the [architecture contract](architecture.md).
+
+## How to read the evidence
+
+- **Historical assessment:** a retained row label, result or closure statement
+  from its cited source/configuration. Its original data and citations remain.
+- **Verified in this reconciliation:** document identities, literal statement
+  inventory and saved artifact consistency checked against the named source.
+  Executed results keep their own recorded revision, instrument and scope.
+- **Current acceptance unverified:** the records examined here do not establish
+  the corresponding current candidate/runtime/reference/backend conclusion.
+  This describes evidence scope, not absence of implementation.
+
+The contract's behavior and proof requirements remain controlling. Its older
+implementation annotations and the ledger's later row assessments disagree
+in places, including P1.4.a/P1.5.a and E4.1.a/E4.2.a/E4.3.a/E4.4.a. These
+annotations need their cited evidence interpreted per row; neither an old
+"unported" annotation nor an unavailable source/capture establishes that the
+current mechanism is missing.
+
+## Four category dispositions
+
+| Category | Historical finite evidence retained | Verified scope and current acceptance boundary |
+|---|---|---|
+| Persistence | P1 rows retain save/history/reference comparisons and storage regressions. P1.6.a explicitly checks untouched legacy tables while leaving migration execution unmeasured. | Row/citation preservation and the saved ba9 correctness receipt are checked. A storage regression or runtime non-write observation does not qualify the separate migration-execution arm or the complete supported transaction/backend/migration behavior. Current complete category acceptance remains unverified. |
+| Semantics | S2 rows retain name/CQL/rule/permission probes, fixture comparisons and synthetic cases, including named dialect differences. | The retained source-checker integration qualifies a source-admission path; its genuine capture compares three isolated name queries with themselves. It supplies no Ruby differential result. The ba9 MySQL failures retain their own prerequisite limitation. Current original-Ruby and supported runtime/backend acceptance remains unverified by this reconciliation. |
+| Rendering | R3 rows retain card/view/corpus comparisons, the sampled structure result, loud-denial branches and capture-configuration caveats. | The affected browser strict-text aggregate was invalidated because its comparator erased literal dates and durations. That finding does not erase distinct HTML/card-view fixture results or conflate their instruments. Saved masked text cannot supply a corrected strict-text grade. Current candidate rendering acceptance needs its own admitted source/reference/data/configuration and raw output scope. |
+| Side effects | E4 rows retain reference/cache/draft/auth/mod cases, captured mail bytes with mock-peer delivery, and attachment tree-pattern evidence with its recorded timing divergence. | Mail bytes, mock-peer transport and job behavior have distinct measured scopes; a tree pattern retains its stated divergence; a representative help-mod or helper case does not establish full DSL/nonlegacy-mod compatibility. Current original-framework effects and complete supported DSL/runtime/backend acceptance remain unverified here. |
+
+DSL/mod acceptance crosses rendering, semantics and side effects; it is not a
+fifth category or an automatic conclusion from a representative fixture.
+The scope and exclusions remain those in the existing architecture contract.
+
+## Checker and run provenance
+
+[Decision 0011](../decisions/0011-adversarial-repair-acceptance.md) records that
+the independent review of candidate b72d9cfe invalidates release conclusions
+from the affected checkers. Existing observations remain history. The
+[strict-parity flags record](../STRICT-PARITY-FLAGS.md) preserves the precise
+browser normalization limitation and separates card HTML, main-slot,
+whole-page, URL, media and host-setting checks. Corrected checker code does
+not retroactively qualify old masked or diagnostic artifacts.
+
+The [reviewed source-checker integration](../runs/source-checker-integration-2026-10-31.md)
+retains successful scoped source/compiler/provenance controls and explicitly
+leaves Ruby, backend, browser, migration and deployment acceptance separate.
+Those verified finite controls remain useful within that scope.
+
+The [saved ba9 default correctness report](../runs/correctness-ba9-20261031/REPORT.md)
+belongs to ba9df20aabe71f6e80ca84fd65a839b2bf07dada, rather than this record's
+newer source. It records Vitest 8,620 passed, nine failed and 248 skipped;
+five MySQL files fail, including two startup failures. Combined process exit
+one keeps the gate failed. Node has 293 recorded passing assertions, while
+the only observed combined termination leaves its canonical stage INCOMPLETE.
+These are retained, independently reconciled run facts, not a new candidate
+grade or a category coverage denominator. Compilation/OS/native-artifact
+caches may be warm; the record declares no model judge or automatic retry.
+
+## Disposition of the old rollup
+
+The ledger's former "67 proven / 0 unported" and "pass 67 / fail 0" count
+primary labels over catalogued statement IDs. It collapses branches and
+carries divergences as notes on primary proven rows. Its own P1.6.a,
+R3.4.d and R3.6.a annotations retain unmeasured, unported-at-recording or
+sampled-only branches. The aggregate therefore cannot certify every branch,
+the complete architecture scope, current CI, or all supported profiles.
+The original rollup is retained as a quoted historical assessment.
+
+Future acceptance updates should attach the exact candidate/checker/reference,
+data/profile/backend, raw outcomes and independent review for the stated
+scope. Historical rows are promoted only to the extent those receipts support;
+unavailable evidence remains unverified rather than being relabelled missing
+implementation. This applies the existing governance and adds no new product
+implementation requirement.

@@ -1,0 +1,291 @@
+// The rss format on the staging host (register-routes D3).
+//
+// Ruby carries rss the way it carries every other format: as the route's
+// (.:format) suffix. engine_routes.rb:22 `get "/:mark(.:format)" => "card#read"`
+// makes `/Alpha.rss` a read of Alpha in the rss format, and
+// response.rb:111-113 `requested_format` reaches the same branch through
+// params[:format]:
+//
+//     def requested_format
+//       params[:format].present? ? params[:format].to_s : request.format
+//     end
+//
+// so `?format=rss` is the same request by a different door.
+//
+// `rss` is REGISTERED (mod/format/lib/card/format/rss_format.rb:7
+// `register :rss`), so `format_name_from_params` (response.rb:102-105)
+// KEEPS it as :rss — `explicit_file_format?` is false because
+// `Card::Format.registered.member?("rss")` is true. That is what makes this
+// row the counter-example to D4, where an UNREGISTERED suffix folds to
+// :file and send_file answers.
+//
+// The bytes are rss.rb:10-19's `show`: `view ||= :feed`, then
+// `return "RSS feeds disabled" unless Cardio.config.rss_enabled`, which
+// defaults FALSE (lib/card/mod/format.rb:4). So the stock answer to a feed
+// request is that sentence at 200 — and NOT the card's HTML page, which is
+// what this host answered before the row (the `.rss` suffix was stripped by
+// stripFormat and the card rendered as html).
+//
+// Driven through the BOOTED staging server, over real HTTP.
+// MIME: fixtures/captured/rss-format-ruby-oracle.json executes the inherited
+// HtmlFormat method. Missing-mark 200/empty is additionally observed on the
+// qualified Rails 7.2.3.2 native variant recorded in
+// docs/runs/local-ruby-reference-recovery-2026-10-29.md. That configured native
+// deck is not this synthetic fixture; do not claim its readable-feed bytes.
+
+import { spawn, type ChildProcess } from "node:child_process";
+import { createHash } from "node:crypto";
+import { mkdirSync, readFileSync, rmSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+import { createServer as netCreateServer } from "node:net";
+import Database from "better-sqlite3";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { ensureStagingServerDist } from "../card/auth/staging-server-dist-bootstrap.js";
+
+const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
+const SERVER_ENTRY = path.join(REPO_ROOT, "vm-staging-server.mjs");
+const HOST_SOURCE_SHA256 = createHash("sha256").update(readFileSync(SERVER_ENTRY)).digest("hex");
+const SCHEMA_SQL = path.join(REPO_ROOT, "db", "schema.sqlite.sql");
+const SEED_SQL = path.join(REPO_ROOT, "deploy", "seed", "seed.sql");
+const DB_PATH = path.join(REPO_ROOT, "tmp", "staging-rss-format-d3.sqlite3");
+
+const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+interface BootedServer {
+  baseUrl: string;
+  child: ChildProcess;
+  output: string;
+}
+
+async function reserveEphemeralPort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const srv = netCreateServer();
+    srv.listen(0, "127.0.0.1", () => {
+      const address = srv.address();
+      if (address === null || typeof address === "string") {
+        srv.close();
+        reject(new Error("unexpected ephemeral address"));
+        return;
+      }
+      const port = address.port;
+      srv.close(() => resolve(port));
+    });
+    srv.on("error", reject);
+  });
+}
+
+function makeSeededDeck(dbPath: string): void {
+  mkdirSync(path.dirname(dbPath), { recursive: true });
+  rmSync(dbPath, { force: true });
+  const db = new Database(dbPath);
+  try {
+    db.exec(readFileSync(SCHEMA_SQL, "utf8"));
+    db.exec(readFileSync(SEED_SQL, "utf8"));
+    const insert = db.prepare(
+      `INSERT INTO cards
+         (id, name, key, codename, left_id, right_id, current_revision_id,
+          created_at, updated_at, creator_id, updater_id,
+          read_rule_class, read_rule_id, references_expired, trash, type_id, db_content)
+       VALUES
+         (?, ?, ?, ?, ?, ?, NULL, '2026-10-19 10:00:00.000', '2026-10-19 10:00:00.000', 1, 1, NULL, NULL, NULL, 0, ?, ?)`,
+    );
+    insert.run(9000, "Html", "html", "html", null, null, 3, null);
+    insert.run(9001, "*layout", "*layout", "layout", null, null, 8, null);
+    insert.run(9002, null, "*all+*layout", null, 25, 9001, 8, "Default Layout");
+    insert.run(9003, "Default Layout", "default_layout", null, null, null, 9000, "<body><article>{{_main|titled}}</article></body>");
+    insert.run(9004, "Welcome", "welcome", null, null, null, 5, "Welcome body prose");
+    insert.run(9005, "*home", "*home", "home", null, null, 8, "Welcome");
+    insert.run(9006, "Feed Note", "feed_note", null, null, null, 5, "Synthetic feed note body");
+  } finally {
+    db.close();
+  }
+}
+
+async function bootStagingServer(dbPath: string): Promise<BootedServer> {
+  await ensureStagingServerDist();
+  const port = await reserveEphemeralPort();
+  const baseUrl = `http://127.0.0.1:${port}`;
+  const child = spawn(process.execPath, [SERVER_ENTRY, dbPath, String(port)], {
+    cwd: REPO_ROOT,
+    env: { ...process.env, DECKO_DECK_PROFILE: "stock", DECKO_ASSET_REFRESH: "never" },
+    windowsHide: true,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  booted = { baseUrl, child, output: "" };
+  let output = "";
+  child.stdout?.on("data", (chunk: Buffer) => { output += chunk.toString(); });
+  child.stderr?.on("data", (chunk: Buffer) => { output += chunk.toString(); });
+  let ready = false;
+  for (let attempt = 0; attempt < 160 && !ready; attempt++) {
+    if (child.exitCode !== null || child.signalCode !== null) {
+      throw new Error(`staging server exited before readiness\n${output}`);
+    }
+    try {
+      const response = await fetch(`${baseUrl}/_status`);
+      ready = response.status === 200;
+    } catch {
+      await delay(250);
+    }
+  }
+  if (!ready) {
+    throw new Error(`staging server did not become ready on port ${port}\n--- server output ---\n${output}`);
+  }
+  return { baseUrl, child, output };
+}
+
+let booted: BootedServer | null = null;
+
+async function rssViewAnswer(requestPath: string) {
+  const response = await fetch(`${booted!.baseUrl}${requestPath}`, { redirect: "manual" });
+  const answer = { requestPath, status: response.status,
+    contentType: response.headers.get("content-type"), body: await response.text() };
+  // Exact responses are synthetic and retained in each before/after test log.
+  console.log(JSON.stringify({ hostSourceSha256: HOST_SOURCE_SHA256, rssViewResponse: answer }));
+  return answer;
+}
+
+describe("the rss format on the staging host (D3)", () => {
+  beforeAll(async () => {
+    makeSeededDeck(DB_PATH);
+    booted = await bootStagingServer(DB_PATH);
+  }, 180_000);
+
+  afterAll(async () => {
+    if (booted !== null && booted.child.exitCode === null) {
+      const { child, baseUrl } = booted;
+      const exited = new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error("owned RSS server did not exit after shutdown")), 10_000);
+        child.once("exit", () => { clearTimeout(timer); resolve(); });
+      });
+      const response = await fetch(`${baseUrl}/_shutdown`, { method: "POST", redirect: "manual" });
+      expect(response.status).toBe(200);
+      await exited;
+      expect(child.exitCode).toBe(0);
+      console.log(JSON.stringify({ rssOwnedServerExit: { pid: child.pid, code: child.exitCode, signal: child.signalCode } }));
+    }
+    booted = null;
+    rmSync(DB_PATH, { force: true });
+  });
+
+  it("GET /Welcome.rss answers the rss feed, not the card's html page", async () => {
+    const response = await fetch(`${booted!.baseUrl}/Welcome.rss`);
+    expect(response.status).toBe(200);
+    // Response MIME comes from RssFormat's inherited HtmlFormat method;
+    // Rails' RSS request MIME registration does not override that method.
+    expect(response.headers.get("content-type")).toBe("text/html; charset=utf-8");
+    const body = await response.text();
+    // rss.rb:17-19 with the stock rss_enabled default FALSE
+    expect(body).toBe("RSS feeds disabled");
+    // and emphatically NOT the page this host answered before the row
+    expect(body).not.toContain("<html");
+    expect(body).not.toContain("Welcome body prose");
+  }, 30_000);
+
+  it("GET /Welcome?format=rss is the SAME request through params[:format]", async () => {
+    // response.rb:111-113 — params[:format] present wins over request.format
+    const suffix = await fetch(`${booted!.baseUrl}/Welcome.rss`);
+    const query = await fetch(`${booted!.baseUrl}/Welcome?format=rss`);
+    expect(query.status).toBe(200);
+    expect(query.headers.get("content-type")).toBe("text/html; charset=utf-8");
+    expect(await query.text()).toBe(await suffix.text());
+  }, 30_000);
+
+  it.each([
+    "/Feed_Note.rss?view=open",
+    "/Feed_Note?format=rss&view=open",
+    "/Feed_Note.rss?v=open",
+    "/Feed_Note?format=rss&v=open",
+  ])("an explicit RSS query view reaches the renderer: %s", async requestPath => {
+    const answer = await rssViewAnswer(requestPath);
+    expect(answer.status).toBe(200);
+    expect(answer.contentType).toBe("text/html; charset=utf-8");
+    expect(answer.body).toContain("Feed Note");
+    expect(answer.body).toContain("Synthetic feed note body");
+    expect(answer.body).not.toContain("<html");
+    expect(answer.body).not.toBe("RSS feeds disabled");
+  });
+
+  it.each([
+    "/Feed_Note.rss?view=unregistered_rss_view",
+    "/Feed_Note?format=rss&view=unregistered_rss_view",
+    "/Feed_Note/unregistered_rss_view.rss",
+    "/Feed_Note/view/unregistered_rss_view.rss",
+  ])("an unsupported explicit RSS view retains its error status: %s", async requestPath => {
+    const answer = await rssViewAnswer(requestPath);
+    expect(answer.status).toBe(422);
+    expect(answer.body).not.toBe("RSS feeds disabled");
+  });
+
+  it.each([
+    "/Feed_Note/open.rss?view=feed",
+    "/Feed_Note/view/open.rss?view=feed",
+  ])("an explicit RSS path view wins over a conflicting query: %s", async requestPath => {
+    const answer = await rssViewAnswer(requestPath);
+    expect(answer.status).toBe(200);
+    expect(answer.contentType).toBe("text/html; charset=utf-8");
+    expect(answer.body).toContain("Feed Note");
+    expect(answer.body).toContain("Synthetic feed note body");
+    expect(answer.body).not.toBe("RSS feeds disabled");
+  });
+
+  it("the plain read of the same card is untouched — still html", async () => {
+    const response = await fetch(`${booted!.baseUrl}/Welcome`);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/html");
+    expect(await response.text()).toContain("Welcome body prose");
+  }, 30_000);
+
+  it.each(["/No_Such_Card.rss", "/No_Such_Card?format=rss", "/No_Such_Card/view/open.rss"])(
+    "an absent RSS mark returns an empty success without a new-card form: %s", async requestPath => {
+      const response = await fetch(`${booted!.baseUrl}${requestPath}`, { redirect: "manual" });
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toBe("text/html; charset=utf-8");
+      expect(await response.text()).toBe("");
+    }, 30_000,
+  );
+
+  it("a DEEP path is engine_routes.rb:54's wildcard, not rss — with either door", async () => {
+    // rss rides a MARK or a MARK+VIEW; anything deeper is the wildcard
+    // view (bad_address) whatever its last segment or query says. The edge
+    // gets there structurally (parsePath returns a `kind`, the rss wrapper
+    // hands it straight back); this host gates on the segment count.
+    for (const url of ["/one/two/three.rss", "/one/two/three?format=rss"]) {
+      const response = await fetch(`${booted!.baseUrl}${url}`);
+      expect(response.status, url).toBe(404);
+      expect(await response.text(), url).not.toBe("RSS feeds disabled");
+    }
+  }, 30_000);
+
+  it("the :mark/view/:view arm's .rss suffix is the rss format, not the html page (A8)", async () => {
+    // engine_routes.rb:24's .:format capture rides the VIEW segment, so
+    // "/<mark>/view/<view>.rss" is the view in the rss format. The
+    // executed PINNED matcher says so
+    // (fixtures/captured/rails-route-recognition-ruby-oracle.json, the case
+    // "GET /Front/view/open.rss": the view "open" in the rss format).
+    // Before this arm existed on this host the suffix was stripped and the
+    // HTML page answered.
+    const response = await fetch(`${booted!.baseUrl}/Welcome/view/open.rss`);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("text/html; charset=utf-8");
+    const body = await response.text();
+    // The rss format's "open" view is the base format's titled view
+    // (card-mod-format-0.20.0/set/all/rss.rb:57 `view :open, :titled,
+    // mod: All::Base::Format`), so the answer is the card's name and core,
+    // NOT the html page and NOT the feed's "RSS feeds disabled" sentence
+    // (that sentence belongs to the :feed view alone, rss.rb:19).
+    expect(body).toContain("Welcome");
+    expect(body).not.toContain("<html");
+    expect(body).not.toBe("RSS feeds disabled");
+  }, 30_000);
+
+  it("a three-segment shape whose middle segment is not view is not the rss surface (A8)", async () => {
+    // The :mark/view/:view arm is the only three-segment shape that
+    // carries a view segment. "/one/two/three.rss" is the generic
+    // :mark/:view arm (engine_routes.rb:51) in the pinned deck, so it is
+    // not this host's rss surface.
+    const response = await fetch(`${booted!.baseUrl}/one/two/three.rss`);
+    expect(response.status).toBe(404);
+    expect(await response.text()).not.toBe("RSS feeds disabled");
+  }, 30_000);
+});

@@ -1,0 +1,216 @@
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { test } from 'node:test';
+import { compareCaptures, collectResponses } from '../../tools/same-database/ruby-bunny-comparison.mjs';
+import { verifyTransferredComparisonResult, qualifyLocalComparisonResult } from '../../tools/same-database/platform/ruby-comparison-vm.mjs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+
+const sha = value => createHash('sha256').update(value).digest('hex');
+const plan = { configuration: { origin: 'http://deck.example', defaultHtmlView: 'content', assetRefresh: 'never', fontAwesome: 'stock', raiseAllRenderingErrors: false, viewCache: false }, requests: [{ id: 'one', method: 'GET', path: '/' }, { id: 'two', method: 'GET', path: '/missing' }] };
+function capture(body = '<p>same</p>') {
+  const state = { cards: [['id:1', { id: 1, name: 'Home' }]] };
+  return { planSha256: sha(JSON.stringify(plan)), effectiveConfiguration: structuredClone(plan.configuration), startingCardState: state, endingCardState: structuredClone(state), mail: [], responses: plan.requests.map(row => ({ id: row.id, status: 200, contentType: 'text/html; charset=utf-8', location: null, bodySha256: sha(body), bodyBytes: Buffer.byteLength(body), bodyComplete: true })) };
+}
+const bytes = () => Buffer.from('<p>same</p>');
+
+test('complete matching observations accept the finite HTTP scope', () => {
+  const result = compareCaptures(plan, capture(), capture(), bytes);
+  assert.equal(result.accepted, true);
+  assert.equal(result.strictExactAccepted, true);
+  assert.equal(result.qualifiedNormalizedAccepted, true);
+  assert.equal(result.fullContractAcceptance, false);
+});
+test('missing requests and identical transport failures never pass', () => {
+  const missing = capture(); missing.responses.pop();
+  assert.equal(compareCaptures(plan, missing, capture(), bytes).accepted, false);
+  const errors = capture(); errors.responses[0] = { id: 'one', error: { message: 'offline' } };
+  assert.equal(compareCaptures(plan, errors, errors, bytes).accepted, false);
+});
+test('different starting data and request membership never pass', () => {
+  const foreign = capture(); foreign.startingCardState.cards[0][1].name = 'Other';
+  assert.equal(compareCaptures(plan, capture(), foreign, bytes).accepted, false);
+  foreign.planSha256 = 'other';
+  assert.equal(compareCaptures(plan, capture(), foreign, bytes).samePlan, false);
+});
+test('duplicate and unknown response identifiers fail explicitly', () => {
+  const duplicate = capture(); duplicate.responses.push(duplicate.responses[0]);
+  assert.throws(() => compareCaptures(plan, capture(), duplicate, bytes), /duplicate/);
+  const unknown = capture(); unknown.responses[0].id = 'foreign';
+  assert.throws(() => compareCaptures(plan, capture(), unknown, bytes), /Unexpected/);
+});
+test('changed body, status and redirects remain differences', () => {
+  const changed = capture('<p>different</p>');
+  const result = compareCaptures(plan, capture(), changed, side => side === 'left' ? bytes() : Buffer.from('<p>different</p>'));
+  assert.equal(result.accepted, false);
+  assert.equal(result.rows[0].result, 'difference');
+  const status = capture(); status.responses[0].status = 403;
+  assert.equal(compareCaptures(plan, capture(), status, bytes).accepted, false);
+  const redirect = capture(); redirect.responses[0].location = '/elsewhere';
+  assert.equal(compareCaptures(plan, capture(), redirect, bytes).accepted, false);
+});
+test('body corruption is rejected independently of matching metadata', () => {
+  assert.throws(() => compareCaptures(plan, capture(), capture(), () => Buffer.from('corrupt')), /digest/);
+});
+test('matching pages do not hide persistence changes or mail', () => {
+  const changed = capture(); changed.endingCardState.cards[0][1].name = 'After';
+  assert.equal(compareCaptures(plan, capture(), changed, bytes).accepted, false);
+  const mailed = capture(); mailed.mail.push({ to: ['test@example.test'], subject: 'extra' });
+  assert.equal(compareCaptures(plan, capture(), mailed, bytes).accepted, false);
+});
+test('existing canonical HTML rules accept parity while preserving the raw-byte difference', () => {
+  const a = '<p class="a b">same</p>', b = '<p class="b a">same</p>';
+  const result = compareCaptures(plan, capture(a), capture(b), side => Buffer.from(side === 'left' ? a : b));
+  assert.equal(result.rows[0].result, 'normalized-only');
+  assert.equal(result.accepted, true);
+  assert.equal(result.strictExactAccepted, false);
+  assert.equal(result.qualifiedNormalizedAccepted, true);
+});
+test('collection preserves errors and complete binary responses without retries', async () => {
+  const out = mkdtempSync(path.join(os.tmpdir(), 'decko-comparison-control-'));
+  const calls = [];
+  try {
+    const rows = await collectResponses(plan, async row => {
+      calls.push(row.id);
+      if (row.id === 'one') throw Error('owned refusal');
+      return new Response(Buffer.from([0, 255, 10]), { status: 502 });
+    }, out);
+    assert.deepEqual(calls, ['one', 'two']);
+    assert.equal(rows[0].error.message, 'owned refusal');
+    assert.equal(rows[1].status, 502);
+    assert.deepEqual(readFileSync(path.join(out, 'bodies/two.bin')), Buffer.from([0, 255, 10]));
+  } finally { rmSync(out, { recursive: true }); }
+});
+test('an interrupted response retains partial bytes and remains a failure', async () => {
+  const out = mkdtempSync(path.join(os.tmpdir(), 'decko-comparison-partial-'));
+  try {
+    let pulls = 0;
+    const rows = await collectResponses({ requests: [plan.requests[0]] }, () => new Response(new ReadableStream({ pull(controller) {
+      if (pulls++ === 0) controller.enqueue(Buffer.from('partial'));
+      else controller.error(Error('owned interruption'));
+    } })), out);
+    assert.equal(rows[0].bodyComplete, false);
+    assert.equal(rows[0].error.message, 'owned interruption');
+    assert.equal(readFileSync(path.join(out, 'bodies/one.bin'), 'utf8'), 'partial');
+    assert.equal(rows[0].bodyBytes, 7);
+  } finally { rmSync(out, { recursive: true }); }
+});
+test('distinct binary bytes never agree through UTF-8 replacement decoding', () => {
+  const a = Buffer.from([0xff]), b = Buffer.from([0xfe]);
+  const left = capture(a), right = capture(b);
+  for (const row of [...left.responses, ...right.responses]) row.contentType = 'application/octet-stream';
+  const result = compareCaptures(plan, left, right, side => side === 'left' ? a : b);
+  assert.equal(result.rows[0].result, 'difference');
+  assert.equal(result.accepted, false);
+});
+test('malformed UTF-8 declared as HTML still requires exact bytes', () => {
+  const a = Buffer.from([0xff]), b = Buffer.from([0xfe]);
+  const result = compareCaptures(plan, capture(a), capture(b), side => side === 'left' ? a : b);
+  assert.equal(result.accepted, false);
+});
+test('non-HTML text and undeclared encodings never receive HTML masks', () => {
+  const a = '<p data-slot-id="aaaaaaaaaaaaaaaaaaaa">same</p>', b = '<p data-slot-id="bbbbbbbbbbbbbbbbbbbb">same</p>';
+  for (const mime of ['text/plain; charset=utf-8', 'application/json', 'text/html', 'text/html; charset=iso-8859-1']) {
+    const left = capture(a), right = capture(b);
+    for (const row of [...left.responses, ...right.responses]) row.contentType = mime;
+    assert.equal(compareCaptures(plan, left, right, side => Buffer.from(side === 'left' ? a : b)).accepted, false, mime);
+  }
+});
+test('literal dates and durations remain material HTML differences', () => {
+  for (const [a, b] of [['<p>2026-11-01</p>', '<p>2026-11-02</p>'], ['<p>2 minutes</p>', '<p>3 minutes</p>']]) {
+    assert.equal(compareCaptures(plan, capture(a), capture(b), side => Buffer.from(side === 'left' ? a : b)).accepted, false);
+  }
+});
+test('an empty or duplicate planned inventory refuses a vacuous pass', () => {
+  assert.throws(() => compareCaptures({ requests: [] }, capture(), capture(), bytes), /nonempty/);
+  assert.throws(() => compareCaptures({ requests: [plan.requests[0], plan.requests[0]] }, capture(), capture(), bytes), /duplicate/);
+});
+test('missing completion evidence refuses even matching response metadata', () => {
+  const incomplete = capture(); delete incomplete.responses[0].bodyComplete;
+  const result = compareCaptures(plan, incomplete, incomplete, bytes);
+  assert.equal(result.accepted, false);
+  assert.equal(result.rows[0].result, 'unexecuted-or-error');
+});
+test('matching labels and bodies do not qualify different effective runtime settings', () => {
+  const loud = capture(); loud.effectiveConfiguration.raiseAllRenderingErrors = true;
+  const result = compareCaptures(plan, capture(), loud, () => { throw Error('mismatched settings must refuse before body grading'); });
+  assert.equal(result.sameConfiguration, false);
+  assert.equal(result.accepted, false);
+  const unobserved = capture(); delete unobserved.effectiveConfiguration;
+  assert.equal(compareCaptures(plan, unobserved, unobserved, bytes).accepted, false);
+});
+test('owned result transfer qualifies complete bytes before remote retirement', () => {
+  const bytes = Buffer.from(JSON.stringify({ schema: 'owned-control', complete: true }));
+  assert.deepEqual(verifyTransferredComparisonResult({ bytes: bytes.length, sha256: sha(bytes) }, bytes), { schema: 'owned-control', complete: true });
+});
+test('partial or altered result transfer refuses without application replay', () => {
+  const complete = Buffer.from(JSON.stringify({ complete: true }));
+  const receipt = { bytes: complete.length, sha256: sha(complete) };
+  assert.throws(() => verifyTransferredComparisonResult(receipt, complete.subarray(0, 5)), /incomplete/);
+  const altered = Buffer.from(complete); altered[2] ^= 1;
+  assert.throws(() => verifyTransferredComparisonResult(receipt, altered), /incomplete/);
+});
+test('local receiver synchronizes its copy before validating handoff', () => {
+  const bytes = Buffer.from('{"complete":true}'), events = [];
+  const result = qualifyLocalComparisonResult({ bytes: bytes.length, sha256: sha(bytes) }, 'owned-result', {
+    openSync: () => { events.push('open'); return 7; },
+    fsyncSync: () => events.push('sync'), closeSync: () => events.push('close'),
+    readFileSync: () => { events.push('verify-read'); return bytes; },
+  });
+  assert.deepEqual(result, { complete: true });
+  assert.deepEqual(events, ['open', 'sync', 'close', 'verify-read']);
+});
+test('local sync failure blocks result handoff and closes the receiver handle', () => {
+  const failure = Error('controlled local ENOSPC'), events = [];
+  assert.throws(() => qualifyLocalComparisonResult({}, 'owned-result', {
+    openSync: () => 7, fsyncSync: () => { throw failure; }, closeSync: () => events.push('close'),
+    readFileSync: () => { throw Error('must not qualify an unsynced copy'); },
+  }), error => error === failure);
+  assert.deepEqual(events, ['close']);
+});
+test('equal incomplete or ill-typed profiles refuse before loading any body', () => {
+  const profiles = [{}, { origin: 'http://deck.example' }, null, [],
+    ...Object.keys(plan.configuration).map(key => {
+      const profile = structuredClone(plan.configuration); delete profile[key]; return profile;
+    }),
+    ...[
+      ['origin', ''], ['origin', 'not-an-origin'], ['origin', 'file:///owned'],
+      ['origin', 'https://name:secret@example.test'], ['origin', 'https://example.test/path'],
+      ['defaultHtmlView', ''], ['defaultHtmlView', 1], ['defaultHtmlView', ' content '],
+      ['assetRefresh', 'unknown'], ['assetRefresh', null], ['fontAwesome', 'unknown'],
+      ['raiseAllRenderingErrors', 'false'], ['raiseAllRenderingErrors', 0],
+      ['viewCache', 'false'], ['viewCache', null],
+    ].map(([key, value]) => ({ ...plan.configuration, [key]: value })),
+    { ...plan.configuration, unobservedOption: true },
+  ];
+  for (const profile of profiles) {
+    const selected = { ...plan, configuration: profile }, left = capture(), right = capture();
+    left.planSha256 = right.planSha256 = sha(JSON.stringify(selected));
+    left.effectiveConfiguration = right.effectiveConfiguration = profile;
+    let loaded = 0;
+    const result = compareCaptures(selected, left, right, () => { loaded++; return bytes(); });
+    assert.equal(result.accepted, false, JSON.stringify(profile));
+    assert.equal(result.sameConfiguration, false, JSON.stringify(profile));
+    assert.equal(loaded, 0, 'invalid profile must refuse before any body grading');
+    assert.deepEqual(result.rows, []);
+  }
+});
+test('plan and each capture must independently qualify the full effective profile', () => {
+  for (const side of ['plan', 'left', 'right']) {
+    const selected = structuredClone(plan), left = capture(), right = capture();
+    if (side === 'plan') selected.configuration = {};
+    else (side === 'left' ? left : right).effectiveConfiguration = {};
+    left.planSha256 = right.planSha256 = sha(JSON.stringify(selected));
+    let loaded = 0;
+    assert.equal(compareCaptures(selected, left, right, () => { loaded++; return bytes(); }).accepted, false);
+    assert.equal(loaded, 0);
+  }
+});
+test('complete observed profiles remain equivalent when metadata key order differs', () => {
+  const right = capture();
+  right.effectiveConfiguration = Object.fromEntries(Object.entries(right.effectiveConfiguration).reverse());
+  const result = compareCaptures(plan, capture(), right, bytes);
+  assert.equal(result.sameConfiguration, true);
+  assert.equal(result.strictExactAccepted, true);
+});

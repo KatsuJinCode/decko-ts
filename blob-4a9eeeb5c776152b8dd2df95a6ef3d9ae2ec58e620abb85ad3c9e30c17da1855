@@ -1,0 +1,127 @@
+import { afterEach, expect, it } from "vitest";
+import Database from "better-sqlite3";
+import { existsSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { spawnSync } from "node:child_process";
+import { scratchDir, cleanupScratch } from "../support/scratch-dir.mjs";
+import { createRecoverySnapshot, restoreRecoverySnapshot } from "../../tools/migrate/recovery.mjs";
+
+afterEach(cleanupScratch);
+function fixture() {
+  const root = scratchDir("recovery-");
+  const databasePath = join(root, "source.sqlite");
+  const db = new Database(databasePath);
+  db.pragma("journal_mode = WAL");
+  db.pragma("wal_autocheckpoint = 0");
+  db.exec("CREATE TABLE proof(value TEXT); INSERT INTO proof VALUES ('before');");
+  const filesPath = join(root, "uploads");
+  mkdirSync(join(filesPath, "empty"), { recursive: true });
+  writeFileSync(join(filesPath, "original.txt"), "before");
+  return { root, db, databasePath, filesPath, snapshotDir: join(root, "snapshot") };
+}
+
+it("captures committed WAL rows and restores database and uploads without replacing failed state", async () => {
+  const f = fixture();
+  try {
+    expect(existsSync(`${f.databasePath}-wal`)).toBe(true);
+    await createRecoverySnapshot(f);
+    f.db.exec("UPDATE proof SET value = 'after'");
+    writeFileSync(join(f.filesPath, "original.txt"), "after");
+    const restored = await restoreRecoverySnapshot({ snapshotDir: f.snapshotDir, targetDir: join(f.root, "restored") });
+    const db = new Database(restored.databasePath);
+    try {
+      expect(db.prepare("SELECT value FROM proof").get()).toEqual({ value: "before" });
+      db.exec("INSERT INTO proof VALUES ('restored write')");
+      expect(db.prepare("SELECT count(*) n FROM proof").get()).toEqual({ n: 2 });
+    } finally { db.close(); }
+    expect(readFileSync(join(restored.filesPath, "original.txt"), "utf8")).toBe("before");
+    expect(existsSync(join(restored.filesPath, "empty"))).toBe(true);
+    expect(f.db.prepare("SELECT value FROM proof").get()).toEqual({ value: "after" });
+    expect(readFileSync(join(f.filesPath, "original.txt"), "utf8")).toBe("after");
+  } finally { f.db.close(); }
+});
+
+it("refuses corrupt uploads before creating the recovery destination", async () => {
+  const f = fixture();
+  try {
+    await createRecoverySnapshot(f);
+    writeFileSync(join(f.snapshotDir, "files", "original.txt"), "corrupt");
+    const targetDir = join(f.root, "restored");
+    await expect(restoreRecoverySnapshot({ snapshotDir: f.snapshotDir, targetDir })).rejects.toThrow("checksum differs");
+    expect(existsSync(targetDir)).toBe(false);
+  } finally { f.db.close(); }
+});
+
+it("refuses an existing snapshot or restore directory without overwriting anything", async () => {
+  const f = fixture();
+  try {
+    await createRecoverySnapshot(f);
+    await expect(createRecoverySnapshot(f)).rejects.toThrow();
+    const targetDir = join(f.root, "occupied");
+    mkdirSync(targetDir);
+    writeFileSync(join(targetDir, "keep"), "keep");
+    await expect(restoreRecoverySnapshot({ snapshotDir: f.snapshotDir, targetDir })).rejects.toThrow();
+    expect(readFileSync(join(targetDir, "keep"), "utf8")).toBe("keep");
+  } finally { f.db.close(); }
+});
+
+it("refuses a database checksum failure before creating output", async () => {
+  const f = fixture();
+  try {
+    await createRecoverySnapshot(f);
+    writeFileSync(join(f.snapshotDir, "deck.sqlite"), "corrupt");
+    const targetDir = join(f.root, "restored");
+    await expect(restoreRecoverySnapshot({ snapshotDir: f.snapshotDir, targetDir })).rejects.toThrow("database checksum differs");
+    expect(existsSync(targetDir)).toBe(false);
+  } finally { f.db.close(); }
+});
+
+it("runs the recovery command and reports corrupt packages as a failed command", () => {
+  const f = fixture();
+  f.db.close();
+  const cli = fileURLToPath(new URL("../../tools/migrate/recover-deck.mjs", import.meta.url));
+  const run = (...args: string[]) => spawnSync(process.execPath, [cli, ...args], { encoding: "utf8", windowsHide: true });
+  const snapshot = run("snapshot", "--database", f.databasePath, "--files", f.filesPath, "--out", f.snapshotDir);
+  expect(snapshot.status, snapshot.stderr).toBe(0);
+  expect(JSON.parse(snapshot.stdout).snapshotCreated).toBe(true);
+  const targetDir = join(f.root, "restored");
+  const restore = run("restore", "--snapshot", f.snapshotDir, "--out", targetDir);
+  expect(restore.status, restore.stderr).toBe(0);
+  expect(JSON.parse(restore.stdout)).toEqual({ restored: true });
+  writeFileSync(join(f.snapshotDir, "files", "original.txt"), "corrupt");
+  const refused = run("restore", "--snapshot", f.snapshotDir, "--out", join(f.root, "refused"));
+  expect(refused.status).toBe(1);
+  expect(refused.stderr).toContain("checksum differs");
+  expect(existsSync(join(f.root, "refused"))).toBe(false);
+});
+
+it("refuses linked uploads and destinations nested inside the upload source", async () => {
+  const f = fixture();
+  try {
+    await expect(createRecoverySnapshot({ ...f, snapshotDir: join(f.filesPath, "nested") })).rejects.toThrow("outside its source");
+    expect(existsSync(join(f.filesPath, "nested"))).toBe(false);
+    const linked = join(f.root, "linked-uploads");
+    symlinkSync(f.filesPath, linked, process.platform === "win32" ? "junction" : "dir");
+    await expect(createRecoverySnapshot({ ...f, snapshotDir: join(linked, "nested") })).rejects.toThrow("outside its source");
+    await expect(createRecoverySnapshot({ ...f, filesPath: linked })).rejects.toThrow("real directory");
+    expect(existsSync(f.snapshotDir)).toBe(false);
+  } finally { f.db.close(); }
+});
+
+it("rejects unexpected WAL state and unsafe manifest paths before output", async () => {
+  const f = fixture();
+  try {
+    await createRecoverySnapshot(f);
+    writeFileSync(join(f.snapshotDir, "deck.sqlite-wal"), "unexpected");
+    const targetDir = join(f.root, "restored");
+    await expect(restoreRecoverySnapshot({ snapshotDir: f.snapshotDir, targetDir })).rejects.toThrow("unexpected journal");
+    expect(existsSync(targetDir)).toBe(false);
+    const manifestPath = join(f.snapshotDir, "manifest.json");
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    manifest.files[0].path = "../outside";
+    writeFileSync(manifestPath, JSON.stringify(manifest));
+    await expect(restoreRecoverySnapshot({ snapshotDir: f.snapshotDir, targetDir })).rejects.toThrow("invalid recovery path");
+    expect(existsSync(targetDir)).toBe(false);
+  } finally { f.db.close(); }
+});

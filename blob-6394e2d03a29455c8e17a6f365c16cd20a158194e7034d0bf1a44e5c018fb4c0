@@ -1,0 +1,258 @@
+{
+  "builtAt": "2026-10-26T04:22:21.420Z",
+  "baseUrl": "http://127.0.0.1:3118",
+  "pass": "design-pass-20261026",
+  "directions": {
+    "libraryFirst": "Culturesmith+Front Door Library",
+    "editorial": "Culturesmith+Front Door Editorial"
+  },
+  "layouts": {
+    "libraryFirst": "Library First Layout",
+    "editorial": "Editorial Layout"
+  },
+  "corpus": {
+    "recordings": 19,
+    "totalMinutes": 1180,
+    "posterProbesOk": "19 of 19 on 2026-10-26",
+    "wallShows": 18,
+    "heldBackPerOperatorNote1": "GMT20260421-012936_Recording"
+  },
+  "words": {
+    "valueframedHero": "operator-directed (his spitball applied); no recorded Brandon words exist for this slot",
+    "brandonQuotes": [
+      {
+        "text": "everybody gets what they need and a shot at what they want.",
+        "session": "2026-10-20 11:15 working session",
+        "source": "brandonDojoTech docs/reports/meeting-summary-and-action-items-2026-10-20-1115.md point 12"
+      },
+      {
+        "text": "If you can't do conflict well, you're not qualified for a leadership position.",
+        "session": "2026-10-20 11:15 working session",
+        "source": "same record, point 12"
+      },
+      {
+        "text": "All of business and life is a sea of conflict. Most organizations improvise. We give them a jumpstart.",
+        "session": "2026-10-16 working session",
+        "source": "brandonDojoTech docs/plans/writing-for-brandon.md rule 4"
+      }
+    ]
+  },
+  "cards": [
+    {
+      "name": "Library First Layout",
+      "role": "layout",
+      "type": "Layout",
+      "status": 303,
+      "bytes": 6243
+    },
+    {
+      "name": "Culturesmith+Front Door Library+*self+*layout",
+      "role": "layout rule",
+      "status": 303
+    },
+    {
+      "name": "Culturesmith+Front Door Library",
+      "role": "door",
+      "type": "HTML",
+      "status": 303,
+      "bytes": 13788
+    },
+    {
+      "name": "Editorial Layout",
+      "role": "layout",
+      "type": "Layout",
+      "status": 303,
+      "bytes": 4401
+    },
+    {
+      "name": "Culturesmith+Front Door Editorial+*self+*layout",
+      "role": "layout rule",
+      "status": 303
+    },
+    {
+      "name": "Culturesmith+Front Door Editorial",
+      "role": "door",
+      "type": "HTML",
+      "status": 303,
+      "bytes": 4096
+    },
+    {
+      "name": "page Culturesmith+Front Door Library",
+      "role": "page check",
+      "checks": {
+        "heroIsValueFramed": true,
+        "heroSearchIsSiteSearch": true,
+        "corpusLine": true,
+        "featuredRealTitle": true,
+        "wallAnchorCount": true,
+        "ericPosterAbsent": true,
+        "posterTags": true,
+        "quietRowLinks": true,
+        "ornamentDiamondSurvived": true,
+        "playBadgesSurvived": true,
+        "quietIconsSurvived": true,
+        "provenanceLine": true,
+        "realChromeHeader": true,
+        "bundleLoaded": true
+      },
+      "status": 200,
+      "bytes": 31384
+    },
+    {
+      "name": "page Culturesmith+Front Door Editorial",
+      "role": "page check",
+      "checks": {
+        "coverStatement": true,
+        "promise": true,
+        "epigraphIsBrandons": true,
+        "pullQuoteIsBrandons": true,
+        "contentsLabel": true,
+        "fourEntries": true,
+        "fourThumbnails": true,
+        "entryLinks": true,
+        "communityStandardFraming": true,
+        "fleuronSurvived": true,
+        "provenanceLine": true,
+        "realChromeHeader": true,
+        "bundleLoaded": true
+      },
+      "status": 200,
+      "bytes": 20530
+    }
+  ],
+  "passed": 10,
+  "total": 10,
+  "steps": [
+    {
+      "name": "sign-in",
+      "ok": true,
+      "detail": "POST /_signin -> 200, session cookie issued",
+      "evidence": {
+        "status": 200
+      }
+    },
+    {
+      "name": "card: Library First Layout",
+      "ok": true,
+      "detail": "PUT /Library%20First%20Layout -> 303; read back 200, 6243 bytes, type Layout; read rule -> 303",
+      "evidence": {
+        "status": 303,
+        "readStatus": 200,
+        "storedType": "Layout",
+        "readRuleStatus": 303,
+        "error": ""
+      }
+    },
+    {
+      "name": "rule: Culturesmith+Front Door Library+*self+*layout",
+      "ok": true,
+      "detail": "PUT /Culturesmith%2BFront%20Door%20Library%2B*self%2B*layout -> 303; content \"Library First Layout\"; read rule -> 303",
+      "evidence": {
+        "status": 303,
+        "readRuleStatus": 303,
+        "error": ""
+      }
+    },
+    {
+      "name": "card: Culturesmith+Front Door Library",
+      "ok": true,
+      "detail": "PUT /Culturesmith%2BFront%20Door%20Library -> 303; read back 200, 13788 bytes, type HTML; read rule -> 303",
+      "evidence": {
+        "status": 303,
+        "readStatus": 200,
+        "doorType": "HTML",
+        "readRuleStatus": 303,
+        "error": ""
+      }
+    },
+    {
+      "name": "card: Editorial Layout",
+      "ok": true,
+      "detail": "PUT /Editorial%20Layout -> 303; read back 200, 4401 bytes, type Layout; read rule -> 303",
+      "evidence": {
+        "status": 303,
+        "readStatus": 200,
+        "storedType": "Layout",
+        "readRuleStatus": 303,
+        "error": ""
+      }
+    },
+    {
+      "name": "rule: Culturesmith+Front Door Editorial+*self+*layout",
+      "ok": true,
+      "detail": "PUT /Culturesmith%2BFront%20Door%20Editorial%2B*self%2B*layout -> 303; content \"Editorial Layout\"; read rule -> 303",
+      "evidence": {
+        "status": 303,
+        "readRuleStatus": 303,
+        "error": ""
+      }
+    },
+    {
+      "name": "card: Culturesmith+Front Door Editorial",
+      "ok": true,
+      "detail": "PUT /Culturesmith%2BFront%20Door%20Editorial -> 303; read back 200, 4096 bytes, type HTML; read rule -> 303",
+      "evidence": {
+        "status": 303,
+        "readStatus": 200,
+        "doorType": "HTML",
+        "readRuleStatus": 303,
+        "error": ""
+      }
+    },
+    {
+      "name": "page: Library-first door renders signed out",
+      "ok": true,
+      "detail": "GET /Culturesmith%2BFront%20Door%20Library -> 200, 31384 bytes",
+      "evidence": {
+        "status": 200,
+        "checks": {
+          "heroIsValueFramed": true,
+          "heroSearchIsSiteSearch": true,
+          "corpusLine": true,
+          "featuredRealTitle": true,
+          "wallAnchorCount": true,
+          "ericPosterAbsent": true,
+          "posterTags": true,
+          "quietRowLinks": true,
+          "ornamentDiamondSurvived": true,
+          "playBadgesSurvived": true,
+          "quietIconsSurvived": true,
+          "provenanceLine": true,
+          "realChromeHeader": true,
+          "bundleLoaded": true
+        }
+      }
+    },
+    {
+      "name": "page: Editorial door renders signed out",
+      "ok": true,
+      "detail": "GET /Culturesmith%2BFront%20Door%20Editorial -> 200, 20530 bytes",
+      "evidence": {
+        "status": 200,
+        "checks": {
+          "coverStatement": true,
+          "promise": true,
+          "epigraphIsBrandons": true,
+          "pullQuoteIsBrandons": true,
+          "contentsLabel": true,
+          "fourEntries": true,
+          "fourThumbnails": true,
+          "entryLinks": true,
+          "communityStandardFraming": true,
+          "fleuronSurvived": true,
+          "provenanceLine": true,
+          "realChromeHeader": true,
+          "bundleLoaded": true
+        }
+      }
+    },
+    {
+      "name": "landing: Home card untouched",
+      "ok": true,
+      "detail": "Home content byte-identical across the build",
+      "evidence": {
+        "unchanged": true
+      }
+    }
+  ]
+}

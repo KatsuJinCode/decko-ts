@@ -1,0 +1,64 @@
+{
+  "gemset": "card-1.110.0 + decko-0.20.0 (pinned)",
+  "cql": {
+    "right": "account",
+    "creator_id": [
+      "ne",
+      1
+    ]
+  },
+  "decisions": [
+    {
+      "accountCount": 0,
+      "needsSetup": true,
+      "censusRuns": 1,
+      "cacheMarker": null
+    },
+    {
+      "accountCount": 1,
+      "needsSetup": false,
+      "censusRuns": 1,
+      "cacheMarker": false
+    },
+    {
+      "accountCount": 3,
+      "needsSetup": false,
+      "censusRuns": 1,
+      "cacheMarker": false
+    }
+  ],
+  "cached": {
+    "firstAnswer": false,
+    "secondAnswer": false,
+    "censusRuns": 1,
+    "cacheMarker": false
+  },
+  "markArming": [
+    {
+      "needsSetup": true,
+      "html": true,
+      "initialSetup": true
+    },
+    {
+      "needsSetup": true,
+      "html": false,
+      "initialSetup": false
+    },
+    {
+      "needsSetup": false,
+      "html": true,
+      "initialSetup": false
+    },
+    {
+      "needsSetup": false,
+      "html": false,
+      "initialSetup": false
+    }
+  ],
+  "preparedParams": {
+    "card": {
+      "type_id": 2
+    },
+    "view": "setup"
+  }
+}

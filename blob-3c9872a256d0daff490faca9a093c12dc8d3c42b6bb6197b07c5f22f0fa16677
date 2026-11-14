@@ -1,0 +1,74 @@
+# Existing local native naming and exact id-list source.
+# Connection/name resolution and reference insertion are explicit inert deps.
+require "minitest/autorun"
+require "digest"
+native_gem_root = File.realpath(ARGV.shift || ENV.fetch("DECKO_RUBY_GEMSET"))
+Dir.glob(File.join(native_gem_root, "*", "lib")).each do |lib|
+  next if File.basename(File.dirname(lib)).start_with?("minitest-")
+  $LOAD_PATH.unshift(lib)
+end
+require "active_support"
+require "active_support/core_ext"
+require "cardname"
+require File.join(native_gem_root, "cardname-1.110.0/lib/core_ext")
+name_source = File.join(native_gem_root, "cardname-1.110.0/lib/cardname.rb")
+raise "native-name-source-changed" unless Digest::SHA256.file(name_source).hexdigest == "67a84cf2cfdede50632587419f60dea8311735245052cda87d8dac4efc979c19"
+id_list_source = File.join(native_gem_root, "card-mod-list-0.20.0/set/abstract/id_list.rb")
+raise "native-id-list-source-changed" unless Digest::SHA256.file(id_list_source).hexdigest == "b82ebe47b5d14f65965bf36b662f7be772daae5dbddf4429e89dc54041a33e44"
+
+module NativeRecoveryIdList
+  module Reference
+    class << self; attr_accessor :inserted; end
+    def self.insert_in_slices(rows) = self.inserted = rows
+  end
+  attr_accessor :items, :list_id
+  def item_strings(*) = items
+  def id = list_id
+end
+NativeRecoveryIdList.module_eval(File.read(id_list_source), id_list_source, 1)
+class Card
+  def self.id(name) = name == "Native Reader" ? 42 : nil
+end
+
+class MembersKeyNativeControls < Minitest::Test
+  def fixture(items)
+    Object.new.extend(NativeRecoveryIdList).tap { |list| list.items = items; list.list_id = 77 }
+  end
+
+  def test_actual_native_key_preserves_stars_and_singularizes_members
+    assert_equal "*member", Cardname.new("*members").key
+    assert_equal "*account", Cardname.new("*account").key
+    assert_equal Cardname.new("Administrator").key, Cardname.new("Administrators").key
+  end
+
+  def test_native_compound_name_keeps_its_two_parts
+    name = Cardname.new("Administrator+*members")
+    assert_equal "administrator+*member", name.key
+    assert_equal ["Administrator", "*members"], name.part_names.map(&:to_s)
+  end
+
+  def test_actual_id_list_decodes_explicit_ids_without_naming_an_owner
+    assert_equal [42, 81], fixture(["~42", "~81"]).item_ids
+  end
+
+  def test_native_named_membership_requires_resolution_instead_of_guessing
+    assert_equal [42], fixture(["Native Reader"]).item_ids
+    # The recovery refuses named content rather than substituting this fixture
+    # resolver for the current deck's native identity resolution.
+  end
+
+  def test_actual_reference_event_emits_native_null_key_L_rows
+    list = fixture(["~42", "~81"])
+    list.create_references_out
+    assert_equal [
+      { referer_id: 77, referee_id: 42, referee_key: nil, ref_type: "L" },
+      { referer_id: 77, referee_id: 81, referee_key: nil, ref_type: "L" }
+    ], NativeRecoveryIdList::Reference.inserted
+  end
+
+  def test_native_empty_list_does_not_insert_references
+    NativeRecoveryIdList::Reference.inserted = nil
+    fixture([]).create_references_out
+    assert_nil NativeRecoveryIdList::Reference.inserted
+  end
+end

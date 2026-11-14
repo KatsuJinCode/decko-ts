@@ -1,0 +1,128 @@
+{
+  "row": "reg-routes-B3",
+  "gemset": "decko-0.20.0 + card-1.110.0 (pinned)",
+  "updateAction": [
+    {
+      "label": "an update of an EXISTING card: the update ask carries the body's card hash",
+      "error": null,
+      "cardCalls": [
+        "new_card?",
+        "update!"
+      ],
+      "updateArgs": {
+        "name": "Front",
+        "content": "body"
+      },
+      "redirected": {
+        "url": "/",
+        "status": 303
+      },
+      "rendered": null
+    },
+    {
+      "label": "an update of a NEW card (card.new_card? is true): the create arm saves it instead",
+      "error": null,
+      "cardCalls": [
+        "new_card?",
+        "save!"
+      ],
+      "updateArgs": null,
+      "redirected": {
+        "url": "/",
+        "status": 303
+      },
+      "rendered": null
+    },
+    {
+      "label": "an update with NO card hash in the body: the safe navigation passes nil to the model",
+      "error": null,
+      "cardCalls": [
+        "new_card?",
+        "update!"
+      ],
+      "updateArgs": null,
+      "redirected": {
+        "url": "/",
+        "status": 303
+      },
+      "rendered": null
+    }
+  ],
+  "rigArtifacts": [
+    "the rig's ControllerHarness holds the request params as a plain Hash, and a plain Hash has no to_unsafe_h; the capture supplies a CAPTURE-LOCAL params double whose [:card] answers an ActionController::Parameters-shaped object (a Hash with to_unsafe_h). That double is the ONE surface the pinned update body touches."
+  ],
+  "sources": {
+    "update": [
+      {
+        "line": 14,
+        "text": "    def update"
+      },
+      {
+        "line": 15,
+        "text": "      card.new_card? ? create : handle { card.update! params[:card]&.to_unsafe_h }"
+      },
+      {
+        "line": 16,
+        "text": "    end"
+      }
+    ],
+    "create": [
+      {
+        "line": 6,
+        "text": "    def create"
+      },
+      {
+        "line": 7,
+        "text": "      handle { card.save! }"
+      },
+      {
+        "line": 8,
+        "text": "    end"
+      }
+    ],
+    "handle": [
+      {
+        "line": 74,
+        "text": "    def handle"
+      },
+      {
+        "line": 75,
+        "text": "      Card::Env.success card.name"
+      },
+      {
+        "line": 76,
+        "text": "      yield ? cud_success : raise(Card::Error::UserError)"
+      },
+      {
+        "line": 77,
+        "text": "    end"
+      }
+    ],
+    "loadCard": [
+      {
+        "line": 49,
+        "text": "    def load_card"
+      },
+      {
+        "line": 50,
+        "text": "      @card = Card.uri_fetch params"
+      },
+      {
+        "line": 51,
+        "text": "      raise Card::Error::NotFound unless card"
+      },
+      {
+        "line": 52,
+        "text": ""
+      },
+      {
+        "line": 53,
+        "text": "      record_as_main"
+      },
+      {
+        "line": 54,
+        "text": "    end"
+      }
+    ]
+  }
+}

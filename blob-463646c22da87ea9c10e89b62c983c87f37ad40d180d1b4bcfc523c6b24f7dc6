@@ -1,0 +1,116 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import {tmpdir} from 'node:os';
+import {spawnSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
+import {inspectReadOnlyMatrixPaths} from '../../tools/runtime-db-matrix/local-storage-platform.mjs';
+
+// Retain these owned synthetic counterexamples for inspection. The caller
+// retires their exact paths after the test children exit and unlinks junctions.
+const base=fs.mkdtempSync(path.join(tmpdir(),'decko-placement-'));
+const runner=fileURLToPath(new URL('../../docs/reports/issue207-controls/matrix-run.mjs',import.meta.url));
+console.log(`Owned placement-control root: ${base}`);
+function directory(name){const p=path.join(base,name);fs.mkdirSync(p);return p;}
+function committedSyntheticGitSource(name){
+ const source=directory(name),commands=[];
+ const env=Object.fromEntries(Object.entries(process.env).filter(([key])=>!key.startsWith('GIT_')));
+ Object.assign(env,{GIT_AUTHOR_NAME:'Placement Fixture',GIT_AUTHOR_EMAIL:'fixture@example.invalid',GIT_COMMITTER_NAME:'Placement Fixture',GIT_COMMITTER_EMAIL:'fixture@example.invalid',GIT_OPTIONAL_LOCKS:'0'});
+ function git(args){
+  const r=spawnSync('git',args,{cwd:source,env,windowsHide:true,encoding:'utf8'});
+  commands.push({args,pid:r.pid,code:r.status,signal:r.signal,error:r.error?.message??null,stdout:r.stdout,stderr:r.stderr});
+  assert.equal(r.error,undefined);assert.equal(r.status,0,r.stderr);return r.stdout.trim();
+ }
+ git(['init']);fs.writeFileSync(path.join(source,'placement-fixture.json'),'{"purpose":"wrong frozen pin source"}\n');
+ git(['add','--','placement-fixture.json']);git(['commit','-m','Synthetic placement source identity','--','placement-fixture.json']);
+ const head=git(['rev-parse','HEAD']),top=git(['rev-parse','--show-toplevel']);
+ assert.match(head,/^[0-9a-f]{40}$/);assert.notEqual(head,'ba9df20aabe71f6e80ca84fd65a839b2bf07dada');
+ assert.equal(fs.realpathSync.native(top),fs.realpathSync.native(source));
+ fs.writeFileSync(path.join(base,`${name}-git.json`),JSON.stringify({source,head,top,commands},null,2)+'\n');
+ return source;
+}
+function invoke(name,source,out,temp=path.join(base,'temp')){
+ const args=[runner,source,out,temp,'--source-commit','ba9df20aabe71f6e80ca84fd65a839b2bf07dada','--prepare-only'];
+ const r=spawnSync(process.execPath,args,{windowsHide:true,encoding:'utf8'});
+ const result={source,out,temp,pid:r.pid,code:r.status,signal:r.signal,error:r.error?.message??null,stdout:r.stdout,stderr:r.stderr,outputExists:fs.existsSync(out)};
+ fs.writeFileSync(path.join(base,`${name}.json`),JSON.stringify(result,null,2)+'\n');
+ return result;
+}
+function refusal(result){assert.notEqual(result.code,0);assert.equal(result.outputExists,false,'Verifier created output before rejecting source overlap');assert.match(result.stderr,/must remain outside the read-only source checkout/);}
+
+test('same-spelling source overlap refuses without output',()=>{
+ const source=directory('plain-source');refusal(invoke('plain',source,path.join(source,'evidence')));
+});
+test('Windows drive-case alias cannot create source-side evidence',{skip:process.platform!=='win32'},()=>{
+ const source=directory('case-source');const out=path.join(source,'evidence').replace(/^([A-Z]):/,(_,drive)=>`${drive.toLowerCase()}:`);
+ assert.notEqual(out,path.join(source,'evidence'));refusal(invoke('case',source,out));
+});
+test('junction into source cannot create source-side evidence',()=>{
+ const source=directory('junction-source'),alias=path.join(base,'source-link');fs.symlinkSync(source,alias,process.platform==='win32'?'junction':'dir');
+ refusal(invoke('junction',source,path.join(alias,'evidence')));
+});
+test('TEMP junction into source refuses before even external evidence is created',()=>{
+ const source=directory('temp-source'),alias=path.join(base,'temp-link');fs.symlinkSync(source,alias,process.platform==='win32'?'junction':'dir');
+ refusal(invoke('temp-junction',source,path.join(base,'external-evidence'),path.join(alias,'future-temp')));
+});
+
+test('a missing source refuses before output creation',()=>{
+ const result=invoke('missing-source',path.join(base,'absent-source'),path.join(base,'missing-source-output'));
+ assert.notEqual(result.code,0);assert.equal(result.outputExists,false);assert.match(result.stderr,/MatrixPathIdentityError/);
+});
+test('a source with the wrong frozen pin refuses before creating external output or TEMP',()=>{
+ const source=committedSyntheticGitSource('wrong-pin-source'),out=path.join(base,'wrong-pin-output'),temp=path.join(base,'wrong-pin-temp');
+ const result=invoke('wrong-pin',source,out,temp);
+ assert.notEqual(result.code,0);assert.match(result.stderr,/Frozen source changed/);
+ assert.equal(result.outputExists,false);assert.equal(fs.existsSync(temp),false);
+});
+test('a file as source or destination ancestor is not a directory identity',()=>{
+ const source=directory('file-source');const file=path.join(base,'ancestor-file');fs.writeFileSync(file,'owned fixture');
+ for(const args of [[file,path.join(base,'file-source-output'),path.join(base,'temp')],[source,path.join(file,'output'),path.join(base,'temp')]]){
+  assert.throws(()=>inspectReadOnlyMatrixPaths(...args),error=>error.name==='MatrixPathIdentityError'&&/not a directory|ENOTDIR/.test(error.message));
+ }
+});
+test('a broken destination junction fails closed instead of becoming a missing ancestor',()=>{
+ const source=directory('broken-source'),alias=path.join(base,'broken-link');fs.symlinkSync(path.join(base,'missing-link-target'),alias,process.platform==='win32'?'junction':'dir');
+ assert.throws(()=>inspectReadOnlyMatrixPaths(source,path.join(alias,'output'),path.join(base,'temp')),{name:'MatrixPathIdentityError'});
+ assert.equal(fs.existsSync(path.join(base,'missing-link-target')),false);
+});
+test('unreadable existing source and destination ancestors fail closed',t=>{
+ const source=directory('access-source'),blocked=directory('access-blocked');const original=fs.accessSync;
+ const denied=new Set([fs.realpathSync.native(source),fs.realpathSync.native(blocked)]);
+ t.mock.method(fs,'accessSync',(candidate,...args)=>{if(denied.has(candidate))throw Object.assign(Error('controlled unreadable ancestor'),{code:'EACCES'});return original(candidate,...args);});
+ assert.throws(()=>inspectReadOnlyMatrixPaths(source,path.join(base,'access-output'),path.join(base,'temp')),error=>error.name==='MatrixPathIdentityError'&&error.cause.code==='EACCES');
+ const readable=directory('access-readable-source');
+ assert.throws(()=>inspectReadOnlyMatrixPaths(readable,path.join(blocked,'output'),path.join(base,'temp')),error=>error.name==='MatrixPathIdentityError'&&error.cause.code==='EACCES');
+ assert.throws(()=>inspectReadOnlyMatrixPaths(readable,path.join(base,'temp-access-output'),path.join(blocked,'temp')),error=>error.name==='MatrixPathIdentityError'&&error.cause.code==='EACCES');
+});
+test('a native realpath error is not treated as an absent prospective directory',t=>{
+ const source=directory('realpath-source'),blocked=directory('realpath-blocked');const original=fs.realpathSync.native;
+ t.mock.method(fs.realpathSync,'native',candidate=>{if(candidate===blocked)throw Object.assign(Error('controlled realpath failure'),{code:'EIO'});return original(candidate);});
+ assert.throws(()=>inspectReadOnlyMatrixPaths(source,path.join(blocked,'output'),path.join(base,'temp')),error=>error.name==='MatrixPathIdentityError'&&error.cause.code==='EIO');
+});
+test('unavailable native directory identifiers are refused',t=>{
+ const source=directory('identity-source');const original=fs.statSync;const physical=fs.realpathSync.native(source);
+ t.mock.method(fs,'statSync',(candidate,...args)=>{const stat=original(candidate,...args);if(candidate===physical)stat.ino=0n;return stat;});
+ assert.throws(()=>inspectReadOnlyMatrixPaths(source,path.join(base,'identity-output'),path.join(base,'temp')),error=>error.name==='MatrixPathIdentityError'&&/unavailable directory identifier/.test(error.message));
+});
+test('prospective external siblings are admitted without creating either destination',()=>{
+ const source=directory('allowed-source'),out=path.join(base,'new-output','future'),temp=path.join(base,'new-temp','future');
+ const result=inspectReadOnlyMatrixPaths(source,out,temp);
+ assert.equal(result.source.path,fs.realpathSync.native(source));
+ assert.equal(result.evidence.path,out);assert.equal(result.tempParent.path,temp);
+ assert.equal(fs.existsSync(out),false);assert.equal(fs.existsSync(temp),false);
+});
+test('external junctions resolve to their effective destination and remain permitted',()=>{
+ const source=directory('external-source'),external=directory('external-target'),alias=path.join(source,'external-link');
+ fs.symlinkSync(external,alias,process.platform==='win32'?'junction':'dir');
+ const result=inspectReadOnlyMatrixPaths(source,path.join(alias,'future'),path.join(base,'external-temp'));
+ assert.equal(result.evidence.path,path.join(fs.realpathSync.native(external),'future'));
+ assert.equal(fs.existsSync(result.evidence.path),false);
+});
+test('an aliased source and an output containing source both remain protected',()=>{
+ const source=directory('reverse-source'),alias=path.join(base,'reverse-link');fs.symlinkSync(source,alias,process.platform==='win32'?'junction':'dir');
+ assert.throws(()=>inspectReadOnlyMatrixPaths(alias,path.join(source,'output'),path.join(base,'temp')),/must remain outside the read-only source checkout/);
+ assert.throws(()=>inspectReadOnlyMatrixPaths(source,base,path.join(base,'temp')),/must remain outside the read-only source checkout/);
+});

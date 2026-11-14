@@ -1,0 +1,120 @@
+# Independent Area 5 migration and recovery review
+
+Subject: `6ec25d66fe5e986edbd4e6f842a9e8573009391c`, private branch
+`port/codex-area5-20261031`, exact base
+`f96ada08f805fa3c615fc05421c2ca99673198be`. The thirteen-path source delta,
+issue 10 ownership and saved claim, all changed source/tests/docs, and the
+project migration/acceptance contract were inspected before verification.
+The original implementation owner was not woken. The working tree started
+clean; no unrelated branch history was merged.
+
+## Result
+
+The original focused eleven-file command independently passed all 54 tests
+on its first run. The final combined run passed 67 tests and skipped two:
+one private-input test without its required source path, and one native file
+symlink control whose setup was refused with EPERM. These are 54 original
+cases plus 13 passing new review cases, not an additive total of repeated
+runs. The author's private September run was not independently repeated.
+Its previously reported deadline failure and later passes remain historical
+claims in the original report; they are not relabelled as this review's runs.
+
+The source is suitable for the documented isolated, paused-writer SQLite
+recovery use after the narrow manifest guard below. This is not acceptance
+of a complete real-deck migration, hosted runtime or production cutover.
+
+## Source and controls
+
+- SQLite backup includes committed WAL data. The original WAL case passed;
+  a new case holds an uncommitted write transaction while taking the snapshot
+  through another connection. Restore contains only committed state and the
+  original writer remains intact. Database and uploads are not a single atomic
+  store: the caller must pause both writer classes, as documented.
+- Exclusive creation refuses existing snapshot/recovery destinations. A
+  canonical alias into the source namespace is rejected. All three journal
+  sidecar spellings are refused before creating a restore directory.
+- Extra, malformed, duplicate and wrong-kind inventory entries fail before
+  output. Binary upload bytes survive exactly. The new synthetic inventory
+  compares thirteen active/trashed account/tag/credential rows on IDs,
+  junctions, type, trash, read rules, content, actors and dates before/after
+  import and restore, including NULL, empty text and a NUL-bearing opaque
+  synthetic credential. Neither real credentials nor private source were used.
+- The synthetic opaque unsupported job handler and every delayed_jobs state
+  column survive import and recovery unchanged. Parsing rejects the unsupported
+  class; no worker is constructed and no job executes in this control. The
+  original acceptance test's one synthetic job executes only into its local
+  capture function, not a real delivery. Parsing retained jobs does not prove
+  their real behavior or external effects.
+- Original synthetic sign-in, PBKDF2 upgrade/rollback, session rollback,
+  member/guest rules, bundled Markdown, attributed writes/history and failed
+  target preservation pass independently. This does not prove original-user
+  password possession or custom Ruby-mod compatibility.
+- Importer mapping optimization resolves a table's fixed column indexes once.
+  Existing NULL/alias precedence and schema-mapping controls pass, along with
+  exact account/job preservation. Source SQLite is read-only; this review's
+  inputs were isolated rather than live-changing production databases.
+
+## Finding and surgical correction: issue 135
+
+The recovery manifest was read before its file type was validated, while
+root, upload entries and database already had link checks. The documented
+refusal of links/special files therefore omitted the manifest path. Only
+`tools/migrate/recovery.mjs` changes: lstat the manifest, require a regular
+non-symlink file, then read JSON. No importer, engine, loader, host or name
+implementation was changed by this review.
+
+The first native file-symlink probe failed during setup with Windows EPERM;
+it never reached restore. Its raw failure remains at
+`.runtime/area5-file-symlink-probe-failed.xml`. It is now an explicit EPERM
+skip, not evidence of native file-link refusal. Directory junction/alias
+controls execute normally. A separate regular-file guard control reproduced
+the old generic EISDIR error, then passed after the change with the explicit
+manifest error before creating output. Its failing baseline is retained at
+`.runtime/area5-manifest-guard-red.xml`. The symlink control remains portable
+for a runtime able to create native file symlinks. No privilege setting or
+installation was changed to make it run.
+
+One evidence wording needs care: the original requirement table says corrupt
+packages fail before output. Inventory/checksum failures do; an invalid SQLite
+file accompanied by its matching checksum passes hash validation, creates a
+diagnostic target, and then fails database validation. The new control checks
+that failure and preserved original state. This agrees with the command docs'
+partial-output policy, and does not justify claiming every corruption refuses
+before output. A failed restore directory must never be selected for serving.
+
+## Reproduction
+
+```text
+node node_modules/vitest/vitest.mjs run tests/migrate/recovery.test.ts tests/migrate/migration-acceptance.test.ts tests/migrate/generalized-import-mapping.test.ts tests/migrate/import-deck.test.ts tests/migrate/roundtrip.test.ts tests/migrate/verify.test.ts tests/tools/migrate/generalized-import.test.ts tests/tools/migrate/schema-map.test.ts tests/tools/migrate/source-sqlite.test.ts tests/tools/migrate/determinism.test.ts tests/tools/migrate/roundtrip-report.test.ts tests/migrate/recovery-independent-review.test.ts tests/migrate/migration-records-independent-review.test.ts tests/migrate/private-deck-recovery.test.ts
+node node_modules/typescript/bin/tsc --noEmit
+node tools/test-gates.mjs check
+git diff --check
+```
+
+Final runner: 67 passed, 2 skipped, 14 selected files; zero model calls,
+automatic retries, hosted resources or cached test results. Compilation/OS
+caches may be warm. Typecheck, test classification and diff check passed.
+The scoped platform scanner over the three changed JavaScript/TypeScript
+files reported zero unguarded platform command hits. No whole-repository
+scan or full-suite acceptance is implied.
+
+## Remaining dependencies and communication
+
+Real uploads and custom mods corresponding to the September database remain
+unavailable. The original private database path/custody brief was requested
+from the controller; no substitute private dataset was searched for or read.
+Original password possession, private-data reproduction, real job effects,
+hosted runtime behavior and production cutover/write reconciliation remain
+unverified. Issue 10 stays open.
+
+Relay refused the required source-guard announcement to the existing lead on
+projected weekly usage: Sent no, Delivered no, Received no. No message was
+replayed or sent through another channel, and no quota gate was edited. The
+system refusal was filed through the global improvement outlet. The assigned
+local work continued; durable findings remain in this report and issue 135.
+
+Owned test scratch cleanup ran after database handles closed. No input deck,
+credential, attachment or production state was changed or deleted. Review
+test/report source and raw failure receipts are retained for integration.
+The dependency directory reuses the existing install junction; no software,
+new agent, schedule, service or checkout was created. Root retains integration.

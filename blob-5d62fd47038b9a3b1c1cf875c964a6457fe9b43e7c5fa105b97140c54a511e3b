@@ -1,0 +1,64 @@
+import { describe, expect, it } from "vitest";
+import { LibSqlHttpAdapter } from "../../../src/server/drivers/libsql-http.js";
+import { BunnyDbDriver } from "../../../src/card/drivers/bunny-db.js";
+import { runInTransactionStatementScope } from "../../../src/server/transaction-statement-scope.js";
+
+function deferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((done) => { resolve = done; });
+  return { promise, resolve };
+}
+
+describe.each([
+  ["libSQL", (fetchImpl: typeof fetch) => new LibSqlHttpAdapter({ url: "https://scratch.invalid", fetchImpl })],
+  ["Bunny", (fetchImpl: typeof fetch) => new BunnyDbDriver({ url: "https://scratch.invalid", fetchImpl })],
+] as const)("%s failed BEGIN isolation", (_name, makeDriver) => {
+  it("keeps a rejected BEGIN's baton private while its close is pending", async () => {
+    const closing = deferred();
+    const releaseClose = deferred();
+    const reads: { baton?: string }[] = [];
+    let begins = 0;
+    const fetchImpl: typeof fetch = async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      const first = body.requests[0];
+      if (first.type === "close" && body.baton === "rejected-begin") {
+        closing.resolve();
+        await releaseClose.promise;
+      }
+      if (first.stmt?.sql === "BEGIN IMMEDIATE" && ++begins === 1) {
+        return Response.json({ baton: "rejected-begin", results: [
+          { type: "error", error: { code: "SQLITE_BUSY", message: "database is locked" } },
+        ] });
+      }
+      const results = body.requests.map((request: { type: string; stmt?: { sql: string } }) => {
+        if (request.type === "close") return { type: "ok", response: { type: "close" } };
+        const reading = request.stmt?.sql.startsWith("SELECT");
+        if (reading) reads.push(body);
+        return { type: "ok", response: { type: "execute", result: {
+          cols: reading ? [{ name: "n", decltype: "INTEGER" }] : [],
+          rows: reading ? [[{ type: "integer", value: "7" }]] : [],
+          affected_row_count: 0,
+        } } };
+      });
+      return Response.json({ baton: body.requests.at(-1).type === "close" ? null : "accepted-begin", results });
+    };
+    const driver = makeDriver(fetchImpl);
+    let transaction: Promise<void> | undefined;
+    try {
+      // A caller can already be inside another driver's transaction tree.
+      // Its read must still never borrow this driver's rejected BEGIN stream.
+      await runInTransactionStatementScope(async () => {
+        transaction = driver.transaction(async () => undefined);
+        await closing.promise;
+        const result = await driver.query<{ n: number }>("SELECT 7 AS n", []);
+        expect(result.rows).toEqual([{ n: 7 }]);
+        expect(reads).toHaveLength(1);
+        expect(reads[0].baton).toBeUndefined();
+      });
+    } finally {
+      releaseClose.resolve();
+      await transaction;
+    }
+    expect(begins).toBe(2);
+  });
+});

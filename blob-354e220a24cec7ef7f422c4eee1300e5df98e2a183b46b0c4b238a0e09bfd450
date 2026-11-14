@@ -1,0 +1,85 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { assertBunnyRuntimeImports, inspectBunnyRuntimeImports } from '../../tools/vendor/bunny-runtime-imports.mjs';
+import { classify } from '../../tools/test-gates.mjs';
+import { testRunner } from '../../tools/node-test-runners.mjs';
+
+const sdk = 'import * as BunnySDK from "@bunny.net/edgescript-sdk";';
+
+test('the import-check regression stays in correctness', () => {
+  assert.equal(classify('tests/tools/bunny-runtime-import-check.test.mjs'), 'correctness');
+  assert.equal(testRunner(process.cwd(), 'tests/tools/bunny-runtime-import-check.test.mjs'), 'node');
+});
+
+test('compiler text mentioning imports is not a module dependency', () => {
+  const code = 'export const compiler = { print(T) { return T.print("import"), T.space(), T.print("from"), T.print("not-a-module"); } };';
+  assert.deepEqual(inspectBunnyRuntimeImports(code).imports, []);
+  assert.equal(assertBunnyRuntimeImports(sdk + code).sdkImported, true);
+});
+
+test('quoted import/export text, comments and templates do not invent dependencies', () => {
+  const code = sdk + '\n' + [
+    '// import danger from "comment-only";',
+    '/* export * from "block-comment-only"; */',
+    'const text = "import danger from \\\"quoted-only\\\"";',
+    'const template = `export * from "template-only";`;',
+    'const pattern = /import danger from "regexp-only"/;',
+  ].join('\n');
+  const result = assertBunnyRuntimeImports(code);
+  assert.deepEqual(result.imports.map(row => row.source), ['@bunny.net/edgescript-sdk']);
+  assert.deepEqual(result.unsupported, []);
+});
+
+for (const statement of [
+  'import "unsupported-package";',
+  'import value from "unsupported-package";',
+  'import {value} from "unsupported-package";',
+  'import * as value from "unsupported-package";',
+  'export * from "unsupported-package";',
+  'export {value} from "unsupported-package";',
+  'const later = () => import("unsupported-package");',
+]) test('actual unsupported import refuses: ' + statement, () => {
+  assert.throws(() => assertBunnyRuntimeImports(sdk + statement), /unresolved runtime imports.*unsupported-package/);
+});
+
+test('a computed dynamic import refuses rather than guessing its target', () => {
+  assert.throws(() => assertBunnyRuntimeImports(sdk + 'const later = name => import(name);'), /Computed runtime import/);
+});
+
+test('a dynamic import inside a template expression is still executable syntax', () => {
+  assert.throws(() => assertBunnyRuntimeImports(sdk + 'const later = `${import("unsupported-package")}`;'), /unresolved runtime imports/);
+});
+
+test('an SDK name only in a string, comment, export or dynamic call does not register the server', () => {
+  for (const code of [
+    'const text = \'from"@bunny.net/edgescript-sdk"\';',
+    '// import * as BunnySDK from "@bunny.net/edgescript-sdk";',
+    'export * from "@bunny.net/edgescript-sdk";',
+    'import("@bunny.net/edgescript-sdk");',
+  ]) assert.throws(() => assertBunnyRuntimeImports(code), /no actual SDK registration import/);
+});
+
+test('actual node imports remain reported separately and duplicates are stable', () => {
+  const result = assertBunnyRuntimeImports(sdk + 'import "node:crypto"; export * from "node:crypto"; import("node:fs");');
+  assert.deepEqual(result.nodeImports, ['node:crypto', 'node:fs']);
+});
+
+test('existing relative and absolute import behavior is preserved', () => {
+  const result = assertBunnyRuntimeImports(sdk + 'import "./chunk.js"; import "../chunk.js"; import "/chunk.js";');
+  assert.deepEqual(result.unsupported, []);
+});
+
+test('malformed JavaScript and non-source input refuse', () => {
+  assert.throws(() => assertBunnyRuntimeImports(sdk + 'import {'));
+  assert.throws(() => assertBunnyRuntimeImports(null), /requires JavaScript source/);
+});
+
+test('the unchanged pinned compiler source has no actual imports', () => {
+  const bytes = readFileSync(new URL('../../vendor/uglifier-4.2.1-uglify-harmony/uglify-harmony.js', import.meta.url));
+  assert.equal(createHash('sha256').update(bytes).digest('hex'), 'f8fe16073c3f2ec536984d18cffade623bc399cfc2997353d6d919df14f8c1d0');
+  const source = bytes.toString('utf8');
+  assert.deepEqual(inspectBunnyRuntimeImports(source).imports, []);
+  assert.equal(assertBunnyRuntimeImports(sdk + source).sdkImported, true);
+});

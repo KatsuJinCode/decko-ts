@@ -1,0 +1,59 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { createHash } from 'node:crypto';
+import { scratchDir, removeScratchDir } from '../support/scratch-dir.mjs';
+import { qualifyRecordedAssetRoots } from '../support/recorded-asset-roots.mjs';
+
+const relative = 'card-mod-account-0.20.0/assets/style';
+const recorded = 'C:/retired/lib/ruby/gems/3.3.0/gems/' + relative;
+function fixture(work) {
+  const root = scratchDir('recorded-asset-roots-');
+  const home = path.join(root, 'reference');
+  const directory = path.join(home, 'gems', relative);
+  fs.mkdirSync(directory, { recursive: true });
+  const bytes = Buffer.from('synthetic-v1: pinned asset\n');
+  fs.writeFileSync(path.join(directory, 'account.scss'), bytes);
+  const profile = { schema: 'decko-recorded-asset-sources/1', directories: [relative], files: [
+    { path: relative + '/account.scss', bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') },
+  ] };
+  try { return work({ home, directory, profile }); }
+  finally { removeScratchDir(root); }
+}
+
+test('admits exact pinned source bytes under an explicit relocated home', () => fixture(({ home, directory, profile }) => {
+  assert.deepEqual(qualifyRecordedAssetRoots([recorded], home, profile), [directory]);
+}));
+test('accepts Windows separators and an explicit gems directory', () => fixture(({ home, directory, profile }) => {
+  assert.deepEqual(qualifyRecordedAssetRoots([recorded.replaceAll('/', '\\')], path.join(home, 'gems'), profile), [directory]);
+}));
+test('keeps an unavailable original prerequisite unrun when no home is supplied', () => fixture(({ profile }) => {
+  assert.deepEqual(qualifyRecordedAssetRoots([recorded], undefined, profile), [recorded]);
+}));
+test('rejects changed bytes inside the correctly named gem version', () => fixture(({ home, directory, profile }) => {
+  fs.writeFileSync(path.join(directory, 'account.scss'), 'synthetic-v1: altered asset');
+  assert.throws(() => qualifyRecordedAssetRoots([recorded], home, profile), /asset-source-bytes-mismatch/);
+}));
+test('rejects an extra source file instead of silently accepting another tree', () => fixture(({ home, directory, profile }) => {
+  fs.writeFileSync(path.join(directory, 'unexpected.scss'), 'synthetic-v1');
+  assert.throws(() => qualifyRecordedAssetRoots([recorded], home, profile), /asset-source-membership-mismatch/);
+}));
+test('rejects missing required files and explicitly absent selected directories', () => fixture(({ home, profile }) => {
+  const missing = structuredClone(profile);
+  missing.files[0].path = relative + '/missing.scss';
+  assert.throws(() => qualifyRecordedAssetRoots([recorded], home, missing), /asset-source-membership-mismatch/);
+  assert.throws(() => qualifyRecordedAssetRoots([recorded], path.join(home, 'absent'), profile), /asset-source-unavailable/);
+}));
+test('rejects wrong versions, malformed paths and relative or blank selected homes', () => fixture(({ home, profile }) => {
+  for (const name of [recorded.replace('0.20.0', '0.21.0'), recorded + '/../outside', recorded + '/./outside', recorded + '//outside', 'assets/style']) {
+    assert.throws(() => qualifyRecordedAssetRoots([name], home, profile), /recorded-asset-path-invalid|asset-source-directory-not-pinned/);
+  }
+  for (const selected of [' ', 'relative-home']) assert.throws(() => qualifyRecordedAssetRoots([recorded], selected, profile), /reference-gem-home-invalid/);
+}));
+test('rejects invalid and duplicate source pin records', () => fixture(({ home, profile }) => {
+  for (const mutate of [p => p.files.push({ ...p.files[0] }), p => p.files[0].sha256 = 'not-a-hash', p => p.files[0].path += '/../outside']) {
+    const invalid = structuredClone(profile); mutate(invalid);
+    assert.throws(() => qualifyRecordedAssetRoots([recorded], home, invalid), /asset-source-profile-invalid/);
+  }
+}));

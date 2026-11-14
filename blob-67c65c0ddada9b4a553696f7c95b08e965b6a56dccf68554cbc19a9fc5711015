@@ -1,0 +1,57 @@
+import {describe, expect, it} from "vitest";
+import {getDefaultModLoader, ModLoader, setDefaultModLoader} from "../../../src/card/mod-loader.js";
+import {superView} from "../../../src/card/mod-loader/mod-view-helpers.js";
+import {HTML_VIEWS} from "../../../src/card/render/views.js";
+import type {ViewContext, ViewFn} from "../../../src/card/render/format.js";
+
+const view = "synthetic_super_ancestry";
+function run(formats: Record<string, {views: Array<{view: string; viewFn: ViewFn}>}>, body: (ctx: ViewContext, loader: ModLoader) => void) {
+  const loader = new ModLoader([{manifest: {name: "super_ancestry", setModules: [{setPath: "all/probe", formats}]}}], {});
+  const previousLoader = getDefaultModLoader(), terminal = Object.getOwnPropertyDescriptor(HTML_VIEWS, view);
+  try {
+    loader.load(); setDefaultModLoader(loader);
+    Object.defineProperty(HTML_VIEWS, view, {value: () => "END", configurable: true, writable: true, enumerable: true});
+    const ctx = {fmt: {card: {setKeys: "ALL"}, formatName: "rss"}} as ViewContext;
+    body(ctx, loader);
+  } finally {
+    loader.reset(); setDefaultModLoader(previousLoader);
+    if (terminal === undefined) delete HTML_VIEWS[view]; else Object.defineProperty(HTML_VIEWS, view, terminal);
+  }
+}
+describe("format-super owner advancement", () => {
+  it("keeps child, parent and base declarations of the same module", () => {
+    const formats = Object.fromEntries(["base", "html", "rss"].map(level => [level, {views: [{view, viewFn: (ctx: ViewContext) => `${level}:${superView(ctx, "All::Probe", view)}`}]}]));
+    run(formats, (ctx, loader) => {
+      const chain = loader.viewChain("ALL", view, "rss");
+      expect(chain).toHaveLength(3);
+      expect(chain[0]!.viewFn(ctx)).toBe("rss:html:base:END");
+      expect(chain[0]!.viewFn(ctx)).toBe("rss:html:base:END");
+    });
+  });
+  it("advances by chain position when every format shares the same function", () => {
+    const shared: ViewFn = ctx => `same:${superView(ctx, "All::Probe", view)}`;
+    run(Object.fromEntries(["base", "html", "rss"].map(level => [level, {views: [{view, viewFn: shared}]}])), (ctx, loader) => {
+      expect(loader.viewChain("ALL", view, "rss")[0]!.viewFn(ctx)).toBe("same:same:same:END");
+    });
+  });
+  it("clears its active owner after a parent body throws", () => {
+    let fail = true;
+    run({rss: {views: [{view, viewFn: ctx => `rss:${superView(ctx, "All::Probe", view)}`}]},
+      html: {views: [{view, viewFn: ctx => {if (fail) throw Error("fixture parent failure"); return `html:${superView(ctx, "All::Probe", view)}`;}}]}}, (ctx, loader) => {
+      const body = loader.viewChain("ALL", view, "rss")[0]!.viewFn;
+      expect(() => body(ctx)).toThrow("fixture parent failure"); fail = false;
+      expect(body(ctx)).toBe("rss:html:END");
+    });
+  });
+  it("keeps nested distinct contexts out of the parent's super frame", () => {
+    let nested = false, nestedResult: unknown;
+    run({rss: {views: [{view, viewFn: ctx => `rss:${superView(ctx, "All::Probe", view)}`}]},
+      html: {views: [{view, viewFn: ctx => {
+        if (!nested) {nested = true; nestedResult = getDefaultModLoader()!.viewChain("ALL", view, "rss")[0]!.viewFn({...ctx});}
+        return `html:${superView(ctx, "All::Probe", view)}`;
+      }}]}}, (ctx, loader) => {
+      expect(loader.viewChain("ALL", view, "rss")[0]!.viewFn(ctx)).toBe("rss:html:END");
+      expect(nestedResult).toBe("rss:html:END");
+    });
+  });
+});

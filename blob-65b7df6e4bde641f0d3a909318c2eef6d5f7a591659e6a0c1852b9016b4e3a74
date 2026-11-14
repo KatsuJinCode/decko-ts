@@ -1,0 +1,2 @@
+{"card":"*all+*read","format":"csv","view":"show_default_titled","bytes":"Name,Type\nAnyone,Role\n"}
+{"card":"Home","format":"csv","view":"show_default_titled","error":"NoMethodError: undefined method `each' for an instance of String"}

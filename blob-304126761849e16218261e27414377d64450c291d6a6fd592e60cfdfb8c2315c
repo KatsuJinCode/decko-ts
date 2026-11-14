@@ -1,0 +1,206 @@
+# Forward existing-deck members-key recovery
+
+Historical report for rejected package `5547224fe805c932f258e213c453c285d40feeec`.
+Its original evidence and limitations below are retained. Independent review
+subsequently found the TEMP-schema defect in issue 204. Current source changes,
+native checks and outstanding independent acceptance are recorded in
+[the effective-schema repair report](members-key-effective-schema-repair-20261031.md).
+The historical main-schema claim below is not effective-schema acceptance.
+
+Assignment: repair the existing-deck obligation retained by independent review
+85cd775b7c3fa8bbb4814d862abc10b46ce1e8b8. This package is not permission to
+execute against a current customer deck. Only owned synthetic stores are used.
+
+## Required outcome
+
+An already-recorded 0006 must not be replayed or rewritten. An uncontested
+incorrect members key may be corrected without changing the card id, compound
+side ids, authored membership contents or history. Missing native id-list
+references may be added only when explicit stored ids and existing references
+agree. A stale plan or unsupported database guarantee must refuse writes.
+Canonical-key collisions, conflicting compound memberships and ambiguous
+content/references must remain unchanged and produce an exact reconciliation
+report. Anonymous permissions must remain unchanged. Already-correct/no-op,
+failure rollback, uncertain acknowledgements and normal cache freshness need
+actual local SQLite and D1 controls. Source/native controls remain distinct
+from deployment and existing-customer acceptance.
+
+## Implementation decision
+
+Use an explicit read-only planner and separately invoked forward recovery
+routine, not an automatically firing SQL migration. A filename-ledger replay
+cannot inspect or reconcile meaningful collisions. The routine uses an adapter's
+native atomic batch and the actual deck freshness stamp for a guarded apply;
+it does not use D1's compensating multi-call transaction as a native transaction.
+Collision states are diagnosed and retained, not merged or deleted. The planner
+does not infer a person or role grant from a synthetic owner id.
+
+## Implemented support and refusal boundaries
+
+`tools/migrate/members-key-recovery.mjs` exports two opt-in functions:
+`planMembersKeyRecovery(driver)` emits SELECTs and a digest of the observed
+plan; `applyMembersKeyRecovery(driver, expectedPlanSha256)` recomputes that
+plan and issues one guarded native atomic batch. Neither opens a connection,
+creates a CLI/route/schedule, replays 0006, writes a migration-ledger entry,
+deletes a row or rewires a compound side. The digest is a consistency
+precondition, not operator authorization or an independent review receipt.
+
+The supported repair is the specific shipped simple, active `*members` card
+with key `*members` or `*member`. Its id comes from the current codename row.
+An unoccupied incorrect key is corrected in place. Existing active Role-typed
+membership compounds retain their ids and contents. Missing references are
+added only for unique, canonical `~id` lines naming existing active cards,
+with no contradictory existing reference. Existing reference ids and every
+history/ledger row remain intact. A correct complete state produces a no-op
+with no batch call. Named or malformed membership content is not resolved by
+guessing; missing targets, conflicting/duplicate/non-native references and a
+missing anonymous identity refuse writes. A missing anonymous member reference
+also requires separate review instead of adding an anonymous grant.
+
+Every occupied canonical key blocks mutation, including an empty or trashed
+duplicate. A populated collision report includes both side identities, the
+transitive compound closure, overlapping compound pairs, action counts and
+incoming/outgoing references. It supplies explicit custody, mapping and
+rehearsal steps. It does not choose between meaningful data or claim that a
+collided existing deck has been repaired. Custom-named members sides and other
+unknown identity shapes are outside this finite repair.
+
+Missing members codenames are explicit blockers, not successful no-ops.
+Unknown foreign-key effects also block mutation; table definitions identify
+metadata candidates and native PRAGMA foreign_key_list establishes the actual
+constraints. The complete table/index/trigger definition set is bound to apply
+so concurrent schema changes cannot evade the data-stamp guard.
+
+The database must expose a valid integer deck freshness stamp and the exact
+six known cards/reference stamp triggers. Additional write instrumentation
+remains a named blocker, while read-only collision diagnosis still proceeds.
+This includes the additional journal-capture triggers installed after a D1
+engine save: their write behavior is not silently qualified here. The required
+stamp triggers are not removed or weakened. Use an initialized, dedicated
+adapter outside a caller-owned transaction; composing this recovery inside
+another transaction is not qualified by this package. Adapter first-use
+serving recovery is separate from the planner's SELECT-only statement surface.
+
+Apply checks the actual stamp and complete trigger definition set again
+inside the atomic batch, before any write, together with the schema stamp.
+A second SQL assertion checks the
+resulting key, reference projection and expected version increment before the
+batch commits. SQL failures roll the native batch back on the tested adapters.
+A missing acknowledgement or malformed returned receipt is always reported
+unconfirmed with the original cause where available. There is no automatic
+retry or inverse write. Inspect current state read-only; a commit followed by
+a lost acknowledgement is retained, and the old plan is refused afterward.
+
+## Reproductions and verification
+
+The historical fixture is an exact immutable copy of root 04a8's original
+0006, SHA-256 `261766c7ba708e75cae2df729b44ea92b7263361e5c9b2352c62ffc52cfe7643`.
+Actual owned SQLite and local workerd D1 stores apply the old complete deploy
+chain and record its filenames. The real pending-set function omits recorded
+0006. Direct replay of corrected guarded inserts leaves the old row unchanged.
+These controls are not actual Wrangler execution or customer-data mutation.
+
+The final candidate runs against retained exact root
+`04a8bc229da6b6d5a2416bef2c17c2776579fed1` plus independently accepted fresh
+patch `dc258421c670274f0f111db44d7cc6269790082c`. All 4,038 named original
+source/vendor/script/oracle export rows were rehashed after execution and matched
+their originals or the four accepted patch targets. The four new executable
+recovery inputs match the candidate bytes exactly. The original root tsconfig
+and whole configured src/tests/benchmarks compiler remain intact.
+
+| Fresh invocation | Observed result |
+| --- | --- |
+| Complete recovery file, native SQLite and local D1 | 48 cases: 24 per adapter, all pass, zero failed/pending/file errors |
+| Native Cardname and original id-list methods | 6 cases, 9 assertions, zero failures/errors/skips |
+| Whole configured TypeScript 7.0.2 native compiler, noEmit with actual input list | Exit zero |
+| Explicit changed JS/TS platform scan | Two files, zero command hits |
+| Test classification and syntax | Pass |
+| Event-observed process sample: two D1 collision/cache cases | Runner exit zero, three observed child processes closed, runner and those PIDs non-live |
+
+The complete recovery run covers uncontested key/reference repair, already-
+correct reference repair, true no-op, empty/populated/compound collisions,
+actual root-engine duplicate creation, named/dangling/conflicting/duplicate/
+anonymous membership refusals, stale plans, data and trigger races, native
+SQL failure and postcondition rollback, lost acknowledgements, missing result
+receipts, unknown instrumentation, normal warm-cache refresh and role changes.
+Missing codename and foreign-key-side-effect refusals are included.
+The anonymous read verdict stays denied, and an actual anonymous engine update
+after recovery is refused without changing the observed card/history/ledger
+tables. A stranger gains no role. Only the explicitly stored member gains
+the declared Administrator membership. No synthetic owner id occurs in the
+recovery implementation.
+
+Actual before/after snapshots are retained for each adapter under the private
+`members-recovery-observations-complete` directory: uncontested repair, empty and
+populated collisions, SQL rollback, committed-but-unacknowledged state, and
+role/cache/anonymous-write behavior. The collision and rollback snapshots
+compare equal in every observed table; the successful snapshot changes only
+the key, missing native references and freshness stamp. History, compound
+identities, membership content and the original ledger are checked unchanged.
+
+Native controls load actual local Cardname 1.110.0 and the exact original
+card-mod-list 0.20.0 id-list source. Pins are checked before use. Connection/
+name resolution and reference insertion dependencies are explicitly inert;
+native id decoding and reference-event methods execute the original bodies.
+This is native naming and source-shaped id-list qualification, not loaded Rails
+account/permission behavior or a native serving receipt.
+
+## Raw results, failures and custody
+
+All raw artifacts are retained under the worktree's registered private
+`.runtime/area5-external-evidence/members-recovery-*` paths. No result cache,
+model judge, paid call or automatic retry produced a verdict; compiler/module/
+OS caches may be warm. Development failures and deliberate corrected runs
+remain separately named, not overwritten:
+
+- The first fixtures omitted required card timestamps/author stamps. Real
+  SQLite/D1 rejected them; fixture inserts were corrected without weakening
+  a repair assertion.
+- The author's older engine produced different historical naming behavior.
+  Its two failing duplicate assertions remain recorded; they were not changed
+  to fit that branch. The intended root modules reproduce the actual duplicate.
+- The first root D1 duplicate control hit the additional journal triggers.
+  They now become explicit mutation blockers while preserving the requested
+  read-only reconciliation report; no trigger gained write qualification.
+- The new standalone Ruby control initially omitted Cardname's original
+  Object#to_name extension. Loading that actual source corrected the harness.
+  No expected result was altered. The standalone file imports no helper absent
+  from the root tree.
+- Workerd D1 rejected SQLite's table-valued pragma function with
+  `D1_ERROR: not authorized: SQLITE_AUTH`. The same guard now uses the supported
+  native PRAGMA metadata command and retains the foreign-key refusal. The
+  failed run and failed process sample remain recorded; no authorization error
+  was swallowed and no mutation protection was removed.
+
+The earlier 44-case complete report was copied byte-for-byte to
+`members-recovery-root-pre-observation-complete-preserved.json` before its
+reporter target was reused for the final 48-case run. Earlier receipts are
+retained alongside the final source/artifact verification manifest.
+
+The exact historical SQL fixture contains a trailing space inside its quoted
+Role-card content. The whitespace scanner reports that inherited data byte;
+it is retained under the fixture hash rather than changing the historical
+input. The five authored source/declaration/test/report paths pass the
+whitespace check separately.
+
+Principal raw SHA-256 values:
+
+| Artifact | SHA-256 |
+| --- | --- |
+| members-recovery-root-complete-results.json | a6aca1f88e04558899c2aea1c2cb6b96e8c4129e821445c45bf671dde548f97e |
+| members-recovery-delivery-compiler.txt | 2ed177b7e219f34cecc57a251cd83be73f5b483ed6fa3f5d5058094c4ec111db |
+| members-recovery-native-final.txt | 1cc40ded50a0155eeec6a75ab4ebe3d13368757b8fc93d4533b2657c547eb2b4 |
+| members-recovery-delivery-process-receipt.json | 1ce07dd8bdb98416e68c479cd54b99f3978472f504b6dac280f132611bab22d3 |
+
+The process sample is bounded to two selected D1 cases, not all test-suite
+processes. Its event records include the observed commands/PIDs and native
+close events; process.kill(pid,0) found none live afterward. Main full-suite
+runner/compiler processes also exited normally, and each owning fixture awaits
+Miniflare disposal. No process was killed. SQL fixture teardowns close native
+SQLite and dispose their local D1 runtimes. No persistent service was installed.
+The prior exact source export and new raw receipts/controllers remain registered
+review deliverables; no new clone, dependency install or cleanup upload occurred.
+
+Next: independently re-attack this immutable package before integrating it or
+authorizing any current-deck execution. Collisions and unreviewed write triggers
+remain explicit preserved blockers, not successful recoveries.

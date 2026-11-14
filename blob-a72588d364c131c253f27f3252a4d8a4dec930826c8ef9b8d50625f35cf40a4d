@@ -1,0 +1,141 @@
+# F78 persistence receiver ancestry
+
+Assignment: correct the step-50 mismatch recorded by private PR #288 on a
+branch from `codex/port-identity-integration-20261029`, with a failing-before
+regression using only the committed synthetic-v1 dataset. Preserve existing
+work, create no checkout copies, and perform no deletion.
+
+Acceptance: match the direct Ruby `Card.find(...).update!` invocation without
+removing the Cardtype guard for initialized/fetched receivers. Verify saved
+type, instance rows, history, and old/new event membership. Keep recorded
+oracle expectations and divergence declarations unchanged. Deliver a private
+PR with the exact revision and local test results; release acceptance is a
+separate gate.
+
+## Mechanism
+
+The action engine assumes the old identity's set modules were loaded before
+assignment. Ruby's `Card.find` bypasses `Card#initialize`, so it does not load
+those modules. `refresh_set_modules` saves `@set_mods_loaded` before assignment
+and re-includes only when that flag was already set. The director subsequently
+includes modules for the assigned identity. A fetched receiver can retain both
+identities; a raw found receiver has only the assigned identity. The
+`changing:` event condition examines the receiver's actual singleton ancestry,
+not its stored old type. Consequently the Cardtype guard is present for a
+fetched Cardtype and absent for the probe's raw found receiver after assignment.
+
+Reference: card 1.110.0 `mod/core/set/all/initialize.rb`,
+`mod/core/set/all/assign_attributes.rb`, `lib/card/director/all.rb`, and
+`lib/card/set/event/all.rb`. The guard body itself remains unchanged.
+
+Implementation decision: represent direct-found receiver provenance explicitly
+on an update. Ordinary updates retain their existing initialized behavior.
+The persistence probe must use that provenance for every matching Ruby
+`Card.find(...).update!` call, rather than special-casing step 50.
+
+## Changes
+
+- `UpdateCardInput.receiver` distinguishes `find` from `fetch`; omitted means
+  the existing initialized/fetched behavior. No HTTP request mapping changed.
+- The update validation walk omits the old attachment root only for a raw
+  found receiver. The recorded attachment sequence continues into storage
+  and integration through the existing mechanism.
+- The persistence probe uses `updateFoundCard` for raw found updates. Its
+  fetched updates (nested-deck content, account password, and read rule)
+  retain initialized behavior. No assertions, oracle rows, skipped-step sets,
+  or deliberate-difference declarations changed.
+- A Node regression runs the real action engine against an in-memory copy of
+  the committed `synthetic-v1` database. It checks saved type, unchanged live
+  instances, the subject's action and type-history rows, the default/explicit
+  fetched guard, ancestry across the save lifecycle, and the complete serving
+  mod runtime. The source database is opened read-only.
+- A separate Ruby component control executes the original initialization,
+  assignment, pattern-reset, phase-preparation, and event-membership methods.
+  Its minimal adapters provide a receiver and two arbitrary pattern modules.
+  It does not boot Rails or substitute a production database.
+
+## Verification
+
+Base: `3701d069f8a1e2c53d5da7359739677de9ca1c72`.
+Existing checkout: `decko-ts-k-persist-probe-20261101`.
+
+Before changing the engine, the first four regression cases executed:
+
+```text
+node --test tests/card/actions/persistence-find-receiver.source.test.mjs
+tests 4
+pass 2
+fail 2
+CardActionError: can't alter this type; Topic cards still exist
+```
+
+Both raw-found cases failed at the real guard. Both initialized-receiver
+controls passed. No result was inferred from a skipped test or model judgment.
+
+Final run, including the unchanged existing type-change suite:
+
+```text
+node --test tests/card/actions/persistence-find-receiver.source.test.mjs tests/card/actions/mod-event-type-change.source.test.mjs
+tests 16
+pass 16
+fail 0
+cancelled 0
+skipped 0
+todo 0
+```
+
+These are fresh Node test executions: five new cases and eleven existing
+controls. Compiler/OS caches may be warm; no result cache, model or automatic
+retry supplied the verdict. The new regression exclusively reads
+`reference-harness/fixtures/synthetic-v1/deck/deck.sqlite3`; existing controls
+construct their own small synthetic in-memory schema.
+
+```text
+ruby tools/persistence/check-receiver-ancestry.rb <card-1.110.0 source directory>
+native exit 0, Ruby 3.4.11
+initially_loaded=false: old_changing_event=false, new_changing_event=true
+initially_loaded=true:  old_changing_event=true,  new_changing_event=true
+```
+
+The original methods executed under the existing Ruby runtime. Source hashes:
+
+| Original card-1.110.0 file | SHA-256 |
+| --- | --- |
+| mod/core/set/all/initialize.rb | f520449c27399b20b327b7781e2c91af3e3c66fbf60b4cb397252528bdd6d81b |
+| mod/core/set/all/assign_attributes.rb | 8f0b7764e3caabfa54a1be8a4e1d7ab3b123d991991bd60183d75116b904b05d |
+| lib/card/set/pattern/all.rb | ed0c317aafca492ef271020a3dc5cac3189e96e41f5bd5456aa277a9908a7cc8 |
+| lib/card/director/all.rb | c78061f0e7423ce0309e1c014b69f56a16155c3065e245abc1aba776403c7e0e |
+| lib/card/set/event/all.rb | dfb5e30b047f820dbf60d0138e98affdf70d9b20687b8793fc4f4d80b4b7f091 |
+
+`node tools/typescript/typecheck.mjs --noEmit` exited 0.
+`git diff --check` passed. The platform scanner's explicit five-file selection
+reported zero platform-command hits and CLEAN. The added Ruby control uses
+portable Ruby file/module APIs and receives its source directory as an argument.
+
+## Limits and custody
+
+This is a local engine correction with a reproduced negative control, an
+original-method Ruby component check, and a complete-serving-runtime check on
+synthetic-v1. It is not a new full Rails/ActiveRecord oracle capture, a hosted
+run, deployment, migration acceptance, or release acceptance. The 70-operation
+write-battery-v1 suite was not run because this assignment restricts regression
+data to synthetic-v1. Its unchanged full comparator remains an integration gate.
+
+Initial direct import of core-mod hit the pre-existing ESM cycle
+`Cannot access 'roleConfigsView' before initialization`; loading through the
+normal default-mod-deck composition resolved test initialization. The new
+history assertion was qualified against the writer's first-change backfill:
+the fixture's creation action lacks change rows, so the first update records
+the original type and the new type, rather than only one change row.
+
+The initial whole-tree platform scan exited with
+`platform-scan-discovery-incomplete`. Its supported explicit-path mode then
+completed. Infrastructure observation:
+`rel-dc19af35-6339-49a5-8c42-b9852dafd66f`. No scanner or approval mechanism changed.
+
+No checkout copies, package installs, data-file writes, hosted requests,
+deletions, source-fixture changes, or shared-service restarts were performed.
+The checkout's previous branch remains available. All test databases lived
+in RAM and their handles closed. The private PR is the handoff; the integration
+lead should run the existing full comparator before merging or clearing F78's
+whole-battery acceptance.

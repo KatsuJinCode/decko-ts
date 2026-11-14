@@ -1,0 +1,130 @@
+{
+  "row": "reg-routes-A3",
+  "gemset": "decko-0.20.0 + card-1.110.0 (pinned)",
+  "filesWebPath": "files",
+  "deprecatedRoute": {
+    "verb": "get",
+    "patterns": [
+      "/:mark(-:size)-:rev_id.:format"
+    ],
+    "requirements": {
+      "mark": "[^-]+",
+      "explicit_file": "true",
+      "rev_id": "[^-]+"
+    },
+    "action": "card#read",
+    "order": 2
+  },
+  "currentRoute": {
+    "verb": "get",
+    "patterns": [
+      "/:mark/:rev_id(-:size).:format"
+    ],
+    "requirements": {
+      "mark": "[^-]+",
+      "explicit_file": "true",
+      "rev_id": "[^-]+"
+    },
+    "action": "card#read",
+    "order": 1
+  },
+  "standardPageRoute": {
+    "verb": "get",
+    "patterns": [
+      "/:mark(.:format)"
+    ],
+    "requirements": {},
+    "action": "card#read",
+    "order": 6
+  },
+  "routeTableSize": 29,
+  "requirements": {
+    "mark": {
+      "source": "[^-]+",
+      "matches": [
+        {
+          "segment": "card",
+          "matches": true
+        },
+        {
+          "segment": "my-card",
+          "matches": false
+        }
+      ]
+    },
+    "revId": {
+      "source": "[^-]+",
+      "matches": [
+        {
+          "segment": "99",
+          "matches": true
+        },
+        {
+          "segment": "9-9",
+          "matches": false
+        }
+      ]
+    },
+    "explicitFile": true
+  },
+  "sources": {
+    "route": [
+      {
+        "line": 3,
+        "text": "Decko::Engine.routes.draw do"
+      },
+      {
+        "line": 4,
+        "text": "  files = Decko::Engine.config.files_web_path"
+      },
+      {
+        "line": 5,
+        "text": "  file_matchers = { mark: /[^-]+/, explicit_file: true, rev_id: /[^-]+/ }"
+      },
+      {
+        "line": 6,
+        "text": ""
+      },
+      {
+        "line": 7,
+        "text": "  root \"card#read\""
+      },
+      {
+        "line": 8,
+        "text": ""
+      },
+      {
+        "line": 9,
+        "text": "  # explicit file request"
+      },
+      {
+        "line": 10,
+        "text": "  get({ \"#{files}/:mark/:rev_id(-:size).:format\" => \"card#read\" }.merge(file_matchers))"
+      },
+      {
+        "line": 11,
+        "text": ""
+      },
+      {
+        "line": 12,
+        "text": "  # DEPRECATED (old file and asset requests)"
+      },
+      {
+        "line": 13,
+        "text": "  get({ \"#{files}/:mark(-:size)-:rev_id.:format\" => \"card#read\" }.merge(file_matchers))"
+      },
+      {
+        "line": 14,
+        "text": "  %w[assets javascripts jasmine].each do |prefix|"
+      },
+      {
+        "line": 15,
+        "text": "    get \"#{prefix}/*mark\" => \"card#asset\""
+      },
+      {
+        "line": 16,
+        "text": "  end"
+      }
+    ]
+  }
+}

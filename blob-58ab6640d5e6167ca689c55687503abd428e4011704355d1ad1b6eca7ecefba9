@@ -1,0 +1,57 @@
+import {describe,expect,it} from "vitest";
+import {ModLoader} from "../../../src/card/mod-loader.js";
+import {defineMod} from "../../../src/card/mod-loader/mod-dsl.js";
+import {runModEventStage} from "../../../src/card/mod-loader/mod-event-dispatch.js";
+import type {ModEventCard} from "../../../src/card/mod-loader/mod-manifest.js";
+
+const deps={} as Parameters<typeof runModEventStage>[3];
+const card:ModEventCard={id:101,name:"Assigned Card",key:"assigned_card",typeId:2,patternTypeId:1,nameBeforeAct:"Previous Card",currentAction:true,act:{action:"update"},changedFields:["name","type_id"]};
+type Condition=(card:ModEventCard)=>unknown|Promise<unknown>;
+
+function load(condition:Condition|string,body:(card:ModEventCard)=>void,on?:"delete"){
+ const manifest=defineMod("function_conditions",({set})=>set("all/function_conditions",({event})=>{
+  event("conditional","validate",{when:condition,...(on?{on}:{})},body);
+ }));
+ const loader=new ModLoader([{manifest}],{});loader.load();
+ return loader;
+}
+
+describe("function-valued event conditions",()=>{
+ const values:Array<{name:string;value:unknown;fires:boolean}>=[
+  {name:"false",value:false,fires:false},{name:"null",value:null,fires:false},
+  {name:"undefined",value:undefined,fires:false},{name:"true",value:true,fires:true},
+  {name:"zero",value:0,fires:true},{name:"empty string",value:"",fires:true},
+  {name:"empty array",value:[],fires:true},{name:"empty object",value:{},fires:true},
+ ];
+ for(const {name,value,fires}of values)it("keeps Ruby truthiness for "+name+" through DSL, loader and dispatch",async()=>{
+  const received:ModEventCard[][]=[],fired:ModEventCard[]=[];
+  const condition=(...args:[ModEventCard])=>{received.push(args);return value;};
+  const loader=load(condition,current=>{fired.push(current);});
+  try{
+   expect(loader.eventRegistry().forEvent("conditional")?.when).toBe(condition);
+   const result=await runModEventStage({registry:loader.eventRegistry()},"validate",card,deps);
+   expect(received).toEqual([[card]]);expect(received[0]![0]).toBe(card);
+   expect(fired).toEqual(fires?[card]:[]);
+   expect(result.fired).toEqual(fires?["conditional"]:[]);
+   expect(result.skipped).toEqual(fires?[]:[{event:"conditional",reason:"when-false"}]);
+  }finally{loader.reset();}
+ });
+ it("awaits an asynchronous condition before the event body",async()=>{
+  const order:string[]=[];
+  const loader=load(async current=>{await Promise.resolve();expect(current).toBe(card);order.push("condition");return true;},()=>{order.push("body");});
+  try{await runModEventStage({registry:loader.eventRegistry()},"validate",card,deps);expect(order).toEqual(["condition","body"]);}finally{loader.reset();}
+ });
+ it("propagates the original condition error before running a body",async()=>{
+  const failure=new Error("synthetic condition failure"),fired:string[]=[];
+  const loader=load(()=>{throw failure;},()=>{fired.push("body");});
+  try{await expect(runModEventStage({registry:loader.eventRegistry()},"validate",card,deps)).rejects.toBe(failure);expect(fired).toEqual([]);}finally{loader.reset();}
+ });
+ it("preserves named predicate resolution and its stage context",async()=>{
+  const seen:unknown[]=[];const loader=load("named",()=>{seen.push("body");});
+  try{await runModEventStage({registry:loader.eventRegistry(),predicates:{named:(current,context)=>{expect(current).toBe(card);expect(context?.stage).toBe("validate");seen.push("condition");return true;}}},"validate",card,deps);expect(seen).toEqual(["condition","body"]);}finally{loader.reset();}
+ });
+ it("does not call a condition when an earlier action gate excludes the event",async()=>{
+  const loader=load(()=>{throw Error("excluded condition must not run");},()=>{throw Error("excluded body must not run");},"delete");
+  try{const result=await runModEventStage({registry:loader.eventRegistry()},"validate",card,deps);expect(result.fired).toEqual([]);expect(result.skipped).toEqual([{event:"conditional",reason:"on-action"}]);}finally{loader.reset();}
+ });
+});

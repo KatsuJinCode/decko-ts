@@ -1,0 +1,3 @@
+# reg-routes-B6: the row's verification holds at the canonical tip; the edge seam stays the named unblock
+  `npx vitest run tests/server/setup-before-action-parity.test.ts` reads 1
+  tests/server/setup-before-action-parity.test.ts are rewritten as the

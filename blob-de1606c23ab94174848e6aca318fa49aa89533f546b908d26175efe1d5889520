@@ -1,0 +1,27 @@
+{
+  "what": "row mx-190 tranche 4: the port-side search-overmatch instrument re-run fresh at the tranche-4 base",
+  "row": "mx-190-search-whole-count-correctness",
+  "branch": "port/matrix-journey-tranche4-20261021",
+  "verifiedAt": "4937ff2f (the branch tip: tranche-3 base c18e3f44 + the mx-155 following-junction work, carried in the same rebuilt bundle)",
+  "command": "node tools/edge-signed-in-exercise.mjs --only search-overmatch --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 --out .runtime/matrix-journey-tranche4-20261021/overmatch-run/report.md",
+  "result": "PASS 7/7 checks, 0 failed, 0 skipped by write mode",
+  "processExitCode": "1 by the tool's own coverage rule (edge-signed-in-exercise.mjs:1505 exits non-zero unless FULL capability coverage is complete; a --only run never is). Every check passed.",
+  "runRecord": {
+    "source": "4937ff2f38436ccc57bbf7050c2e635a53de8f71, source files clean",
+    "bundleSha256": "b96ac0014d08fe0e5d2443a43d59830c0e97b3d8447c90df55af1906ef6de3cc",
+    "deckCardsCopied": 21676,
+    "reportPath": ".runtime/matrix-journey-tranche4-20261021/overmatch-run/report.md"
+  },
+  "deckFingerprint": {
+    "sha256": "6aebb6546a0620f3c61efad28cd01023e104d47ffd583272ce18036038f73b78",
+    "note": "re-measured this tranche before the run; identical to the tranche-2 binding of the port whole count (317 rows over 16 pages for query[keyword]=news)"
+  },
+  "legs": [
+    "fixtures store two public term cards, a control, and an administrator-only card behind a self read rule",
+    "the term's search hands the administrator-only row to the administrator and withholds it from an ordinary member",
+    "every returned row carries the term in its own name or its own stored content",
+    "the module records a deck-wide broad-term composition measurement (broadTerm card, 809 deck matches, 20 rows first page, caveat: port-vs-deck, NOT the oracle's count)"
+  ],
+  "cleanup": "owned local stack closed; all 6 journey-created cards removed; browser asset audit 3 contexts 0 failures",
+  "rowState": "WORKING ON IT - the oracle whole count stays unreachable on this machine's rungs (Decko match raises on sqlite, card-1.110.0 config/initializers/02_patches/active_record.rb:80-83; the MySQL rung's machine-local assets are absent). Named next step, not this lane's: provision the MySQL-rung assets where the oracle runs and record both counts in one receipt. Nothing deploys."
+}

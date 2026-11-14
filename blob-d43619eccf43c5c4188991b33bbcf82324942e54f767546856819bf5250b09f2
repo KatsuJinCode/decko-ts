@@ -1,0 +1,55 @@
+import assert from 'node:assert/strict';
+import path from 'node:path';
+import test from 'node:test';
+import { MYSQL_VERSION, resolveMysqlProvider } from './native-mysql-provider.mjs';
+
+const repoRoot = path.resolve('/checkouts/decko-ts');
+const cache = path.resolve('/checkouts/.mysql-test-cache');
+const defaultBase = path.join(cache, MYSQL_VERSION, `mysql-${MYSQL_VERSION}-winx64`);
+const present = present => candidate => present.includes(candidate);
+
+test('DECKO_MYSQL_BASEDIR is selected when its bin/mysqld.exe exists', () => {
+  const base = path.resolve('/opt/mysql-8.4.11');
+  const mysqld = path.join(base, 'bin', 'mysqld.exe');
+  const result = resolveMysqlProvider({ repoRoot, env: { DECKO_MYSQL_BASEDIR: base }, platform: 'win32', exists: present([mysqld]) });
+  assert.equal(result.selected, true);
+  assert.equal(result.baseDir, base);
+  assert.equal(result.source, 'DECKO_MYSQL_BASEDIR');
+  assert.equal(result.mysqld, mysqld);
+  assert.equal(result.problem, null);
+});
+
+test('DECKO_MYSQL_BASEDIR that lacks mysqld.exe is refused and names the exact missing file', () => {
+  const base = path.resolve('/opt/empty');
+  const mysqld = path.join(base, 'bin', 'mysqld.exe');
+  const result = resolveMysqlProvider({ repoRoot, env: { DECKO_MYSQL_BASEDIR: base }, platform: 'win32', exists: present([]) });
+  assert.equal(result.selected, false);
+  assert.equal(result.mysqld, mysqld);
+  assert.match(result.problem, new RegExp(mysqld.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+});
+
+test('without DECKO_MYSQL_BASEDIR on Windows, the fetch-mysql cache is the candidate', () => {
+  const mysqld = path.join(defaultBase, 'bin', 'mysqld.exe');
+  const selected = resolveMysqlProvider({ repoRoot, env: {}, platform: 'win32', exists: present([mysqld]) });
+  assert.equal(selected.selected, true);
+  assert.equal(selected.baseDir, defaultBase);
+  assert.equal(selected.source, 'fetch-mysql cache');
+  const missing = resolveMysqlProvider({ repoRoot, env: {}, platform: 'win32', exists: present([]) });
+  assert.equal(missing.selected, false);
+  assert.equal(missing.mysqld, mysqld);
+});
+
+test('DECKO_MYSQL_CACHE moves the fetch-mysql cache', () => {
+  const alt = path.resolve('/alt/cache');
+  const mysqld = path.join(alt, MYSQL_VERSION, `mysql-${MYSQL_VERSION}-winx64`, 'bin', 'mysqld.exe');
+  const result = resolveMysqlProvider({ repoRoot, env: { DECKO_MYSQL_CACHE: alt }, platform: 'win32', exists: present([mysqld]) });
+  assert.equal(result.selected, true);
+  assert.equal(result.mysqld, mysqld);
+});
+
+test('off Windows with no DECKO_MYSQL_BASEDIR there is no selection and the problem says so', () => {
+  const result = resolveMysqlProvider({ repoRoot, env: {}, platform: 'linux', exists: present([]) });
+  assert.equal(result.selected, false);
+  assert.equal(result.baseDir, null);
+  assert.match(result.problem, /set DECKO_MYSQL_BASEDIR/);
+});

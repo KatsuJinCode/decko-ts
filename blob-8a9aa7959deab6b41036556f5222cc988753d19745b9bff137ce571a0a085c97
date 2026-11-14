@@ -1,0 +1,59 @@
+// build-stamp.mjs — the build side of the hosted-build identity.
+//
+// A Bunny edge bundle stamps the git commit it was built from, and whether the
+// tracked files were modified at build time, into the code it uploads. The
+// deployed script reports that stamp on /_status (see
+// deploy/bunny-worker-src/bunny-edge-build-identity.ts), and the hosted-run
+// guard (assert-hosted-build-matches-commit.mjs) compares it with the commit a
+// run claims to test.
+//
+// The stamp is read with git. If git cannot name the commit, this throws: a
+// bundle must never be produced with an unknown identity.
+
+import { execFileSync } from "node:child_process";
+
+const FULL_COMMIT_SHA = /^[0-9a-f]{40}$/;
+
+/** Name of the esbuild `define` constants the runtime identity module reads. */
+export const BUILD_STAMP_DEFINE_NAMES = Object.freeze({
+  commit: "__DECKO_BUILD_COMMIT__",
+  treeDirty: "__DECKO_BUILD_TREE_DIRTY__",
+});
+
+/**
+ * Reads the commit HEAD names and whether tracked files differ from it.
+ * Untracked files are ignored: they are not compiled into the bundle.
+ *
+ * @param {string} repoRoot checkout the bundle is built from
+ * @returns {{ commit: string, treeDirty: boolean }}
+ */
+export function readBuildStamp(repoRoot) {
+  const git = (args) =>
+    execFileSync("git", ["-C", repoRoot, ...args], {
+      encoding: "utf8",
+      windowsHide: true,
+      stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
+  const commit = git(["rev-parse", "--verify", "HEAD^{commit}"]);
+  if (!FULL_COMMIT_SHA.test(commit)) {
+    throw new Error(`build stamp: git did not return a full commit SHA for HEAD (got "${commit}"); refusing to build an unidentified bundle`);
+  }
+  const trackedChanges = git(["status", "--porcelain", "--untracked-files=no"]);
+  return { commit, treeDirty: trackedChanges !== "" };
+}
+
+/**
+ * esbuild `define` entries that write a stamp into a bundle.
+ *
+ * @param {{ commit: string, treeDirty: boolean }} stamp
+ * @returns {Record<string, string>}
+ */
+export function buildStampDefines(stamp) {
+  if (!FULL_COMMIT_SHA.test(stamp.commit) || typeof stamp.treeDirty !== "boolean") {
+    throw new Error("build stamp: malformed stamp; refusing to build");
+  }
+  return {
+    [BUILD_STAMP_DEFINE_NAMES.commit]: JSON.stringify(stamp.commit),
+    [BUILD_STAMP_DEFINE_NAMES.treeDirty]: JSON.stringify(stamp.treeDirty),
+  };
+}

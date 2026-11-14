@@ -1,0 +1,75 @@
+import { describe, expect, it } from "vitest";
+import { Miniflare, convertV4MiniflareOptions } from "miniflare";
+import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
+import { CloudflareD1Adapter, type D1DatabaseLike } from "../../../src/server/drivers/d1.js";
+import type { SQLDatabaseDriver, SQLStatement } from "../../../src/server/driver.js";
+import { getNameEnvironment, setNameEnvironment } from "../../../src/card/name/environment.js";
+import { createActionsTestStorage, seedStandardDeck } from "./actions-test-storage.js";
+import { seedWritePathRaceDeck } from "./write-path-race-fixture.js";
+
+async function canonical() {
+  const storage=await createActionsTestStorage();
+  try {
+    await seedStandardDeck(storage);
+    const schema=(await storage.driver.query<{name:string;type:string;tbl_name:string;sql:string}>(
+      "SELECT name,type,tbl_name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' AND sql IS NOT NULL ORDER BY type,name",[])).rows;
+    return {schema,rows:await tableRows(storage.driver,schema.filter(row=>row.type==="table").map(row=>row.name))};
+  }finally{storage.close();}
+}
+async function tableRows(driver:SQLDatabaseDriver,names:string[]) {
+  const results=await driver.batch(names.map(name=>({sql:`SELECT * FROM "${name.replaceAll('"','""')}" ORDER BY rowid`,params:[]})));
+  return Object.fromEntries(names.map((name,index)=>[name,results[index].rows]));
+}
+
+describe("isolated deterministic race fixture initialization",()=>{
+  it("matches canonical serial schema and all rows without replacing the name environment",async()=>{
+    const original=getNameEnvironment();
+    const driver=new LocalSqliteDriver({path:":memory:"});
+    try{
+      const expected=await canonical();
+      setNameEnvironment(original);
+      await seedWritePathRaceDeck(driver);
+      expect(getNameEnvironment()).toBe(original);
+      const schema=(await driver.query("SELECT name,type,tbl_name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' AND sql IS NOT NULL ORDER BY type,name",[])).rows;
+      expect(schema).toEqual(expected.schema);
+      expect(await tableRows(driver,Object.keys(expected.rows))).toEqual(expected.rows);
+    }finally{driver.close();setNameEnvironment(original);}
+  });
+
+  it("keeps distinct local D1 bindings independent and refuses to reseed existing state",async()=>{
+    const original=getNameEnvironment();
+    const expected=await canonical();
+    setNameEnvironment(original);
+    const mf=new Miniflare(convertV4MiniflareOptions({modules:true,script:'export default {fetch(){return new Response("ok")}}',d1Databases:{A:"race-fixture-a",B:"race-fixture-b"}}));
+    try{
+      const first=new CloudflareD1Adapter(await mf.getD1Database("A") as unknown as D1DatabaseLike);
+      const second=new CloudflareD1Adapter(await mf.getD1Database("B") as unknown as D1DatabaseLike);
+      await seedWritePathRaceDeck(first); await seedWritePathRaceDeck(second);
+      expect(await tableRows(first,Object.keys(expected.rows))).toEqual(expected.rows);
+      expect(await tableRows(second,Object.keys(expected.rows))).toEqual(expected.rows);
+      await first.query("UPDATE cards SET db_content=? WHERE id=50",["first case only"]);
+      expect((await second.query<{db_content:string}>("SELECT db_content FROM cards WHERE id=50",[])).rows[0].db_content).toBe("v1");
+      await expect(seedWritePathRaceDeck(first)).rejects.toThrow();
+      expect((await first.query<{db_content:string}>("SELECT db_content FROM cards WHERE id=50",[])).rows[0].db_content).toBe("first case only");
+      expect(await tableRows(second,Object.keys(expected.rows))).toEqual(expected.rows);
+    }finally{await mf.dispose();setNameEnvironment(original);}
+  },30_000);
+
+  it("copies cached statements for every target and propagates batch failure without replay",async()=>{
+    let captured:SQLStatement[]=[],queries=0,batches=0;
+    const original=getNameEnvironment();
+    const recorder:SQLDatabaseDriver={async query(){queries++;return {rows:[],rowsAffected:0};},async batch(statements){batches++;captured=statements;return []}};
+    await seedWritePathRaceDeck(recorder);
+    expect(queries).toBe(1);expect(batches).toBe(1);
+    const expected=structuredClone(captured);
+    captured[0].sql="MUTATED BY FIRST TARGET";
+    captured.find(statement=>statement.params.length>0)!.params[0]="MUTATED PARAMETER";
+    await seedWritePathRaceDeck(recorder);
+    expect(queries).toBe(2);expect(batches).toBe(2);
+    expect(captured).toEqual(expected);
+    const failure=new Error("inert batch setup failure");let attempts=0;
+    await expect(seedWritePathRaceDeck({...recorder,async batch(){attempts++;throw failure;}})).rejects.toBe(failure);
+    expect(attempts).toBe(1);
+    expect(getNameEnvironment()).toBe(original);
+  });
+});
