@@ -1,0 +1,221 @@
+{
+  "gem_views": [
+    {
+      "set_file": "self/favicon.rb",
+      "format": "html",
+      "view": "source",
+      "line": 2
+    },
+    {
+      "set_file": "self/favicon.rb",
+      "format": "html",
+      "view": "link_tag",
+      "line": 7
+    },
+    {
+      "set_file": "self/new_file.rb",
+      "format": "html",
+      "view": "source",
+      "line": 6
+    },
+    {
+      "set_file": "self/new_file.rb",
+      "format": "html",
+      "view": "core",
+      "line": 10
+    },
+    {
+      "set_file": "self/new_file.rb",
+      "format": "html",
+      "view": "input",
+      "line": 14
+    },
+    {
+      "set_file": "self/new_image.rb",
+      "format": "html",
+      "view": "source",
+      "line": 6
+    },
+    {
+      "set_file": "self/new_image.rb",
+      "format": "html",
+      "view": "core",
+      "line": 10
+    },
+    {
+      "set_file": "self/new_image.rb",
+      "format": "html",
+      "view": "input",
+      "line": 14
+    },
+    {
+      "set_file": "self/search.rb",
+      "format": "json",
+      "view": "image_complete",
+      "line": 2
+    },
+    {
+      "set_file": "type/file.rb",
+      "format": "base",
+      "view": "source",
+      "line": 20
+    },
+    {
+      "set_file": "type/file.rb",
+      "format": "base",
+      "view": "core",
+      "line": 24
+    },
+    {
+      "set_file": "type/file.rb",
+      "format": "file",
+      "view": "core",
+      "line": 68
+    },
+    {
+      "set_file": "type/file.rb",
+      "format": "json",
+      "view": "content",
+      "line": 109
+    },
+    {
+      "set_file": "type/file.rb",
+      "format": "html",
+      "view": "core",
+      "line": 113
+    },
+    {
+      "set_file": "type/file.rb",
+      "format": "html",
+      "view": "input",
+      "line": 119
+    },
+    {
+      "set_file": "type/file.rb",
+      "format": "html",
+      "view": "preview_editor",
+      "line": 127
+    },
+    {
+      "set_file": "type/image.rb",
+      "format": "base",
+      "view": "one_line_content",
+      "line": 18
+    },
+    {
+      "set_file": "type/image.rb",
+      "format": "base",
+      "view": "source",
+      "line": 26
+    },
+    {
+      "set_file": "type/image.rb",
+      "format": "base",
+      "view": "inline",
+      "line": 74
+    },
+    {
+      "set_file": "type/image.rb",
+      "format": "email_html",
+      "view": "inline",
+      "line": 84
+    },
+    {
+      "set_file": "type/image.rb",
+      "format": "css",
+      "view": "core",
+      "line": 101
+    },
+    {
+      "set_file": "type/image.rb",
+      "format": "css",
+      "view": "content",
+      "line": 105
+    },
+    {
+      "set_file": "type/image/html_views.rb",
+      "format": "html",
+      "view": "core",
+      "line": 5
+    },
+    {
+      "set_file": "type/image/html_views.rb",
+      "format": "html",
+      "view": "full_width",
+      "line": 25
+    },
+    {
+      "set_file": "type/image/html_views.rb",
+      "format": "html",
+      "view": "content_changes",
+      "line": 49
+    }
+  ],
+  "image_css_views": [
+    {
+      "set_file": "type/image.rb",
+      "format": "css",
+      "view": "core",
+      "line": 101
+    },
+    {
+      "set_file": "type/image.rb",
+      "format": "css",
+      "view": "content",
+      "line": 105
+    }
+  ],
+  "css_render_sites": [
+    {
+      "file": "card-mod-bootstrap-0.20.0/set/type/bootswatch_skin.rb",
+      "line": 28,
+      "kind": "asset_input_or_output",
+      "text": "include_set Abstract::AssetInputter, input_format: :css, input_view: :compressed"
+    },
+    {
+      "file": "card-mod-email-0.20.0/set/all/email_html.rb",
+      "line": 18,
+      "kind": "explicit_format_render",
+      "text": ":email_stylesheet.card.format(:css).render_compiled"
+    },
+    {
+      "file": "card-mod-style-0.20.0/set/type/css.rb",
+      "line": 2,
+      "kind": "asset_input_or_output",
+      "text": "include_set Abstract::AssetInputter, input_format: :css, input_view: :compressed"
+    },
+    {
+      "file": "card-mod-style-0.20.0/set/type/skin.rb",
+      "line": 1,
+      "kind": "asset_input_or_output",
+      "text": "include_set Abstract::AssetInputter, input_format: :css, input_view: :concat"
+    },
+    {
+      "file": "card-mod-style-0.20.0/set/type_plus_right/set/style.rb",
+      "line": 1,
+      "kind": "asset_input_or_output",
+      "text": "include_set Abstract::AssetOutputter, output_format: :css, output_view: :compressed"
+    }
+  ],
+  "css_link_sites": [
+    {
+      "file": "card-mod-format-0.20.0/set/all/css.rb",
+      "line": 28,
+      "text": "path mark: card.name, format: :css"
+    },
+    {
+      "file": "card-mod-style-0.20.0/set/type_plus_right/set/style.rb",
+      "line": 30,
+      "text": "path mark: card.name, item: :import, format: :css"
+    }
+  ],
+  "css_render_card_types": [
+    "all",
+    "bootswatch_skin",
+    "css",
+    "set:set",
+    "skin"
+  ],
+  "image_card_type_covered": false,
+  "source_sha256": "f17d42b529e9b40fad3b4071f37cb2775c270bd9d5302a96ba858f95308f8805"
+}

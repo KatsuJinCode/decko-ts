@@ -1,0 +1,258 @@
+// hosted-build-guard.test.mjs — the hosted-run guard refuses before any test
+// request and proceeds only when the deployed build is the commit under test.
+//
+// Network is stubbed: every fetch is an injected fake, or a loopback server this
+// test starts and closes. No hosted or paid call is made.
+
+import test from "node:test";
+import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
+import { createServer } from "node:http";
+import { readFileSync, readdirSync, statSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, relative, resolve, sep } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { build } from "esbuild";
+import {
+  checkHostedBuildMatchesCommit,
+  HostedBuildRefusal,
+  resolveCommitUnderTest,
+} from "../../tools/hosted-build-guard/assert-hosted-build-matches-commit.mjs";
+import { buildStampDefines, readBuildStamp, BUILD_STAMP_DEFINE_NAMES } from "../../tools/hosted-build-guard/build-stamp.mjs";
+
+const root = fileURLToPath(new URL("../..", import.meta.url));
+const HEAD = resolveCommitUnderTest(root);
+const OTHER = "45d1ead3c8c203c6e39cfcdf8789de95e78d064d".padEnd(40, "0");
+const BASE = "https://decko-edge-synthetic.example.test";
+
+/** A fetch stub that answers /_status with `body` and records every request it sees. */
+function statusFetch({ status = 200, body, text }) {
+  const calls = [];
+  const fetchImpl = async (url, init) => {
+    calls.push({ url: String(url), method: init?.method ?? "GET" });
+    return new Response(text ?? JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+  };
+  return { fetchImpl, calls };
+}
+
+test("a deployed build equal to the commit under test proceeds, after exactly one status GET", async () => {
+  const { fetchImpl, calls } = statusFetch({ body: { ok: true, build: { commit: HEAD, tree_dirty: false } } });
+  const result = await checkHostedBuildMatchesCommit({ baseUrl: `${BASE}/`, expectedCommit: HEAD, fetchImpl });
+  assert.equal(result.commit, HEAD);
+  assert.equal(result.statusUrl, `${BASE}/_status`);
+  assert.deepEqual(calls, [{ url: `${BASE}/_status`, method: "GET" }]);
+});
+
+test("a deployed build of a different commit refuses, naming both commits, with no request but the status read", async () => {
+  const { fetchImpl, calls } = statusFetch({ body: { ok: true, build: { commit: OTHER, tree_dirty: false } } });
+  await assert.rejects(
+    checkHostedBuildMatchesCommit({ baseUrl: BASE, expectedCommit: HEAD, fetchImpl }),
+    (error) => {
+      assert.ok(error instanceof HostedBuildRefusal);
+      assert.match(error.message, new RegExp(OTHER));
+      assert.match(error.message, new RegExp(HEAD));
+      assert.match(error.message, /No test request was sent/);
+      return true;
+    },
+  );
+  assert.equal(calls.length, 1, "only the identity read may be sent");
+  assert.equal(calls[0].url, `${BASE}/_status`);
+});
+
+test("a build with no build field (the 45d1ead3 deploy shape) refuses and says the identity is unreadable", async () => {
+  const { fetchImpl } = statusFetch({ body: { ok: true, engine: "decko-ts", version: "2.0.0" } });
+  await assert.rejects(
+    checkHostedBuildMatchesCommit({ baseUrl: BASE, expectedCommit: HEAD, fetchImpl }),
+    (error) => error instanceof HostedBuildRefusal && /no readable build identity/.test(error.message) && /No test request was sent/.test(error.message),
+  );
+});
+
+test("an unstamped build (commit null) refuses as unreadable, never as a match", async () => {
+  const { fetchImpl } = statusFetch({ body: { ok: true, build: { commit: null, tree_dirty: null } } });
+  await assert.rejects(
+    checkHostedBuildMatchesCommit({ baseUrl: BASE, expectedCommit: HEAD, fetchImpl }),
+    (error) => error instanceof HostedBuildRefusal && /no readable build identity/.test(error.message),
+  );
+});
+
+test("a matching commit built from a dirty tree refuses: it is not that commit", async () => {
+  const { fetchImpl } = statusFetch({ body: { ok: true, build: { commit: HEAD, tree_dirty: true } } });
+  await assert.rejects(
+    checkHostedBuildMatchesCommit({ baseUrl: BASE, expectedCommit: HEAD, fetchImpl }),
+    (error) => error instanceof HostedBuildRefusal && /uncommitted changes/.test(error.message),
+  );
+});
+
+test("an HTTP error or an HTML status page refuses as unreadable", async () => {
+  const notFound = statusFetch({ status: 404, text: "<html>not found</html>" });
+  await assert.rejects(
+    checkHostedBuildMatchesCommit({ baseUrl: BASE, expectedCommit: HEAD, fetchImpl: notFound.fetchImpl }),
+    (error) => error instanceof HostedBuildRefusal && /HTTP 404/.test(error.message),
+  );
+  const html = statusFetch({ status: 200, text: "<html>status</html>" });
+  await assert.rejects(
+    checkHostedBuildMatchesCommit({ baseUrl: BASE, expectedCommit: HEAD, fetchImpl: html.fetchImpl }),
+    (error) => error instanceof HostedBuildRefusal && /not JSON/.test(error.message),
+  );
+});
+
+test("a network failure refuses: an unreachable identity is never a match", async () => {
+  const fetchImpl = async () => {
+    throw new TypeError("fetch failed");
+  };
+  await assert.rejects(
+    checkHostedBuildMatchesCommit({ baseUrl: BASE, expectedCommit: HEAD, fetchImpl }),
+    (error) => error instanceof HostedBuildRefusal && /status request failed/.test(error.message),
+  );
+});
+
+test("a commit under test that is not a full SHA refuses before any request", async () => {
+  const { fetchImpl, calls } = statusFetch({ body: { ok: true, build: { commit: HEAD, tree_dirty: false } } });
+  await assert.rejects(
+    checkHostedBuildMatchesCommit({ baseUrl: BASE, expectedCommit: HEAD.slice(0, 7), fetchImpl }),
+    HostedBuildRefusal,
+  );
+  assert.equal(calls.length, 0);
+});
+
+test("the stamp defines carry the commit and tree state as JSON constants", () => {
+  const defines = buildStampDefines({ commit: HEAD, treeDirty: true });
+  assert.equal(defines[BUILD_STAMP_DEFINE_NAMES.commit], JSON.stringify(HEAD));
+  assert.equal(defines[BUILD_STAMP_DEFINE_NAMES.treeDirty], "true");
+  assert.throws(() => buildStampDefines({ commit: "not-a-sha", treeDirty: false }), /malformed stamp/);
+});
+
+test("the build stamp reads the checkout's HEAD commit, and refuses an unknown one", () => {
+  const stamp = readBuildStamp(root);
+  assert.match(stamp.commit, /^[0-9a-f]{40}$/);
+  assert.equal(stamp.commit, HEAD);
+  assert.equal(typeof stamp.treeDirty, "boolean");
+  const empty = mkdtempSync(join(tmpdir(), "hosted-guard-nogit-"));
+  try {
+    assert.throws(() => readBuildStamp(empty));
+  } finally {
+    rmSync(empty, { recursive: true, force: true });
+  }
+});
+
+test("an esbuild define stamps the runtime identity; an unstamped bundle reports none", async () => {
+  const identityModule = resolve(root, "deploy/bunny-worker-src/bunny-edge-build-identity.ts");
+  const stamped = await build({
+    stdin: { contents: `export { buildIdentity } from ${JSON.stringify(identityModule)};`, resolveDir: root, loader: "ts" },
+    bundle: true,
+    write: false,
+    format: "esm",
+    platform: "neutral",
+    define: buildStampDefines({ commit: HEAD, treeDirty: false }),
+  });
+  const bare = await build({
+    stdin: { contents: `export { buildIdentity } from ${JSON.stringify(identityModule)};`, resolveDir: root, loader: "ts" },
+    bundle: true,
+    write: false,
+    format: "esm",
+    platform: "neutral",
+  });
+  const load = async (code) => {
+    const file = join(mkdtempSync(join(tmpdir(), "hosted-guard-bundle-")), "identity.mjs");
+    writeFileSync(file, code.outputFiles[0].text);
+    try {
+      return (await import(pathToFileURL(file).href)).buildIdentity();
+    } finally {
+      rmSync(resolve(file, ".."), { recursive: true, force: true });
+    }
+  };
+  assert.deepEqual(await load(stamped), { commit: HEAD, tree_dirty: false });
+  assert.deepEqual(await load(bare), { commit: null, tree_dirty: null });
+});
+
+test("the command line refuses with exit 1 and a plain message on a loopback mismatch, and passes on a match", async () => {
+  const seen = [];
+  let answer = { ok: true, build: { commit: OTHER, tree_dirty: false } };
+  const server = createServer((request, response) => {
+    seen.push(request.url);
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify(answer));
+  });
+  await new Promise((done) => server.listen(0, "127.0.0.1", done));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const run = (args) =>
+    new Promise((done) =>
+      execFile(
+        process.execPath,
+        [join(root, "tools/hosted-build-guard/check-hosted-build.mjs"), "--base-url", base, ...args],
+        { windowsHide: true, timeout: 30_000 },
+        (error, stdout, stderr) => done({ code: error ? error.code : 0, stdout, stderr }),
+      ),
+    );
+  try {
+    const refused = await run([]);
+    assert.equal(refused.code, 1);
+    assert.match(refused.stderr, new RegExp(OTHER));
+    assert.match(refused.stderr, new RegExp(HEAD));
+    assert.match(refused.stderr, /No test request was sent/);
+    answer = { ok: true, build: { commit: HEAD, tree_dirty: false } };
+    const matched = await run([]);
+    assert.equal(matched.code, 0, matched.stderr);
+    assert.match(matched.stdout, /hosted build verified/);
+    assert.deepEqual([...new Set(seen)], ["/_status"], "the command line sends nothing but the status read");
+  } finally {
+    await new Promise((done) => server.close(done));
+  }
+});
+
+// Every tool that sends requests to a hosted edge host must call the guard.
+// A new tool that names a hosted host without the guard fails this test.
+const GUARDED_TOOLS = [
+  "tools/bunny-edge-parity/run-authed-parity-against-bunny-edge.mjs",
+  "tools/bunny-edge-parity/recompare-oracle-after-shell-anchor-fix.mjs",
+  "tools/bunny-edge-parity/verify-session-behaviors.mjs",
+  "tools/edge-signed-in-exercise/live-mode.mjs",
+  "tools/edge-signed-in-exercise.mjs",
+  "tools/bunny-edge-save-timing/deploy-and-time.mjs",
+];
+const HOSTED_HOST = /(?:[a-z0-9-]+\.bunny\.run|staging\.example\.org|[a-z0-9-]+\.workers\.dev)/;
+
+function toolFiles(dir, out = []) {
+  for (const entry of readdirSync(dir)) {
+    if (entry === "node_modules" || entry === "dist" || entry === ".git") continue;
+    const full = join(dir, entry);
+    if (statSync(full).isDirectory()) toolFiles(full, out);
+    else if (/\.(mjs|js|ts)$/.test(entry) && !/\.test\.(mjs|js|ts)$/.test(entry)) out.push(full);
+  }
+  return out;
+}
+
+// Files that name a hosted host but send no request to a hosted build. Each is
+// listed with its reason, so a new entry needs a decision.
+const NAMES_HOST_WITHOUT_REQUEST = new Set([
+  "tools/bundle-bunny-worker.mjs", // bundle script: names the SDK package, sends nothing
+  "tools/bundle-bunny-edge-engine.mjs", // bundle script: names the SDK package, sends nothing
+  "tools/bunny-edge-save-timing/build.mjs", // bundle script: names the SDK package, sends nothing
+  "tools/bunny-edge-save-timing/entry.ts", // the bundle entry itself; runs on the edge, not from a tool
+  "tools/edge-signed-in-exercise/lib/edge-host.mjs", // local shim for the SDK import
+  "tools/edge-signed-in-exercise/lib/sdk-shim.mjs", // local shim for the SDK import
+  "tools/edge-signed-in-exercise/lib/stack.mjs", // reads the live script's metadata only (management API); no build-under-test request
+]);
+
+// Hosted-request tools this change does NOT guard yet. Each one is a known gap that
+// must be closed or re-justified; the test fails if a new one appears unlisted.
+const REVIEWED_UNGUARDED_HOSTED_TOOLS = new Set([
+  "tools/capture-and-grade.mjs", // staging over basic-auth https and SSH; its own _status gate, not the Bunny build
+  "tools/d1-trickle/measure.mjs", // Cloudflare Workers base URL; a different build without a Bunny identity
+  "tools/hosted-conformance/run.mjs", // provisions hosted Cloudflare and Turso databases; not the Bunny build
+]);
+
+test("every tool that names a hosted host calls the guard, or is a reviewed exception", () => {
+  const hostedNamers = toolFiles(join(root, "tools"))
+    .filter((file) => HOSTED_HOST.test(readFileSync(file, "utf8")))
+    .map((file) => relative(root, file).split(sep).join("/"))
+    .filter((file) => !file.startsWith("tools/hosted-build-guard/"));
+  const leftover = hostedNamers.filter(
+    (file) => !GUARDED_TOOLS.includes(file) && !NAMES_HOST_WITHOUT_REQUEST.has(file) && !REVIEWED_UNGUARDED_HOSTED_TOOLS.has(file),
+  );
+  assert.deepEqual(leftover, [], `hosted-host tools without the guard or a reviewed exception: ${leftover.join(", ")}`);
+  for (const file of GUARDED_TOOLS) {
+    const source = readFileSync(join(root, file), "utf8");
+    assert.match(source, /requireHostedBuildMatchesCommit\(|checkHostedBuildMatchesCommit\(/, `${file} must call the guard`);
+  }
+});

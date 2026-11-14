@@ -1,0 +1,202 @@
+{
+  "rendered": {
+    "probe#act(child_act)": "<div class='accordion-item'>\n<h2 class='accordion-header nodblclick w-100'>\n<button class='collapsed accordion-button' data-bs-target='#act-id-N' data-bs-toggle='collapse' type='button'>\n\n<div class=\"row w-100\">\n<div class=\"col-8\">\nHistory Probe Renamed+child\n<span class=\"text-muted ps-1 badge\">\n<i class=\"notranslate material-icons\">add_circle</i><small> 2</small></span></div>\n<div class=\"col-4 text-end\">\n<small><a class=\"known-card\" href=\"/Decko_Bot\">Decko Bot</a>\nTIME_AGO ago</small></div></div>\n</button>\n</h2>\n<div class='accordion-collapse collapse' id='act-id-N'>\n<div class='accordion-subheader bg-light p-2 text-end'>\n<a class=\"_stop_propagation known-card\" rel=\"nofollow\" href=\"/History_Probe_Renamed+child/history?look_in_trash=true\"><i class=\"notranslate material-icons\">history</i></a> <a class=\"_stop_propagation known-card\" href=\"/History_Probe_Renamed+child\"><i class=\"notranslate material-icons\">open_in_full</i></a>\n</div>\n<div class='accordion-body d0-card-body'>\n\n<div class=\"container-fluid\">\n\n<div class=\"row\">\n              <ul class=\"action-list w-100\">\n                <li class=\"create\">\n                  \n<div class=\"card-header\">\n<div class=\"float-end\">\n<ins class='diffins diff-added'>RichText</ins></div>\n<div>\n+child</div></div>\n<div class=\"card-body\">\n<div id=\"history_probe_renamed-child-action_summary-view\" class=\"card-slot action_summary-view ALL ALL_PLUS TYPE-rich_text RIGHT-child TYPE_PLUS_RIGHT-rich_text-child SELF-history_probe_renamed-child\" data-card-id=\"N\" data-card-name=\"History Probe Renamed+child\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"History_Probe_Renamed+child\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;action_summary&quot;,&quot;show&quot;:[&quot;action_summary&quot;],&quot;action_id&quot;:4983}\"><ins class='diffins diff-added'>child body</ins></div></div>\n                </li>\n              </ul>\n</div></div>\n<div class=\"container-fluid\">\n\n<div class=\"row\">\n              <ul class=\"action-list w-100\">\n                <li class=\"create\">\n                  \n<div class=\"card-header\">\n<div class=\"float-end\">\n<ins class='diffins diff-added'>RichText</ins></div>\n<div>\n<ins class='diffins diff-added'>child</ins></div></div>\n<div class=\"card-body\">\n<div id=\"child-action_summary-view\" class=\"card-slot action_summary-view ALL TYPE-rich_text SELF-child\" data-card-id=\"N\" data-card-name=\"child\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"child\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;action_summary&quot;,&quot;show&quot;:[&quot;action_summary&quot;],&quot;action_id&quot;:4984}\"><i>empty</i></div></div>\n                </li>\n              </ul>\n</div></div>\n</div>\n</div>\n</div>\n",
+    "probe#act(no_param)": "<div class='accordion-item'>\n<h2 class='accordion-header nodblclick w-100'>\n<button class='collapsed accordion-button' data-bs-target='#act-id-N' data-bs-toggle='collapse' type='button'>\n\n<div class=\"row w-100\">\n<div class=\"col-8\">\nHistory Probe Renamed\n<span class=\"text-muted ps-1 badge\">\n<i class=\"notranslate material-icons\">edit</i><small> </small></span></div>\n<div class=\"col-4 text-end\">\n<small><a class=\"known-card\" href=\"/Decko_Bot\">Decko Bot</a>\nTIME_AGO ago</small></div></div>\n</button>\n</h2>\n<div class='accordion-collapse collapse' id='act-id-N'>\n<div class='accordion-subheader bg-light p-2 text-end'>\n<a class=\"_stop_propagation known-card\" rel=\"nofollow\" href=\"/History_Probe_Renamed/history?look_in_trash=true\"><i class=\"notranslate material-icons\">history</i></a> <a class=\"_stop_propagation known-card\" href=\"/History_Probe_Renamed\"><i class=\"notranslate material-icons\">open_in_full</i></a>\n</div>\n<div class='accordion-body d0-card-body'>\n\n<div class=\"container-fluid\">\n\n<div class=\"row\">\n              <ul class=\"action-list w-100\">\n                <li class=\"update\">\n                  \n<div class=\"card-header\">\n<div class=\"float-end\"></div>\n<div>\nHistory Probe Renamed</div></div>\n<div class=\"card-body\">\n<div id=\"history_probe_renamed-action_summary-view\" class=\"card-slot action_summary-view ALL TYPE-rich_text SELF-history_probe_renamed\" data-card-id=\"N\" data-card-name=\"History Probe Renamed\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"History_Probe_Renamed\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;action_summary&quot;,&quot;show&quot;:[&quot;action_summary&quot;],&quot;action_id&quot;:4982}\"><a rel=\"nofollow\" class=\"revision-N float-end slotter\" href=\"/History_Probe_Renamed/action_expanded?action_id=N&amp;look_in_trash=true\" data-remote=\"true\"><i class=\"notranslate material-icons\">expand_more</i></a>\n<del class='diffdel diff-deleted'>second</del><ins class='diffins diff-added'>third</ins>...<ins class='diffins diff-added'> with inclusion {{History Probe R...</ins></div></div>\n                </li>\n              </ul>\n</div></div>\n</div>\n</div>\n</div>\n",
+    "probe#act(parent_act_2)": "<div class='accordion-item'>\n<h2 class='accordion-header nodblclick w-100'>\n<button class='collapsed accordion-button' data-bs-target='#act-id-N' data-bs-toggle='collapse' type='button'>\n\n<div class=\"row w-100\">\n<div class=\"col-8\">\nHistory Probe Renamed\n<span class=\"text-muted ps-1 badge\">\n<i class=\"notranslate material-icons\">edit</i><small> </small></span></div>\n<div class=\"col-4 text-end\">\n<small><a class=\"known-card\" href=\"/Decko_Bot\">Decko Bot</a>\nTIME_AGO ago</small></div></div>\n</button>\n</h2>\n<div class='accordion-collapse collapse' id='act-id-N'>\n<div class='accordion-subheader bg-light p-2 text-end'>\n<a class=\"_stop_propagation known-card\" rel=\"nofollow\" href=\"/History_Probe_Renamed/history?look_in_trash=true\"><i class=\"notranslate material-icons\">history</i></a> <a class=\"_stop_propagation known-card\" href=\"/History_Probe_Renamed\"><i class=\"notranslate material-icons\">open_in_full</i></a>\n</div>\n<div class='accordion-body d0-card-body'>\n\n<div class=\"container-fluid\">\n\n<div class=\"row\">\n              <ul class=\"action-list w-100\">\n                <li class=\"update\">\n                  \n<div class=\"card-header\">\n<div class=\"float-end\"></div>\n<div>\nHistory Probe</div></div>\n<div class=\"card-body\">\n<div id=\"history_probe_renamed-action_summary-view\" class=\"card-slot action_summary-view ALL TYPE-rich_text SELF-history_probe_renamed\" data-card-id=\"N\" data-card-name=\"History Probe Renamed\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"History_Probe_Renamed\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;action_summary&quot;,&quot;show&quot;:[&quot;action_summary&quot;],&quot;action_id&quot;:4980}\"><a rel=\"nofollow\" class=\"revision-N float-end slotter\" href=\"/History_Probe_Renamed/action_expanded?action_id=N&amp;look_in_trash=true\" data-remote=\"true\"><i class=\"notranslate material-icons\">expand_more</i></a>\n<del class='diffdel diff-deleted'>first</del><ins class='diffins diff-added'>second</ins>...</div></div>\n                </li>\n              </ul>\n</div></div>\n</div>\n</div>\n</div>\n",
+    "probe#action_expanded(update_action)": "<div id=\"history_probe_renamed-action_expanded-view\" class=\"card-slot action_expanded-view ALL TYPE-rich_text SELF-history_probe_renamed\" data-card-id=\"N\" data-card-name=\"History Probe Renamed\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"History_Probe_Renamed\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;action_expanded&quot;,&quot;show&quot;:[&quot;action_expanded&quot;]}\"><a rel=\"nofollow\" class=\"revision-N float-end slotter\" href=\"/History_Probe_Renamed/action_summary?action_id=N&amp;look_in_trash=true\" data-remote=\"true\"><i class=\"notranslate material-icons\">expand_less</i></a>\n<del class='diffdel diff-deleted'>first</del><ins class='diffins diff-added'>second</ins> body</div>",
+    "probe#action_summary(create_action)": "<div id=\"history_probe_renamed-action_summary-view\" class=\"card-slot action_summary-view ALL TYPE-rich_text SELF-history_probe_renamed\" data-card-id=\"N\" data-card-name=\"History Probe Renamed\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"History_Probe_Renamed\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;action_summary&quot;,&quot;show&quot;:[&quot;action_summary&quot;]}\"><ins class='diffins diff-added'>first body</ins></div>",
+    "probe#action_summary(rename_action)": "<div id=\"history_probe_renamed-action_summary-view\" class=\"card-slot action_summary-view ALL TYPE-rich_text SELF-history_probe_renamed\" data-card-id=\"N\" data-card-name=\"History Probe Renamed\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"History_Probe_Renamed\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;action_summary&quot;,&quot;show&quot;:[&quot;action_summary&quot;]}\"><i>empty</i></div>",
+    "probe#action_summary(update_action)": "<div id=\"history_probe_renamed-action_summary-view\" class=\"card-slot action_summary-view ALL TYPE-rich_text SELF-history_probe_renamed\" data-card-id=\"N\" data-card-name=\"History Probe Renamed\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"History_Probe_Renamed\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;action_summary&quot;,&quot;show&quot;:[&quot;action_summary&quot;]}\"><a rel=\"nofollow\" class=\"revision-N float-end slotter\" href=\"/History_Probe_Renamed/action_expanded?action_id=N&amp;look_in_trash=true\" data-remote=\"true\"><i class=\"notranslate material-icons\">expand_more</i></a>\n<del class='diffdel diff-deleted'>first</del><ins class='diffins diff-added'>second</ins>...</div>",
+    "probe#content(sentinel)": "<div id=\"history_probe_renamed-content-view\" class=\"card-slot content-view ALL TYPE-rich_text SELF-history_probe_renamed d0-card-content\" data-card-id=\"N\" data-card-name=\"History Probe Renamed\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"History_Probe_Renamed\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;content&quot;,&quot;show&quot;:[&quot;content&quot;]}\"><p>third body with inclusion <div id=\"history_probe_renamed-child-titled-view\" class=\"card-slot titled-view ALL ALL_PLUS TYPE-rich_text RIGHT-child TYPE_PLUS_RIGHT-rich_text-child SELF-history_probe_renamed-child\" data-card-id=\"N\" data-card-name=\"History Probe Renamed+child\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"History_Probe_Renamed+child\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;titled&quot;,&quot;nest_name&quot;:&quot;History Probe Renamed+child&quot;,&quot;nest_syntax&quot;:&quot;History Probe Renamed+child&quot;,&quot;show&quot;:[&quot;titled&quot;],&quot;home_view&quot;:&quot;titled&quot;}\"><div class=\"d0-card-header\"><h2 class=\"d0-card-header-title\"><span class=\"card-title\" title=\"History Probe Renamed+child\">History Probe Renamed<span>+</span>child</span></h2>\n<div class=\"card-menu nodblclick _show-on-hover\"><a tabindex=\"0\" data-bs-toggle=\"popover\" data-bs-trigger=\"hover focus\" data-bs-content=\"&amp;nbsp;\" data-bs-placement=\"left\" class=\"help-link ps-1 _popover_link _card-menu-popover\" data-bs-title=\"&lt;a class=&quot;known-card&quot; href=&quot;/History_Probe_Renamed&quot;&gt;History Probe Renamed&lt;/a&gt;+&lt;a class=&quot;known-card&quot; href=&quot;/child&quot;&gt;child&lt;/a&gt; (&lt;a class=&quot;cardtype known-card&quot; href=&quot;/RichText&quot;&gt;RichText&lt;/a&gt;) &lt;a class=&quot;full-page-link known-card&quot; href=&quot;/History_Probe_Renamed+child&quot;&gt;&lt;i class=&quot;notranslate material-icons&quot;&gt;open_in_full&lt;/i&gt; &lt;/a&gt;\" href=\"#\"><i class=\"notranslate material-icons\">help</i></a>\n<a rel=\"nofollow\" class=\"edit-link slotter\" title=\"Edit\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal\" data-modal-class=\"modal-lg\" href=\"/History_Probe_Renamed+child/edit\" data-remote=\"true\"><i class=\"notranslate material-icons\">edit</i> </a>\n<a rel=\"nofollow\" class=\"board-link slotter\" title=\"Advanced\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" href=\"/History_Probe_Renamed+child/board\" data-remote=\"true\"><i class=\"notranslate material-icons\">space_dashboard</i> </a></div></div>\n\n<div class=\"d0-card-body d0-card-content ALL ALL_PLUS TYPE-rich_text RIGHT-child TYPE_PLUS_RIGHT-rich_text-child SELF-history_probe_renamed-child\">child body v2</div></div></p></div>",
+    "probe#history": "<div id=\"history_probe_renamed-history-view\" class=\"card-slot history-view ALL TYPE-rich_text SELF-history_probe_renamed\" data-card-id=\"N\" data-card-name=\"History Probe Renamed\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"History_Probe_Renamed\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;history&quot;,&quot;show&quot;:[&quot;history&quot;],&quot;hide&quot;:[&quot;help&quot;]}\"><div class=\"d0-card-frame card\"><div class=\"d0-card-header card-header\"><h2 class=\"d0-card-header-title\"><span class=\"card-title\" title=\"History Probe Renamed\">History Probe Renamed</span></h2>\n<div class=\"card-menu nodblclick _show-on-hover\"><a tabindex=\"0\" data-bs-toggle=\"popover\" data-bs-trigger=\"hover focus\" data-bs-content=\"&amp;nbsp;\" data-bs-placement=\"left\" class=\"help-link ps-1 _popover_link _card-menu-popover\" data-bs-title=\"&lt;a class=&quot;known-card&quot; href=&quot;/History_Probe_Renamed&quot;&gt;History Probe Renamed&lt;/a&gt; (&lt;a class=&quot;cardtype known-card&quot; href=&quot;/RichText&quot;&gt;RichText&lt;/a&gt;) \" href=\"#\"><i class=\"notranslate material-icons\">help</i></a>\n<a rel=\"nofollow\" class=\"edit-link slotter\" title=\"Edit\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal\" data-modal-class=\"modal-lg\" href=\"/History_Probe_Renamed/edit\" data-remote=\"true\"><i class=\"notranslate material-icons\">edit</i> </a>\n<a rel=\"nofollow\" class=\"board-link slotter\" title=\"Advanced\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" href=\"/History_Probe_Renamed/board\" data-remote=\"true\"><i class=\"notranslate material-icons\">space_dashboard</i> </a></div></div>\n\n<div class=\"d0-card-body card-body card-text\">\n\n<div class=\"row pb-3\">\n<div class=\"col-md-12 col-lg-7\">\n<small>Actions: <i class=\"notranslate material-icons\">add_circle</i> created | <i class=\"notranslate material-icons\">edit</i> updated | <i class=\"notranslate material-icons\">remove_circle</i> deleted | <i class=\"notranslate material-icons\">build</i> unsaved draft</small></div>\n<div class=\"col-md-12 col-lg-5 text-end\">\n<small>Content changes: <ins class='diffins diff-added'>Additions</ins> | <del class='diffdel diff-deleted'>Subtractions</del></small></div></div>\n<div class=\"row\">\n<div class=\"accordion\"><div class='accordion-item'>\n<h2 class='accordion-header nodblclick w-100'>\n<button class='collapsed accordion-button' data-bs-target='#act-id-N' data-bs-toggle='collapse' type='button'>\n\n<div class=\"row w-100\">\n<div class=\"col-8\">\n<span class=\"nr\">#6</span> <small><a class=\"known-card\" href=\"/Decko_Bot\">Decko Bot</a>\nTIME_AGO ago</small>\n<span class=\"text-muted ps-1 badge\">\n<i class=\"notranslate material-icons\">edit</i><small> </small></span></div>\n<div class=\"col-4 text-end\">\n<small>act on +child</small></div></div>\n</button>\n</h2>\n<div class='accordion-collapse collapse' id='act-id-N'>\n<div class='accordion-subheader bg-light p-2 text-end'>\n<small><div class=\"act-link float-end\"><small><a rel=\"nofollow\" class=\"_close-modal slotter\" data-slotter-mode=\"update-modal-origin\" href=\"/update/History_Probe_Renamed?assign=true&amp;card%5Bskip%5D=validate_renaming&amp;look_in_trash=true&amp;revert_actions%5B%5D=4985\" data-remote=\"true\" data-method=\"post\">revert to this</a></small></div></small>\n</div>\n<div class='accordion-body d0-card-body'>\n\n<div class=\"container-fluid\">\n\n<div class=\"row\">\n              <ul class=\"action-list w-100\">\n                <li class=\"update\">\n                  \n<div class=\"card-header\">\n<div class=\"float-end\"></div>\n<div>\n+child</div></div>\n<div class=\"card-body\">\n<div id=\"history_probe_renamed-child-action_summary-view\" class=\"card-slot action_summary-view ALL ALL_PLUS TYPE-rich_text RIGHT-child TYPE_PLUS_RIGHT-rich_text-child SELF-history_probe_renamed-child\" data-card-id=\"N\" data-card-name=\"History Probe Renamed+child\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"History_Probe_Renamed+child\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;action_summary&quot;,&quot;show&quot;:[&quot;action_summary&quot;],&quot;action_id&quot;:4985,&quot;name_context&quot;:&quot;history_probe_renamed&quot;}\">...<ins class='diffins diff-added'> v2</ins></div></div>\n                </li>\n              </ul>\n</div></div>\n</div>\n</div>\n</div>\n<div class='accordion-item'>\n<h2 class='accordion-header nodblclick w-100'>\n<button class='collapsed accordion-button' data-bs-target='#act-id-N' data-bs-toggle='collapse' type='button'>\n\n<div class=\"row w-100\">\n<div class=\"col-8\">\n<span class=\"nr\">#5</span> <small><a class=\"known-card\" href=\"/Decko_Bot\">Decko Bot</a>\nTIME_AGO ago</small>\n<span class=\"text-muted ps-1 badge\">\n<i class=\"notranslate material-icons\">add_circle</i><small> </small></span></div>\n<div class=\"col-4 text-end\">\n<small>act on +child</small></div></div>\n</button>\n</h2>\n<div class='accordion-collapse collapse' id='act-id-N'>\n<div class='accordion-subheader bg-light p-2 text-end'>\n<small><div class=\"act-link float-end\"><small><a rel=\"nofollow\" class=\"_close-modal slotter\" data-slotter-mode=\"update-modal-origin\" href=\"/update/History_Probe_Renamed?assign=true&amp;card%5Bskip%5D=validate_renaming&amp;look_in_trash=true&amp;revert_actions%5B%5D=4983\" data-remote=\"true\" data-method=\"post\">revert to this</a></small></div></small>\n</div>\n<div class='accordion-body d0-card-body'>\n\n<div class=\"container-fluid\">\n\n<div class=\"row\">\n              <ul class=\"action-list w-100\">\n                <li class=\"create\">\n                  \n<div class=\"card-header\">\n<div class=\"float-end\">\n<ins class='diffins diff-added'>RichText</ins></div>\n<div>\n+child</div></div>\n<div class=\"card-body\">\n<div id=\"history_probe_renamed-child-action_summary-view\" class=\"card-slot action_summary-view ALL ALL_PLUS TYPE-rich_text RIGHT-child TYPE_PLUS_RIGHT-rich_text-child SELF-history_probe_renamed-child\" data-card-id=\"N\" data-card-name=\"History Probe Renamed+child\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"History_Probe_Renamed+child\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;action_summary&quot;,&quot;show&quot;:[&quot;action_summary&quot;],&quot;action_id&quot;:4983,&quot;name_context&quot;:&quot;history_probe_renamed&quot;}\"><ins class='diffins diff-added'>child body</ins></div></div>\n                </li>\n              </ul>\n</div></div>\n</div>\n</div>\n</div>\n<div class='accordion-item'>\n<h2 class='accordion-header nodblclick w-100'>\n<button class='collapsed accordion-button' data-bs-target='#act-id-N' data-bs-toggle='collapse' type='button'>\n\n<div class=\"row w-100\">\n<div class=\"col-8\">\n<span class=\"nr\">#4</span> <small><a class=\"known-card\" href=\"/Decko_Bot\">Decko Bot</a>\nTIME_AGO ago</small>\n<span class=\"text-muted ps-1 badge\">\n<i class=\"notranslate material-icons\">edit</i><small> </small></span></div>\n<div class=\"col-4 text-end\"></div></div>\n</button>\n</h2>\n<div class='accordion-collapse collapse' id='act-id-N'>\n<div class='accordion-body d0-card-body'>\n\n<div class=\"container-fluid\">\n\n<div class=\"row\">\n              <ul class=\"action-list w-100\">\n                <li class=\"update\">\n                  \n<div class=\"card-header\">\n<div class=\"float-end\"></div>\n<div>\nHistory Probe Renamed</div></div>\n<div class=\"card-body\">\n<div id=\"history_probe_renamed-action_summary-view\" class=\"card-slot action_summary-view ALL TYPE-rich_text SELF-history_probe_renamed\" data-card-id=\"N\" data-card-name=\"History Probe Renamed\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"History_Probe_Renamed\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;action_summary&quot;,&quot;show&quot;:[&quot;action_summary&quot;],&quot;action_id&quot;:4982,&quot;name_context&quot;:&quot;history_probe_renamed&quot;}\"><a rel=\"nofollow\" class=\"revision-N float-end slotter\" href=\"/History_Probe_Renamed/action_expanded?action_id=N&amp;look_in_trash=true\" data-remote=\"true\"><i class=\"notranslate material-icons\">expand_more</i></a>\n<del class='diffdel diff-deleted'>second</del><ins class='diffins diff-added'>third</ins>...<ins class='diffins diff-added'> with inclusion {{History Probe R...</ins></div></div>\n                </li>\n              </ul>\n</div></div>\n</div>\n</div>\n</div>\n<div class='accordion-item'>\n<h2 class='accordion-header nodblclick w-100'>\n<button class='collapsed accordion-button' data-bs-target='#act-id-N' data-bs-toggle='collapse' type='button'>\n\n<div class=\"row w-100\">\n<div class=\"col-8\">\n<span class=\"nr\">#3</span> <small><a class=\"known-card\" href=\"/Decko_Bot\">Decko Bot</a>\nTIME_AGO ago</small>\n<span class=\"text-muted ps-1 badge\">\n<i class=\"notranslate material-icons\">edit</i><small> </small></span></div>\n<div class=\"col-4 text-end\"></div></div>\n</button>\n</h2>\n<div class='accordion-collapse collapse' id='act-id-N'>\n<div class='accordion-subheader bg-light p-2 text-end'>\n<small><div class=\"act-link float-end\"><small><a rel=\"nofollow\" class=\"_close-modal slotter\" data-slotter-mode=\"update-modal-origin\" href=\"/update/History_Probe_Renamed?assign=true&amp;card%5Bskip%5D=validate_renaming&amp;look_in_trash=true&amp;revert_actions%5B%5D=4981\" data-remote=\"true\" data-method=\"post\">revert to this</a></small></div></small>\n</div>\n<div class='accordion-body d0-card-body'>\n\n<div class=\"container-fluid\">\n\n<div class=\"row\">\n              <ul class=\"action-list w-100\">\n                <li class=\"update\">\n                  \n<div class=\"card-header\">\n<div class=\"float-end\"></div>\n<div>\nHistory Probe<ins class='diffins diff-added'> Renamed</ins></div></div>\n<div class=\"card-body\">\n<div id=\"history_probe_renamed-action_summary-view\" class=\"card-slot action_summary-view ALL TYPE-rich_text SELF-history_probe_renamed\" data-card-id=\"N\" data-card-name=\"History Probe Renamed\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"History_Probe_Renamed\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;action_summary&quot;,&quot;show&quot;:[&quot;action_summary&quot;],&quot;action_id&quot;:4981,&quot;name_context&quot;:&quot;history_probe_renamed&quot;}\"><i>empty</i></div></div>\n                </li>\n              </ul>\n</div></div>\n</div>\n</div>\n</div>\n<div class='accordion-item'>\n<h2 class='accordion-header nodblclick w-100'>\n<button class='collapsed accordion-button' data-bs-target='#act-id-N' data-bs-toggle='collapse' type='button'>\n\n<div class=\"row w-100\">\n<div class=\"col-8\">\n<span class=\"nr\">#2</span> <small><a class=\"known-card\" href=\"/Decko_Bot\">Decko Bot</a>\nTIME_AGO ago</small>\n<span class=\"text-muted ps-1 badge\">\n<i class=\"notranslate material-icons\">edit</i><small> </small></span></div>\n<div class=\"col-4 text-end\"></div></div>\n</button>\n</h2>\n<div class='accordion-collapse collapse' id='act-id-N'>\n<div class='accordion-subheader bg-light p-2 text-end'>\n<small><div class=\"act-link float-end\"><small><a rel=\"nofollow\" class=\"_close-modal slotter\" data-slotter-mode=\"update-modal-origin\" href=\"/update/History_Probe_Renamed?assign=true&amp;card%5Bskip%5D=validate_renaming&amp;look_in_trash=true&amp;revert_actions%5B%5D=4980\" data-remote=\"true\" data-method=\"post\">revert to this</a></small></div></small>\n</div>\n<div class='accordion-body d0-card-body'>\n\n<div class=\"container-fluid\">\n\n<div class=\"row\">\n              <ul class=\"action-list w-100\">\n                <li class=\"update\">\n                  \n<div class=\"card-header\">\n<div class=\"float-end\"></div>\n<div>\nHistory Probe</div></div>\n<div class=\"card-body\">\n<div id=\"history_probe_renamed-action_summary-view\" class=\"card-slot action_summary-view ALL TYPE-rich_text SELF-history_probe_renamed\" data-card-id=\"N\" data-card-name=\"History Probe Renamed\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"History_Probe_Renamed\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;action_summary&quot;,&quot;show&quot;:[&quot;action_summary&quot;],&quot;action_id&quot;:4980,&quot;name_context&quot;:&quot;history_probe_renamed&quot;}\"><del class='diffdel diff-deleted'>first</del><ins class='diffins diff-added'>second</ins>...</div></div>\n                </li>\n              </ul>\n</div></div>\n</div>\n</div>\n</div>\n<div class='accordion-item'>\n<h2 class='accordion-header nodblclick w-100'>\n<button class='collapsed accordion-button' data-bs-target='#act-id-N' data-bs-toggle='collapse' type='button'>\n\n<div class=\"row w-100\">\n<div class=\"col-8\">\n<span class=\"nr\">#1</span> <small><a class=\"known-card\" href=\"/Decko_Bot\">Decko Bot</a>\nTIME_AGO ago</small>\n<span class=\"text-muted ps-1 badge\">\n<i class=\"notranslate material-icons\">add_circle</i><small> </small></span></div>\n<div class=\"col-4 text-end\"></div></div>\n</button>\n</h2>\n<div class='accordion-collapse collapse' id='act-id-N'>\n<div class='accordion-subheader bg-light p-2 text-end'>\n<small><div class=\"act-link float-end\"><small><a rel=\"nofollow\" class=\"_close-modal slotter\" data-slotter-mode=\"update-modal-origin\" href=\"/update/History_Probe_Renamed?assign=true&amp;card%5Bskip%5D=validate_renaming&amp;look_in_trash=true&amp;revert_actions%5B%5D=4979\" data-remote=\"true\" data-method=\"post\">revert to this</a></small></div></small>\n</div>\n<div class='accordion-body d0-card-body'>\n\n<div class=\"container-fluid\">\n\n<div class=\"row\">\n              <ul class=\"action-list w-100\">\n                <li class=\"create\">\n                  \n<div class=\"card-header\">\n<div class=\"float-end\">\n<ins class='diffins diff-added'>RichText</ins></div>\n<div>\n<ins class='diffins diff-added'>History Probe</ins></div></div>\n<div class=\"card-body\">\n<div id=\"history_probe_renamed-action_summary-view\" class=\"card-slot action_summary-view ALL TYPE-rich_text SELF-history_probe_renamed\" data-card-id=\"N\" data-card-name=\"History Probe Renamed\" data-card-type-id=\"2\" data-card-type-name=\"RichText\" data-card-link-name=\"History_Probe_Renamed\" data-slot-id=\"RANDOMIZED\" data-slot=\"{&quot;view&quot;:&quot;action_summary&quot;,&quot;show&quot;:[&quot;action_summary&quot;],&quot;action_id&quot;:4979,&quot;name_context&quot;:&quot;history_probe_renamed&quot;}\"><ins class='diffins diff-added'>first body</ins></div></div>\n                </li>\n              </ul>\n</div></div>\n</div>\n</div>\n</div>\n</div></div></div></div></div>"
+  },
+  "seed_log": {
+    "01_create": "ok",
+    "02_content_update": "ok",
+    "03_rename": "ok",
+    "04_inclusion_update": "ok",
+    "05_child_create": "ok",
+    "06_child_update": "ok",
+    "family": "purged-and-reseeded"
+  },
+  "state": {
+    "actions": [
+      {
+        "action_type": "create",
+        "card_act_id": 109533,
+        "card_id": 1318,
+        "draft": false,
+        "id": 4979
+      },
+      {
+        "action_type": "update",
+        "card_act_id": 109534,
+        "card_id": 1318,
+        "draft": false,
+        "id": 4980
+      },
+      {
+        "action_type": "update",
+        "card_act_id": 109535,
+        "card_id": 1318,
+        "draft": false,
+        "id": 4981
+      },
+      {
+        "action_type": "update",
+        "card_act_id": 109536,
+        "card_id": 1318,
+        "draft": false,
+        "id": 4982
+      },
+      {
+        "action_type": "create",
+        "card_act_id": 109537,
+        "card_id": 1320,
+        "draft": false,
+        "id": 4983
+      },
+      {
+        "action_type": "update",
+        "card_act_id": 109538,
+        "card_id": 1320,
+        "draft": false,
+        "id": 4985
+      }
+    ],
+    "acts": [
+      {
+        "acted_at": "2026-09-28T10:45:49Z",
+        "actor_id": 1,
+        "card_id": 1318,
+        "id": 109533
+      },
+      {
+        "acted_at": "2026-09-28T10:45:49Z",
+        "actor_id": 1,
+        "card_id": 1318,
+        "id": 109534
+      },
+      {
+        "acted_at": "2026-09-28T10:45:49Z",
+        "actor_id": 1,
+        "card_id": 1318,
+        "id": 109535
+      },
+      {
+        "acted_at": "2026-09-28T10:45:49Z",
+        "actor_id": 1,
+        "card_id": 1318,
+        "id": 109536
+      },
+      {
+        "acted_at": "2026-09-28T10:45:50Z",
+        "actor_id": 1,
+        "card_id": 1320,
+        "id": 109537
+      },
+      {
+        "acted_at": "2026-09-28T10:45:50Z",
+        "actor_id": 1,
+        "card_id": 1320,
+        "id": 109538
+      }
+    ],
+    "anon_ok_read_probe": true,
+    "anon_ok_update_probe": true,
+    "anonymous_id": 1,
+    "cards": {
+      "1318": {
+        "name": "History Probe Renamed",
+        "type_id": 2
+      },
+      "1320": {
+        "name": "History Probe Renamed+child",
+        "type_id": 2
+      }
+    },
+    "changes": [
+      {
+        "card_action_id": 4979,
+        "field": "name",
+        "value": "History Probe"
+      },
+      {
+        "card_action_id": 4979,
+        "field": "type_id",
+        "value": "2"
+      },
+      {
+        "card_action_id": 4979,
+        "field": "db_content",
+        "value": "first body"
+      },
+      {
+        "card_action_id": 4979,
+        "field": "trash",
+        "value": "f"
+      },
+      {
+        "card_action_id": 4979,
+        "field": "left_id",
+        "value": ""
+      },
+      {
+        "card_action_id": 4979,
+        "field": "right_id",
+        "value": ""
+      },
+      {
+        "card_action_id": 4980,
+        "field": "db_content",
+        "value": "second body"
+      },
+      {
+        "card_action_id": 4981,
+        "field": "name",
+        "value": "History Probe Renamed"
+      },
+      {
+        "card_action_id": 4982,
+        "field": "db_content",
+        "value": "<p>third body with inclusion {{History Probe Renamed+child}}</p>"
+      },
+      {
+        "card_action_id": 4983,
+        "field": "name",
+        "value": ""
+      },
+      {
+        "card_action_id": 4983,
+        "field": "type_id",
+        "value": "2"
+      },
+      {
+        "card_action_id": 4983,
+        "field": "db_content",
+        "value": "child body"
+      },
+      {
+        "card_action_id": 4983,
+        "field": "trash",
+        "value": "f"
+      },
+      {
+        "card_action_id": 4983,
+        "field": "left_id",
+        "value": "1318"
+      },
+      {
+        "card_action_id": 4983,
+        "field": "right_id",
+        "value": "1319"
+      },
+      {
+        "card_action_id": 4985,
+        "field": "db_content",
+        "value": "child body v2"
+      }
+    ],
+    "child_act_in_parent_history": true
+  }
+}

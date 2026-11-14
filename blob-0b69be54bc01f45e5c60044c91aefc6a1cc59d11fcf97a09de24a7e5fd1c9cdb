@@ -1,0 +1,53 @@
+# Native Unicode name identity repair
+
+Issue 124. Parent source: 85a01a486650c801c9b9e419dd43aedf3d127701.
+Required outcome: match the original default Card::Name keys, safe keys and
+URL keys for the captured Unicode boundaries. This does not change the
+singularization policy, reorder rules, rewrite stored rows or apply a deck
+initializer to the default oracle.
+
+## Evidence and mechanism
+
+The attacker's test, inputs, capture source and oracle are copied unchanged
+from 0d06ce03da5351905f95baa8272af5570ba68e60. Test SHA-256:
+6a3b8cb2862fdb7bec153fd5dd2ff8a1915d102daa5b0ef3ae0ba75bbb805aed.
+Oracle SHA-256:
+6880759b8e63448100e87d633ef86c2a0d8a4c37e40f8f40b7fb4d69ee2a8d11.
+
+Before correction, thirty-eight of forty-two cases pass. Long s and Book
+followed by long s keep a suffix Ruby removes; zero-width joiner is removed
+where Ruby retains it, affecting key/safe/URL identity. The exact-parent
+two-module source override reproduces the same four failures without reverting
+working source. Raw source, config, log and JUnit remain under .runtime/name124.
+
+The default Ruby ignore-case rules use Unicode folding, while their previous
+JS expressions used the non-Unicode ignore-case mode. Default rule compilation
+now enables Unicode folding; caller-supplied RegExp syntax and flags remain
+unchanged. Uncountable word matching uses Unicode folding too. Name-key
+filtering uses Alphabetic/Mark/Decimal_Number/Connector_Punctuation/Join_Control,
+retaining letter numbers and both join controls as observed in Ruby.
+
+Inline Ruby diagnostics were invalid because the Windows command argument
+encoding changed non-ASCII literals, followed by an IBM437/UTF-8 regexp
+compatibility error. Neither attempt is counted as oracle evidence. A UTF-8
+file probe confirms native long-s matching and join-control/letter-number
+Word membership. The original Card::Name capture was then executed again
+with its unchanged loader and pinned local libraries; deep equality with
+the entire attacker oracle, including source hashes and runtime versions,
+passes. No replacement name implementation is used as the oracle.
+
+## Verification and limits
+
+All forty-two unchanged attack cases pass. Six further native captures cover
+letter numbers, zero-width non-joiner and excluded superscript numbers; all
+match. A separate control preserves caller-supplied legacy regex syntax.
+Six focused name suites report 308 passed, zero failed/skipped: attack and
+additional controls, existing name-port, deck-inflection config, card-gem
+initializer and Ruby key-algebra suites. Whole-tree TypeScript checking and
+diff whitespace checks pass. Complete passing JUnit is retained locally.
+
+These are actual local Ruby/name-class/assertion executions. Transform caches
+may be reused, not verdicts. No model call, hosted service, new dependency,
+production database write or deployment is involved. Independent re-attack
+on the reconciled release source remains required; no whole-port or
+existing-deployment migration acceptance is claimed.

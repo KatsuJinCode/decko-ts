@@ -1,0 +1,31 @@
+// Execute the complete gate with explicit inert imports and an in-memory file
+// system. Derived from the independent PR275 review adapter at 29c734cd3.
+import { randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+const source = readFileSync(new URL('./test-gates.mjs', import.meta.url), 'utf8');
+const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
+export async function loadCandidate(overrides = {}) {
+  const root = path.resolve('.');
+  const bindings = {
+    randomUUID, testRunner: (_root, file) => file.endsWith('.mjs') ? 'node' : 'vitest',
+    isTestFile: file => /\.(test|spec)\.[cm]?[jt]s$/.test(file),
+    runNodeTests: () => { throw Error('Inert Node runner must be provided'); },
+    spawn: () => { throw Error('Inert Vitest runner must be provided'); },
+    readdirSync: () => [],
+    writeFileSync: () => { throw Error('No configuration write was authorized'); },
+    unlinkSync: () => {}, join: path.join, relative: path.relative,
+    fileURLToPath, pathToFileURL,
+    moduleUrl: pathToFileURL(path.join(root, 'tools/test-gates.mjs')).href,
+    process: { execPath: process.execPath, pid: 275, argv: ['node'], env: {},
+      exit(code) { throw Error('review-process-exit:' + code); } },
+    console: { log() {}, error() {} }, ...overrides,
+  };
+  const imports = source.match(/^import .*;\r?$/gm) ?? [];
+  if (imports.length !== 8) throw Error('Gate import adapter no longer matches the source');
+  const adapted = source.replace(/^import .*;\r?\n/gm, '')
+    .replace(/^export /gm, '').replaceAll('import.meta.url', 'moduleUrl');
+  return new AsyncFunction(...Object.keys(bindings), adapted + '\nreturn {runGatePhases,command,REPO_ROOT};')(...Object.values(bindings));
+}

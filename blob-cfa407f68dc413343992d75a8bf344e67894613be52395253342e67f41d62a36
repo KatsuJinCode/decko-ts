@@ -1,0 +1,41 @@
+// Guard for the release checker's assembled-host wiring (scripts/release-check.mjs,
+// commit 1d30c2e98). The release battery accepts an assembled-host report through
+// --assembled-host-report, and the assembled-host profile and its controls are
+// checker inputs, so editing them changes the release source identity.
+//
+// The release battery's own runner test needs a git checkout, so it cannot
+// observe this wiring from a plain copy. These checks are pure: they import the
+// parser and the checker-input list only, and need no git.
+
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {CHECKER_SOURCE_FILES, parseOptions} from '../../scripts/release-check.mjs';
+
+test('the release checker accepts an assembled-host report path and keeps it as an option', () => {
+  const options = parseOptions(['--assembled-host-report', 'evidence/assembled-host.json']);
+  assert.equal(options['--assembled-host-report'], 'evidence/assembled-host.json');
+});
+
+test('an assembled-host report option without a value refuses before any stage runs', () => {
+  assert.throws(
+    () => parseOptions(['--assembled-host-report']),
+    /Missing or duplicate option: --assembled-host-report/,
+  );
+  assert.throws(
+    () => parseOptions(['--assembled-host-report', '--out', 'x.json']),
+    /Missing or duplicate option: --assembled-host-report/,
+  );
+});
+
+test('the assembled-host profile and its controls are checker inputs', () => {
+  for (const file of [
+    'tools/assembled-host-profile.mjs',
+    'test-profiles/assembled-host/host-recovery.control.mjs',
+    'test-profiles/assembled-host/deployment.control.mjs',
+    'test-profiles/assembled-host/support/network-guard.mjs',
+    'test-profiles/assembled-host/support/late-stop-observer.mjs',
+    'test-profiles/assembled-host/support/close-observer.mjs',
+  ]) {
+    assert.ok(CHECKER_SOURCE_FILES.includes(file), `missing checker input: ${file}`);
+  }
+});

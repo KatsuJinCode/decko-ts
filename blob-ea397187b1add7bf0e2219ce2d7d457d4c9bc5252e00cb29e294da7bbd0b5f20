@@ -1,0 +1,23 @@
+
+Description:
+    Generates a migration of database schema or content.
+
+Example:
+    <%= banner_command %> generate migration better_comments -m mymod
+
+    This will create:
+
+        mod/mymod/data/transform/(migration_number)_better_comments.rb
+
+
+    <%= banner_command %> generate migration better_comments -m mymod --schema
+
+    This will create:
+
+        mod/mymod/data/schema/(migration_number)_better_comments.rb
+
+
+
+
+
+

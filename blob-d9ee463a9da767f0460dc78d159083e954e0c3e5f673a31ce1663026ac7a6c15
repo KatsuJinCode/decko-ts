@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { sourceTreeIdentity, verifyTinyMceSource, TINYMCE_TREE } from '../../tools/vendor/import-tinymce-source.mjs';
+
+test('editable TinyMCE source retains the complete official tag tree and bundled version identity',()=>{
+  const result=verifyTinyMceSource();
+  assert.equal(result.version,'5.10.7');
+  assert.equal(result.tree,TINYMCE_TREE);
+  assert.equal(result.files,4212);
+});
+test('the official tree check detects omitted files and changed executable modes',()=>{
+  const manifest=JSON.parse(readFileSync(new URL('../../third-party-source/tinymce-5.10.7/SOURCE-MANIFEST.json',import.meta.url)));
+  assert.notEqual(sourceTreeIdentity(manifest.files.slice(1)),TINYMCE_TREE);
+  const altered=manifest.files.map((file,index)=>index===0?{...file,mode:file.mode==='100644'?'100755':'100644'}:file);
+  assert.notEqual(sourceTreeIdentity(altered),TINYMCE_TREE);
+});
+test('the committed upstream subtree preserves the official file bytes and modes',()=>{
+  const repo=fileURLToPath(new URL('../..',import.meta.url));
+  const saved=execFileSync('git',['rev-parse','HEAD:third-party-source/tinymce-5.10.7/upstream'],{cwd:repo,encoding:'utf8',windowsHide:true}).trim();
+  assert.equal(saved,TINYMCE_TREE);
+});
+
+test('source tree identity refuses paths that cannot be portable source entries',()=>{
+  const manifest=JSON.parse(readFileSync(new URL('../../third-party-source/tinymce-5.10.7/SOURCE-MANIFEST.json',import.meta.url)));
+  for(const entryPath of ['/outside','../outside','C:/outside','folder\\outside','.','folder/./file','invalid\0entry','']){
+    assert.throws(()=>sourceTreeIdentity([{...manifest.files[0],path:entryPath}]),/invalid upstream source entry/);
+  }
+});

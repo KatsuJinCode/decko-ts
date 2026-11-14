@@ -1,0 +1,6 @@
+# reg-routes-A17: closed, the verification now checkable at the shipped tree
+`npx vitest run tests/server/get-action-routes-parity.test.ts
+tests/deploy/bunny-edge-action-read-route.test.ts
+tests/deploy/staging-action-read-asset-endpoint.test.ts
+`npx vitest run tests/server/deprecated-asset-routes-parity.test.ts` (6
+tests/deploy/bunny-edge-action-read-route.test.ts's opening pins). Round

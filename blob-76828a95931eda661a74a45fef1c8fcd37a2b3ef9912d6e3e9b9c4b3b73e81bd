@@ -1,0 +1,107 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createActionsTestStorage, seedStandardDeck, JOE, fakeClock, type ActionsTestStorage } from "./actions-test-storage.js";
+import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
+import { FetchEngine } from "../../../src/card/fetch.js";
+import { ModLoader } from "../../../src/card/mod-loader.js";
+
+let storage: ActionsTestStorage | undefined;
+beforeEach(() => vi.stubGlobal("fetch", vi.fn(() => { throw new Error("Network forbidden in compound conflict controls"); })));
+afterEach(() => { storage?.close(); storage = undefined; vi.unstubAllGlobals(); });
+
+async function fixture() {
+  const s = storage = await createActionsTestStorage();
+  await seedStandardDeck(s);
+  s.engine.installNameEnvironment();
+  return s;
+}
+
+function engine(s: ActionsTestStorage, registered = false, cold = false) {
+  const loader = new ModLoader([{ manifest: {
+    name: "compound-conflict-control", setModules: [{ setPath: "all/name_events", events: [{
+      event: "validate_uniqueness_of_name",
+      fn: async (_card, _host, ctx) => {
+        const id = await ctx.lexiconId?.(ctx.cardKey?.() ?? "");
+        if (id === undefined || id === ctx.cardId?.()) return;
+        const name = await ctx.liveCardName?.(id);
+        if (name !== undefined) ctx.refuseNameTaken?.(name);
+      },
+    }] }],
+  } }]);
+  loader.resolveOrder({ gemMods: ["compound-conflict-control"] });
+  loader.load();
+  return new CardActionEngine(cold ? new FetchEngine(s.driver) : s.engine, {
+    actor: JOE, now: fakeClock(),
+    ...(registered ? { modEvents: { registry: loader.eventRegistry(), predicates: {} } } : {}),
+  });
+}
+
+async function snapshot(s: ActionsTestStorage) {
+  return Object.fromEntries(await Promise.all(
+    ["cards", "card_references", "card_acts", "card_actions", "card_changes"].map(async table =>
+      [table, await s.selectAll(`SELECT * FROM ${table} ORDER BY rowid`)]),
+  ));
+}
+
+describe("compound name conflicts use live junction identity", () => {
+  for (const registered of [false, true]) {
+    for (const cold of [false, true]) {
+      it(`${registered ? "registered event" : "built-in guard"}, ${cold ? "cold" : "warm"} lookup refuses a live nested junction before writes`, async () => {
+        const s = await fixture();
+        await engine(s).createCard({ name: "Pudding+waffle+Maple", content: "retained" });
+        const before = await snapshot(s);
+        await expect(engine(s, registered, cold).createCard({ name: "Pudding+waffle+Maple", content: "rejected" })).rejects.toMatchObject({
+          code: "name-conflict", userMessage: "NAME: must be unique; 'Pudding+waffle+Maple' already exists.",
+        });
+        expect(await snapshot(s)).toEqual(before);
+      });
+    }
+  }
+
+  it("two concurrent creates of one compound name produce one winner and one typed refusal", async () => {
+    const s = await fixture();
+    const results = await Promise.allSettled([
+      engine(s).createCard({ name: "Pudding+waffle", content: "one" }),
+      engine(s, false, true).createCard({ name: "Pudding+waffle", content: "two" }),
+    ]);
+    expect(results.filter(r => r.status === "fulfilled")).toHaveLength(1);
+    const failure = results.find(r => r.status === "rejected") as PromiseRejectedResult;
+    expect(failure.reason).toMatchObject({ code: "name-conflict" });
+    expect(await s.selectAll("SELECT id FROM cards WHERE left_id = 50 AND right_id IS NOT NULL")).toHaveLength(1);
+    expect(await s.count("card_acts")).toBe(1);
+    expect(await s.count("card_actions")).toBe(2);
+  });
+
+  it("a cached miss cannot hide a junction committed by another engine", async () => {
+    const s = await fixture();
+    const fetcher = new FetchEngine(s.driver);
+    expect(await fetcher.lexicon.id("Pudding+waffle")).toBeUndefined();
+    await engine(s).createCard({ name: "Pudding+waffle", content: "retained" });
+    const before = await snapshot(s);
+    const stale = new CardActionEngine(fetcher, { actor: JOE, now: fakeClock() });
+    await expect(stale.createCard({ name: "Pudding+waffle", content: "rejected" })).rejects.toMatchObject({ code: "name-conflict" });
+    expect(await snapshot(s)).toEqual(before);
+  });
+
+  it("a trashed junction revives instead of being classified as a live name conflict", async () => {
+    const s = await fixture(), writer = engine(s);
+    const first = await writer.createCard({ name: "Pudding+waffle", content: "old" });
+    await writer.deleteCard({ cardId: first.cardId });
+    const revived = await writer.createCard({ name: "Pudding+waffle", content: "restored" });
+    expect(revived.cardId).toBe(first.cardId);
+    expect((await s.selectOne<{ trash: number; db_content: string }>("SELECT trash, db_content FROM cards WHERE id = ?", [first.cardId])))
+      .toEqual({ trash: 0, db_content: "restored" });
+  });
+
+  it("an unrelated storage constraint is propagated unchanged and the failed save rolls back", async () => {
+    const s = await fixture();
+    const before = await snapshot(s);
+    const error = Object.assign(new Error("UNIQUE constraint failed: unrelated.field"), { code: "SQLITE_CONSTRAINT_UNIQUE" });
+    const query = s.driver.query.bind(s.driver);
+    s.driver.query = async (sql, params) => {
+      if (/^\s*INSERT\s+INTO\s+cards\b/i.test(sql)) throw error;
+      return query(sql, params);
+    };
+    await expect(engine(s).createCard({ name: "Pudding+new side" })).rejects.toBe(error);
+    expect(await snapshot(s)).toEqual(before);
+  });
+});

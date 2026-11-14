@@ -1,0 +1,64 @@
+import { expect, it } from "vitest";
+import Database from "better-sqlite3";
+import { mkdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { scratchDir, cleanupScratch } from "../support/scratch-dir.mjs";
+import { importFromSqlite } from "../../tools/migrate/generalized-import.mjs";
+import { LocalSqliteToolDriver } from "../../tools/migrate/import.mjs";
+import { createRecoverySnapshot, restoreRecoverySnapshot } from "../../tools/migrate/recovery.mjs";
+import { parseDelayedJobHandler } from "../../src/card/delayed-job/delayed-job.js";
+
+it("preserves active/trashed account fields, opaque job payloads and job state without running jobs", async () => {
+  const root = scratchDir("area5-records-independent-");
+  const sourcePath = join(root, "source.sqlite");
+  const source = new Database(sourcePath);
+  const ddlPath = fileURLToPath(new URL("../../db/schema.sqlite.sql", import.meta.url));
+  source.exec(readFileSync(ddlPath, "utf8"));
+  const insert = source.prepare("INSERT INTO cards(id,name,key,codename,left_id,right_id,type_id,trash,read_rule_id,read_rule_class,db_content,created_at,updated_at,creator_id,updater_id) VALUES(?,?,?,?,?,?,4,?,?,?,?, '2026-01-01','2026-01-02',10,19)");
+  for (const row of [
+    [1, "Account tag", "account_tag", "account", null, null, 0, 1, "all", null],
+    [2, "Email tag", "email_tag", "email", null, null, 0, null, null, null],
+    [3, "Password tag", "password_tag", "password", null, null, 0, null, null, null],
+    [4, "Salt tag", "salt_tag", "salt", null, null, 0, null, null, null],
+    [10, "Synthetic holder", "synthetic_holder", null, null, null, 0, 1, "self", "holder"],
+    [11, "Synthetic account", "synthetic_account", null, 10, 1, 0, 1, "self", null],
+    [12, "Synthetic email", "synthetic_email", null, 11, 2, 0, 1, "self", "synthetic@example.test"],
+    [13, "Synthetic password", "synthetic_password", null, 11, 3, 0, 1, "self", "opaque synthetic credential\u0000tail"],
+    [14, "Synthetic salt", "synthetic_salt", null, 11, 4, 0, 1, "self", ""],
+    [19, "Trashed holder", "trashed_holder", null, null, null, 1, 1, "self", null],
+    [20, "Trashed account", "trashed_account", null, 19, 1, 1, 1, "self", null],
+    [21, "Trashed email", "trashed_email", null, 20, 2, 1, 1, "self", "trashed@example.test"],
+    [22, "Trashed password", "trashed_password", null, 20, 3, 1, 1, "self", "unchanged synthetic digest"],
+  ]) insert.run(...row);
+  const opaqueHandler = "--- !ruby/object:Unsupported::Job\ncommand: do-not-execute\nvalue: 'Unicode \u2603 and :symbols'\n";
+  source.prepare("INSERT INTO delayed_jobs(id,priority,attempts,handler,last_error,run_at,locked_at,failed_at,locked_by,queue,created_at,updated_at) VALUES(1,-7,3,?,'preserved failure','2026-01-03','2026-01-02','2026-01-02','previous-owner','opaque-queue','2026-01-01','2026-01-02')").run(opaqueHandler);
+  const cardFields = "id,left_id,right_id,type_id,trash,read_rule_id,read_rule_class,db_content,creator_id,updater_id,created_at,updated_at";
+  const expectedCards = source.prepare(`SELECT ${cardFields} FROM cards ORDER BY id`).all();
+  const expectedJobs = source.prepare("SELECT * FROM delayed_jobs ORDER BY id").all();
+  const targetPath = join(root, "target.sqlite");
+  const target = new LocalSqliteToolDriver(targetPath);
+  let closed = false;
+  try {
+    const stats = await importFromSqlite({ sourcePath, driver: target, ddlPath,
+      tables: ["cards", "delayed_jobs"], batchSize: 2 });
+    expect(stats.errors).toEqual([]);
+    expect(stats.counts).toEqual({ cards: 13, delayed_jobs: 1 });
+    expect((await target.query(`SELECT ${cardFields} FROM cards ORDER BY id`, [])).rows).toEqual(expectedCards);
+    expect((await target.query("SELECT * FROM delayed_jobs ORDER BY id", [])).rows).toEqual(expectedJobs);
+    expect(() => parseDelayedJobHandler(opaqueHandler)).toThrow();
+    target.close(); closed = true;
+    const filesPath = join(root, "empty-uploads");
+    mkdirSync(filesPath);
+    const snapshotDir = join(root, "snapshot");
+    await createRecoverySnapshot({ databasePath: targetPath, filesPath, snapshotDir });
+    const restored = await restoreRecoverySnapshot({ snapshotDir, targetDir: join(root, "restored") });
+    const recovered = new Database(restored.databasePath);
+    try {
+      expect(recovered.prepare(`SELECT ${cardFields} FROM cards ORDER BY id`).all()).toEqual(expectedCards);
+      expect(recovered.prepare("SELECT * FROM delayed_jobs ORDER BY id").all()).toEqual(expectedJobs);
+    } finally { recovered.close(); }
+    expect(source.prepare(`SELECT ${cardFields} FROM cards ORDER BY id`).all()).toEqual(expectedCards);
+    expect(source.prepare("SELECT * FROM delayed_jobs ORDER BY id").all()).toEqual(expectedJobs);
+  } finally { if (!closed) target.close(); source.close(); cleanupScratch(); }
+});

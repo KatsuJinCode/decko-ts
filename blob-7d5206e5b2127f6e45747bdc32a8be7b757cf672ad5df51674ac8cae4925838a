@@ -1,0 +1,198 @@
+// Reconcile saved native evidence; never remove files or alter custody.
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import {createHash} from 'node:crypto';
+const sha=value=>createHash('sha256').update(value).digest('hex');
+export const HOST_LABELS=['ipc-clean','ipc-incomplete','http-clean','http-incomplete','file-clean','file-incomplete','ipc-file-error-clean'];
+export const DEPLOYMENT_LABELS=['all19-alias-native-host','restart-same-alias-key','unconfigured-random-key-refuses-previous-key','generic-alias-does-not-activate-mail','missing-site','bad-score','reserved-target'];
+const hex=value=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value);
+function read(out,file){
+  assert.equal(typeof file,'string');assert.ok(file&&!path.isAbsolute(file)&&!file.includes('\\')&&!file.split('/').some(p=>!p||p==='.'||p==='..'),'Unsafe evidence path');
+  let target=path.resolve(out);assert.ok(fs.lstatSync(target).isDirectory());assert.ok(!fs.lstatSync(target).isSymbolicLink());
+  for(const part of file.split('/')){target=path.join(target,part);assert.ok(!fs.lstatSync(target).isSymbolicLink(),'Redirected evidence path');}
+  assert.ok(fs.lstatSync(target).isFile(),'Ordinary evidence file required');return fs.readFileSync(target);
+}
+const json=(out,file)=>JSON.parse(read(out,file));
+const lines=(out,file)=>read(out,file).toString().trim().split(/\r?\n/).filter(Boolean).map(JSON.parse);
+const exactSet=(actual,expected,message)=>{assert.equal(new Set(actual).size,actual.length,message);assert.deepEqual([...actual].sort(),[...expected].sort(),message);};
+function directOwned(out,target,prefix){assert.equal(typeof target,'string');assert.equal(path.dirname(path.resolve(target)),path.resolve(out),'Owned path escaped profile output');assert.ok(path.basename(target).startsWith(prefix),'Unexpected owned path kind');return path.resolve(target);}
+export function verifyControllerStreams(out,runs){
+  assert.ok(Array.isArray(runs));exactSet(runs.map(row=>row.stage),['host','deployment'],'Controller stream identities mismatch');
+  for(const run of runs)for(const channel of ['stdout','stderr']){
+    assert.equal(typeof run[channel],'string','Captured controller stream missing');
+    const raw=read(out,run.stage+'.'+channel+'.log');
+    assert.equal(raw.toString('utf8'),run[channel],'Controller '+run.stage+' '+channel+' text contradicts bound raw stream');
+    assert.ok(raw.equals(Buffer.from(run[channel],'utf8')),'Controller '+run.stage+' '+channel+' bytes contradict bound raw stream');
+  }
+}
+export function verifyNodeLifecycle(events,expectedFile){
+  assert.ok(Array.isArray(events));assert.equal(typeof expectedFile,'string');
+  const lifecycle=new Set(['test:enqueue','test:dequeue','test:complete','test:start','test:pass','test:fail']);
+  const identities=new Map(),summaries=[],plans=[];
+  for(const event of events){
+    assert.equal(typeof event.type,'string');const data=event.data;assert.ok(data&&typeof data==='object');
+    for(const key of ['file','entryFile'])if(Object.hasOwn(data,key))assert.equal(data[key],expectedFile,'Event file/stream identity changed');
+    if(event.type==='test:summary'){
+      assert.equal(data.success,true);summaries.push(data);
+    }
+    if(event.type==='test:plan')plans.push(data);
+    if(!Object.hasOwn(data,'testId')){assert.ok(!lifecycle.has(event.type),'Lifecycle record has no testId');continue;}
+    assert.ok(Number.isSafeInteger(data.testId)&&data.testId>0,'Invalid lifecycle testId');
+    if(lifecycle.has(event.type)||Object.hasOwn(data,'name')){assert.equal(typeof data.name,'string');assert.ok(data.name.length);}
+    const child=Object.hasOwn(data,'entryFile'),stream=child?data.entryFile:null,key=JSON.stringify([stream,data.testId]);
+    if(!identities.has(key))identities.set(key,{child,stream,testId:data.testId,fields:{},phases:new Map()});
+    const identity=identities.get(key);
+    // Node legitimately omits fields such as type/testNumber on some events.
+    // Compare every supplied identity field without filling in absent fields.
+    for(const field of ['name','file','parentId','nesting','line','column','testNumber'])if(Object.hasOwn(data,field)){
+      if(Object.hasOwn(identity.fields,field))assert.deepEqual(data[field],identity.fields[field],'Lifecycle '+field+' changed within stream/testId');
+      else identity.fields[field]=data[field];
+    }
+    identity.phases.set(event.type,(identity.phases.get(event.type)??0)+1);
+    assert.ok(!data.skip&&!data.todo,'Lifecycle skip/todo contradicts PASS');
+    assert.notEqual(event.type,'test:fail','Lifecycle contains a failed assertion');
+    if(event.type==='test:complete')assert.equal(data.details?.passed,true,'Completed lifecycle is not passing');
+  }
+  const child=[],outer=[];
+  for(const identity of identities.values()){
+    assert.equal(identity.fields.file,expectedFile,'Lifecycle source file is unqualified');
+    const phases=identity.child?['test:enqueue','test:dequeue','test:complete','test:start','test:pass']:['test:enqueue','test:dequeue','test:complete'];
+    for(const phase of phases)assert.equal(identity.phases.get(phase),1,'Lifecycle phase missing or duplicated: '+phase);
+    (identity.child?child:outer).push(identity);
+  }
+  assert.equal(outer.length,1,'One outer file lifecycle required');assert.equal(outer[0].fields.name,expectedFile);
+  exactSet(child.map(identity=>identity.fields.name),HOST_LABELS.map(label=>'full staging host with real SQLite: '+label),'Child lifecycle identities mismatch');
+  const namespaces=new Map();
+  for(const identity of identities.values()){
+    if(!namespaces.has(identity.stream))namespaces.set(identity.stream,new Map());
+    namespaces.get(identity.stream).set(identity.testId,identity);
+  }
+  const supplied=(value,key)=>Object.hasOwn(value.fields,key);
+  const parentOf=value=>supplied(value,'parentId')?value.fields.parentId:supplied(value,'nesting')&&value.fields.nesting===0?0:undefined;
+  for(const nodes of namespaces.values()){
+    const siblings=new Map();
+    for(const identity of nodes.values()){
+      const fields=identity.fields;
+      if(supplied(identity,'nesting'))assert.ok(Number.isSafeInteger(fields.nesting)&&fields.nesting>=0,'Invalid supplied nesting');
+      if(supplied(identity,'parentId')){
+        assert.ok(Number.isSafeInteger(fields.parentId)&&fields.parentId>=0,'Invalid supplied parent identity');
+        if(fields.parentId===0){if(supplied(identity,'nesting'))assert.equal(fields.nesting,0,'Root parent contradicts nesting');}
+        else{
+          const parent=nodes.get(fields.parentId);assert.ok(parent&&parent!==identity,'Parent identity is absent or self-referential');
+          if(supplied(identity,'nesting')&&supplied(parent,'nesting'))assert.equal(fields.nesting,parent.fields.nesting+1,'Parent/child nesting contradicts graph');
+        }
+      }
+      const ancestors=new Set();let current=identity;
+      while(current&&supplied(current,'parentId')&&current.fields.parentId!==0){assert.ok(!ancestors.has(current.testId),'Cyclic parent graph');ancestors.add(current.testId);current=nodes.get(current.fields.parentId);assert.ok(current,'Parent identity missing from namespace');}
+      if(supplied(identity,'testNumber')){
+        assert.ok(Number.isSafeInteger(fields.testNumber)&&fields.testNumber>0,'Invalid supplied sibling number');
+        const parent=parentOf(identity);
+        if(parent!==undefined){
+          if(!siblings.has(parent))siblings.set(parent,new Set());const numbers=siblings.get(parent);
+          assert.ok(!numbers.has(fields.testNumber),'Sibling test number is duplicated');numbers.add(fields.testNumber);
+          const possible=[...nodes.values()].filter(node=>parentOf(node)===undefined||parentOf(node)===parent).length;
+          assert.ok(fields.testNumber<=possible,'Sibling test number exceeds graph cardinality');
+        }else assert.ok(fields.testNumber<=nodes.size,'Test number exceeds namespace cardinality');
+      }
+    }
+  }
+  const summaryNamespaces=new Map();
+  for(const summary of summaries){
+    const stream=Object.hasOwn(summary,'entryFile')?summary.entryFile:null;
+    assert.ok(namespaces.has(stream),'Summary references an unknown namespace');
+    assert.ok(!summaryNamespaces.has(stream),'Duplicate summary namespace');summaryNamespaces.set(stream,summary);
+    const cases=stream===null?child:child.filter(identity=>identity.stream===stream),count=cases.length;
+    for(const [key,value]of Object.entries({tests:count,passed:count,failed:0,cancelled:0,skipped:0,todo:0}))assert.equal(summary.counts?.[key],value,'Summary counts contradict namespace assertions');
+    if(Object.hasOwn(summary.counts,'suites'))assert.equal(summary.counts.suites,0);
+    if(Object.hasOwn(summary.counts,'topLevel')){
+      const roots=cases.filter(identity=>parentOf(identity)===0).length,nonroots=cases.filter(identity=>parentOf(identity)>0||identity.fields.nesting>0).length;
+      assert.ok(Number.isSafeInteger(summary.counts.topLevel)&&summary.counts.topLevel>=roots&&summary.counts.topLevel<=count-nonroots,'Summary top-level count contradicts graph');
+    }
+  }
+  exactSet([...summaryNamespaces.keys()],[...namespaces.keys()],'Missing namespace-specific summary');
+  assert.ok(plans.length>0,'Assertion plan missing');
+  const knownPlanScopes=new Set();
+  for(const plan of plans){
+    const stream=Object.hasOwn(plan,'entryFile')?plan.entryFile:null;assert.ok(namespaces.has(stream),'Plan namespace missing');
+    const parent=Object.hasOwn(plan,'parentId')?plan.parentId:plan.nesting===0?0:undefined;
+    if(parent!==undefined){const key=JSON.stringify([stream,parent]);assert.ok(!knownPlanScopes.has(key),'Duplicate plan for supplied parent scope');knownPlanScopes.add(key);}
+    const cases=stream===null?child:child.filter(identity=>identity.stream===stream);let definite=0,possible=0;
+    for(const identity of cases){let matches=true,known=true;for(const field of ['parentId','nesting'])if(Object.hasOwn(plan,field)){assert.ok(Number.isSafeInteger(plan[field])&&plan[field]>=0,'Invalid plan scope');if(supplied(identity,field)){if(identity.fields[field]!==plan[field])matches=false;}else known=false;}
+      if(matches){possible++;if(known)definite++;}
+    }
+    if(Object.hasOwn(plan,'parentId')&&plan.parentId!==0)assert.ok(namespaces.get(stream).has(plan.parentId),'Plan parent does not exist');
+    assert.ok(Number.isSafeInteger(plan.count)&&plan.count>=definite&&plan.count<=possible,'Plan count contradicts actual assertions');
+  }
+  return {identities:identities.size,childCases:child.length,summary:summaries.at(-1)};
+}
+export function rawHostFiles(out){
+  const runs=fs.readdirSync(path.join(out,'full-host'),{withFileTypes:true});assert.equal(runs.length,1,'Exactly one host run required');assert.ok(runs[0].isDirectory()&&!runs[0].isSymbolicLink()&&runs[0].name.startsWith('run-'));
+  const prefix='full-host/'+runs[0].name;
+  exactSet(fs.readdirSync(path.join(out,prefix)),['subject.json',...HOST_LABELS.flatMap(label=>[label+'.json',label+'-observations.jsonl'])],'Missing, duplicate or extra host case files');
+  return {prefix,subject:json(out,prefix+'/subject.json'),cases:HOST_LABELS.map(label=>({row:json(out,prefix+'/'+label+'.json'),events:lines(out,prefix+'/'+label+'-observations.jsonl')}))};
+}
+export function validateHostCase(row,events,subject,out){
+  assert.ok(HOST_LABELS.includes(row.label),'Unknown host case');const release=!row.label.endsWith('-incomplete'),late=row.label==='ipc-file-error-clean',mode=late?'ipc-file-error':row.label.split('-')[0];
+  assert.equal(row.subject,subject.subject);assert.equal(row.failure,null);assert.equal(row.hidden,true);assert.equal(row.noWriteReplay,true);assert.equal(row.shutdownEntry,mode);
+  assert.deepEqual(row.heldRequest,{method:'POST',path:'/_signin',contentType:'application/x-owned-recovery-control',release});
+  assert.ok(Number.isSafeInteger(row.pid)&&row.pid>0);assert.deepEqual(row.exit,{code:late||!release?1:0,signal:null},'Host case exit contradicts its scenario');
+  const owned=directOwned(out,subject.owned,'full-host-owned-');assert.equal(path.resolve(row.dsn),path.join(owned,row.label,'deck.sqlite3'));
+  const url=new URL(row.base);assert.equal(url.hostname,'127.0.0.1');assert.notEqual(url.port,'3142');assert.equal(row.arguments.at(-1),url.port);assert.equal(row.arguments.at(-2),row.dsn);
+  for(const snapshot of [row.before,row.after]){assert.deepEqual(snapshot.quickCheck,[{quick_check:'ok'}]);assert.ok(hex(snapshot.cardsSha256));assert.ok(Number.isSafeInteger(snapshot.cardCount)&&snapshot.cardCount>0);assert.ok(Number.isSafeInteger(snapshot.sessions)&&snapshot.sessions>=0);}
+  assert.deepEqual(row.after,row.before,'Database preservation evidence contradicts native assertions');
+  const exits=events.filter(event=>event.event==='process-exit');assert.equal(exits.length,1);const exit=exits[0];assert.equal(exit.pid,row.pid);assert.equal(exit.code,row.exit.code,'Native exit observation contradicts case receipt');
+  assert.ok(exit.drivers.length>=2);assert.equal(new Set(exit.drivers.map(driver=>driver.id)).size,exit.drivers.length);assert.ok(exit.drivers.every(driver=>driver.dsn===row.dsn&&driver.open===!release));
+  const observed=events.filter(event=>event.event==='driver-observed');assert.equal(observed.length,exit.drivers.length);assert.ok(observed.every(event=>event.pid===row.pid&&event.dsn===row.dsn&&event.open===true));
+  exactSet(observed.map(event=>event.id),exit.drivers.map(driver=>driver.id),'Driver identity mismatch');
+  assert.ok(events.some(event=>event.event==='held-body-consumed'&&event.pid===row.pid&&event.method==='POST'&&event.url==='/_signin'&&event.bytes>0));
+  const entered=events.filter(event=>event.event==='driver-close-enter'),closed=events.filter(event=>event.event==='driver-close-return');
+  if(release){assert.equal(row.response.ended,true);assert.equal(row.response.status,400);assert.equal(entered.length,exit.drivers.length);assert.equal(closed.length,exit.drivers.length);assert.ok(closed.every(event=>event.pid===row.pid&&event.dsn===row.dsn&&event.open===false));exactSet(closed.map(event=>event.id),exit.drivers.map(driver=>driver.id),'Explicit close identities mismatch');}
+  else{assert.equal(row.response.ended,false);assert.equal(entered.length,0);assert.equal(closed.length,0);const errors=row.stderr.split('\n').flatMap(line=>{try{return[JSON.parse(line)];}catch{return[];}});const incomplete=errors.filter(event=>event.event==='staging-shutdown-incomplete');assert.equal(incomplete.length,1);for(const field of ['outcome','requestOutcome','databaseOutcome'])assert.equal(incomplete[0][field],'unknown');}
+  if(late){const actual=events.find(event=>event.event==='actual-stop-unlink-error'&&['EPERM','EISDIR','EACCES'].includes(event.code));assert.ok(actual);const failure=row.stderr.split('\n').flatMap(line=>{try{return[JSON.parse(line)];}catch{return[];}}).find(event=>event.event==='staging-shutdown-failed');assert.equal(failure?.primaryError?.message,actual.message);}
+  return row;
+}
+export function retainNetworkEvidence(out){
+  const host=rawHostFiles(out),deployment=json(out,'deployment-native/host-results.json');fs.mkdirSync(path.join(out,'network'),{recursive:true});
+  for(const {row} of host.cases){const file=path.join(path.dirname(row.dsn),'network-refusals.jsonl');assert.equal(path.relative(out,file).startsWith('..'),false);const content=fs.readFileSync(file);assert.equal(content.length,0);fs.writeFileSync(path.join(out,'network','host-'+row.label+'.jsonl'),content,{flag:'wx'});}
+  for(const row of deployment.processes){assert.equal(path.relative(out,row.network).startsWith('..'),false);const content=fs.readFileSync(row.network);assert.equal(content.length,0);fs.writeFileSync(path.join(out,'network','deployment-'+row.label+'.jsonl'),content,{flag:'wx'});}
+}
+export function validateRawProfile(out,qualification){
+  const host=rawHostFiles(out),subject=host.subject;
+  assert.equal(subject.subject,qualification.subject);assert.equal(subject.distSha256,qualification.distSha256);assert.equal(subject.fullHostSourceSha256,qualification.manifest.outputs.find(row=>row.file==='vm-staging-server.mjs').sha256);assert.equal(subject.observationPreloadSha256,qualification.controls.find(row=>row.file==='support/close-observer.mjs').sha256);
+  exactSet(host.cases.map(({row})=>row.label),HOST_LABELS,'Host identity mismatch');for(const {row,events} of host.cases)validateHostCase(row,events,subject,out);
+  const events=lines(out,'host.json.events.jsonl');
+  const hostReport=json(out,'host.json'),expectedFile=path.resolve(import.meta.dirname,'../test-profiles/assembled-host/host-recovery.control.mjs');
+  const lifecycle=verifyNodeLifecycle(events,expectedFile);assert.deepEqual(lifecycle.summary,hostReport.summary,'Raw and machine controller summaries differ');
+  assert.ok(!events.some(event=>event.type==='test:fail'));const passes=events.filter(event=>event.type==='test:pass'&&event.data?.name?.startsWith('full staging host with real SQLite: '));
+  exactSet(passes.map(event=>event.data.name.slice('full staging host with real SQLite: '.length)),HOST_LABELS,'Completed assertion identities mismatch');assert.ok(passes.every(event=>!event.data.skip&&!event.data.todo));
+  const deployment=json(out,'deployment-native/host-results.json');assert.equal(deployment.base,qualification.base);assert.equal(deployment.allClosed,true);directOwned(out,deployment.scratch,'deployment-owned-');exactSet(deployment.evidence.map(row=>row.label),DEPLOYMENT_LABELS,'Deployment scenario identity mismatch');exactSet(deployment.processes.map(row=>row.label),DEPLOYMENT_LABELS,'Deployment process identity mismatch');
+  assert.equal(deployment.aliases.length,19);assert.equal(new Set(deployment.aliases).size,19);
+  for(const evidence of deployment.evidence){const process=deployment.processes.find(row=>row.label===evidence.label),refusal=['missing-site','bad-score','reserved-target'].includes(evidence.label);assert.equal(evidence.passed,true);assert.equal(evidence.pid,process.pid);assert.equal(process.exit.signal,null);assert.ok(Number.isSafeInteger(process.exit.code));assert.ok(refusal?process.exit.code!==0:process.exit.code===0);const log=read(out,'deployment-native/'+evidence.label+'.log');assert.equal(sha(log),process.logSha256);if(refusal){assert.equal(evidence.exitCode,process.exit.code);for(const key of ['dbUntouched','noListener','redacted'])assert.equal(evidence[key],true);assert.ok(!log.toString().includes('listening on'));for(const value of ['SYNTHETIC_BAD_SCORE','SYNTHETIC_RESERVED_VALUE','SYNTHETIC_REVIEW_SIGNING_KEY_0123456789_ABCDEFGHIJKLMNOPQRSTUVWXYZ','synthetic-secret'])assert.ok(!log.toString().includes(value));}}
+  const pids=[...host.cases.map(({row})=>row.pid),...deployment.processes.map(row=>row.pid)];assert.equal(new Set(pids).size,14,'Native case PIDs are not unique');
+  const files=['host-files.json','host.json','host.json.events.jsonl','host.stdout.log','host.stderr.log','deployment.stdout.log','deployment.stderr.log','deployment-native/host-results.json',host.prefix+'/subject.json',...HOST_LABELS.flatMap(label=>[host.prefix+'/'+label+'.json',host.prefix+'/'+label+'-observations.jsonl','network/host-'+label+'.jsonl']),...DEPLOYMENT_LABELS.flatMap(label=>['deployment-native/'+label+'.log','network/deployment-'+label+'.jsonl']),'controller-ownership.json'];
+  for(const file of files.filter(file=>file.startsWith('network/')))assert.equal(read(out,file).length,0,'Network refusal evidence is nonempty');
+  return {cases:host.cases.map(({row})=>row),deployment,subject,pids,files};
+}
+export function captureEvidenceFiles(out,files){return files.map(file=>{const content=read(out,file);return{file,bytes:content.length,sha256:sha(content)};});}
+export function verifyEvidenceFiles(out,expected,files){assert.ok(Array.isArray(expected),'Completed-run evidence binding missing');exactSet(expected.map(row=>row.file),files,'Evidence binding omitted or added a file');assert.deepEqual(captureEvidenceFiles(out,files),expected,'Produced native evidence bytes changed');}
+export function verifyCleanupState(out,cleanup,raw){
+  assert.equal(cleanup?.complete,true);assert.ok(Array.isArray(cleanup.cleaned));assert.equal(cleanup.cleaned.length,3,'Three owned cleanup identities required');assert.equal(new Set(cleanup.cleaned).size,3);
+  const full=directOwned(out,raw.subject.owned,'full-host-owned-'),data=directOwned(out,raw.deployment.scratch,'deployment-owned-');
+  const runtime=cleanup.cleaned.filter(file=>path.basename(file).startsWith('runtime-owned-'));assert.equal(runtime.length,1);directOwned(out,runtime[0],'runtime-owned-');exactSet(cleanup.cleaned.map(file=>path.resolve(file)),[full,data,path.resolve(runtime[0])],'Cleanup scope contradicts produced native evidence');
+  const ownership=cleanup.ownership;assert.equal(ownership?.format,'assembled-host-controller-resources/1');assert.equal(ownership.state,'cleaned');assert.equal(ownership.root,path.resolve(out));assert.ok(Number.isSafeInteger(ownership.ownerPid)&&ownership.ownerPid>0);assert.equal(typeof ownership.nonce,'string');assert.ok(ownership.nonce.length>0);
+  const outputStat=fs.lstatSync(out,{bigint:true});assert.ok(outputStat.isDirectory()&&!outputStat.isSymbolicLink(),'Ordinary controller output directory required');
+  assert.deepEqual(ownership.rootIdentity,{dev:String(outputStat.dev),ino:String(outputStat.ino),birth:String(outputStat.birthtimeNs)},'Saved controller output identity differs from actual output');
+  const evidence=json(out,'controller-ownership.json');assert.equal(evidence.format,'assembled-host-controller-evidence/1');
+  assert.deepEqual({...ownership,state:'allocating'},evidence.ownership,'Saved ownership contradicts retained controller allocation evidence');
+  assert.ok(Array.isArray(evidence.markers));exactSet(evidence.markers.map(row=>row.kind),['host','deployment','runtime'],'Retained marker evidence kinds mismatch');
+  exactSet(ownership.resources.map(resource=>resource.kind),['host','deployment','runtime'],'Controller allocation kinds mismatch');exactSet(ownership.resources.map(resource=>resource.path),cleanup.cleaned,'Controller allocations differ from cleaned paths');
+  for(const resource of ownership.resources){
+    assert.ok(hex(resource.markerSha256));for(const field of ['dev','ino','birth'])assert.ok(typeof resource.identity?.[field]==='string'&&/^\d+$/.test(resource.identity[field]),'Controller directory identity missing');
+    const marker=evidence.markers.find(row=>row.kind===resource.kind);assert.equal(typeof marker.content,'string');
+    const canonical=JSON.stringify({format:'assembled-host-controller-resource/1',ownerPid:ownership.ownerPid,nonce:ownership.nonce,kind:resource.kind,path:resource.path,identity:resource.identity})+'\n';
+    assert.equal(marker.content,canonical,'Saved ownership fields contradict retained native marker envelope');assert.equal(sha(Buffer.from(marker.content,'utf8')),resource.markerSha256,'Saved marker digest contradicts retained native marker bytes');
+  }
+  for(const file of cleanup.cleaned){let absent=false;try{fs.lstatSync(file);}catch(error){if(error.code==='ENOENT')absent=true;else throw error;}assert.ok(absent,'Recorded cleaned path exists again: '+file);}
+  const owned=fs.readdirSync(out).filter(name=>/^(full-host-owned-|deployment-owned-|runtime-owned-)/.test(name));assert.deepEqual(owned,[],'Owned profile scratch remains');
+}

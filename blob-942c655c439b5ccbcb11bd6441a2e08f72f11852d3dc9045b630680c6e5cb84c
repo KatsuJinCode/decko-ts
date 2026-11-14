@@ -1,0 +1,3 @@
+{"seq":1,"method":"GET","path":"/Home","status":200,"trips":806,"attach":0,"dataFetch":0,"other":971,"wallMs":2342,"responseBytes":22054,"posture":"off"}
+{"seq":2,"method":"GET","path":"/Home","status":200,"trips":5541,"attach":0,"dataFetch":0,"other":5614,"wallMs":6954,"responseBytes":22054,"posture":"off"}
+{"seq":3,"method":"GET","path":"/Taking_Stock","status":200,"trips":4094,"attach":0,"dataFetch":0,"other":4148,"wallMs":5249,"responseBytes":13659,"posture":"off"}

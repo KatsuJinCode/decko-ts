@@ -1,0 +1,43 @@
+import { expect, it } from "vitest";
+import { BunnyDbDriver } from "../../../src/card/drivers/bunny-db.js";
+import { LibSqlHttpAdapter } from "../../../src/server/drivers/libsql-http.js";
+import { startMockHranaServer } from "./mock-hrana-server.js";
+import { DatabaseOutcomeUnknownError } from "../../../src/server/driver.js";
+
+for (const name of ["BunnyDbDriver", "LibSqlHttpAdapter"] as const) {
+  it(`${name} reports an unknown commit outcome instead of promising rollback when the reply is lost`, async () => {
+    const server = await startMockHranaServer();
+    try {
+      let lostReply = false;
+      const faultFetch: typeof fetch = async (url, options) => {
+        const body = String(options?.body ?? "");
+        const response = await fetch(url, options);
+        if (!lostReply && body.includes('"sql":"COMMIT"')) {
+          lostReply = true;
+          await response.arrayBuffer();
+          throw new TypeError("injected reset after COMMIT");
+        }
+        return response;
+      };
+      const driver = name === "BunnyDbDriver"
+        ? new BunnyDbDriver({ url: server.url, fetchImpl: faultFetch, retries: 0 })
+        : new LibSqlHttpAdapter({ url: server.url, fetchImpl: faultFetch });
+      await driver.query("CREATE TABLE commit_attack (value INTEGER)", []);
+      await driver.query("INSERT INTO commit_attack VALUES (0)", []);
+      let failure: unknown;
+      try {
+        await driver.transaction(async () => {
+          await driver.query("UPDATE commit_attack SET value = 1", []);
+        });
+      } catch (error) { failure = error; }
+      expect(lostReply).toBe(true);
+      expect(failure).toBeDefined();
+      expect(failure).toBeInstanceOf(DatabaseOutcomeUnknownError);
+      expect(failure).toMatchObject({ code: "database-outcome-unknown", operation: "commit", outcome: "unknown", retrySafe: false });
+      const observed = await driver.query<{ value: number }>("SELECT value FROM commit_attack", []);
+      // The fault consumed the successful COMMIT response. Its row is
+      // committed, while the client can establish only an unknown outcome.
+      expect(observed.rows[0]?.value, String(failure)).toBe(1);
+    } finally { await server.close(); }
+  });
+}

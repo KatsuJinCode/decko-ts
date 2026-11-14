@@ -1,0 +1,99 @@
+# Signed-in modal layout fixture qualification
+
+## Result and exact source
+
+The assigned original modal case raises the same missing `header` codename
+on unchanged root `f3df31eb5799b7d544ed47ef431fbf96480eb94d` and on the exact
+Area1 cumulative 157/165 selection. After correcting only its layout seed,
+the original case passes on both. On the cumulative source, all 20 original
+signed-in cases plus four added storage-qualification controls pass, with
+zero failures/skips. The original HTML ordering and status 403 expectations
+are unchanged.
+
+The Area1 source and patch receipt are read from
+`a43ae569daf2e612e1eba9e510bcbaa0ec298bfc`. The cumulative patch SHA-256 is
+`cc7b4366305006104ac8dac163a6b3dd210957a21d5fb468e0b0671ab6f7c311`.
+An isolated load control reads all base production/helpers from Git. In
+cumulative mode only the five exact output blobs recorded in Area1's checks
+replace their base modules in memory. Each output hash and the patch hash
+are verified against that receipt; no module or patch is written into root.
+Actual loaded refs, paths and source hashes are recorded separately. This is
+exact source-load evidence, not an installed or assembled-release claim.
+
+| Source and fixture | Executed result |
+| --- | --- |
+| Original case on base, before correction | one failure: missing header; other 19 cases filtered out |
+| Original case on cumulative source, before correction | same one failure; other 19 cases filtered out |
+| Base after correction: original case plus four new controls | five pass; other 19 original cases filtered out |
+| Cumulative after correction: whole original file plus four controls | 24 pass, zero failures/skips |
+
+The filtered base invocations are intentionally scoped comparisons; they do
+not claim that the unexecuted signup/auth cases pass before issue157.
+
+## Verified cause and correction
+
+Original Rule::Cache requires a Set-typed rule trunk, a Setting-typed tag and
+registered pattern/setting codenames. The modal fixture's layout tag had
+neither a Setting type nor its `layout` codename. The qualified lookup
+therefore excludes the intended Probe Layout and renders the code-default
+layout, which asks for `header` that this minimal fixture does not contain.
+
+The fixture helper already stores its replacement `*all` as the stock Set
+type, despite the explicit Basic type in the caller's seed. The new positive
+control queries this actual stored row and checks it against the registered
+Set ID; no assumption about the caller's arguments supplies this fact.
+
+The sole original-file hunk adds a registered Setting type and types/codenames
+the `*layout` tag accordingly. The layout content, readable page content,
+rule sides, board permission decision, expected HTML and HTTP status stay
+unchanged. No `header` card is inserted to hide the wrong layout selection.
+
+The original file's raw Git SHA-256 is
+`165918662802f0bb5db3b6a075e7132e3e0be061d891602e3681ea3d980981b1`.
+A whole-file comparison, normalizing line endings, proves every byte outside
+the one layout seed replacement remains identical to the exact base. All
+20 original test bodies and assertions are preserved. The database schema
+also matches the base exactly. No runtime, shared seed constructor, lookup,
+permission or normalization code changes.
+
+## Added qualification controls
+
+`modal-layout-rule-qualification.test.ts` builds isolated real SQLite fixture
+rows and executes the existing port of the original rule-cache SQL/key builder,
+then compares actual `findRule` selection against that result. Four cases cover
+the valid layout, a wrong Setting type, a wrong Set type, and a missing setting
+codename. All malformed forms remain excluded. The original cache source was
+read and hash-checked directly:
+`17a240a32aed7c2ea07c69df21bfb78190a4cd501583171f2b23403de1f7736d`.
+These new checks execute the ported SQL and original-derived key construction;
+they do not claim a fresh Ruby/Rails/ActiveRecord execution.
+
+The compiler runs in its own checked native subprocess: status zero,
+signal/error null, empty diagnostics. No subsequent shell command masks it.
+The explicit two-file platform scan has zero command landmines. Whitespace
+validation passes. No full gate was run and no security assertion was relaxed.
+
+## Retained evidence and ownership
+
+Ignored receipts under `.runtime/adapter123/`:
+
+- `modal-layout.config.mjs`: immutable source and exact cumulative-output
+  loader, including patch/output hash checks.
+- `modal-layout-base-before.log`, `modal-layout-cumulative-before.log`:
+  actual original-case failures.
+- `modal-layout-base-after.log`, `modal-layout-cumulative-after.log`:
+  actual after results with their full selected denominators.
+- Per-mode `modal-layout-*-inputs.jsonl`,
+  `modal-layout-selection-custody.json`, and
+  `modal-layout-assertion-custody.json`.
+- `modal-layout-typecheck.log`, `modal-layout-typecheck-receipt.json`,
+  `modal-layout-platform-scan.log`, and the fetched remote push receipt.
+
+The cumulative result overlaps the smaller base selection and is not added
+to it as unique coverage. Test assertions run locally with no model grading,
+retry or result replay. Persistent module caching is disabled for the immutable
+loads; compilation and OS caches may otherwise be warm. No install, browser,
+listener, VM/live reference request, schedule, root edit or deployment occurs.
+Each new fixture closes its own in-memory database. No DB directory, source
+copy or new checkout was created. Earlier packages remain unchanged.
+Independent exact-source reattack and selection remain with the release owner.

@@ -1,0 +1,40 @@
+{
+  "registerRow": "reg-mods-29",
+  "registerRowNumber": 29,
+  "mod": "card-mod-session",
+  "verdict": "DONE",
+  "gap": "",
+  "oracle": {
+    "source": "the pinned Ruby gem tree C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
+    "gem": "C:\\localProjects\\decko-ruby-oracle-gems\\ruby\\3.4.0\\gems\\card-mod-session-0.20.0",
+    "readBy": "tools/audit-mod-declaration-coverage.mjs (the family's declaration census) and this tool"
+  },
+  "port": {
+    "file": "src/card/mod-loader/mods/card-mod-session.ts",
+    "setPaths": [
+      "all/location_history",
+      "type/session"
+    ],
+    "viewNames": [],
+    "eventNames": [
+      "delete_in_session",
+      "discard_deleted_locations",
+      "save_current_location",
+      "store_in_session"
+    ]
+  },
+  "gem": {
+    "setFiles": [
+      "all/location_history.rb",
+      "type/session.rb"
+    ],
+    "viewNames": [],
+    "eventNames": [
+      "delete_in_session",
+      "discard_deleted_locations",
+      "save_current_location",
+      "store_in_session"
+    ]
+  },
+  "namedSkips": []
+}

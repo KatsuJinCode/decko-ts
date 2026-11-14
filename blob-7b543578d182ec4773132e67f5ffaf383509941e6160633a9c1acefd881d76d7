@@ -1,0 +1,105 @@
+// Issue 149 (DECKO-761): the attachment CLEANUP must remove every
+// rendition Ruby removes, and nothing Ruby keeps.
+//
+// Ruby (card-mod-carrierwave-0.20.0):
+//   set/abstract/attachment.rb:112-119
+//     def delete_files_for_action action
+//       with_selected_action_id action.id do
+//         attachment.file.delete
+//         attachment.versions.each_value { |version| version.file&.delete }
+//       end
+//     end
+//   spec/set/type/image_spec.rb:140-156 — "deletes all versions": an image
+//     card's version-less file AND every version file go.
+//   set/abstract/attachment/00_upload_cache.rb:51-57 / :66-72 — the
+//     two-step upload's integrate phase calls it for the draft action
+//     (delete_cached_upload_file_on_create / _on_update).
+//
+// The port's AttachmentStore.remove? IS that capability. BlobAttachmentStore
+// carried none, so the engine's release — `store.remove?.(...)`
+// (card-action-engine.ts, cachedUploadAttachment.release) — silently kept
+// the draft's file: the cleanup left a file behind where Ruby removes them
+// all. This suite pins the removal set the store owes.
+//
+// The removal set is the UNION of the two stored shapes, because the seam
+// does not know which uploader class the card ran:
+//   <action_id><ext>          the FileCardUploader's file
+//                             (file_card_uploader.rb:147-153) — also the
+//                             two-step upload's draft file, whose cache
+//                             card is a *new file type (no versions,
+//                             00_upload_cache.rb:75-78);
+//   <action_id>-original<ext> the ImageCardUploader's version-less file
+//                             (image_card_uploader.rb:49-57);
+//   <action_id>-<version><ext> one file per version
+//                             (image_card_uploader.rb:16-27) — only when
+//                             create_versions? is true; an SVG has none
+//                             (set/type/image.rb:4-7).
+// A shape the action never had is a no-op: the blob driver's delete is
+// idempotent on every adapter (src/blob/driver.ts:123-127), and a spelling
+// that was never stored cannot be a file Ruby keeps.
+
+import { describe, expect, it } from "vitest";
+import { MemoryBlobDriver } from "../../src/blob/memory.js";
+import { BlobAttachmentStore } from "../../src/card/attachments/attachment-store.js";
+import { renditionFileNames } from "../../src/card/attachments/image-renditions.js";
+
+const bytes = new TextEncoder().encode("attachment bytes");
+
+describe("the attachment cleanup removes every rendition Ruby removes", () => {
+  it("removes an image action's version-less file AND every version file", async () => {
+    const files = new MemoryBlobDriver();
+    const store = new BlobAttachmentStore(files);
+    const owned = renditionFileNames(11, ".png");
+    for (const name of owned) await files.put(`7/${name}`, bytes);
+    // another action on the same card keeps its own files
+    const other = renditionFileNames(12, ".png");
+    for (const name of other) await files.put(`7/${name}`, bytes);
+
+    await store.remove(7, 11, ".png");
+
+    for (const name of owned) expect(await files.getBytes(`7/${name}`)).toBeUndefined();
+    for (const name of other) expect(await files.getBytes(`7/${name}`)).toEqual(bytes);
+  });
+
+  it("removes a file action's file and touches nothing else", async () => {
+    const files = new MemoryBlobDriver();
+    const store = new BlobAttachmentStore(files);
+    await files.put("7/11.txt", bytes);
+    await files.put("7/12.txt", bytes);
+
+    await store.remove(7, 11, ".txt");
+
+    expect(await files.getBytes("7/11.txt")).toBeUndefined();
+    expect(await files.getBytes("7/12.txt")).toEqual(bytes);
+  });
+
+  it("removes an SVG action's -original file (an SVG has no version files)", async () => {
+    const files = new MemoryBlobDriver();
+    const store = new BlobAttachmentStore(files);
+    // Ruby stores an SVG image card's file under the -original spelling
+    // (the suffix rides the uploader class, not create_versions?).
+    await files.put("7/11-original.svg", bytes);
+    await files.put("7/12-original.svg", bytes);
+
+    await store.remove(7, 11, ".svg");
+
+    expect(await files.getBytes("7/11-original.svg")).toBeUndefined();
+    expect(await files.getBytes("7/12-original.svg")).toEqual(bytes);
+  });
+
+  it("removes the two-step upload's draft file from the cache area only", async () => {
+    const files = new MemoryBlobDriver();
+    const tmp = new MemoryBlobDriver();
+    const store = new BlobAttachmentStore(files, tmp);
+    // the create arm's draft: the cache area under the cache card
+    // (00_upload_cache.rb tmp_upload_dir);
+    await tmp.put("files/9/11.png", bytes);
+    // the update arm's draft: the card's own files dir
+    await files.put("9/11.png", bytes);
+
+    await store.remove(9, 11, ".png", "tmp");
+
+    expect(await tmp.getBytes("files/9/11.png")).toBeUndefined();
+    expect(await files.getBytes("9/11.png")).toEqual(bytes);
+  });
+});

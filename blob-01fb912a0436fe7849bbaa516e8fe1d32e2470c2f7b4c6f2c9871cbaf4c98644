@@ -1,0 +1,10 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+    body { margin:0; background:#222; color:#fff; font:14px/1.4 sans-serif; }
+    .row { display:flex; }
+    .cell { width:1280px; }
+    .cell img { display:block; width:1280px; height:900px; }
+    .cell .cap { padding:4px 10px; background:#000; }
+  </style></head><body><div class="row">
+    <div class="cell"><div class="cap">NEW SNAPSHOT (front-door-in-decko-2, local build)</div><img src="gate-snapshot-1280x900.png"></div>
+    <div class="cell"><div class="cap">REAL FRONT PAGE (culturesmith-edge.bunny.run/)</div><img src="gate-real-front-page-1280x900.png"></div>
+  </div></body></html>

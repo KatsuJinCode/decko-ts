@@ -1,0 +1,103 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+await import('../../support/typescript-source-loader.mjs');
+const {createRenderTestStorage,seedCard}=await import('../render/render-test-storage.js');
+const {defineMod}=await import('../../../src/card/mod-loader/mod-dsl.js');
+const {ModLoader}=await import('../../../src/card/mod-loader.js');
+const {defaultDeckSources}=await import('../../../src/card/mod-loader/default-mod-deck.js');
+const {Voo}=await import('../../../src/card/render/format.js');
+async function fixture(build,body){
+ const storage=await createRenderTestStorage();let loader;
+ try{
+  await seedCard(storage,{id:2,name:'RichText',codename:'basic'});
+  await seedCard(storage,{id:3,name:'Session',codename:'session'});
+  await seedCard(storage,{id:500,name:'Session Probe',typeId:3});
+  await seedCard(storage,{id:501,name:'Basic Probe',typeId:2});
+  loader=new ModLoader([...defaultDeckSources(),...build().map(manifest=>({manifest}))],{});loader.load();storage.engine.modLoader=loader;
+  await body(storage.engine);
+ }finally{loader?.reset();storage.close();}
+}
+const native=JSON.parse(fs.readFileSync(new URL('./fixtures/child-items-native.json',import.meta.url),'utf8'));
+for(const row of native.rows)test('actual Session core child options retain native '+row.id+' inheritance',async()=>{
+ let parent;
+ await fixture(()=>[defineMod('review_child_options',({set})=>set('all/review_child_options',({format})=>format('html',({view})=>{
+  view('core',{perms:'none',cache:'never'},({fmt,voo})=>{
+   parent=voo;
+   const childOptions=row.id==='absent'?{}:{items:row.id==='nil'?null:row.id==='false'?false:{view:'custom',size:'small'}};
+   return fmt.renderView('review_child',childOptions);
+  });
+  view('review_child',{perms:'none',cache:'never'},({fmt,voo})=>{
+   assert.equal(fmt.voo,voo);assert.equal(voo.parent,parent);
+   return JSON.stringify({id:row.id,parentItems:parent.items,childItems:voo.items,sameParentItems:voo.items===parent.items});
+  });
+ })))],async engine=>{
+  const actual=JSON.parse(await engine.render('Session Probe','core',{format:'html',viewOpts:{items:{view:'content',size:'medium'}}}));
+  assert.deepEqual(actual,row);
+ });
+});
+test('actual callback and helper precede body, with active receiver and nested restoration',async()=>{
+ const calls=[];let parent;
+ await fixture(()=>[defineMod('review_context',({set})=>set('all/review_context',({format})=>format('html',({before,method,view})=>{
+  method('review_stamp',({fmt,voo})=>{assert.equal(fmt.voo,voo);assert.equal(fmt.card.name.s,'Basic Probe');calls.push('helper');voo.items.view='name';});
+  before('review_parent',({fmt,voo},...args)=>{assert.equal(args.length,0);assert.equal(fmt.voo,voo);assert.equal(voo.requestedView,'review_parent');parent=voo;calls.push('before');fmt.callFormatMethod('review_stamp');});
+  before('review_child',({fmt,voo})=>{assert.equal(fmt.voo,voo);assert.equal(voo.parent,parent);calls.push('child-before');});
+  view('review_child',{perms:'none',cache:'never'},({voo})=>{calls.push('child-body');return voo.items.view;});
+  view('review_parent',{perms:'none',cache:'never'},({fmt,voo})=>{calls.push('body');const value=fmt.renderView('review_child');assert.equal(fmt.voo,voo);calls.push('restored');return value;});
+ })))],async engine=>assert.equal(await engine.render('Basic Probe','review_parent'),'name'));
+ assert.deepEqual(calls,['before','helper','body','child-before','child-body','restored']);
+});
+test('throwing before skips body and restores the parent active view',async()=>{
+ let bodyCalls=0;
+ await fixture(()=>[defineMod('review_throw',({set})=>set('all/review_throw',({format})=>format('html',({before,view})=>{
+  before('review_boom',()=>{throw Error('independent-before-error');});
+  view('review_boom',{perms:'none',cache:'never'},()=>{bodyCalls++;return 'wrong';});
+  view('review_parent',{perms:'none',cache:'never'},({fmt,voo})=>{assert.throws(()=>fmt.renderView('review_boom'),/independent-before-error/);assert.equal(fmt.voo,voo);return 'restored';});
+ })))],async engine=>assert.equal(await engine.render('Basic Probe','review_parent'),'restored'));
+ assert.equal(bodyCalls,0);
+});
+test('actual before method selection remains scoped by receiver set and format',async()=>{
+ await fixture(()=>[defineMod('review_scope',({set})=>{
+  set('all/review_scope',({before,format})=>{
+   before('review_scope',({voo})=>{voo.opts.review='base';});
+   format('html',({before,view})=>{before('review_scope',({voo})=>{voo.opts.review='all';});view('review_scope',{perms:'none',cache:'never'},({voo})=>String(voo.opts.review));});
+   format('text',({view})=>view('review_scope',{perms:'none',cache:'never'},({voo})=>String(voo.opts.review)));
+  });
+  set('type/basic',({format})=>format('html',({before})=>before('review_scope',({voo})=>{voo.opts.review='specific';})));
+ })],async engine=>{
+  assert.equal(await engine.render('Basic Probe','review_scope'),'specific');
+  assert.equal(await engine.render('Session Probe','review_scope'),'all');
+  assert.equal(await engine.render('Basic Probe','review_scope',{format:'text'}),'base');
+ });
+});
+
+test('item inheritance preserves native Ruby truthiness and normalized option values',()=>{
+ const reference=JSON.parse(fs.readFileSync(new URL('./fixtures/child-items-truthiness-native.json',import.meta.url),'utf8'));
+ for(const row of reference.rows){
+  const parent=new Voo(undefined,'parent',structuredClone(row.parentInput));
+  const child=new Voo(parent,'child',structuredClone(row.childInput));
+  assert.deepEqual(child.opts,row.normalized,row.id);
+  assert.equal(Object.hasOwn(child.opts,'items'),row.hasItems,row.id);
+  // Object identity is meaningful for the Ruby hashes and arrays mapped to
+  // JS objects; primitive strings are compared by value in JavaScript.
+  if(parent.opts.items!==null&&typeof parent.opts.items==='object'){
+   assert.equal(child.opts.items===parent.opts.items,row.sameParentItems,row.id);
+  }
+ }
+});
+
+test('implicit live item hash stays out of its parent slot and enters the child normalized slot',()=>{
+ for(const parentInput of [{},{items:null},{items:false}]){
+  const parent=new Voo(undefined,'core',structuredClone(parentInput));
+  parent.items.view='name';parent.items.size='medium';
+  for(const childInput of [{},{items:null},{items:false}]){
+   const child=new Voo(parent,'child',structuredClone(childInput));
+   assert.deepEqual(parent.opts,parentInput);
+   assert.equal(child.opts.items,parent.items);
+   assert.deepEqual(child.opts.items,{view:'name',size:'medium'});
+   child.items.visited='yes';
+   assert.equal(parent.items.visited,'yes');
+   delete child.items.visited;
+  }
+ }
+});

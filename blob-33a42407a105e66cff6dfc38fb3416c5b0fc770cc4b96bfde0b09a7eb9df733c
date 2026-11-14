@@ -1,0 +1,86 @@
+{
+  "row": "check-chain-join-plan",
+  "instrument": "tools/perf/check-chain-join-plan.mjs",
+  "passCondition": "the two forms must answer with the same SET of rows (the multiset of per-row digests, sorted); the raw-byte digest and byte comparison stay in the report so an order change stays visible",
+  "tool": {
+    "complete": true,
+    "cards": 21670,
+    "parameterCount": 90,
+    "sqlite": "3.53.4",
+    "schemaIndexesApplied": 16,
+    "schemaIndexesSha256": "7859ccb1b4fff75a29449df10cf0f66059bd63fc64bafc1bb82c8ffe6061ccb6",
+    "sourceSha256": "f67f6edf75648473c22b022c0c801673ee2c34b09be35024148fb862275363fb",
+    "copiedSha256": "f67f6edf75648473c22b022c0c801673ee2c34b09be35024148fb862275363fb",
+    "measurements": [
+      {
+        "stats": false,
+        "kind": "original",
+        "ms": 234689.547,
+        "rows": 1,
+        "selectedCards": 30,
+        "byteLength": 5723,
+        "rowsSha256": "753e5585da73a1a47bd378490a6e77bf028f95ed5faa3099de9da6d080977668",
+        "identicalBytes": true,
+        "rowsSetSha256": "47ce565aafc0fe5b2fbbe48d8c707fbbd172f9064050837307f7bb8f87f3294f",
+        "identicalSet": true
+      },
+      {
+        "stats": false,
+        "kind": "fixed",
+        "ms": 51.689199999993434,
+        "rows": 1,
+        "selectedCards": 30,
+        "byteLength": 5723,
+        "rowsSha256": "3f5ee693c9780f55b40d5167ad8f814b63f6bf86938cc953f17a95fcbee9604e",
+        "identicalBytes": false,
+        "rowsSetSha256": "47ce565aafc0fe5b2fbbe48d8c707fbbd172f9064050837307f7bb8f87f3294f",
+        "identicalSet": true
+      },
+      {
+        "stats": true,
+        "kind": "original",
+        "ms": 44.70810000001802,
+        "rows": 1,
+        "selectedCards": 30,
+        "byteLength": 5723,
+        "rowsSha256": "f9951cd5a9654b5f3be863417ecd05c996d96d74bf275d42bb2ce67faa6c29fb",
+        "identicalBytes": false,
+        "rowsSetSha256": "47ce565aafc0fe5b2fbbe48d8c707fbbd172f9064050837307f7bb8f87f3294f",
+        "identicalSet": true
+      },
+      {
+        "stats": true,
+        "kind": "fixed",
+        "ms": 42.94529999999213,
+        "rows": 1,
+        "selectedCards": 30,
+        "byteLength": 5723,
+        "rowsSha256": "25b7d1e8add5b9e63228fe22a72490fce4dd25407716b7dd95b1c6f30a6e0c8d",
+        "identicalBytes": false,
+        "rowsSetSha256": "47ce565aafc0fe5b2fbbe48d8c707fbbd172f9064050837307f7bb8f87f3294f",
+        "identicalSet": true
+      }
+    ]
+  },
+  "deck": {
+    "source": "C:/localProjects/brandonDojoTech/tmp/smell-dep-restore-20261020/deck-rebuild/deck-better-sqlite3.sqlite3",
+    "sourceSha256": "c19c4d561ebbd4bee3dab3667af52400a6fa32affc151fd17adf1c5007640dfc",
+    "copySha256": "f67f6edf75648473c22b022c0c801673ee2c34b09be35024148fb862275363fb",
+    "rowsBefore": 21676,
+    "distinctIdsBefore": 21670,
+    "nullIdRowsDropped": 6,
+    "rowsAfter": 21670,
+    "distinctIdsAfter": 21670
+  },
+  "capture": {
+    "file": ".runtime/workbatch-g-chain-join/capture.sql",
+    "sha256": "3b804241aa6894ff4274a4e00d1527f6fc2a7975fded6a8dc0c2774cdbda4b67",
+    "boundKeys": 90,
+    "note": "the SQL text of the surviving capture with its CROSS JOINs turned back into plain JOINs, plus a parameter array taken from the deck's own widenable junctions"
+  },
+  "priorRefusal": {
+    "round": "smell-row-conversion-r4-2026-10-24",
+    "capture": "fixtures/captured/smell-row-r4-2026-10-24/check-chain-join-plan.json",
+    "note": "that round's run refused on the byte comparison: the two forms returned the same 30 cards in a different order (same set, same byte length, different bytes), and the byte check was the pass condition"
+  }
+}

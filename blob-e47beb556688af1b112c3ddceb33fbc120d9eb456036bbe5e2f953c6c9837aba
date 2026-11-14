@@ -1,0 +1,40 @@
+// Independent regression from the September data review. Ruby GET /~1?view=history
+// retains expansion links on rename-only actions 266805 and 227048 even though
+// their content panel says "empty". No private snapshot data is embedded here.
+import { describe, expect, it } from 'vitest';
+import { bindModLoaderToEngine, createRenderTestStorage, seedCard, seedReference } from '../render/render-test-storage.js';
+import { ModLoader, modEngineHost } from '../../../src/card/mod-loader.js';
+import cardModHistory from '../../../src/card/mod-loader/mods/card-mod-history.js';
+import { ActWriter, cardFieldStateFromRow } from '../../../src/card/history/write-path.js';
+
+describe('adversarial history: rename-only action after long content', () => {
+ it('keeps Ruby’s expansion link beside an empty content summary', async () => {
+  const s=await createRenderTestStorage();
+  const loader=new ModLoader([{manifest:cardModHistory}]);
+  try {
+   for(const row of [
+    {id:1,name:'Decko Bot',typeId:2}, {id:2,name:'RichText'},
+    {id:8,name:'*type',codename:'type',typeId:14},
+    {id:10,name:'*all',codename:'all',typeId:13},
+    {id:11,name:'*self',codename:'self',typeId:14},
+    {id:12,name:'*update',codename:'update',typeId:14},
+    {id:13,name:'*set',codename:'set',typeId:13},
+    {id:14,name:'*setting',codename:'setting',typeId:14},
+    {id:15,name:'*anon',codename:'anonymous',typeId:14},
+    {id:16,name:'*read',codename:'read',typeId:14},
+    {id:17,name:'*all+*read',leftId:10,rightId:16,typeId:14,dbContent:'[[Anyone]]'},
+    {id:18,name:'Anyone',codename:'anyone',typeId:2},
+   ]) await seedCard(s,row);
+   await seedReference(s,17,18,'anyone');
+   const makeWriter=()=>new ActWriter({driver:s.counting,actorId:1,ipAddress:'127.0.0.1'});
+   const created=await makeWriter().createCard({name:'Rename Probe',key:'rename_probe',type_id:2,db_content:'A deliberately long synthetic body whose existing content exceeds the history summary length, without any private site text.'});
+   const before=cardFieldStateFromRow((await s.counting.query('select * from cards where id=?',[created.cardId])).rows[0] as never);
+   const renamed=await makeWriter().updateCard({cardId:created.cardId,before,after:{...before,name:'Renamed Probe'},key:'renamed_probe'});
+   expect(renamed).not.toBeNull();
+   loader.load(); bindModLoaderToEngine(s,loader); await loader.installInto(modEngineHost(s.engine,s.fetcher));
+   s.fetcher.installNameEnvironment(); await s.fetcher.codenames.ensureLoaded();
+   const html=await s.engine.render('Renamed Probe','history');
+   expect(html).toContain(`action_expanded?action_id=${renamed!.actionId}&amp;look_in_trash=true`);
+  } finally {loader.reset();s.close();}
+ });
+});

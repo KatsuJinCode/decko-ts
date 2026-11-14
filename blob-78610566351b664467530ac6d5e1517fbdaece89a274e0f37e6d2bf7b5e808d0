@@ -1,0 +1,78 @@
+{
+  "sourceRevision": "25bc601d0",
+  "purpose": "Minimal historical inventory assertions; not fresh runtime or release evidence",
+  "receipts": [
+    {
+      "id": "reg-routes-A17",
+      "source": "docs/runs/workbatch-a-20261025/reg-routes-A17/RECEIPT.md",
+      "sourceSha256": "02bbaf79be27d37256887d28dcf2bd46e0002e0175cf57f8b14c99b78397638b",
+      "target": "reg-routes-A17/RECEIPT.md",
+      "excerptSha256": "3517d0b8cacc7ca7ea2280a526d1c9afe59edeaa22c03cdddc45c549c809eab9",
+      "sourceBytes": 2376,
+      "excerptBytes": 390
+    },
+    {
+      "id": "reg-routes-A22",
+      "source": "docs/runs/workbatch-a-20261025/reg-routes-A22/RECEIPT.md",
+      "sourceSha256": "80039b2cbc0e466e61e3ee6447c8a7df119cb262de3f5b074c18efb09c81d922",
+      "target": "reg-routes-A22/RECEIPT.md",
+      "excerptSha256": "5b7f4dc8f276d9b4306dee0f2efe124570d4bfaba5aeae3d9adbd15ef4f157d6",
+      "sourceBytes": 1613,
+      "excerptBytes": 270
+    },
+    {
+      "id": "reg-routes-A23",
+      "source": "docs/runs/workbatch-a-20261025/reg-routes-A23/RECEIPT.md",
+      "sourceSha256": "9d7ffd1fe643e9f3ced91d64bff3612b6356f521eed3da5530d03b572021f012",
+      "target": "reg-routes-A23/RECEIPT.md",
+      "excerptSha256": "209f14641ba06d895ff6602279e06cbb4afd8a6d7b25eae6286760e7fccaf682",
+      "sourceBytes": 1668,
+      "excerptBytes": 154
+    },
+    {
+      "id": "reg-routes-B6",
+      "source": "docs/runs/workbatch-a-20261025/reg-routes-B6/RECEIPT.md",
+      "sourceSha256": "6f8944acc8d074d5f88afeda7068e4db7a0aab2f8193b2980564189d21d91c6a",
+      "target": "reg-routes-B6/RECEIPT.md",
+      "excerptSha256": "60d58ec4519fd184e1cff616728c68804b1ea3af5731ce3d199c26f5ed159287",
+      "sourceBytes": 5054,
+      "excerptBytes": 252
+    },
+    {
+      "id": "reg-dsl-A10",
+      "source": "docs/runs/workbatch-a-20261025/reg-dsl-A10/RECEIPT.md",
+      "sourceSha256": "a8e5a2a72f911c72fd42d0a0c4e406e9c23a86b6e9478a212581174dbbe0f146",
+      "target": "reg-dsl-A10/RECEIPT.md",
+      "excerptSha256": "3b256221935e35873beca646353abd894501d76a3a868e5f7e4900869961dcd9",
+      "sourceBytes": 2195,
+      "excerptBytes": 155
+    },
+    {
+      "id": "reg-dsl-A22",
+      "source": "docs/runs/workbatch-a-20261025/reg-dsl-A22/RECEIPT.md",
+      "sourceSha256": "b312fa8434ca6475b00f6723322692c74cc27119fa80a3561170a6304055385b",
+      "target": "reg-dsl-A22/RECEIPT.md",
+      "excerptSha256": "52f870f21fcd02e2a856d8af74d555626d64bf4eef3734195f24c61f6d10a9fc",
+      "sourceBytes": 3582,
+      "excerptBytes": 238
+    },
+    {
+      "id": "reg-dsl-B21",
+      "source": "docs/runs/workbatch-a-20261025/reg-dsl-B21/RECEIPT.md",
+      "sourceSha256": "6ed0c19f20293b791c719640ec9f0f1e79d97c51582dd0d2a448f8e9473f4528",
+      "target": "reg-dsl-B21/RECEIPT.md",
+      "excerptSha256": "1282741a9d066a1fbffb6ca6758449b9ff74e77b6b33cd4acc262641802647de",
+      "sourceBytes": 3354,
+      "excerptBytes": 287
+    },
+    {
+      "id": "reg-dsl-B22",
+      "source": "docs/runs/workbatch-a-20261025/reg-dsl-B22/RECEIPT.md",
+      "sourceSha256": "219be44ba6a4ff8e5e96f35b2be95ff206c889c6b28ab9c69de92148c9c811a5",
+      "target": "reg-dsl-B22/RECEIPT.md",
+      "excerptSha256": "2d0ae38fd5fcc1c12861c3f834c29b6b571261a797b8df4ed8d87cbb62f038f2",
+      "sourceBytes": 3329,
+      "excerptBytes": 195
+    }
+  ]
+}

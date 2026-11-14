@@ -1,0 +1,24 @@
+{
+  "row": "save-draft",
+  "event_file": "card-1.110.0/mod/core/set/all/content.rb",
+  "event": "save_draft",
+  "scenarios": [
+    {
+      "name": "a save posted with the draft flag: the body saves the draft and aborts with the success status",
+      "attributes": {
+        "content": "<p>draft body</p>"
+      },
+      "pinned_methods": [
+        {
+          "name": "abort",
+          "file": "card-1.110.0/mod/core/set/all/result.rb"
+        }
+      ],
+      "returns": {
+        "director": {
+          "__record__": {}
+        }
+      }
+    }
+  ]
+}

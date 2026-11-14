@@ -1,0 +1,451 @@
+{
+  "gemset": "the pinned deck gemset",
+  "gemCount": 68,
+  "patterns": [
+    "protect_from_forgery",
+    "allow_forgery_protection",
+    "verify_authenticity_token",
+    "request_forgery_protection",
+    "forgery_protection"
+  ],
+  "hitCount": 58,
+  "deckGemHits": [
+    {
+      "gem": "card-1.110.0",
+      "file": "config/environments/test.rb",
+      "line": 37,
+      "pattern": "allow_forgery_protection",
+      "text": "config.action_controller.allow_forgery_protection = false"
+    },
+    {
+      "gem": "card-1.110.0",
+      "file": "config/environments/test.rb",
+      "line": 37,
+      "pattern": "forgery_protection",
+      "text": "config.action_controller.allow_forgery_protection = false"
+    },
+    {
+      "gem": "decko-0.20.0",
+      "file": "config/environments/cucumber.rb",
+      "line": 27,
+      "pattern": "allow_forgery_protection",
+      "text": "config.action_controller.allow_forgery_protection = false"
+    },
+    {
+      "gem": "decko-0.20.0",
+      "file": "config/environments/cucumber.rb",
+      "line": 27,
+      "pattern": "forgery_protection",
+      "text": "config.action_controller.allow_forgery_protection = false"
+    }
+  ],
+  "frameworkHitCount": 54,
+  "hits": [
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 30,
+      "pattern": "protect_from_forgery",
+      "text": "# `protect_from_forgery` method in our controllers."
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 51,
+      "pattern": "protect_from_forgery",
+      "text": "#       protect_from_forgery with: :null_session"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 73,
+      "pattern": "protect_from_forgery",
+      "text": "# `protect_from_forgery` sets it to `:authenticity_token` by default."
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 74,
+      "pattern": "request_forgery_protection",
+      "text": "config_accessor :request_forgery_protection_token"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 74,
+      "pattern": "forgery_protection",
+      "text": "config_accessor :request_forgery_protection_token"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 75,
+      "pattern": "request_forgery_protection",
+      "text": "self.request_forgery_protection_token ||= :authenticity_token"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 75,
+      "pattern": "forgery_protection",
+      "text": "self.request_forgery_protection_token ||= :authenticity_token"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 78,
+      "pattern": "forgery_protection",
+      "text": "config_accessor :forgery_protection_strategy"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 79,
+      "pattern": "forgery_protection",
+      "text": "self.forgery_protection_strategy = nil"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 83,
+      "pattern": "allow_forgery_protection",
+      "text": "config_accessor :allow_forgery_protection"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 83,
+      "pattern": "forgery_protection",
+      "text": "config_accessor :allow_forgery_protection"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 84,
+      "pattern": "allow_forgery_protection",
+      "text": "self.allow_forgery_protection = true if allow_forgery_protection.nil?"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 84,
+      "pattern": "forgery_protection",
+      "text": "self.allow_forgery_protection = true if allow_forgery_protection.nil?"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 91,
+      "pattern": "forgery_protection",
+      "text": "config_accessor :forgery_protection_origin_check"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 92,
+      "pattern": "forgery_protection",
+      "text": "self.forgery_protection_origin_check = false"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 111,
+      "pattern": "protect_from_forgery",
+      "text": "#       protect_from_forgery"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 115,
+      "pattern": "protect_from_forgery",
+      "text": "#       protect_from_forgery except: :index"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 119,
+      "pattern": "forgery_protection",
+      "text": "# skip_forgery_protection:"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 122,
+      "pattern": "forgery_protection",
+      "text": "#       skip_forgery_protection"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 132,
+      "pattern": "protect_from_forgery",
+      "text": "#     be added at the position of the protect_from_forgery call in your"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 140,
+      "pattern": "protect_from_forgery",
+      "text": "#     `default_protect_from_forgery` is true, Rails call protect_from_forgery"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 167,
+      "pattern": "protect_from_forgery",
+      "text": "#       protect_from_forgery with: CustomStrategy"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 197,
+      "pattern": "protect_from_forgery",
+      "text": "#       protect_from_forgery store: CustomStore.new"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 199,
+      "pattern": "protect_from_forgery",
+      "text": "def protect_from_forgery(options = {})"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 202,
+      "pattern": "forgery_protection",
+      "text": "self.forgery_protection_strategy = protection_method_class(options[:with] || :null_session)"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 203,
+      "pattern": "request_forgery_protection",
+      "text": "self.request_forgery_protection_token ||= :authenticity_token"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 203,
+      "pattern": "forgery_protection",
+      "text": "self.request_forgery_protection_token ||= :authenticity_token"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 207,
+      "pattern": "verify_authenticity_token",
+      "text": "before_action :verify_authenticity_token, options"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 213,
+      "pattern": "verify_authenticity_token",
+      "text": "#     skip_before_action :verify_authenticity_token"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 216,
+      "pattern": "forgery_protection",
+      "text": "def skip_forgery_protection(options = {})"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 217,
+      "pattern": "verify_authenticity_token",
+      "text": "skip_before_action :verify_authenticity_token, options.reverse_merge(raise: false)"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 386,
+      "pattern": "protect_from_forgery",
+      "text": "# Lean on the protect_from_forgery declaration to mark which actions are due for"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 387,
+      "pattern": "protect_from_forgery",
+      "text": "# same-origin request verification. If protect_from_forgery is enabled on an"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 391,
+      "pattern": "verify_authenticity_token",
+      "text": "def verify_authenticity_token # :doc:"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 402,
+      "pattern": "forgery_protection",
+      "text": "protection_strategy = forgery_protection_strategy.new(self)"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 426,
+      "pattern": "verify_authenticity_token",
+      "text": "# If `verify_authenticity_token` was run (indicating that we have"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 443,
+      "pattern": "verify_authenticity_token",
+      "text": "# If the `verify_authenticity_token` before_action ran, verify that JavaScript"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 608,
+      "pattern": "request_forgery_protection",
+      "text": "params[request_forgery_protection_token]"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 608,
+      "pattern": "forgery_protection",
+      "text": "params[request_forgery_protection_token]"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 613,
+      "pattern": "allow_forgery_protection",
+      "text": "allow_forgery_protection && (!session.respond_to?(:enabled?) || session.enabled?)"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 613,
+      "pattern": "forgery_protection",
+      "text": "allow_forgery_protection && (!session.respond_to?(:enabled?) || session.enabled?)"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 622,
+      "pattern": "forgery_protection",
+      "text": "Rails.application.config.action_controller.forgery_protection_origin_check setting."
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/metal/request_forgery_protection.rb",
+      "line": 628,
+      "pattern": "forgery_protection",
+      "text": "if forgery_protection_origin_check"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/railtie.rb",
+      "line": 82,
+      "pattern": "protect_from_forgery",
+      "text": ":default_protect_from_forgery,"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/railtie.rb",
+      "line": 108,
+      "pattern": "request_forgery_protection",
+      "text": "initializer \"action_controller.request_forgery_protection\" do |app|"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/railtie.rb",
+      "line": 108,
+      "pattern": "forgery_protection",
+      "text": "initializer \"action_controller.request_forgery_protection\" do |app|"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/railtie.rb",
+      "line": 110,
+      "pattern": "protect_from_forgery",
+      "text": "if app.config.action_controller.default_protect_from_forgery"
+    },
+    {
+      "gem": "actionpack-7.2.4",
+      "file": "lib/action_controller/railtie.rb",
+      "line": 111,
+      "pattern": "protect_from_forgery",
+      "text": "protect_from_forgery with: :exception"
+    },
+    {
+      "gem": "actionview-7.2.4",
+      "file": "lib/action_view/helpers/controller_helper.rb",
+      "line": 14,
+      "pattern": "request_forgery_protection",
+      "text": "CONTROLLER_DELEGATES = [:request_forgery_protection_token, :params,"
+    },
+    {
+      "gem": "actionview-7.2.4",
+      "file": "lib/action_view/helpers/controller_helper.rb",
+      "line": 14,
+      "pattern": "forgery_protection",
+      "text": "CONTROLLER_DELEGATES = [:request_forgery_protection_token, :params,"
+    },
+    {
+      "gem": "actionview-7.2.4",
+      "file": "lib/action_view/helpers/csrf_helper.rb",
+      "line": 25,
+      "pattern": "request_forgery_protection",
+      "text": "tag(\"meta\", name: \"csrf-param\", content: request_forgery_protection_token),"
+    },
+    {
+      "gem": "actionview-7.2.4",
+      "file": "lib/action_view/helpers/csrf_helper.rb",
+      "line": 25,
+      "pattern": "forgery_protection",
+      "text": "tag(\"meta\", name: \"csrf-param\", content: request_forgery_protection_token),"
+    },
+    {
+      "gem": "actionview-7.2.4",
+      "file": "lib/action_view/helpers/url_helper.rb",
+      "line": 756,
+      "pattern": "request_forgery_protection",
+      "text": "tag(:input, type: \"hidden\", name: request_forgery_protection_token.to_s, value: token, autocomplete: \"off\")"
+    },
+    {
+      "gem": "actionview-7.2.4",
+      "file": "lib/action_view/helpers/url_helper.rb",
+      "line": 756,
+      "pattern": "forgery_protection",
+      "text": "tag(:input, type: \"hidden\", name: request_forgery_protection_token.to_s, value: token, autocomplete: \"off\")"
+    },
+    {
+      "gem": "card-1.110.0",
+      "file": "config/environments/test.rb",
+      "line": 37,
+      "pattern": "allow_forgery_protection",
+      "text": "config.action_controller.allow_forgery_protection = false"
+    },
+    {
+      "gem": "card-1.110.0",
+      "file": "config/environments/test.rb",
+      "line": 37,
+      "pattern": "forgery_protection",
+      "text": "config.action_controller.allow_forgery_protection = false"
+    },
+    {
+      "gem": "decko-0.20.0",
+      "file": "config/environments/cucumber.rb",
+      "line": 27,
+      "pattern": "allow_forgery_protection",
+      "text": "config.action_controller.allow_forgery_protection = false"
+    },
+    {
+      "gem": "decko-0.20.0",
+      "file": "config/environments/cucumber.rb",
+      "line": 27,
+      "pattern": "forgery_protection",
+      "text": "config.action_controller.allow_forgery_protection = false"
+    }
+  ]
+}

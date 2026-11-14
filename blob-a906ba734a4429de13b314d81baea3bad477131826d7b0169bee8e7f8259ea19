@@ -1,0 +1,89 @@
+{
+  "contract": "The typed new-card route opens the create form for that card type, the create is stored as a card of that type, and the browser lands on the card it made.",
+  "facts": {
+    "basic_pod_type_method": "def pod_type",
+    "basic_pod_type_value": "nil",
+    "date_core_render": "::Date.parse(card.content).strftime \"%B %-d, %Y\"",
+    "date_core_view": "view :core do",
+    "date_input_type_method": "def input_type",
+    "date_input_type_value": ":calendar",
+    "new_cardtype_guard": "return unless action.in?(%i[new type]) && mark.present?",
+    "new_cardtype_path": "\"#{action}/#{mark}#{query}\"",
+    "new_success": "{ mark: card.rule(:thanks) || \"_self\" }",
+    "new_view": "view :new, perms: :create, unknown: true, cache: :never do",
+    "success_target_card_fetch": "Card.fetch @name.to_name.absolute(name_context), new: @new_args"
+  },
+  "gem_home": "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
+  "oracle": {
+    "basic_type": {
+      "file_sha256": "e36e96b8f141de9e7c7136b9a07809702a629b5600f52a685481ede261f82d3c",
+      "first_line": 1,
+      "gem": "card-mod-format-0.20.0",
+      "last_line": 3,
+      "marker": "def pod_type",
+      "marker_line": 1,
+      "path": "set/type/basic.rb",
+      "source": "def pod_type\n  nil\nend"
+    },
+    "date_core_view": {
+      "file_sha256": "cf4b19b0c9fd4eccc00dbb8d0746af34c8ea2da5150152692e1eac2b7fd6b558",
+      "first_line": 6,
+      "gem": "card-mod-date-0.20.0",
+      "last_line": 8,
+      "marker": "view :core do",
+      "marker_line": 6,
+      "path": "set/type/date.rb",
+      "source": "  view :core do\n    ::Date.parse(card.content).strftime \"%B %-d, %Y\"\n  end"
+    },
+    "date_input_type": {
+      "file_sha256": "cf4b19b0c9fd4eccc00dbb8d0746af34c8ea2da5150152692e1eac2b7fd6b558",
+      "first_line": 1,
+      "gem": "card-mod-date-0.20.0",
+      "last_line": 5,
+      "marker": "def input_type",
+      "marker_line": 2,
+      "path": "set/type/date.rb",
+      "source": "format :html do\n  def input_type\n    :calendar\n  end\n"
+    },
+    "new_cardtype": {
+      "file_sha256": "8007a1e692d5ecb952b5a188803456aab7ef9cd22a6bf179f88c7a5406c7b514",
+      "first_line": 19,
+      "gem": "card-mod-format-0.20.0",
+      "last_line": 25,
+      "marker": "def new_cardtype",
+      "marker_line": 19,
+      "path": "lib/card/path.rb",
+      "source": "    def new_cardtype\n      # \"new\" and \"type\" are not really an action and are only\n      # a valid value here for this path\n      return unless action.in?(%i[new type]) && mark.present?\n\n      \"#{action}/#{mark}#{query}\"\n    end"
+    },
+    "new_success": {
+      "file_sha256": "3aa0a837b85e156c33755b503f94b99095d772987773882d093d20c30fcfb13f",
+      "first_line": 93,
+      "gem": "card-mod-edit-0.20.0",
+      "last_line": 95,
+      "marker": "def new_success",
+      "marker_line": 93,
+      "path": "set/all/new.rb",
+      "source": "  def new_success\n    { mark: card.rule(:thanks) || \"_self\" }\n  end"
+    },
+    "new_view": {
+      "file_sha256": "3aa0a837b85e156c33755b503f94b99095d772987773882d093d20c30fcfb13f",
+      "first_line": 4,
+      "gem": "card-mod-edit-0.20.0",
+      "last_line": 6,
+      "marker": "view :new, perms: :create, unknown: true, cache: :never do",
+      "marker_line": 4,
+      "path": "set/all/new.rb",
+      "source": "  view :new, perms: :create, unknown: true, cache: :never do\n    framed_create_form new_form_opts\n  end"
+    },
+    "success_target_card": {
+      "file_sha256": "12c1e8526cf2be7f0f34b2ed3b0b90afed358502105419c11aa1abf8a03724cf",
+      "first_line": 46,
+      "gem": "card-1.110.0",
+      "last_line": 54,
+      "marker": "def card name_context=@name_context",
+      "marker_line": 46,
+      "path": "lib/card/env/success/target.rb",
+      "source": "        def card name_context=@name_context\n          if @card\n            @card\n          elsif @id\n            Card.fetch @id\n          elsif @name\n            Card.fetch @name.to_name.absolute(name_context), new: @new_args\n          end\n        end"
+    }
+  }
+}

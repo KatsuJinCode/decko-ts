@@ -1,0 +1,16 @@
+/** Ruby's default object inspect (rb_any_to_s). This engine has no Ruby heap;
+ * its own object identity occupies the address field. The reference harness's
+ * existing N9 rule compares every byte except those sixteen address digits. */
+export function rubyDefaultInspect(className: string, identity: number): string {
+  return `#<${className}:0x${identity.toString(16).padStart(16, "0")}>`;
+}
+
+/** Stable identity for a named object with no stored card id (FNV-1a). */
+export function stableIdentity(name: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < name.length; i++) {
+    h ^= name.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h;
+}

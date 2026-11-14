@@ -1,0 +1,52 @@
+{
+  "row": "reg-evt-mod-history-finalize-act",
+  "gemset": "card-mod-history-0.20.0 (pinned)",
+  "ruby_version": "3.3.12",
+  "pinned_declaration": "event :finalize_act, after: :finalize_action, when: :act_card? do",
+  "pinned_declaration_line": 48,
+  "pinned_body": "  Card::Director.act.update! card_id: id",
+  "pinned_gate": {
+    "name": "act_card?",
+    "file": "card-1.110.0/lib/card/director/all.rb",
+    "line": 42,
+    "body": "        self == act_card"
+  },
+  "probes": [
+    {
+      "id": 77,
+      "raised": null,
+      "message": null,
+      "recorded": [
+        {
+          "call": "Card::Director.act",
+          "arguments": []
+        },
+        {
+          "call": "Card::Director.act.update!",
+          "attributes": {
+            "card_id": 77
+          }
+        }
+      ]
+    },
+    {
+      "id": 1234,
+      "raised": null,
+      "message": null,
+      "recorded": [
+        {
+          "call": "Card::Director.act",
+          "arguments": []
+        },
+        {
+          "call": "Card::Director.act.update!",
+          "attributes": {
+            "card_id": 1234
+          }
+        }
+      ]
+    }
+  ],
+  "observable_effect": "the body writes the act row's card_id: one update! carrying card_id: <the act card's own id>, and nothing else. The port's act finalisation must leave no act row with a NULL card_id, which is the difference this body makes."
+}
+
