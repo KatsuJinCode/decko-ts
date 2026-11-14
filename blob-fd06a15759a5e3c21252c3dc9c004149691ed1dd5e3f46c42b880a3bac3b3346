@@ -1,0 +1,194 @@
+// notify/email-field-addresses.ts — the email address rendering of an email
+// template's recipient field (*to), in the context of the card the mail is
+// about.
+//
+// Ruby source: card-mod-email set/abstract/email_field.rb, format
+// :email_text, email_addresses(context):
+//
+//   card.item_names(context: context.name).map do |name|
+//     name = name.to_name.absolute context
+//     email_address?(name) ? name : email_address_from_card(name, context)
+//   end.flatten.compact.join(", ")
+//
+//   email_address?          string =~ /.+@.+\..+/
+//   email_address_from_card card = Card.fetch name
+//                           card.account&.email ||
+//                             email_addresses_from_card_content(card, context)
+//   ..._from_card_content   subformat(card).contextual_content(context)
+//                             .split(/[,\n]/)
+//
+// The item names are the list items of the field's content
+// (card-mod-collection set/all/item.rb raw_item_strings: one item per line,
+// [[ ]] stripped; clean_item_name absolutizes each against the context and
+// drops one that cannot be resolved).
+//
+// A Search-typed field's item names are its search results instead
+// (card-mod-search set/abstract/0_search.rb item_names: `args[:limit] ||= 0;
+// returning(:name, args) { search args }`). The search is the field's JSON
+// content (cql_search.rb cql_content / parse_json_cql) merged with the call's
+// args (standardized_query_args: `cql_hash.merge args`), so the context is
+// the card the mail is about, the limit is 0 (no limit) and the return is
+// the result NAMES (Run#alter_result: prepend and append compose around each
+// name). An empty or unparseable query raises Card::Error::BadQuery, which
+// the integrate stage rescues as an error on the saved card.
+//
+// Card#account answers nil except on the account holders
+// (card-mod-account set/abstract/account_holder.rb: the User and Signup
+// types and the Decko Bot card; the Anonymous card overrides it back to nil).
+// An account holder's account is `fetch :account, new: {}`, so its email is
+// the content of <holder>+*account+*email, "" when there is none — and "" is
+// truthy in Ruby, so such a holder contributes an empty address rather than
+// falling back to its content. Any other card contributes the addresses in
+// its rendered content: a role, a basic card listing addresses, a
+// <user>+*email card. A name with no card raises NoMethodError on nil
+// (`card.account`), which the integrate stage rescues as an error on the
+// saved card.
+//
+// The rendered content is the card's core view in the email_text format
+// (TextFormat: to_text = HTMLEntities.decode(strip_tags(html))). The port
+// substitutes the same context placeholders the observer's subject and text
+// bodies use (interpolateTemplate) and strips tags as to_text does.
+
+import type { FetchEngine } from "../fetch.js";
+import { composeCardRecord } from "../fetch/card-record.js";
+import { executeQuery, parseOptionsWithLexicon } from "../../cql/execute.js";
+import { composeCqlResultName } from "../../cql/result-name.js";
+import { DeckoName } from "../name.js";
+import { rawItemStrings } from "../render/pointer-list.js";
+import { htmlToText } from "../render/html-text.js";
+import { interpolateTemplate } from "./mail.js";
+
+/** email_field.rb email_address?: `string =~ /.+@.+\..+/`. */
+const EMAIL_ADDRESS = /.+@.+\..+/;
+
+export type EmailFieldAddresses =
+  | { readonly ok: true; readonly addresses: string }
+  | { readonly ok: false; readonly error: string };
+
+/** The account holders (account_holder.rb includers) by type codename;
+ *  the Decko Bot self card is matched by its own codename. */
+const ACCOUNT_HOLDER_TYPES = ["user", "signup"] as const;
+
+async function isAccountHolder(
+  fetch: FetchEngine,
+  card: { codename?: string | undefined; typeId?: number | undefined },
+): Promise<boolean> {
+  if (card.codename === "anonymous") return false; // self/anonymous.rb: account nil
+  if (card.codename === "decko_bot") return true; // self/decko_bot.rb
+  if (card.typeId === undefined) return false;
+  for (const code of ACCOUNT_HOLDER_TYPES) {
+    if ((await fetch.codenames.id(code)) === card.typeId) return true;
+  }
+  return false;
+}
+
+type ItemNames =
+  | { readonly ok: true; readonly items: readonly string[] }
+  | { readonly ok: false; readonly error: string };
+
+/** A Search card's item_names(context:) (0_search.rb:25-28 over
+ *  cql_search.rb:8-12, 41-56, 58-72): the field's query with the mail's card
+ *  as context, no limit, answered as result names. */
+async function searchItemNames(
+  fetch: FetchEngine,
+  fieldContent: string,
+  contextName: string,
+): Promise<ItemNames> {
+  if (fieldContent.length === 0) {
+    return { ok: false, error: "can't run search with empty content" }; // empty_query_error!
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(fieldContent);
+  } catch {
+    return { ok: false, error: `Invalid JSON search query: ${fieldContent}` };
+  }
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    const rubyClass = Array.isArray(parsed) ? "Array" : parsed === null ? "NilClass" : typeof parsed;
+    return { ok: false, error: `undefined method 'symbolize_keys' for an instance of ${rubyClass}` };
+  }
+  const query = parsed as Record<string, unknown>;
+  // `cql_hash.merge(context:, limit: 0, return: :name)`: the call's args win.
+  // The port selects the result rows and composes each name itself, so the
+  // statement's own return is dropped rather than replaced.
+  const statement: Record<string, unknown> = { ...query, context: contextName, limit: 0 };
+  delete statement["return"];
+  let rows;
+  try {
+    const result = await executeQuery(fetch.driver, statement, {
+      parse: parseOptionsWithLexicon(fetch.lexicon),
+    });
+    rows = "rows" in result ? result.rows : [];
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : String(error) };
+  }
+  const items: string[] = [];
+  for (const row of rows) {
+    const record = await composeCardRecord(row, fetch.lexicon);
+    if (record.name === undefined) continue;
+    const named = await composeCqlResultName(query["prepend"], record.name, query["append"], (id) =>
+      fetch.lexicon.name(id),
+    );
+    items.push(named.s);
+  }
+  return { ok: true, items };
+}
+
+/** email_addresses(context) over the recipient field's stored content.
+ *  `vars` are the context placeholders the observer renders bodies with;
+ *  `fieldTypeId` is the field card's type, whose Search arm runs the field's
+ *  query for its item names. */
+export async function emailFieldAddresses(
+  fetch: FetchEngine,
+  fieldContent: string,
+  contextName: string,
+  vars: Readonly<Record<string, string>>,
+  fieldTypeId?: number | null,
+): Promise<EmailFieldAddresses> {
+  const context = DeckoName.parse(contextName);
+  const parts: string[] = [];
+  const searchTypeId = await fetch.codenames.id("search_type");
+  let items: readonly string[];
+  if (fieldTypeId !== undefined && fieldTypeId !== null && fieldTypeId === searchTypeId) {
+    const searched = await searchItemNames(fetch, fieldContent, contextName);
+    if (!searched.ok) return searched;
+    items = searched.items;
+  } else {
+    items = rawItemStrings(fieldContent);
+  }
+  for (const item of items) {
+    if (item === "") continue;
+    let name: string;
+    try {
+      name = DeckoName.parse(item).absoluteName(context).s;
+    } catch {
+      continue; // clean_item_name rescues Card::Error::NotFound -> nil (compact)
+    }
+    if (EMAIL_ADDRESS.test(name)) {
+      parts.push(name);
+      continue;
+    }
+    const card = await fetch.fetchByName(name);
+    if (card === undefined || card.trash) {
+      return { ok: false, error: `undefined method 'account' for nil (no card named "${name}")` };
+    }
+    if (await isAccountHolder(fetch, card)) {
+      const email = await fetch.fetchByName(`${card.name?.s ?? name}+*account+*email`);
+      parts.push(email === undefined || email.trash ? "" : (email.dbContent ?? ""));
+      continue;
+    }
+    const rendered = htmlToText(interpolateTemplate(card.dbContent ?? "", vars));
+    parts.push(...rendered.split(/[,\n]/));
+  }
+  return { ok: true, addresses: parts.join(", ") };
+}
+
+/** The address list as delivered: each comma-separated address trimmed and
+ *  empty ones dropped (Mail parses "a@b.c, , " to the one address). */
+export function deliverableAddressList(addresses: string): string {
+  return addresses
+    .split(",")
+    .map((a) => a.trim())
+    .filter((a) => a !== "")
+    .join(", ");
+}

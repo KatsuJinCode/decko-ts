@@ -1,0 +1,79 @@
+# Cross-pattern format ancestry repair checkpoint
+
+Status: local source correction and regression verification; independent
+acceptance, full native differential acceptance and deployment remain pending.
+Issue: private Decko issue 87. Baseline:
+`a4cddee6e4ba69a0e65987c692ac4bdc770ea5e6`.
+
+## Mechanism and correction
+
+The loader selected method definitions separately for each applicable set
+pattern, concatenated those filtered chains and removed duplicate owners.
+Filtering discarded the body-less modules that determine where Ruby leaves a
+shared ancestor. A later Right set could therefore put a shared provider
+before an intervening Type override. Body, permission-helper and view-directive
+lookups all use this chain mechanism.
+
+The correction retains each token's whole module ancestry. It includes those
+ancestries in general-to-specific order before selecting a view, helper or
+directive. An existing shared module keeps its position, matching the retained
+Ruby attachment behavior described in issue 87. The existing order for
+anchorless/class-level all-set modules is preserved; no new forward include
+behavior is introduced.
+
+The fresh isolated SQLite renderer reproduces the issue at the baseline:
+`B:A` instead of `B:ROOT:A`. A helper-only variant selects `true` instead of
+the concrete guard's `false`; a directive variant selects `none` instead of
+`update`. After correction, the renderer returns `B:ROOT:A` with call trace
+`B, ROOT, A`, the restrictive helper is selected, and the directive is `update`.
+The permission test also checks that the protected body is not rendered.
+
+## Verification
+
+The final actual Vitest run executed 94 tests across 12 named related files:
+94 passed, zero failed, pending or skipped. The JSON result is
+`cross-pattern-format-ancestry-2026-10-30.tests.json`. This covers the three new
+controls plus existing nested module, dynamic include, per-engine delegation,
+format superclass, permission setting and set-chain regressions. It is not a
+whole-engine or backend parity score. TypeScript `tsc --noEmit` also exited zero
+against the final source.
+
+Final source SHA-256:
+
+- `src/card/mod-loader.ts`:
+  `f1ec44741900e609c07f3a9d8f665c36c08938b1a1dc14d538a8f2360ea43e41`.
+- `tests/card/mod-loader/cross-pattern-format-ancestry.test.ts`:
+  `73433707409ab48efa0d658c690591975e3fb098c65009de949291a4681ba442`.
+
+Tests run locally against fresh synthetic in-memory databases, not cached
+responses or a live service. Existing Vite transform caching may reuse compiled
+modules; test results themselves are executed. No model inference, network,
+provider run, deployment or original database participates. An isolated scratch
+root prevents the test configuration from inspecting another run's scratch.
+The existing extensionless Vite config warning remains private issue 86.
+
+## Exploratory failures and limits
+
+Initial fixture attempts lacked the junction's side-card identifiers and then
+used an inconsistent anchor spelling. Those were fixture errors, corrected
+before recording the three baseline behavioral failures above.
+
+An extra exploratory all-set case attempted to include an abstract module
+before that module's Ruby-compatible load phase. It correctly failed with
+`UnknownSetIncludeTargetError`, including when the files were split across
+mods because pattern groups are the outer load loop. Its initial actual
+95-test/one-failure output is preserved in
+`cross-pattern-format-ancestry-2026-10-30.fixture-check.tests.json`. The invalid
+extra fixture and speculative all-set ordering change were removed. The final
+94-test result is the distinct run described above.
+
+An initial typecheck log is retained as the empty
+`cross-pattern-format-ancestry-2026-10-30.typecheck.txt`. A protection check
+refused overwriting that existing leased file; it was preserved. The final
+typecheck ran without replacing any log and exited zero. No gate was changed.
+
+The expected Ruby attachment order comes from the independently retained issue
+87 reproduction at `c0410aa0e`; this checkpoint did not execute a new Ruby
+runtime. Fresh whole-engine/native differential and installed acceptance are
+still required. Keep issue 87 open for independent checking of this exact
+correction and do not convert this local checkpoint into DSL completion.

@@ -1,0 +1,310 @@
+#!/usr/bin/env python3
+"""Own one folder-local MySQL process and capture exhaustive, bounded shards.
+
+No installation or dependency resolution is performed. All executables and
+the frozen bundle must already be independently approved. The overlay is an
+explicit argument so the script never chooses or alters an existing service.
+"""
+import argparse
+import datetime
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import select
+import signal
+import socket
+import subprocess
+import sys
+import time
+
+
+def save(path, value):
+    path.write_text(json.dumps(value, indent=2) + "\n")
+
+
+def live(pid):
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+
+
+def shutdown(root, pid):
+    if not live(pid):
+        return
+    command_line = Path("/proc/%s/cmdline" % pid).read_bytes().split(b"\0")
+    if (str(root / "mysql-8.4.11/bin/mysqld").encode() not in command_line or
+            ("--socket=" + str(root / "mysql.sock")).encode() not in command_line):
+        raise RuntimeError("MySQL process ownership changed; preserving the unrelated process")
+    command = root / "mysql-8.4.11/bin/mysqladmin"
+    result = subprocess.run([str(command), "--no-defaults", "--socket=" + str(root / "mysql.sock"),
+                             "-u", "root", "shutdown"], capture_output=True, text=True, timeout=30)
+    if result.returncode:
+        raise RuntimeError("MySQL graceful shutdown failed: " + result.stdout + result.stderr)
+
+
+def watch(root, pid):
+    sys.stdin.buffer.read()
+    shutdown(root, pid)
+
+
+def fixture_ids(fixture, kind):
+    if kind == "scenarios":
+        return [s["id"] for s in json.loads((fixture / "ops/scenarios.json").read_text())["scenarios"]]
+    return [json.loads(line)["id"] for line in (fixture / ("ops/" + kind + ".jsonl")).read_text().splitlines() if line]
+
+
+def verify_mirrored_creates(fixture, records):
+    definitions = {s["id"]: s for s in json.loads((fixture / "ops/scenarios.json").read_text())["scenarios"]}
+    for record in records:
+        for request, answer in zip(definitions[record["id"]]["steps"], record["steps"], strict=True):
+            if request.get("op") == "write" and request.get("action") == "create" and answer.get("result", {}).get("saved") is True:
+                if not answer.get("rows"):
+                    raise RuntimeError("Successful create has no mirrored persistence delta: " + record["id"])
+
+
+def run_shard(source, node, env, adapter, fixture, output, kind, ids, require_source):
+    output.mkdir(parents=True, exist_ok=True)
+    command = [str(node), str(source / "reference-harness/runner/run.mjs"), "--adapter", str(adapter),
+               "--fixture", str(fixture), "--out", str(output), "--kinds", kind,
+               "--filter", "^(?:" + "|".join(re.escape(i) for i in ids) + ")$"]
+    start = time.monotonic()
+    with (output / "capture.log").open("w") as log:
+        child = subprocess.Popen(command, cwd=source, env=env, stdout=log, stderr=subprocess.STDOUT,
+                                 start_new_session=True)
+        try:
+            status = child.wait(timeout=110)
+        except BaseException:
+            if child.poll() is None:
+                os.killpg(child.pid, signal.SIGTERM)
+                child.wait(timeout=30)
+            raise
+    duration = time.monotonic() - start
+    if status:
+        raise RuntimeError("Capture failed (%s): %s" % (status, output / "capture.log"))
+    meta = json.loads((output / "run-meta.json").read_text())
+    run = meta["runs"][kind]
+    actual = [json.loads(line)["id"] for line in (output / (kind + ".jsonl")).read_text().splitlines() if line]
+    if actual != ids or not run["complete"] or run["ops_run"] != len(ids):
+        raise RuntimeError("Capture shard did not cover exactly its requested IDs: " + str(output))
+    if kind == "scenarios":
+        verify_mirrored_creates(fixture, [json.loads(line) for line in (output / "scenarios.jsonl").read_text().splitlines()])
+    if require_source:
+        check = "const fs=require('node:fs'); const {pathToFileURL}=require('node:url'); (async()=>{const m=await import(pathToFileURL(process.argv[1]).href); const r=JSON.parse(fs.readFileSync(process.argv[2],'utf8')).runs[process.argv[3]]; const p=m.sourceBindingProblems(r.source_binding,r.adapter_checkout.commit); console.log(JSON.stringify(p)); process.exitCode=p.length?1:0;})().catch(e=>{console.error(e);process.exitCode=1;});"
+        checked = subprocess.run([str(node), "-e", check, str(source / "reference-harness/runner/adapter-source-identity.mjs"),
+                                  str(output / "run-meta.json"), kind], cwd=source, env=env,
+                                 capture_output=True, text=True, timeout=30)
+        (output / "source-check.txt").write_text(checked.stdout + checked.stderr)
+        if checked.returncode:
+            raise RuntimeError("Executed-source qualification failed: " + str(output / "source-check.txt"))
+    return {"dir": str(output), "kind": kind, "ids": ids, "elapsed_seconds": duration,
+            "run_meta_sha256": hashlib.sha256((output / "run-meta.json").read_bytes()).hexdigest()}
+
+
+def assemble(source, fixture, output, shards):
+    output.mkdir(parents=True, exist_ok=True)
+    runs = {}
+    diagnostics = []
+    for kind in ["render", "semantics", "scenarios"]:
+        selected = [s for s in shards if s["kind"] == kind]
+        expected_ids = fixture_ids(fixture, kind)
+        lines = []
+        run_records = []
+        for shard in selected:
+            directory = Path(shard["dir"])
+            meta = json.loads((directory / "run-meta.json").read_text())
+            run_records.append(meta["runs"][kind])
+            diagnostics.extend(meta.get("adapter_diagnostics", []))
+            lines.extend(json.loads(line) for line in (directory / (kind + ".jsonl")).read_text().splitlines() if line)
+        actual_ids = [line["id"] for line in lines]
+        if actual_ids != expected_ids or len(set(actual_ids)) != len(actual_ids):
+            raise RuntimeError("Incomplete or duplicated exhaustive coverage: " + kind)
+        first = run_records[0]
+        for record in run_records:
+            for field in ["adapter", "engine", "fixture_digest", "adapter_checkout"]:
+                if record[field] != first[field]:
+                    raise RuntimeError("Shard identity changed: " + field)
+            if record.get("fixture_problems"):
+                raise RuntimeError("Invalid fixture shard")
+            if kind != "scenarios" and record.get("session_writes"):
+                raise RuntimeError("Read shard changed database state; inspect " + kind)
+        merged = dict(first)
+        merged.update(complete=True, selection=None, ops_run=len(expected_ids), finished=run_records[-1]["finished"])
+        merged["capture_shards"] = selected
+        binding = dict(first["source_binding"])
+        binding["after"] = run_records[-1]["source_binding"]["after"]
+        binding["invocations"] = [inv for record in run_records for inv in record["source_binding"]["invocations"]]
+        merged["source_binding"] = binding
+        if kind == "scenarios":
+            merged["steps_run"] = sum(r["steps_run"] for r in run_records)
+            merged["session_timings"] = [s for r in run_records for s in r.get("session_timings", [])]
+        runs[kind] = merged
+        (output / (kind + ".jsonl")).write_text("".join(json.dumps(line, separators=(",", ":")) + "\n" for line in lines))
+    save(output / "run-meta.json", {"results_format": 2, "fixture": fixture.name, "runs": runs,
+                                    "adapter_diagnostics": diagnostics, "assembly": "exact exhaustive ordered union of retained shards"})
+
+
+def capture(root, node, ruby, bundler, reference_gems, engine, kinds):
+    source = root / "source"
+    source_commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=source, text=True).strip()
+    fixture = source / "reference-harness/fixtures/synthetic-v1"
+    previous = root / "logs/superseded-overlay.json"
+    if not previous.exists():
+        old = fixture / "expected-lanes/mysql"
+        old_meta = json.loads((old / "run-meta.json").read_text())
+        old_manifest = json.loads((old / "MANIFEST.json").read_text())
+        old_provenance = old_manifest.get("provenance", {})
+        save(previous, {
+            "recorded": old_provenance.get("recorded") or old_provenance.get("lane", {}).get("recorded"),
+            "engines": {kind: run["engine"] for kind, run in old_meta["runs"].items()},
+            "files": {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in old.iterdir() if p.is_file()},
+            "operation_ids": {kind: [json.loads(line)["id"] for line in (old / (kind + ".jsonl")).read_text().splitlines() if line]
+                              for kind in ["render", "semantics", "scenarios"]},
+        })
+    state = root / "mysql-owner.json"
+    if state.exists():
+        old = json.loads(state.read_text())
+        if live(old["server_pid"]):
+            raise RuntimeError("MySQL owner record is live; use its stop command before another capture")
+    base = root / "mysql-8.4.11"
+    data = root / "data"
+    tmp = root / "tmp"
+    tmp.mkdir(exist_ok=True)
+    env = dict(os.environ)
+    user_gems = bundler.parent.parent
+    env.update(TMPDIR=str(tmp), ORACLE_LINUX_BUNDLE=str(root / "bundle"), ORACLE_RUBY=str(ruby),
+               ORACLE_BUNDLER=str(bundler), GEM_HOME=str(root / "gems"),
+               GEM_PATH=os.pathsep.join([str(root / "gems"), str(reference_gems), str(user_gems)]),
+               LD_LIBRARY_PATH=str(root / "mysql-libs"), BUNDLE_FROZEN="true", BUNDLE_IGNORE_CONFIG="1",
+               BUNDLE_PATH__SYSTEM="true", PATH=str(node.parent) + os.pathsep + env["PATH"])
+    if not data.exists():
+        result = subprocess.run([str(base / "bin/mysqld"), "--no-defaults", "--initialize-insecure",
+                                 "--basedir=" + str(base), "--datadir=" + str(data),
+                                 "--log-error=" + str(root / "mysqld-init.err")], env=env, capture_output=True, text=True, timeout=90)
+        if result.returncode:
+            raise RuntimeError("MySQL initialization failed: " + result.stdout + result.stderr)
+    port = None
+    for candidate in range(43186, 43236):
+        with socket.socket() as probe:
+            try:
+                probe.bind(("127.0.0.1", candidate))
+                port = candidate
+                break
+            except OSError:
+                pass
+    if port is None:
+        raise RuntimeError("No approved high loopback port is free")
+    # Record the actual listener inventory immediately before the start.
+    inventory = subprocess.run(["ss", "-ltn"], capture_output=True, text=True, check=True)
+    (root / "logs/listeners-before.txt").write_text(inventory.stdout)
+    env["HARNESS_MYSQL_PORT"] = str(port)
+    command = [str(base / "bin/mysqld"), "--no-defaults", "--basedir=" + str(base), "--datadir=" + str(data),
+               "--bind-address=127.0.0.1", "--port=" + str(port), "--mysqlx=OFF",
+               "--socket=" + str(root / "mysql.sock"), "--pid-file=" + str(root / "mysqld.pid"),
+               "--log-error=" + str(root / "mysqld.err"), "--secure-file-priv=" + str(tmp),
+               "--character-set-server=utf8mb3", "--collation-server=utf8mb3_unicode_ci"]
+    process = subprocess.Popen(command, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+    guardian = subprocess.Popen([sys.executable, __file__, "watch", "--overlay", str(root), "--pid", str(process.pid)],
+                                env=env, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+    save(state, {"server_pid": process.pid, "controller_pid": os.getpid(), "guardian_pid": guardian.pid,
+                 "command": command, "started": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                 "owner": "release item 8T", "port": port, "socket": str(root / "mysql.sock"),
+                 "stop": [str(base / "bin/mysqladmin"), "--no-defaults", "--socket=" + str(root / "mysql.sock"), "-u", "root", "shutdown"]})
+    shards = []
+    receipt = root / ("capture-" + engine + "-" + "-".join(kinds) + ".json")
+    try:
+        deadline = time.monotonic() + 60
+        while True:
+            if process.poll() is not None:
+                raise RuntimeError("MySQL exited before ready: " + process.stderr.read())
+            text = (root / "mysqld.err").read_text() if (root / "mysqld.err").exists() else ""
+            if "ready for connections" in text:
+                with socket.socket() as probe:
+                    if probe.connect_ex(("127.0.0.1", port)) == 0:
+                        break
+            if time.monotonic() > deadline:
+                raise RuntimeError("MySQL ready detector missed its startup deadline; inspect mysqld.err")
+            select.select([], [], [], 0.1)
+        save(root / "logs/server-ready.json", json.loads(state.read_text()))
+        adapter = source / ("reference-harness/adapters/" + ("ruby-mysql-linux" if engine == "ruby" else "ts-mysql") + "/adapter.json")
+        for kind in kinds:
+            ids = fixture_ids(fixture, kind)
+            offset = 0
+            size = 1 if kind == "scenarios" else 50
+            while offset < len(ids):
+                selected = ids[offset:offset + size]
+                out = root / "shards" / engine / source_commit / kind / ("%05d" % offset)
+                shard = run_shard(source, node, env, adapter, fixture, out, kind, selected, engine == "ts")
+                shards.append(shard)
+                offset += len(selected)
+                save(receipt, {"engine": engine, "complete": False, "shards": shards})
+                print(json.dumps({"engine": engine, "kind": kind, "covered": offset, "total": len(ids),
+                                  "shard_seconds": round(shard["elapsed_seconds"], 3)}), flush=True)
+                if kind != "scenarios":
+                    size = max(1, min(400, int(len(selected) * 65 / max(shard["elapsed_seconds"], 1))))
+        save(receipt, {"engine": engine, "complete": True, "shards": shards})
+    finally:
+        shutdown(root, process.pid)
+        process.wait(timeout=30)
+        guardian.stdin.close()
+        guardian.wait(timeout=30)
+        if guardian.returncode:
+            raise RuntimeError("MySQL guardian failed: " + guardian.stderr.read())
+        with socket.socket() as probe:
+            listening = probe.connect_ex(("127.0.0.1", port)) == 0
+        save(root / "logs/server-stopped.json", {"pid": process.pid, "exit_code": process.returncode,
+                                                "pid_alive": live(process.pid), "port": port, "listening": listening})
+        save(root / ("logs/server-stopped-%s.json" % process.pid), json.loads((root / "logs/server-stopped.json").read_text()))
+        if listening or live(process.pid):
+            raise RuntimeError("Owned MySQL process or listener survived shutdown")
+
+
+def main():
+    if sys.platform != "linux":
+        raise RuntimeError("MysqlReferencePlatformError: this capture recipe requires Linux")
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("action", choices=["capture", "assemble", "watch", "status", "stop"])
+    parser.add_argument("--overlay", type=Path, required=True)
+    parser.add_argument("--node", type=Path)
+    parser.add_argument("--ruby", type=Path)
+    parser.add_argument("--bundler", type=Path)
+    parser.add_argument("--reference-gems", type=Path)
+    parser.add_argument("--engine", choices=["ruby", "ts"])
+    parser.add_argument("--kinds", default="render,semantics,scenarios")
+    parser.add_argument("--pid", type=int)
+    args = parser.parse_args()
+    root = args.overlay.resolve(strict=True)
+    if args.action == "watch":
+        watch(root, args.pid)
+    elif args.action == "status":
+        state = json.loads((root / "mysql-owner.json").read_text())
+        state["server_alive"] = live(state["server_pid"])
+        print(json.dumps(state))
+    elif args.action == "stop":
+        state = json.loads((root / "mysql-owner.json").read_text())
+        current = Path("/proc/%s/cmdline" % state["server_pid"])
+        if current.exists() and str(root).encode() not in current.read_bytes():
+            raise RuntimeError("MySQL PID ownership changed; preserving the unrelated process")
+        shutdown(root, state["server_pid"])
+    elif args.action == "assemble":
+        shards = []
+        source_commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root / "source", text=True).strip()
+        for kind in ["render", "semantics", "scenarios"]:
+            records = list((root / "shards" / args.engine / source_commit / kind).glob("*/run-meta.json"))
+            for meta in sorted(records):
+                directory = meta.parent
+                ids = [json.loads(line)["id"] for line in (directory / (kind + ".jsonl")).read_text().splitlines() if line]
+                shards.append({"dir": str(directory), "kind": kind, "ids": ids,
+                               "run_meta_sha256": hashlib.sha256(meta.read_bytes()).hexdigest()})
+        assemble(root / "source", root / "source/reference-harness/fixtures/synthetic-v1", root / ("capture-" + args.engine), shards)
+    else:
+        signal.signal(signal.SIGTERM, lambda _s, _f: (_ for _ in ()).throw(InterruptedError("Capture stop requested")))
+        capture(root, args.node.resolve(strict=True), args.ruby.resolve(strict=True), args.bundler.resolve(strict=True),
+                args.reference_gems.resolve(strict=True), args.engine, args.kinds.split(","))
+
+
+if __name__ == "__main__":
+    main()

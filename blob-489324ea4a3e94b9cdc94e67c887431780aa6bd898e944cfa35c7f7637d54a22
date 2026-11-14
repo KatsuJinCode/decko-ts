@@ -1,0 +1,41 @@
+# PGlite independent-session cases
+
+Status: accepted scope ruling, 2026-11-02, DECKO-818 cutover lead.
+
+The installed PGlite 0.5.10 matrix backend opens one client and explicitly
+reports `secondHandle: "same-session"` in `tests/card/actions/backend-matrix.ts`.
+Its observer uses that client and refuses reads inside an open write
+transaction. This backend cannot supply the independent sessions required by
+the original matrix's concurrent-writes and concurrent-reads cases.
+The [PGlite documentation](https://pglite.dev/docs/) independently describes
+its single exclusive database connection; sharing access does not create
+independent PostgreSQL backend sessions.
+
+Those two frozen occurrences receive the named disposition
+**capability-inapplicable**. They remain visible as two skipped cases, never
+as passes or retirement. Every other frozen occurrence retains the original
+three-category disposition rule. The five-case matrix test file and its
+pinned source hash remain unchanged.
+
+Before each approved skip, the shared skip function asserts that the opened
+backend still reports `same-session`. Missing evidence, `none`, or an
+independent capability cannot retain this skip classification. A backend
+reporting independent handles follows the original concurrent assertions.
+Controls exercise both approved cases and reject changed capability reports.
+
+Native MySQL's original independent-session concurrent-writes and
+concurrent-reads cases passed in the frozen 42a full-run report. The
+qualification contract names that raw report and source identity.
+Native PostgreSQL 16.15 has separate supplemental concurrency evidence in
+[the DECKO-256 report](../runs/engine-checks-decko256-2026-11-02/REPORT.md).
+Five original assertion bodies, including concurrent writes and isolated
+concurrent reads, passed on two independent pg.Client connections in an owned
+VM scratch container using the existing postgres:16-alpine image. The original
+assertion module hash is
+`d0809911562b7f80b3389c7fc9dc17e6b4e2380238e3a6f4fdaf3af8011bfbaa`;
+the final bundle hash is
+`3dd9c2ba47a439bc75766569fed9dfe37b797822ce278c50c728193b393bbe39`.
+This execution uses a Vitest-to-Node assertion adapter with 18 controls;
+it is not an unmodified Vitest run or complete runtime qualification. The
+earlier failed tunnel report is retained and is not accepted evidence.
+These PGlite dispositions grant no complete-runtime or release acceptance.

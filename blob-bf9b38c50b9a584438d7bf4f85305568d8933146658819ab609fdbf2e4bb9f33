@@ -1,0 +1,101 @@
+#!/usr/bin/env node
+// Local qualification only. This command never provisions or resets a hosted
+// database, installs a runtime, or reads provider credentials.
+import { spawn, spawnSync } from "node:child_process";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const repo = fileURLToPath(new URL("../../", import.meta.url));
+const args = process.argv.slice(2);
+const usage = () => { throw new Error("Usage: run.mjs [output-directory] [--bun <Bun executable>]"); };
+let outputDirectory;
+let bunExecutable;
+// Complete the argument grammar before any executable or filesystem effect.
+for (let index = 0; index < args.length; index++) {
+  const arg = args[index];
+  if (arg === "--bun") {
+    const value = args[++index];
+    if (bunExecutable !== undefined || !value?.trim() || value.startsWith("-")) usage();
+    bunExecutable = value;
+  } else {
+    if (arg.startsWith("-") || !arg.trim() || outputDirectory !== undefined) usage();
+    outputDirectory = arg;
+  }
+}
+let runtimeExecutable = process.execPath;
+let runtime;
+if (bunExecutable !== undefined) {
+  runtimeExecutable = resolve(bunExecutable);
+  const probe = spawnSync(runtimeExecutable, ["-e", "console.log(JSON.stringify({bun:process.versions.bun,executable:process.execPath}))"], {
+    windowsHide: true, encoding: "utf8",
+  });
+  if (probe.error) throw probe.error;
+  if (probe.status !== 0) throw new Error(`Bun runtime failed: ${probe.stderr}`);
+  runtime = JSON.parse(probe.stdout);
+  if (typeof runtime.bun !== "string") throw new Error("Requested native Bun executable is not Bun");
+}
+const root = resolve(repo, outputDirectory ?? ".runtime/runtime-db-matrix");
+const out = join(root, new Date().toISOString().replace(/[:.]/g, "-"));
+mkdirSync(out, { recursive: true });
+const backends = ["sqlite", "postgres", "mysql", "d1", "libsql", "bunny"];
+const rows = [];
+
+async function runCell(backend) {
+  const report = join(out, `${backend}.json`);
+  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("DECKO_HOSTED_")));
+  env.DECKO_MATRIX_BACKEND = backend;
+  if (runtime) env.DECKO_MATRIX_RUNTIME = "bun";
+  else delete env.DECKO_MATRIX_RUNTIME;
+  const args = [join(repo, "node_modules/vitest/vitest.mjs"), "run", "tests/deploy/runtime-db-matrix.test.ts",
+    "--reporter=json", `--outputFile=${report}`];
+  const result = await new Promise((done) => {
+    const child = spawn(runtimeExecutable, args, { cwd: repo, env, windowsHide: true });
+    let log = "";
+    child.stdout.on("data", (chunk) => { log += chunk; });
+    child.stderr.on("data", (chunk) => { log += chunk; });
+    child.on("error", (error) => { log += `${error.stack}\n`; });
+    child.on("close", (exitCode, signal) => done({ exitCode, signal, log }));
+  });
+  writeFileSync(join(out, `${backend}.log`), result.log);
+  let parsed;
+  try { parsed = JSON.parse(readFileSync(report, "utf8")); }
+  catch (error) {
+    return { backend, status: "FAIL", ...result, reason: `missing or invalid test report: ${error.message}` };
+  }
+  const cases = parsed.testResults.flatMap((file) => file.assertionResults.map((test) => ({
+    name: test.fullName, status: test.status, failures: test.failureMessages,
+    ...(test.meta?.disposition ? { disposition: test.meta.disposition, secondHandle: test.meta.secondHandle, decision: test.meta.decision } : {}),
+  })));
+  const passed = cases.filter((test) => test.status === "passed").length;
+  const skipped = cases.filter((test) => ["pending", "skipped", "todo", "disabled"].includes(test.status)).length;
+  const failed = result.exitCode !== 0 || parsed.success !== true || cases.length !== 5 ||
+    cases.some((test) => !["passed", "pending", "skipped", "todo", "disabled"].includes(test.status));
+  return { backend, status: failed ? "FAIL" : skipped > 0 ? "INCOMPLETE" : "PASS",
+    exitCode: result.exitCode, signal: result.signal, passed, skipped, cases, report,
+    log: join(out, `${backend}.log`) };
+}
+
+// Independent databases, two local processes at a time; each owns and closes
+// its own fixture. There are no automatic retries or cached result reuse.
+for (let i = 0; i < backends.length; i += 2) {
+  const batch = await Promise.all(backends.slice(i, i + 2).map(runCell));
+  rows.push(...batch);
+  for (const row of batch) console.log(`${row.backend}: ${row.status}; ${row.passed ?? 0} passed, ${row.skipped ?? 0} skipped`);
+}
+const unexercised = [
+  ...(!runtime ? [{ backend: "native Bun", status: "NOT EXERCISED", reason: "select an approved runtime with --bun <executable>; Node execution is not Bun evidence" }] : []),
+  { backend: "hosted D1", status: "NOT EXERCISED", reason: "local-only runner; requires separately approved hosted scratch custody" },
+  { backend: "hosted Turso/libSQL", status: "NOT EXERCISED", reason: "local-only runner; requires separately approved hosted scratch custody" },
+  { backend: "hosted Bunny", status: "NOT EXERCISED", reason: "local-only runner; never select a live deck as a fixture" },
+];
+const exitCode = rows.some((row) => row.status === "FAIL") ? 1 : 2;
+const summary = { scope: `local engine matrix under ${runtime ? "native Bun" : "Node"}; no hosted services executed`, runtime: runtime ?? {node: process.versions.node, executable: process.execPath}, retry: false,
+  resultCache: false, transformCache: "Vitest may reuse unchanged compiled transforms", rows, unexercised,
+  qualification: "incomplete", exitCode };
+writeFileSync(join(out, "summary.json"), JSON.stringify(summary, null, 2) + "\n");
+writeFileSync(join(root, "latest.json"), JSON.stringify({ summary: join(out, "summary.json") }, null, 2) + "\n");
+for (const row of unexercised) console.log(`${row.backend}: ${row.status}; ${row.reason}`);
+console.log(`qualification incomplete; full records: ${out}`);
+// Exit 2 distinguishes incomplete qualification from a failing local check.
+process.exitCode = exitCode;

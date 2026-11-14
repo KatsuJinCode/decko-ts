@@ -1,0 +1,121 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { ReleaseExportRefusal, exportIdentity, pushReleaseExport, verifyReleaseCommit } from '../../tools/handover/push-release-export.mjs';
+
+const personal = { name: 'Pat Personal', email: 'pat.personal@home.test' };
+const identityNames = ['GIT_AUTHOR_NAME', 'GIT_AUTHOR_EMAIL', 'GIT_COMMITTER_NAME', 'GIT_COMMITTER_EMAIL'];
+const identityEnv = ({ authorName, authorEmail, committerName, committerEmail }) => ({ ...process.env, GIT_AUTHOR_NAME: authorName, GIT_AUTHOR_EMAIL: authorEmail, GIT_COMMITTER_NAME: committerName, GIT_COMMITTER_EMAIL: committerEmail });
+const asIdentity = (author, committer = author) => identityEnv({ authorName: author.name, authorEmail: author.email, committerName: committer.name, committerEmail: committer.email });
+const git = (cwd, args, env = process.env) => execFileSync('git', args, { cwd, env, encoding: 'utf8', windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+const fieldsOf = (cwd, ref) => git(cwd, ['log', '-1', '--format=%an%x00%ae%x00%cn%x00%ce', ref]).split('\0');
+const exportFields = [exportIdentity.name, exportIdentity.email, exportIdentity.name, exportIdentity.email];
+
+function writeTree(dir, files) {
+  for (const [file, text] of Object.entries(files)) {
+    mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
+    writeFileSync(path.join(dir, file), text);
+  }
+}
+function commitAll(dir, message, env) {
+  git(dir, ['add', '-A']);
+  git(dir, ['commit', '--quiet', '--no-gpg-sign', '-m', message], env);
+  return git(dir, ['rev-parse', 'HEAD']);
+}
+function withScratch(run) {
+  const saved = Object.fromEntries(['GIT_CONFIG_GLOBAL', 'GIT_CONFIG_NOSYSTEM', ...identityNames].map(name => [name, process.env[name]]));
+  const dir = mkdtempSync(path.join(tmpdir(), 'decko-release-export-test-'));
+  try {
+    writeFileSync(path.join(dir, 'empty-global-gitconfig'), '');
+    process.env.GIT_CONFIG_GLOBAL = path.join(dir, 'empty-global-gitconfig');
+    process.env.GIT_CONFIG_NOSYSTEM = '1';
+    for (const name of identityNames) delete process.env[name];
+    const release = path.join(dir, 'release.git'), seed = path.join(dir, 'seed'), work = path.join(dir, 'work'), exported = path.join(dir, 'export');
+    git(dir, ['init', '--quiet', '--bare', '-b', 'main', release]);
+    git(dir, ['init', '--quiet', '-b', 'main', seed]);
+    writeTree(seed, { 'README.md': 'release history\n' });
+    const seedCommit = commitAll(seed, 'Initial release', asIdentity(exportIdentity));
+    git(seed, ['push', '--quiet', release, 'main:refs/heads/main']);
+    git(dir, ['init', '--quiet', '-b', 'main', work]);
+    git(work, ['config', 'user.name', personal.name]);
+    git(work, ['config', 'user.email', personal.email]);
+    git(work, ['config', 'commit.gpgsign', 'false']);
+    writeTree(work, { 'src/engine.ts': 'export const engine = 1;\n' });
+    const source = commitAll(work, 'Private source change', asIdentity(personal));
+    git(dir, ['init', '--quiet', '-b', 'main', exported]);
+    writeTree(exported, { 'README.md': 'release history\n', 'src/engine.ts': 'export const engine = 1;\n' });
+    commitAll(exported, 'Export snapshot', asIdentity(exportIdentity));
+    return run({ dir, release, work, exported, seedCommit, source });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+    for (const [name, value] of Object.entries(saved)) if (value === undefined) delete process.env[name]; else process.env[name] = value;
+  }
+}
+
+test('a release commit carrying a personal identity in any of the four fields is refused before it is pushed', () => withScratch(({ release, work, exported, seedCommit, source }) => {
+  const variants = [
+    asIdentity(personal),
+    identityEnv({ authorName: personal.name, authorEmail: exportIdentity.email, committerName: exportIdentity.name, committerEmail: exportIdentity.email }),
+    identityEnv({ authorName: exportIdentity.name, authorEmail: personal.email, committerName: exportIdentity.name, committerEmail: exportIdentity.email }),
+    identityEnv({ authorName: exportIdentity.name, authorEmail: exportIdentity.email, committerName: personal.name, committerEmail: exportIdentity.email }),
+    identityEnv({ authorName: exportIdentity.name, authorEmail: exportIdentity.email, committerName: exportIdentity.name, committerEmail: personal.email }),
+  ];
+  git(work, ['fetch', '--quiet', exported, 'HEAD']);
+  const tree = git(work, ['rev-parse', 'FETCH_HEAD^{tree}']);
+  git(work, ['fetch', '--quiet', release, 'refs/heads/main']);
+  for (const env of variants) {
+    const commit = git(work, ['commit-tree', tree, '-p', seedCommit, '-m', 'Release export of source commit ' + source], env);
+    assert.notDeepEqual(fieldsOf(work, commit), exportFields);
+    assert.throws(() => verifyReleaseCommit({ repo: work, commit, base: seedCommit, tree, operator: personal }), error => error instanceof ReleaseExportRefusal && /identity is not the export identity/.test(error.message));
+    const createCommit = ({ tree: t, parent }) => git(work, ['commit-tree', t, '-p', parent, '-m', 'Release export of source commit ' + source], env);
+    assert.throws(() => pushReleaseExport({ repo: work, source, tree: exported, remote: release, createCommit }), error => error instanceof ReleaseExportRefusal && /identity is not the export identity/.test(error.message));
+    assert.equal(git(release, ['rev-parse', 'refs/heads/main']), seedCommit);
+  }
+}));
+
+test('the tool commits as the export identity even when the environment and git config name a personal identity, and pushes forward only', () => withScratch(({ release, work, exported, seedCommit, source }) => {
+  Object.assign(process.env, { GIT_AUTHOR_NAME: personal.name, GIT_AUTHOR_EMAIL: personal.email, GIT_COMMITTER_NAME: personal.name, GIT_COMMITTER_EMAIL: personal.email });
+  const first = pushReleaseExport({ repo: work, source, tree: exported, remote: release });
+  assert.equal(first.status, 'pushed');
+  assert.deepEqual(first.operatorIdentityChecked, { name: true, email: true });
+  assert.equal(git(release, ['rev-parse', 'refs/heads/main']), first.commit);
+  assert.deepEqual(fieldsOf(release, 'refs/heads/main'), exportFields);
+  assert.equal(git(release, ['rev-parse', 'refs/heads/main^']), seedCommit);
+  assert.equal(git(release, ['log', '-1', '--format=%B', 'refs/heads/main']), 'Release export of source commit ' + source);
+  writeTree(exported, { 'src/second.ts': 'export const second = 2;\n' });
+  commitAll(exported, 'Second export snapshot', asIdentity(exportIdentity));
+  git(work, ['fetch', '--quiet', exported, 'HEAD']);
+  const secondTree = git(work, ['rev-parse', 'FETCH_HEAD^{tree}']);
+  const second = pushReleaseExport({ repo: work, source, tree: secondTree, remote: release });
+  assert.equal(second.parent, first.commit);
+  assert.deepEqual(fieldsOf(release, 'refs/heads/main'), exportFields);
+  assert.equal(git(release, ['rev-list', '--count', 'refs/heads/main']), '3');
+  assert.deepEqual(git(release, ['log', '--format=%an%x00%ae%x00%cn%x00%ce', 'refs/heads/main']).split('\n').map(line => line.split('\0')), [exportFields, exportFields, exportFields]);
+}));
+
+test('the operator identity from git config in a commit message or the tree file list is refused', () => withScratch(({ release, work, exported, seedCommit, source }) => {
+  for (const leak of [personal.email, personal.name.toUpperCase()]) {
+    const createCommit = ({ repo, tree, parent }) => git(repo, ['commit-tree', tree, '-p', parent, '-m', 'Release export prepared by ' + leak], asIdentity(exportIdentity));
+    assert.throws(() => pushReleaseExport({ repo: work, source, tree: exported, remote: release, createCommit }), error => error instanceof ReleaseExportRefusal && /commit message contains the operator identity/.test(error.message));
+    assert.equal(git(release, ['rev-parse', 'refs/heads/main']), seedCommit);
+  }
+  for (const file of [personal.name + '/notes.md', 'docs/' + personal.email + '.txt']) {
+    writeTree(exported, { [file]: 'notes\n' });
+    commitAll(exported, 'Export snapshot with a leaked path', asIdentity(exportIdentity));
+    assert.throws(() => pushReleaseExport({ repo: work, source, tree: exported, remote: release }), error => error instanceof ReleaseExportRefusal && /file list contains the operator identity/.test(error.message));
+    assert.equal(git(release, ['rev-parse', 'refs/heads/main']), seedCommit);
+    rmSync(path.join(exported, file));
+    commitAll(exported, 'Remove leaked path', asIdentity(exportIdentity));
+  }
+}));
+
+test('a dirty export repository, a non-tree object id and an abbreviated source commit are refused', () => withScratch(({ release, work, exported, seedCommit, source }) => {
+  writeFileSync(path.join(exported, 'untracked.txt'), 'pending\n');
+  assert.throws(() => pushReleaseExport({ repo: work, source, tree: exported, remote: release }), /uncommitted or untracked/);
+  assert.throws(() => pushReleaseExport({ repo: work, source, tree: source, remote: release }), /not a tree/);
+  assert.throws(() => pushReleaseExport({ repo: work, source: source.slice(0, 12), tree: exported, remote: release }), /exact full commit id/);
+  assert.equal(git(release, ['rev-parse', 'refs/heads/main']), seedCommit);
+}));

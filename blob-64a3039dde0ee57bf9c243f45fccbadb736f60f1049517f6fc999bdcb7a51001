@@ -1,0 +1,22 @@
+{
+  "row": "validate-coded-storage-type",
+  "event_file": "card-mod-carrierwave-0.20.0/set/abstract/attachment/coded.rb",
+  "event": "validate_coded_storage_type",
+  "locale": "card-mod-carrierwave-0.20.0/config/locales/en.yml",
+  "scenarios": [
+    {
+      "name": "a save of a coded attachment with no mod argument and no codename: the body refuses with both storage-type errors",
+      "returns": { "mod": null, "coded_ok?": false },
+      "pinned_methods": [
+        { "name": "storage_type_error", "file": "card-mod-carrierwave-0.20.0/set/abstract/attachment/coded.rb" }
+      ]
+    },
+    {
+      "name": "a save of a coded attachment with a mod argument and a codename: the body adds no error",
+      "returns": { "mod": "my_mod", "coded_ok?": true },
+      "pinned_methods": [
+        { "name": "storage_type_error", "file": "card-mod-carrierwave-0.20.0/set/abstract/attachment/coded.rb" }
+      ]
+    }
+  ]
+}

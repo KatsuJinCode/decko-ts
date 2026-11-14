@@ -1,0 +1,25 @@
+{
+  "_note": "Release exclusion catalog: capture_paths names captures whose source-deck origin remains unknown, and paths names their actual runtime test consumers. Unknown origin is not proof of private origin. The 29 previously catalogued source-backed tests remain admitted; comment-only citations do not withhold a test. Source and capture files remain in private development history while release selection excludes them.",
+  "origin_status": "unknown",
+  "capture_paths": [
+    "fixtures/captured/readonly-follow-defaults-and-core-shape.json",
+    "fixtures/captured/readonly-rule-card-core-type-shape.json",
+    "fixtures/captured/codename-reset-and-read-rule-union-oracle.json",
+    "fixtures/captured/view-registry-directives-oracle.json"
+  ],
+  "paths": [
+    "tools/edge-signed-in-exercise/test/rule-set-legs.test.mjs",
+    "tests/card/permissions/read-rule-derive-and-codename-reset-oracle.test.ts",
+    "tests/card/permissions/view-registry-directives-oracle.test.ts"
+  ],
+  "reasons": {
+    "fixtures/captured/readonly-follow-defaults-and-core-shape.json": "Unknown source-deck origin. The historical capture-readonly-follow-defaults-and-core-shape.rb producer reads an uncommitted copied development database selected by DATABASE_URL and MM_IR_DB; no admitted source snapshot establishes the origin of its existing rows.",
+    "fixtures/captured/readonly-rule-card-core-type-shape.json": "Unknown source-deck origin. The historical capture-readonly-rule-card-core-type-shape.rb producer reads an uncommitted copied development database and existing rows. Its connection/no-write checks establish which local copy was read, not whether its inputs are redistributable.",
+    "fixtures/captured/codename-reset-and-read-rule-union-oracle.json": "Unknown source-deck origin. tools/oracle/read-rule-union-and-codename-reset-probe.rb records a disposable copy of the oracle development database and its own writes, but supplies no admitted input snapshot establishing the origin of pre-existing rows.",
+    "fixtures/captured/view-registry-directives-oracle.json": "Unknown source-deck origin. tools/oracle/capture-view-registry-directives.rb surveys existing cards in the ambient oracle app and records no immutable source snapshot or seed receipt binding these bytes to redistributable inputs.",
+    "tools/edge-signed-in-exercise/test/rule-set-legs.test.mjs": "Reads readonly-rule-card-core-type-shape.json at runtime. Withheld pending qualification of that input; the test is not classified as private.",
+    "tests/card/permissions/read-rule-derive-and-codename-reset-oracle.test.ts": "Reads codename-reset-and-read-rule-union-oracle.json at runtime. Withheld pending qualification of that input; the test is not classified as private.",
+    "tests/card/permissions/view-registry-directives-oracle.test.ts": "Reads view-registry-directives-oracle.json at runtime. Withheld pending qualification of that input; the test is not classified as private."
+  },
+  "requalification": "Requalify after positive producer evidence binds the exact captured bytes to redistributable inputs, or after a fresh stock capture from committed reproducible seeds under the approved Ruby runtime replaces those bytes and its affected tests pass."
+}

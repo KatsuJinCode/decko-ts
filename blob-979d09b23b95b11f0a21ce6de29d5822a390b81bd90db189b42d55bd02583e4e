@@ -1,0 +1,79 @@
+import {describe, expect, it} from "vitest";
+import {formatLineage, getDefaultModLoader, ModLoader, setDefaultModLoader} from "../../../src/card/mod-loader.js";
+import {superViewStep} from "../../../src/card/mod-loader/mod-view-helpers.js";
+import {HTML_VIEWS} from "../../../src/card/render/views.js";
+import {RenderFormat, type RenderCard, type RenderEngineLike, type ViewContext} from "../../../src/card/render/format.js";
+import {DeckoName} from "../../../src/card/name.js";
+
+const names = Object.getOwnPropertyNames(Object.prototype);
+describe("format and compact metadata do not inherit JS object properties", () => {
+  it("keeps prototype codenames out of localized standard titles", () => {
+    const name = DeckoName.parse("*Synthetic Setting");
+    const card = {id: 123, name, key: name.key, setKeys: "ALL", record: {name, key: name.key}, dbContent: ""} as RenderCard;
+    let codename = "search";
+    const engine = {views: {}, fetchRenderCard: () => card, peekCodenameById: () => codename} as unknown as RenderEngineLike;
+    const format = new RenderFormat(card, engine);
+    for (const [key, title] of [["search", "Search Results"], ["signin", "Sign In"], ["recent", "Recent Changes"]]) {
+      codename = key!;
+      expect(format.standardTitle()).toBe(title);
+    }
+    for (const key of [...names, "untranslated_setting"]) {
+      codename = key;
+      expect(format.standardTitle()).toBe("*Synthetic Setting");
+    }
+  });
+  it("ends terminal super at an absent own base view while retaining declared unusual keys", () => {
+    const previousLoader = getDefaultModLoader();
+    const loader = new ModLoader([{manifest: {name: "terminal_probe", setModules: [{setPath: "all/terminal_probe", formats: {html: {views: names.map(view => ({view, viewFn: () => "MOD"}))}}}]}}], {});
+    const name = DeckoName.parse("Synthetic Super Card");
+    const card = {name, key: name.key, setKeys: "ALL", record: {name, key: name.key}, dbContent: ""} as RenderCard;
+    const format = new RenderFormat(card, {views: {}} as RenderEngineLike);
+    const ctx = {fmt: format} as ViewContext;
+    try {
+      loader.load(); setDefaultModLoader(loader);
+      for (const view of names) {
+        const before = Object.getOwnPropertyDescriptor(HTML_VIEWS, view);
+        try {
+          if (before !== undefined) delete HTML_VIEWS[view];
+          expect(superViewStep(ctx, "All::TerminalProbe", view)).toEqual({kind: "empty"});
+          Object.defineProperty(HTML_VIEWS, view, {value: () => "OWN-BASE", configurable: true, writable: true, enumerable: true});
+          expect(superViewStep(ctx, "All::TerminalProbe", view)).toEqual({kind: "base", body: "OWN-BASE"});
+        } finally {
+          if (before === undefined) delete HTML_VIEWS[view];
+          else Object.defineProperty(HTML_VIEWS, view, before);
+        }
+      }
+    } finally {loader.reset(); setDefaultModLoader(previousLoader);}
+  });
+  it("keeps an unlisted format's lineage to its own string key", () => {
+    for (const name of names) expect(formatLineage(name)).toEqual([name]);
+    expect(formatLineage("rss")).toEqual(["rss", "html"]);
+    expect(formatLineage("jsonld")).toEqual(["jsonld", "json", "data"]);
+  });
+  it("resolves registered unusual format names without a phantom parent", () => {
+    for (const name of names) {
+      const body = () => "OWN-FORMAT";
+      const loader = new ModLoader([{manifest: {name: "prototype_format", setModules: [{setPath: "all/prototype_format", formats: {[name]: {views: [{view: "format_probe", viewFn: body}]}}}]}}], {});
+      try {
+        loader.load();
+        expect(loader.viewChain("ALL", "format_probe", name).map(entry => entry.viewFn)).toEqual([body]);
+        expect(loader.viewChain("ALL", "missing_probe", name)).toEqual([]);
+      } finally {loader.reset();}
+    }
+  });
+  it("uses the public compact mode fallback for undeclared prototype view keys", () => {
+    const name = DeckoName.parse("Synthetic Compact Card");
+    const card = {name, key: name.key, setKeys: "ALL", record: {name, key: name.key}, dbContent: ""} as RenderCard;
+    const engine = {views: {}, fetchRenderCard: () => undefined, executeSearch: () => [], isDenied: () => false, resolveView: () => undefined} as RenderEngineLike;
+    const format = new RenderFormat(card, engine);
+    format.withNestMode("compact", () => {
+      for (const view of names) {
+        expect(format.modalNestView(view, card)).toBe("one_line_content");
+        expect(format.modalNestView(view, {...card, unknown: true})).toBe("compact_missing");
+      }
+      expect(format.modalNestView("title", card)).toBe("title");
+      expect(format.modalNestView("title", {...card, unknown: true})).toBe("title");
+    });
+    expect(format.nestMode).toBe("normal");
+  });
+});

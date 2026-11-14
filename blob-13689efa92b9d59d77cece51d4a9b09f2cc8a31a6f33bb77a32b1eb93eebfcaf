@@ -1,0 +1,222 @@
+// Runs a test command under the two-minute limit, with a streaming profile.
+//
+//   node tools/testing/run-tests-with-two-minute-limit.mjs [--profile <file>] [--] <command> [args...]
+//
+// The command runs with DECKO_TEST_PROFILE_FILE set, so the Vitest streaming
+// profile reporter (tools/testing/streaming-profile-reporter.mjs, attached in
+// vitest.config.ts) and the Node test runner (tools/run-node-tests.mjs) append
+// one line per test file the moment that file finishes.
+//
+// At the limit the whole process tree is killed (its process group on Linux and
+// macOS, taskkill /T on Windows). The runner then prints the profile so far,
+// slowest files first, the files that were still running, and the efficiency
+// message below, and exits with status 124.
+//
+// The limit is 120 seconds. The only way to raise it for a command is an entry
+// in tools/testing/two-minute-exceptions.json carrying Julian's recorded
+// approval for that exact command. No agent grants one. A test may lower the
+// limit with DECKO_TWO_MINUTE_LIMIT_TEST_OVERRIDE_MS; a value that would raise
+// the limit is ignored.
+import { spawn, spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, unlinkSync } from "node:fs";
+import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
+export const DEFAULT_LIMIT_MS = 120_000;
+export const KILLED_EXIT_CODE = 124;
+export const ACTIVE_VARIABLE = "DECKO_TWO_MINUTE_LIMIT_ACTIVE";
+export const PROFILE_FILE_VARIABLE = "DECKO_TEST_PROFILE_FILE";
+// The root of the run being profiled; a nested run on another root (a test's
+// fixture directory) does not write into this profile.
+export const PROFILE_ROOT_VARIABLE = "DECKO_TEST_PROFILE_ROOT";
+export const TEST_OVERRIDE_VARIABLE = "DECKO_TWO_MINUTE_LIMIT_TEST_OVERRIDE_MS";
+export const EFFICIENCY_MESSAGE = "This run passed two minutes. 99% of the time that is an efficiency failure: profile it and make it efficient. If it is already as efficient as it can be and still needs more than two minutes, apply to Julian for an exception.";
+
+const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
+export const EXCEPTIONS_FILE = fileURLToPath(new URL("./two-minute-exceptions.json", import.meta.url));
+const PROFILE_DIRECTORY = join(REPO_ROOT, ".runtime", "test-profiles");
+const PROFILES_KEPT = 20;
+
+// The command key an exception names: the command as typed, arguments joined
+// by single spaces, a `node` executable path written as `node`, and absolute
+// paths inside this repository written relative to it with forward slashes, so
+// `npm run test:merge` and a direct `node tools/test-gates.mjs run full` share
+// the key "node tools/test-gates.mjs run full" on every machine.
+export function commandKey(command) {
+  const [first, ...rest] = command;
+  const executable = first === process.execPath || /^node(\.exe)?$/i.test(basename(first ?? "")) ? "node" : first;
+  const inRepo = argument => {
+    if (!isAbsolute(argument)) return argument.replace(/\\/g, "/");
+    const inside = relative(REPO_ROOT, argument);
+    return inside && !inside.startsWith("..") && !isAbsolute(inside) ? inside.replace(/\\/g, "/") : argument;
+  };
+  return [executable, ...rest.map(inRepo)].join(" ");
+}
+
+export function validateExceptions(entries) {
+  if (!Array.isArray(entries)) throw Error("Two-minute exceptions must be a JSON array: " + EXCEPTIONS_FILE);
+  for (const entry of entries) {
+    const valid = entry && typeof entry === "object"
+      && typeof entry.command === "string" && entry.command.trim() === entry.command && entry.command
+      && Number.isInteger(entry.limitSeconds) && entry.limitSeconds > DEFAULT_LIMIT_MS / 1000
+      && entry.approvedBy === "Julian"
+      && typeof entry.approval === "string" && entry.approval.trim()
+      && typeof entry.approvedAt === "string" && !Number.isNaN(Date.parse(entry.approvedAt));
+    if (!valid) throw Error("Invalid two-minute exception (needs command, limitSeconds over 120, approvedBy \"Julian\", his approval text and approvedAt): " + JSON.stringify(entry));
+  }
+  if (new Set(entries.map(entry => entry.command)).size !== entries.length) throw Error("Duplicate two-minute exception command");
+  return entries;
+}
+
+export function readExceptions(file = EXCEPTIONS_FILE) {
+  return validateExceptions(JSON.parse(readFileSync(file, "utf8")));
+}
+
+// Returns the limit for one command: 120 s, or the limit of the exception that
+// names exactly this command. The test override may only lower it.
+export function resolveTimeLimit({ command, exceptions, env = process.env }) {
+  const key = commandKey(command);
+  const exception = exceptions.find(entry => entry.command === key) ?? null;
+  let limitMs = exception ? exception.limitSeconds * 1000 : DEFAULT_LIMIT_MS;
+  const override = Number(env[TEST_OVERRIDE_VARIABLE]);
+  if (env[TEST_OVERRIDE_VARIABLE] !== undefined && Number.isFinite(override) && override > 0 && override < limitMs) limitMs = override;
+  return { key, limitMs, exception };
+}
+
+export function readProfile(profileFile) {
+  let text = "";
+  try { text = readFileSync(profileFile, "utf8"); }
+  catch (error) { if (error?.code !== "ENOENT") throw error; }
+  const finished = [], started = new Map();
+  for (const line of text.split("\n")) {
+    if (!line.trim()) continue;
+    let record;
+    try { record = JSON.parse(line); } catch { continue; } // a line cut off by the kill
+    if (record.event === "started") started.set(`${record.runner}:${record.file}`, record);
+    else if (record.event === "finished") { finished.push(record); started.delete(`${record.runner}:${record.file}`); }
+  }
+  finished.sort((a, b) => (b.durationMs ?? 0) - (a.durationMs ?? 0));
+  return { finished, running: [...started.values()] };
+}
+
+export function formatProfile({ finished, running }, { limitMs, elapsedMs, profileFile }) {
+  const lines = [`Test profile at ${(elapsedMs / 1000).toFixed(1)} s (limit ${limitMs / 1000} s): ${finished.length} file(s) finished, slowest first. Profile file: ${profileFile}`];
+  finished.forEach((record, index) => {
+    const counts = `${record.passed ?? 0} passed, ${record.failed ?? 0} failed, ${record.skipped ?? 0} skipped`;
+    const wall = record.wallMs == null ? "" : `, wall ${(record.wallMs / 1000).toFixed(2)} s`;
+    lines.push(`${String(index + 1).padStart(5)}. ${(record.durationMs / 1000).toFixed(2).padStart(8)} s  ${record.file}  [${record.runner}; ${counts}${wall}]`);
+  });
+  if (running.length) {
+    lines.push(`Still running when the run was stopped (${running.length}):`);
+    for (const record of running) lines.push(`       started ${record.startedAt}  ${record.file}  [${record.runner}]`);
+  }
+  return lines.join("\n");
+}
+
+function newProfileFile() {
+  mkdirSync(PROFILE_DIRECTORY, { recursive: true });
+  // Keep the newest profiles only; older ones are regenerated by running again.
+  const old = readdirSync(PROFILE_DIRECTORY).filter(name => name.endsWith(".jsonl"))
+    .map(name => ({ name, time: statSync(join(PROFILE_DIRECTORY, name)).mtimeMs }))
+    .sort((a, b) => b.time - a.time).slice(PROFILES_KEPT - 1);
+  for (const { name } of old) unlinkSync(join(PROFILE_DIRECTORY, name));
+  return join(PROFILE_DIRECTORY, `run-${new Date().toISOString().replace(/[:.]/g, "-")}-${process.pid}.jsonl`);
+}
+
+// Kills the child and every process it started.
+export function killProcessTree(child) {
+  if (child.exitCode !== null || child.signalCode !== null) return;
+  if (process.platform === "win32") {
+    const result = spawnSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], { windowsHide: true, encoding: "utf8" });
+    if (result.status !== 0 && child.exitCode === null) {
+      console.error(`two-minute limit: taskkill of process ${child.pid} failed: ${result.error?.message ?? result.stderr}`);
+      child.kill("SIGKILL");
+    }
+    return;
+  }
+  try { process.kill(-child.pid, "SIGKILL"); }
+  catch (error) { if (error?.code !== "ESRCH") throw error; }
+}
+
+// tools/test-gates.mjs writes a generated Vitest config named with its own
+// process id and removes it in a finally block that a kill never reaches.
+function removeKilledGateConfig(pid, cwd) {
+  for (const name of readdirSync(cwd)) {
+    if (name.startsWith(`vitest.gate.${pid}.`) && name.endsWith(".generated.ts")) unlinkSync(join(cwd, name));
+  }
+}
+
+export function parseRunnerArguments(argv) {
+  let profileFile;
+  let index = 0;
+  while (index < argv.length) {
+    if (argv[index] === "--profile") {
+      profileFile = argv[index + 1];
+      if (!profileFile || profileFile.startsWith("--")) throw Error("--profile requires a file path");
+      index += 2;
+    } else if (argv[index] === "--") { index++; break; }
+    else break;
+  }
+  const command = argv.slice(index);
+  if (!command.length) throw Error("Usage: node tools/testing/run-tests-with-two-minute-limit.mjs [--profile <file>] [--] <command> [args...]");
+  return { profileFile: profileFile ? resolve(profileFile) : undefined, command };
+}
+
+export async function runWithTwoMinuteLimit({ command, profileFile, cwd = process.cwd(), env = process.env, exceptions = readExceptions(), log = text => process.stderr.write(text + "\n"), out = text => process.stdout.write(text + "\n") }) {
+  const { key, limitMs, exception } = resolveTimeLimit({ command, exceptions, env });
+  profileFile ??= newProfileFile();
+  mkdirSync(dirname(profileFile), { recursive: true });
+  log(`two-minute limit: ${limitMs / 1000} s for "${key}"${exception ? ` (exception approved by Julian on ${exception.approvedAt})` : ""}; streaming profile: ${profileFile}`);
+  const executable = command[0] === "node" ? process.execPath : command[0];
+  const started = performance.now();
+  const child = spawn(executable, command.slice(1), {
+    cwd, stdio: "inherit", windowsHide: true, detached: process.platform !== "win32",
+    env: { ...env, [ACTIVE_VARIABLE]: "1", [PROFILE_FILE_VARIABLE]: profileFile, [PROFILE_ROOT_VARIABLE]: cwd },
+  });
+  let killedAtLimit = false, stoppedBySignal = null;
+  const timer = setTimeout(() => { killedAtLimit = true; killProcessTree(child); }, limitMs);
+  const stop = signal => { stoppedBySignal = signal; killProcessTree(child); };
+  const signals = ["SIGINT", "SIGTERM", "SIGHUP"].filter(signal => process.platform !== "win32" || signal !== "SIGHUP");
+  for (const signal of signals) process.on(signal, stop);
+  const { code, signal } = await new Promise((resolveExit, reject) => {
+    child.once("error", error => { clearTimeout(timer); reject(error); });
+    child.once("close", (exitCode, exitSignal) => resolveExit({ code: exitCode, signal: exitSignal }));
+  });
+  clearTimeout(timer);
+  for (const name of signals) process.off(name, stop);
+  const elapsedMs = performance.now() - started;
+  if (killedAtLimit || stoppedBySignal) {
+    try { removeKilledGateConfig(child.pid, cwd); }
+    catch (error) { log(`two-minute limit: could not remove the killed gate's generated config: ${error.message}`); }
+  }
+  const profile = readProfile(profileFile);
+  if (killedAtLimit) {
+    out("");
+    out(`KILLED at ${(elapsedMs / 1000).toFixed(1)} s: the run reached its ${limitMs / 1000} s limit and its whole process tree was stopped.`);
+    out(formatProfile(profile, { limitMs, elapsedMs, profileFile }));
+    out("");
+    out(EFFICIENCY_MESSAGE);
+    return { exitCode: KILLED_EXIT_CODE, killedAtLimit, elapsedMs, limitMs, profileFile, profile };
+  }
+  if (stoppedBySignal) {
+    log(`two-minute limit: stopped by ${stoppedBySignal} at ${(elapsedMs / 1000).toFixed(1)} s`);
+    log(formatProfile(profile, { limitMs, elapsedMs, profileFile }));
+    return { exitCode: 130, killedAtLimit, elapsedMs, limitMs, profileFile, profile };
+  }
+  const top = { finished: profile.finished.slice(0, 10), running: profile.running };
+  log(`two-minute limit: finished in ${(elapsedMs / 1000).toFixed(1)} s of ${limitMs / 1000} s; ${profile.finished.length} file(s) profiled. Ten slowest:`);
+  log(formatProfile(top, { limitMs, elapsedMs, profileFile }));
+  return { exitCode: signal ? 1 : code ?? 1, killedAtLimit, elapsedMs, limitMs, profileFile, profile };
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  try {
+    const { command, profileFile } = parseRunnerArguments(process.argv.slice(2));
+    if (!existsSync(EXCEPTIONS_FILE)) throw Error("Two-minute exceptions file missing: " + EXCEPTIONS_FILE);
+    const result = await runWithTwoMinuteLimit({ command, profileFile });
+    process.exitCode = result.exitCode;
+  } catch (error) {
+    console.error("two-minute limit runner: " + (error?.message ?? String(error)));
+    process.exitCode = 1;
+  }
+}

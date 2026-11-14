@@ -1,0 +1,442 @@
+{
+  "format": "decko-public-ruby-oracle/1",
+  "runtime": "ruby 3.2.3 (2024-01-18 revision 52bb2ac0a6) [aarch64-linux-gnu]",
+  "runtimeSources": {
+    "<oracle-app>/Gemfile.lock": "86f333db488f2e53ad39be4226076a8bd9c7d5a79916cdd90b9ba777ec904cc1",
+    "<oracle-app>/config/application.rb": "a65c9f5995a78d2ead20a1b6fcb5543701a4bdda0479db4953c53d050a67c0b2",
+    "<oracle-app>/config/environment.rb": "a0a4164e5d8e37985689728f78bce72c55673f3440bbfdca9a89321d64829dea"
+  },
+  "sourceHashes": {
+    "seed.sqlite3": "a9f580814c2a5adc30e21f704985573ebb3f1090a14993bacacbdb1fb9a32f3d",
+    "public-oracle-bootstrap.rb": "71f9c069504dfafa2f43d7951d22520ef4ee442300e440d90c304b3cc14a5235",
+    "public-oracle-scene.rb": "eefde406e826cf48ffcc5c2a65a1a3d5103f9e81dca45a3ccc1f595c9f943b79",
+    "leftover-probe.rb": "09087db432b7d0cc2b180bfe2ad48b3d01d45bae7e8df3560544d756e98efca3",
+    "persist-write-probe.rb": "efafb95477cc79f6adc58bab7b10c631d2570d85aed1fc1d6f8e60ee37e4b4f5",
+    "pod-sow.rb": "0c690c1a12aa8560083e42f144cc820ef56dbf1f510c6698fb8083173c75a111",
+    "pod-eat.rb": "d48e0e850c2ea5729adda28f764283a61ca847183d000a9e214a6a87f23710c2"
+  },
+  "transportSha256": "10788b5d36496bea87f3fbde014d613284281df59394d69652b70f1a1090b368",
+  "runnerSha256": "12fe881da4ed60a8c59044e9642129f26d5047bd0bc93bbfbc8932ebe3930039",
+  "files": {
+    "ruby-src.yml": "59ee998dc31e5204028dd58c2c97f4cdd4b6bfe1bf7924123fa948160e7e760d",
+    "base.sqlite3": "5455421a39d9dfa3157c4683ca153c017647a6129e3b40de7e90afebd1c75318",
+    "ruby-to-ruby.yml": "5ffabd4cb62cecdfb7d8a8db4437ed896700e0ee11b17b8ebe8b556c9c4ef36c",
+    "ruby-to-ruby.eat.json": "971a3d2582e12f9a4f9ff42275976e0b75be7f19ef5d2154bdff9eabd2af0a18",
+    "pods-src.sqlite3": "458f1a5f85907cf4ab099a21426b3171aafba75f479ba2ba4597501086e6364d",
+    "pod-steps/step-17.json": "20f6502b6f8302d1c68be3d967c326d0451cb1444acecb015c66d8a62a4af552",
+    "pod-steps/step-12.json": "7861977735e0615644438d32390a6b55504d6e77ef091b35a7c4e6074da8bf9e",
+    "pod-steps/step-14.json": "1c54b907a09f4aaadd3a16e374298d3c811461493147629b01a536dfe1f321ae",
+    "pod-steps/step-18.json": "c12e9ebdae7758438e18f07641104deb2313eb2bca5e892bd0a2c2bae4439fab",
+    "pod-steps/step-01.json": "caf7f6c513bcd8e033589cb090f35cb1027cb5d8d6591b075ac585c4087b1225",
+    "pod-steps/step-13.json": "a075176e0e539d3202855b997e72ab3f8696e5b817c9ae21dcd909ab65470b9a",
+    "pod-steps/step-04.json": "cc503f01c46d0ba6ccbfea04d70d46757a612b020c9a2e4770a03e588d0e31af",
+    "pod-steps/step-11.json": "b27b60962582a9d6bd374326f24bdcd713dc8bc802d0d63bd116c2479e8dbe1c",
+    "pod-steps/step-19.json": "f33fb21c2f4b4229509fcd105c1e5ca4df18b1adaea566e04a5f76e056ed1902",
+    "pod-steps/step-09.json": "868704e3d62fd5883bc7650918788986b6058c6233299938d79834c08e48ff77",
+    "pod-steps/step-16.json": "948b549c7376dee2b93f0497788cca32a0a9dacada2c21b9661e0cb90111699c",
+    "pod-steps/step-05.json": "dc0f526a6938e65ac4e93425a4365365d8ea99f9fcca5731e80b15491ad6a2fe",
+    "pod-steps/step-08.json": "e9a7bd14298072e16fa318894aec33dbe3d6f7fb45b48d04fc596cd92ebe4e76",
+    "pod-steps/step-10.json": "d765c24765f2be3025cbcb00350a477411e6bfc6eb936bd79c227230780466ed",
+    "pod-steps/step-02.json": "0c317ca42beb271413fa4dabe49be3606f0ea52703d4eb93c5923cf53d81cea9",
+    "pod-steps/step-07.json": "643f82e451056b74b18d492ea3d2e085b960f2a82f09d6a7020be53b6f656034",
+    "pod-steps/step-15.json": "3cd773921220307c15cf85a25b0e13240ebc3b86a2016a94fc59e83493e32b43",
+    "pod-steps/step-06.json": "8d06c139490c86a0e13a4418d370248b11a984721a710c358e48af0df907c34b",
+    "pod-steps/step-03.json": "201eeac961fa8de257f1ef7dc31175965f757dfa7a9626ff5031871c148a9a1e",
+    "leftover/step-12.json": "8b6f4d97216b8469b310df95a4480a5691901dca9a34279244898ca029636ddd",
+    "leftover/step-01.json": "7b40202b2ea029eafcc4b7be16e6c1fb8fe67a8ee16989f3dfb65ecd5746c312",
+    "leftover/step-04.json": "c125bab94a963b46edca0de6d7982f5809c96367e5c0aa3087057de893dacfde",
+    "leftover/step-11.json": "54977e8f3bfd83001fe716ab128a04a175b3e9a6317183b2ebe5805bd6347c8d",
+    "leftover/step-09.json": "a099c03f70992df473c84e5c3f6fca239cf301513aebe3b8ecd0294819b78904",
+    "leftover/step-05.json": "f61603a2c0875504efa3877f1cdc40f080e104b0b3c45a88f06c4851f6704cb8",
+    "leftover/step-08.json": "e34328ff61b6cad0915f9ecd9ca57c31caeeeee764efc680e7966ec10edd69e4",
+    "leftover/step-10.json": "e58c62af9f218caa8f58bc234eb54276445a871f948679f88265e1ac5425814e",
+    "leftover/step-02.json": "3f3120552cb9b5415ac7f5b3137ece657a8d96187f269f63dbee2e29029be868",
+    "leftover/step-07.json": "a7a53a4025a82aebc62db96efce98982af1450e15c13b3817324667dd1468ba7",
+    "leftover/step-06.json": "5928e3171e0c03950593f2ea672554c69a4a16d41ad04e179e4183fe8f4efcc8",
+    "leftover/step-03.json": "e143512c3f278b2c5ddbcd7962c770029fea0d477ca320a27dc02ab68b66b227"
+  },
+  "receipts": [
+    {
+      "script": "public-oracle-scene.rb",
+      "args": [],
+      "status": 0,
+      "seconds": 3.829437619075179,
+      "stdout": "public scene ready\n",
+      "stderr": ""
+    },
+    {
+      "script": "leftover-probe.rb",
+      "args": [
+        "/tmp/decko-public-oracle-wz5z8h2l/output/leftover",
+        "1"
+      ],
+      "status": 0,
+      "seconds": 3.6629352420568466,
+      "stdout": "",
+      "stderr": "[persist] 1 create rule host ok=true cards=7 acts=1 actions=7 changes=0 refs=13\n"
+    },
+    {
+      "script": "persist-write-probe.rb",
+      "args": [
+        "/tmp/decko-public-oracle-wz5z8h2l/output/pod-steps",
+        "1"
+      ],
+      "status": 0,
+      "seconds": 3.669047126080841,
+      "stdout": "",
+      "stderr": "[withheld until disclosure] NOT RUN: 3 steps (/tmp/reference-harness/fixtures/write-battery-v1/withheld/steps.json)\n[persist] 1 create simple ok=true cards=1 acts=1 actions=1 changes=0 refs=0\n"
+    },
+    {
+      "script": "persist-write-probe.rb",
+      "args": [
+        "/tmp/decko-public-oracle-wz5z8h2l/output/pod-steps",
+        "2"
+      ],
+      "status": 0,
+      "seconds": 3.2906437180936337,
+      "stdout": "",
+      "stderr": "[withheld until disclosure] NOT RUN: 3 steps (/tmp/reference-harness/fixtures/write-battery-v1/withheld/steps.json)\n[persist] 2 create compound ok=true cards=3 acts=2 actions=3 changes=0 refs=0\n"
+    },
+    {
+      "script": "leftover-probe.rb",
+      "args": [
+        "/tmp/decko-public-oracle-wz5z8h2l/output/leftover",
+        "2"
+      ],
+      "status": 0,
+      "seconds": 3.425532665103674,
+      "stdout": "",
+      "stderr": "[persist] 2 create rule card ok=true cards=9 acts=2 actions=9 changes=0 refs=14\n"
+    },
+    {
+      "script": "persist-write-probe.rb",
+      "args": [
+        "/tmp/decko-public-oracle-wz5z8h2l/output/pod-steps",
+        "3"
+      ],
+      "status": 0,
+      "seconds": 3.6406814008951187,
+      "stdout": "",
+      "stderr": "[withheld until disclosure] NOT RUN: 3 steps (/tmp/reference-harness/fixtures/write-battery-v1/withheld/steps.json)\n[persist] 3 update content ok=true cards=3 acts=3 actions=4 changes=7 refs=0\n"
+    },
+    {
+      "script": "leftover-probe.rb",
+      "args": [
+        "/tmp/decko-public-oracle-wz5z8h2l/output/leftover",
+        "3"
+      ],
+      "status": 0,
+      "seconds": 3.789480130188167,
+      "stdout": "",
+      "stderr": "[persist] 3 rename the rule card (another setting) ok=true cards=9 acts=3 actions=10 changes=7 refs=14\n"
+    },
+    {
+      "script": "persist-write-probe.rb",
+      "args": [
+        "/tmp/decko-public-oracle-wz5z8h2l/output/pod-steps",
+        "4"
+      ],
+      "status": 0,
+      "seconds": 3.2995297461748123,
+      "stdout": "",
+      "stderr": "[withheld until disclosure] NOT RUN: 3 steps (/tmp/reference-harness/fixtures/write-battery-v1/withheld/steps.json)\n[persist] 4 update with link ok=true cards=3 acts=4 actions=5 changes=8 refs=1\n"
+    },
+    {
+      "script": "leftover-probe.rb",
+      "args": [
+        "/tmp/decko-public-oracle-wz5z8h2l/output/leftover",
+        "4"
+      ],
+      "status": 0,
+      "seconds": 3.2522317194379866,
+      "stdout": "",
+      "stderr": "[persist] 4 assign non-standard content to *recent settings ok=true cards=9 acts=3 actions=10 changes=7 refs=8\n"
+    },
+    {
+      "script": "persist-write-probe.rb",
+      "args": [
+        "/tmp/decko-public-oracle-wz5z8h2l/output/pod-steps",
+        "5"
+      ],
+      "status": 0,
+      "seconds": 3.295379275921732,
+      "stdout": "",
+      "stderr": "[withheld until disclosure] NOT RUN: 3 steps (/tmp/reference-harness/fixtures/write-battery-v1/withheld/steps.json)\n[persist] 5 rename ok=true cards=3 acts=5 actions=6 changes=9 refs=1\n"
+    },
+    {
+      "script": "leftover-probe.rb",
+      "args": [
+        "/tmp/decko-public-oracle-wz5z8h2l/output/leftover",
+        "5"
+      ],
+      "status": 0,
+      "seconds": 3.3072164417244494,
+      "stdout": "",
+      "stderr": "[persist] 5 assign non-standard content to the Mod card ok=true cards=9 acts=4 actions=11 changes=14 refs=44\n"
+    },
+    {
+      "script": "leftover-probe.rb",
+      "args": [
+        "/tmp/decko-public-oracle-wz5z8h2l/output/leftover",
+        "6"
+      ],
+      "status": 0,
+      "seconds": 3.3446067571640015,
+      "stdout": "",
+      "stderr": "[persist] 6 create revive host ok=true cards=10 acts=5 actions=12 changes=14 refs=44\n"
+    },
+    {
+      "script": "persist-write-probe.rb",
+      "args": [
+        "/tmp/decko-public-oracle-wz5z8h2l/output/pod-steps",
+        "6"
+      ],
+      "status": 0,
+      "seconds": 4.143971327226609,
+      "stdout": "",
+      "stderr": "[withheld until disclosure] NOT RUN: 3 steps (/tmp/reference-harness/fixtures/write-battery-v1/withheld/steps.json)\n[persist] 6 trash (delete!) ok=true cards=3 acts=6 actions=8 changes=17 refs=0\n"
+    },
+    {
+      "script": "leftover-probe.rb",
+      "args": [
+        "/tmp/decko-public-oracle-wz5z8h2l/output/leftover",
+        "7"
+      ],
+      "status": 0,
+      "seconds": 4.107893623877317,
+      "stdout": "",
+      "stderr": "[persist] 7 create revive host's child ok=true cards=12 acts=6 actions=14 changes=14 refs=44\n"
+    },
+    {
+      "script": "persist-write-probe.rb",
+      "args": [
+        "/tmp/decko-public-oracle-wz5z8h2l/output/pod-steps",
+        "7"
+      ],
+      "status": 0,
+      "seconds": 3.8976247650571167,
+      "stdout": "",
+      "stderr": "[withheld until disclosure] NOT RUN: 3 steps (/tmp/reference-harness/fixtures/write-battery-v1/withheld/steps.json)\n[persist] 7 revive child (route path: create same name) ok=true cards=4 acts=7 actions=10 changes=21 refs=0\n"
+    },
+    {
+      "script": "persist-write-probe.rb",
+      "args": [
+        "/tmp/decko-public-oracle-wz5z8h2l/output/pod-steps",
+        "8"
+      ],
+      "status": 0,
+      "seconds": 3.3317644647322595,
+      "stdout": "",
+      "stderr": "[withheld until disclosure] NOT RUN: 3 steps (/tmp/reference-harness/fixtures/write-battery-v1/withheld/steps.json)\n[persist] step 8 revive parent (route path: create same name): ActiveRecord::RecordInvalid: Validation failed: Name must be unique; 'PersistProbe Renamed' already exists.\n[persist] 8 revive parent (route path: create same name) ok=false cards=4 acts=7 actions=10 changes=21 refs=0\n"
+    },
+    {
+      "script": "leftover-probe.rb",
+      "args": [
+        "/tmp/decko-public-oracle-wz5z8h2l/output/leftover",
+        "8"
+      ],
+      "status": 0,
+      "seconds": 3.9358041658997536,
+      "stdout": "",
+      "stderr": "[persist] 8 delete the host (trash cascade) ok=true cards=12 acts=7 actions=16 changes=28 refs=44\n"
+    },
+    {
+      "script": "persist-write-probe.rb",
+      "args": [
+        "/tmp/decko-public-oracle-wz5z8h2l/output/pod-steps",
+        "9"
+      ],
+      "status": 0,
+      "seconds": 3.434711499605328,
+      "stdout": "",
+      "stderr": "[withheld until disclosure] NOT RUN: 3 steps (/tmp/reference-harness/fixtures/write-battery-v1/withheld/steps.json)\n[persist] 9 no-op update ok=true cards=4 acts=8 actions=10 changes=21 refs=0\n"
+    },
+    {
+      "script": "leftover-probe.rb",
+      "args": [
+        "/tmp/decko-public-oracle-wz5z8h2l/output/leftover",
+        "9"
+      ],
+      "status": 0,
+      "seconds": 3.649724554270506,
+      "stdout": "",
+      "stderr": "[persist] 9 revert the delete act (revives the trashed child) ok=true cards=12 acts=8 actions=17 changes=29 refs=44\n"
+    },
+    {
+      "script": "persist-write-probe.rb",
+      "args": [
+        "/tmp/decko-public-oracle-wz5z8h2l/output/pod-steps",
+        "10"
+      ],
+      "status": 0,
+      "seconds": 3.3005246380344033,
+      "stdout": "",
+      "stderr": "[withheld until disclosure] NOT RUN: 3 steps (/tmp/reference-harness/fixtures/write-battery-v1/withheld/steps.json)\n[persist] step 10 create over existing name: ActiveRecord::RecordInvalid: Validation failed: Name must be unique; 'PersistProbe Renamed' already exists.\n[persist] 10 create over existing name ok=false cards=4 acts=8 actions=10 changes=21 refs=0\n"
+    },
+    {
+      "script": "leftover-probe.rb",
+      "args": [
+        "/tmp/decko-public-oracle-wz5z8h2l/output/leftover",
+        "10"
+      ],
+      "status": 0,
+      "seconds": 3.3171485201455653,
+      "stdout": "",
+      "stderr": "[persist] 10 create cascade parent with a subcard ok=true cards=15 acts=9 actions=20 changes=29 refs=44\n"
+    },
+    {
+      "script": "persist-write-probe.rb",
+      "args": [
+        "/tmp/decko-public-oracle-wz5z8h2l/output/pod-steps",
+        "11"
+      ],
+      "status": 0,
+      "seconds": 3.345815729815513,
+      "stdout": "",
+      "stderr": "[withheld until disclosure] NOT RUN: 3 steps (/tmp/reference-harness/fixtures/write-battery-v1/withheld/steps.json)\n[persist] 11 create with cardtype ok=true cards=5 acts=9 actions=11 changes=21 refs=6\n"
+    },
+    {
+      "script": "leftover-probe.rb",
+      "args": [
+        "/tmp/decko-public-oracle-wz5z8h2l/output/leftover",
+        "11"
+      ],
+      "status": 0,
+      "seconds": 3.317331322003156,
+      "stdout": "",
+      "stderr": "[persist] 11 create the subcard's own child ok=true cards=17 acts=10 actions=22 changes=29 refs=44\n"
+    },
+    {
+      "script": "persist-write-probe.rb",
+      "args": [
+        "/tmp/decko-public-oracle-wz5z8h2l/output/pod-steps",
+        "12"
+      ],
+      "status": 0,
+      "seconds": 3.30391958495602,
+      "stdout": "",
+      "stderr": "[withheld until disclosure] NOT RUN: 3 steps (/tmp/reference-harness/fixtures/write-battery-v1/withheld/steps.json)\n[persist] 12 update add nest ok=true cards=5 acts=10 actions=12 changes=22 refs=7\n"
+    },
+    {
+      "script": "leftover-probe.rb",
+      "args": [
+        "/tmp/decko-public-oracle-wz5z8h2l/output/leftover",
+        "12"
+      ],
+      "status": 0,
+      "seconds": 3.683684925083071,
+      "stdout": "",
+      "stderr": "[persist] 12 revert the create act (subcard trash; its child?) ok=true cards=17 acts=11 actions=26 changes=57 refs=44\n"
+    },
+    {
+      "script": "persist-write-probe.rb",
+      "args": [
+        "/tmp/decko-public-oracle-wz5z8h2l/output/pod-steps",
+        "13"
+      ],
+      "status": 0,
+      "seconds": 3.2504118336364627,
+      "stdout": "",
+      "stderr": "[withheld until disclosure] NOT RUN: 3 steps (/tmp/reference-harness/fixtures/write-battery-v1/withheld/steps.json)\n[persist] 13 update remove nest and link ok=true cards=5 acts=11 actions=13 changes=23 refs=6\n"
+    },
+    {
+      "script": "persist-write-probe.rb",
+      "args": [
+        "/tmp/decko-public-oracle-wz5z8h2l/output/pod-steps",
+        "14"
+      ],
+      "status": 0,
+      "seconds": 3.185156117193401,
+      "stdout": "",
+      "stderr": "[withheld until disclosure] NOT RUN: 3 steps (/tmp/reference-harness/fixtures/write-battery-v1/withheld/steps.json)\n[persist] 14 save draft ok=true cards=5 acts=12 actions=14 changes=24 refs=6\n"
+    },
+    {
+      "script": "persist-write-probe.rb",
+      "args": [
+        "/tmp/decko-public-oracle-wz5z8h2l/output/pod-steps",
+        "15"
+      ],
+      "status": 0,
+      "seconds": 3.285782293882221,
+      "stdout": "",
+      "stderr": "[withheld until disclosure] NOT RUN: 3 steps (/tmp/reference-harness/fixtures/write-battery-v1/withheld/steps.json)\n[persist] 15 real save after draft ok=true cards=5 acts=13 actions=14 changes=24 refs=6\n"
+    },
+    {
+      "script": "persist-write-probe.rb",
+      "args": [
+        "/tmp/decko-public-oracle-wz5z8h2l/output/pod-steps",
+        "16"
+      ],
+      "status": 0,
+      "seconds": 3.193447859957814,
+      "stdout": "",
+      "stderr": "[withheld until disclosure] NOT RUN: 3 steps (/tmp/reference-harness/fixtures/write-battery-v1/withheld/steps.json)\n[persist] 16 create parent ok=true cards=6 acts=14 actions=15 changes=24 refs=6\n"
+    },
+    {
+      "script": "persist-write-probe.rb",
+      "args": [
+        "/tmp/decko-public-oracle-wz5z8h2l/output/pod-steps",
+        "17"
+      ],
+      "status": 0,
+      "seconds": 3.248400022275746,
+      "stdout": "",
+      "stderr": "[withheld until disclosure] NOT RUN: 3 steps (/tmp/reference-harness/fixtures/write-battery-v1/withheld/steps.json)\n[persist] 17 create child ok=true cards=8 acts=15 actions=17 changes=24 refs=6\n"
+    },
+    {
+      "script": "persist-write-probe.rb",
+      "args": [
+        "/tmp/decko-public-oracle-wz5z8h2l/output/pod-steps",
+        "18"
+      ],
+      "status": 0,
+      "seconds": 4.079559509176761,
+      "stdout": "",
+      "stderr": "[withheld until disclosure] NOT RUN: 3 steps (/tmp/reference-harness/fixtures/write-battery-v1/withheld/steps.json)\n[persist] 18 delete parent (trash cascade) ok=true cards=8 acts=16 actions=19 changes=38 refs=6\n"
+    },
+    {
+      "script": "persist-write-probe.rb",
+      "args": [
+        "/tmp/decko-public-oracle-wz5z8h2l/output/pod-steps",
+        "19"
+      ],
+      "status": 0,
+      "seconds": 3.2082475698553026,
+      "stdout": "",
+      "stderr": "[withheld until disclosure] NOT RUN: 3 steps (/tmp/reference-harness/fixtures/write-battery-v1/withheld/steps.json)\n[persist] 19 revive child (model path: update trash=false) ok=true cards=8 acts=17 actions=20 changes=39 refs=6\n"
+    },
+    {
+      "script": "pod-sow.rb",
+      "args": [
+        "/tmp/decko-public-oracle-wz5z8h2l/output/ruby-src.yml",
+        "{}"
+      ],
+      "status": 0,
+      "seconds": 5.52962516900152,
+      "stdout": "",
+      "stderr": "[pod] sowed 917 items to /tmp/decko-public-oracle-wz5z8h2l/output/ruby-src.yml\n"
+    },
+    {
+      "script": "pod-eat.rb",
+      "args": [
+        "/tmp/decko-public-oracle-wz5z8h2l/output/ruby-src.yml",
+        "/tmp/decko-public-oracle-wz5z8h2l/output/ruby-to-ruby.eat.json"
+      ],
+      "status": 0,
+      "seconds": 12.105438525322825,
+      "stdout": "",
+      "stderr": "[pod] ate 917 items: created=6 updated=0 unchanged=910 skipped=0 errors=1\n"
+    },
+    {
+      "script": "pod-sow.rb",
+      "args": [
+        "/tmp/decko-public-oracle-wz5z8h2l/output/ruby-to-ruby.yml",
+        "{}"
+      ],
+      "status": 0,
+      "seconds": 5.927561410237104,
+      "stdout": "",
+      "stderr": "[pod] sowed 918 items to /tmp/decko-public-oracle-wz5z8h2l/output/ruby-to-ruby.yml\n"
+    }
+  ]
+}

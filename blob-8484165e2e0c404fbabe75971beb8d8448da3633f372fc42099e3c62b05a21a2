@@ -1,0 +1,511 @@
+# Evidence behind the quoted numbers
+
+Complete SQLite and native MySQL main-fixture grades pass on the measured
+development snapshots below. The renamed second fixture also passes, but the
+complete mod-write probe still fails and requires further fixes. This file
+records the source, runtime, reference, result and limits of each measurement.
+
+The other documents also contain observations outside these fixture grades.
+The earlier failing comparison and its diagnostic re-check are recorded in
+full in [KNOWN-COMPARISON-FAILURE.md](KNOWN-COMPARISON-FAILURE.md), and the
+export build check is stated in [README.md](README.md). The remaining ones
+are development observations with no record in this package, labelled as such
+where they appear: the hosted RichText match and the Ruby view-cache runs in
+[DEPLOYMENT.md](DEPLOYMENT.md), the snapshot-and-restore checks in
+docs/handover/MIGRATION.md, and the hosted comparisons and the Linux
+recovery run in [UNTESTED-INPUTS.md](UNTESTED-INPUTS.md). They are not graded
+results.
+
+Each measurement describes its named development snapshot, not every later
+combined source or export. HANDOVER-MANIFEST.json identifies the exported
+source; that artifact needs its own recorded checks. Current results below
+name source commits; the older sections retain their original tree/source
+records. Development Git history and complete machine-local receipts are not
+redistributed, so those historical objects cannot be checked from this package
+alone. The recorded summaries and shipped fixture manifests preserve the
+reference and comparison context without treating a private push as release
+acceptance.
+
+The reference runtime is Ruby 3.2.3 on the project's Linux VM, running stock
+Decko 0.20.0 / card 1.110.0. The fixture's committed recorded Ruby outputs for
+synthetic-v1 were captured there on 2026-11-03 (`ruby 3.2.3
+[aarch64-linux-gnu]`), over the fixture's committed deck, and a second
+complete capture there differed only in random slot ids.
+
+Each result states the reference it was measured against. Current SQLite
+grades use the 2026-11-03 Ruby 3.2.3 capture, and the native MySQL grade uses
+the fresh Ruby 3.2.3 MySQL capture described below. The two earlier
+synthetic-v1 results were graded against the
+recording it replaced, a 2026-10-08 capture taken on Windows with Ruby
+3.3.12, which differs from it only in the order of class tokens (678 of 1,752
+render operations, absorbed by rule N3) and in random slot ids (rule N1). The
+51 browser journeys were compared with a live Ruby 3.2.3 server on a Linux
+machine. The two database matrix results are engine-level tests with no Ruby
+comparison.
+
+## Current recorded fixture results
+
+### Combined Node/SQLite confirmation and later focused correction
+
+The independently checked combined development source
+`dfa146ad54d3b67f679e7e2c430fb547e13628ae` matches VM snapshot
+`2f81da5c61810af87cdaf00cc4bbbf8751931177` across 2780 checked source paths,
+with no missing, extra or differing entries in that comparison. The complete
+synthetic-v1 and synthetic-v2 grades on that clean VM source both accept the
+recorded execution inputs and return pass. V1 matches rendering 1754/1754,
+semantics 2389/2389, persistence 16/16 and side effects 19/19. V2 matches
+2557 results and reproduces the 24 Ruby errors across all 2581 operations,
+with zero mismatches. Runtime and Ruby reference versions are the same as in
+the fixture records below.
+
+A later API-key error correction is source
+`e5f0299f090aba60449a5170b60437f297d6ea4e`, tested on VM snapshot
+`e91a7811c95dc140672fe6b83fefffa4ccae0e8c`: 11 focused tests pass across
+three files. That result is a focused check of the correction, not a new
+complete-suite or full mod-write result. The complete grades above remain
+attributed to their measured combined snapshot.
+
+### Earlier Node/SQLite main and renamed rendering fixtures
+
+- **Date and runtime:** 2026-11-03, Node v24.22.1 on the project's Linux ARM64
+  reference machine.
+- **Measured source commit:** `d0fc3068c441a477f31631fb637495ed9d7173f0`, a clean
+  VM snapshot of the main-page and early-Date error corrections. Its tested
+  product/reference inputs match the corresponding delivered development
+  source; it is not the source commit of every later combined export.
+- **Reference:** actual stock Decko 0.20.0 / card 1.110.0 answers captured under
+  Ruby 3.2.3. These TypeScript grades read the recordings; Ruby was not rerun
+  as part of either grade.
+- **Source admission:** both complete runs and grades accept the exact clean
+  source and recorded runtime inputs, with no source problems.
+- **synthetic-v1:** fixture digest
+  `7a96292d07200136b2de4f9727d9f2aafed105a79d37d8f834ac1788dd1f823b`;
+  normalization N1/N2/N3; rendering 1754/1754, semantics 2389/2389,
+  persistence 16/16, side effects 19/19; verdict pass, exit 0. Read-write
+  checks are 8/8 and other-table checks are 12/12. The engine-only
+  `deck_data_version` table remains reported rather than compared.
+- **synthetic-v2:** renamed fixture digest
+  `30f722160261d06295e900eedc70e45bab728825ae3529a02deacc3036303945`;
+  normalization N1/N2/N3/N4/N6/N8/N9/N10; all 2581 render operations compare
+  correctly: 2557 results match and 24 Ruby errors are reproduced. The fixture
+  has no semantics or write scenarios; empty categories are not write coverage.
+  Read-write checks are 2/2; verdict pass, exit 0.
+
+The 24 second-fixture cases are email-template page renders for which Ruby
+raises `CodenameNotFound: unknown codename: test_context`. The port now raises
+the same failure instead of returning a page. They are reproduced upstream
+errors, not 24 remaining mismatches. The existing error-class naming rule
+compares the host-language class names; no new mask, fixture change or
+declared difference supplied a pass. The raw summary separates successful
+results from reproduced errors:
+
+```text
+rendering      2557 / 2581  99.07%  (24 reproduced upstream failures)
+verdict: pass
+```
+
+The earlier main-page correction was checked by a red-before/green-after
+runtime test, and the early bare-Date correction added a separate failing
+control before its fix. The final affected group passed 24 cases with no
+failures or skips; typecheck exited 0. All four retained stock-Ruby controls
+match, including the bare Date's exact 88-byte error span, while main-page,
+nested and global-loud behavior remains tested. These are targeted controls,
+not a statement that the complete development suite passed.
+
+### Native MySQL main fixture and fresh Ruby 3.2.3 reference
+
+- **Date and runtime:** 2026-11-03, actual MySQL 8.4.11, Node v24.22.1 and
+  stock Ruby 3.2.3 (`aarch64-linux-gnu`) on the Linux reference machine;
+  Decko 0.20.0, card 1.110.0 and mysql2 0.5.7.
+- **Measured sources:** Ruby capture commit
+  `e9a46ad0ef6d4a799642ec17c7b06a0f135ccc9e`; TypeScript run commit
+  `e7a4077204d6653219e7aa26f7a751a5a79e7e52`. These are exact VM snapshots,
+  not a claim that a later integration commit was executed.
+- **Capture:** complete Ruby and port runs cover 1752 render operations,
+  2388 semantics operations and all 16 scenarios. After-write render/ask
+  answers are included in the graded category totals below.
+- **Reference storage:**
+  `reference-harness/fixtures/synthetic-v1/expected-lanes/mysql/` now holds
+  the Ruby 3.2.3 overlay: 12 render answers, 6 semantics answers and no
+  scenario overrides. The complete MySQL Ruby scenarios match the current
+  SQLite reference. The superseded Windows Ruby 3.3.12 recording is retained
+  in provenance, not used as the current reference.
+- **Full grade:** source admission accepted, no source problems or warnings;
+  N1/N2/N3, no declared differences; exit 0, verdict pass.
+
+```text
+rendering      1754 / 1754
+semantics      2389 / 2389
+persistence      16 / 16
+side_effects     19 / 19
+read writes       8 / 8
+other tables     12 / 12
+verdict: pass
+```
+
+The raw report separately excludes the engine-only `deck_data_version` and
+`sqlite_sequence` tables that are absent from the original MySQL schema; it
+does not turn those exclusions into passes. Against the superseded overlay,
+the same TypeScript recording fails with 8 rendering, 4 semantics, 12
+persistence and 4 side-effect mismatches; that negative control is retained.
+This is native main-fixture evidence, not arbitrary-mod write compatibility.
+The capture source and corrected static parser/driver path are recorded;
+the full project suite was not run for that reference recapture. Its targeted
+no-emit check had seven diagnostics that also reproduce on the immutable
+baseline, so it is not described as a passing typecheck.
+
+### Complete mod-write probe: failing checkpoint
+
+- **Date and source:** 2026-11-03, clean VM source commit
+  `f56553ad69eb1e35dff929e9fcc81a6fbbbbd3c6`, Node v24.22.1 on Linux.
+- **Fixture:** synthetic-v2-mod-probes, digest
+  `fd3510046e99ec0b65f05289851cc2aa42d6590366a647b2d66e2953848818b7`;
+  556 render operations and the complete 530-step event scenario, compared
+  against stock Ruby 3.2.3 answers.
+- **Source admission:** accepted, no source problems. The ordinary complete
+  grade still exits 1 with verdict **fail**.
+
+| Category | Successful comparisons | Reproduced Ruby errors | Mismatches |
+| --- | ---: | ---: | ---: |
+| Rendering | 541 | 15 | 0 |
+| Persistence | 252 of 530 | 0 | 278 |
+| Side effects | 139 of 530 | 88 | 303 |
+| Other-table writes | 106 of 381 | not a separate category | 275 |
+
+Limited password/history corrections improve the previous checkpoint; they
+do not complete the fixture. Generated asset-field writes, authorization
+behavior, exception answers and downstream row/sequence changes remain under
+repair. Expected data and comparison rules are unchanged. These are defects
+to fix, not accepted limitations or a reason to claim full mod-write
+compatibility. Other-table checks are separate evidence and are not added to
+the four category totals.
+
+All counts above are direct runner/grader records. The runs use disposable
+database copies and normal configured engine caches; OS/module caches were
+not controlled. No model verdict, response substitution or automatic retry
+supplies the quoted outcomes. The final combined source and exported artifact
+still need their own checks.
+
+The sections below retain older measurements for their original source and
+configuration. They do not override these newer results.
+
+## 1. Synthetic-v1 comparison
+
+### Against the Ruby 3.2.3 reference capture, 3 November 2026
+
+- **What was measured:** the complete synthetic-v1 comparison, as a full
+  grade, against the fixture's recorded Ruby outputs captured on the
+  project's VM with Ruby 3.2.3 on 2026-11-03.
+- **Date:** 2026-11-03 (graded 2026-11-03T14:33:15Z).
+- **Source tree:** `a915d9f77c501808dcb5ef23f552803f96f5396e`, a commit of the development tree that
+  committed the 2026-11-03 capture, without its folders of run records,
+  reports, scratch output, benchmark results and a corpus fixture, none of
+  which the synthetic-v1 comparison reads. The grader's source check
+  confirmed it for every recorded run.
+- **Machine:** the project's Linux VM, Node v24.22.1.
+- **Fixture:** synthetic-v1, digest
+  `7a96292d07200136b2de4f9727d9f2aafed105a79d37d8f834ac1788dd1f823b`.
+- **Reference:** the fixture's committed recorded Ruby answers for Decko
+  0.20.0 / card 1.110.0, captured on the project's VM with Ruby 3.2.3
+  (`ruby 3.2.3 [aarch64-linux-gnu]`) on 2026-11-03. This run compared against
+  those recordings; it did not execute Ruby afresh.
+- **Checker and normalization:** decko-byte-checker/1; rules N1, N2 and N3.
+  The port emits class tokens in the order of the earlier Windows capture, so
+  its renders match the Ruby 3.2.3 capture through N3 (with N3 off,
+  rendering is 1076 / 1754; the other 678 render operations differ only in
+  class-token order).
+- **Result:** rendering 1754 / 1754, semantics 2389 / 2389, persistence
+  16 / 16, side effects 19 / 19; verdict pass.
+
+Excerpt of the grader's summary output (per-group rows omitted):
+
+```
+normalization: N1, N2, N3
+rendering      1754 / 1754  100%
+semantics      2389 / 2389  100%
+persistence      16 / 16    100%
+side_effects     19 / 19    100%
+read writes       8 / 8     reads that wrote only what the oracle's reads wrote
+other tables     12 / 12    write steps whose non-card tables match the oracle's; 0 declared difference(s), not counted as passes
+engine-only   deck_data_version: tables the oracle's schema does not have, written by 12 write step(s); not compared
+verdict: pass
+```
+
+### Earlier comparisons against the superseded Windows recording
+
+- **What was measured:** the complete synthetic-v1 comparison. The reference
+  harness runs every recorded operation of the synthetic deck through the
+  TypeScript port, and the grader compares each answer byte for byte with the
+  recorded Ruby answer for the same operation, in four categories.
+- **Date:** 2026-11-02 (graded 2026-11-02T17:50:46Z).
+- **Source tree:** `df76698e65d021cb88303506f60425e6d46265a6`, from a clean
+  checkout, which the grader's source check confirmed for every recorded run.
+- **Machine:** a Windows x64 workstation, Node v24.22.1.
+- **Configuration:** at this tree the engine's own defaults left all five
+  `DECKO_STRICT_PARITY_*` switches off; the mail unfollow refusal became the
+  default only later. The comparison adapter at this tree
+  (reference-harness/adapters/ts/adapter.ts) sets
+  `DECKO_STRICT_PARITY_MAIL_UNFOLLOW_REFUSAL=on` unless the run sets it
+  otherwise, and the grade records the engine reporting it as on. The grade
+  does not record the other four switches; the adapter does not set them, and
+  their default is off. The adapter also turns off three sign-in hardening
+  settings (`DECKO_SIGNIN_UNIFORM_FAILURE`, `DECKO_SIGNIN_THROTTLE` and
+  `DECKO_SESSION_REVOCATION`) so the port answers sign-ins as the Ruby
+  reference does, and the engine reported the legacy-sha1 password hash.
+- **Fixture:** synthetic-v1, digest
+  `7a96292d07200136b2de4f9727d9f2aafed105a79d37d8f834ac1788dd1f823b`. The
+  fixture ships in this package under reference-harness/fixtures/synthetic-v1,
+  and the grader records this digest in its report.
+- **Reference:** the recorded Ruby answers the fixture held at the time, for
+  Decko 0.20.0 / card 1.110.0, captured on Windows with Ruby 3.3.12 on
+  2026-10-08 and since superseded by the 2026-11-03 Ruby 3.2.3 capture (the
+  superseded files' hashes are in the fixture's expected/MANIFEST.json). This
+  run compared against those recordings; it did not execute Ruby afresh, and
+  it was not graded against the Ruby 3.2.3 capture.
+- **Checker and normalization:** decko-byte-checker/1; rules N1, N2 and N3.
+- **Result:** rendering 1754 / 1754, semantics 2389 / 2389, persistence
+  16 / 16, side effects 19 / 19; verdict pass.
+
+Excerpt of the grader's summary output (per-group rows omitted):
+
+```
+normalization: N1, N2, N3
+rendering      1754 / 1754  100%
+semantics      2389 / 2389  100%
+persistence      16 / 16    100%
+side_effects     19 / 19    100%
+read writes       8 / 8     reads that wrote only what the oracle's reads wrote
+other tables     12 / 12    write steps whose non-card tables match the oracle's; 0 declared difference(s), not counted as passes
+verdict: pass
+```
+
+#### The same earlier comparison on a later tree, 3 November 2026
+
+- **What was measured:** the complete synthetic-v1 comparison again, as a
+  full grade (not a diagnostic run), on a later development tree.
+- **Date:** 2026-11-03 (result recorded at 04:35 UTC).
+- **Source tree:** `d47ed9369af4e2bcd943189c36cfe5c0227153e9`, graded from a
+  commit of that tree without its folders of run records, reports, scratch
+  output, benchmark results and a corpus fixture, none of which the
+  synthetic-v1 comparison reads.
+- **Machine:** a Linux machine, Node v24.22.1 installed for this grade only.
+- **Fixture, reference, checker and normalization:** as for the 2 November
+  run above: synthetic-v1 against the superseded 2026-10-08 Windows Ruby
+  3.3.12 recording the fixture held at the time; no Ruby ran, and it was not
+  graded against the Ruby 3.2.3 capture; rules N1, N2 and N3.
+- **Result:** rendering 1754 / 1754, semantics 2389 / 2389, persistence
+  16 / 16, side effects 19 / 19; verdict pass.
+- **Historical source boundary:** this measurement predates subsequent
+  behavior fixes, fresh reference captures and test/export changes. The
+  current source is not described by a comment-only difference from this
+  tree. Use the newer measurements above for their named source snapshots;
+  this older result remains evidence only for the tree and recording stated
+  here.
+
+Excerpt of the grader's summary output (per-group rows omitted). The
+`engine-only` row names a table the port writes that Ruby's schema does not
+have; it is reported and not compared:
+
+```
+normalization: N1, N2, N3
+rendering      1754 / 1754  100%
+semantics      2389 / 2389  100%
+persistence      16 / 16    100%
+side_effects     19 / 19    100%
+read writes       8 / 8     reads that wrote only what the oracle's reads wrote
+other tables     12 / 12    write steps whose non-card tables match the oracle's; 0 declared difference(s), not counted as passes
+engine-only   deck_data_version: tables the oracle's schema does not have, written by 12 write step(s); not compared
+verdict: pass
+```
+
+## 2. Browser journeys, signed-in and anonymous, strict-parity switches at their defaults
+
+- **What was measured:** 51 browser journeys on the synthetic deck, signed-in
+  and anonymous (for example anonymous reading, search, sign-up and refused
+  anonymous writes). One browser drives each journey against the TypeScript port
+  and against the Ruby reference, and the checker compares completion, page
+  addresses, text, structure, form fields, mail and database rows for each.
+- **Date:** 2026-11-02 (run started 2026-11-02T18:42:54Z).
+- **Source tree:** `f174eac26f17860d0c74f61dc8813aa425db91c0`. Every journey
+  records the same clean source and the same build.
+- **Runtime:** the port was served by Node v24.22.1 from its build, and one
+  Chromium 155.0.8059.85 browser drove both sides. The run records do not name
+  the operating system.
+- **Configuration:** "default" in this section's title and in the other
+  documents means only that the five `DECKO_STRICT_PARITY_*` switches were
+  unset, so each took its default at this tree: the mail unfollow refusal on,
+  the other four off. It does not mean the port ran with its out-of-the-box
+  settings. The port side ran with the harness's port launcher
+  (ts-server.mjs, which is not included in this package), without its
+  `--production` option. At this tree (development
+  commit be422339) the launcher set these settings for the port:
+  - `DECKO_WRITE_PATH=1`: the write path on, so journeys can save cards.
+  - `DECKO_MAIL_CAPTURE=1`: outgoing mail captured in memory so the checker
+    can compare it, instead of being dropped.
+  - `DECKO_FILES_DIR` and `COMPILED_ASSETS_DIR`: both the files directory of
+    the session's disposable copy of the synthetic deck.
+  - `DECKO_ORIGIN`: the launcher's own loopback address,
+    `http://127.0.0.1:<port>`. The renderer's deck origin was set to the same
+    address in code, and the fixture's clock and default page view were
+    applied in code.
+  - `DECKO_TOKEN_SECRET`: a fixed test secret.
+  - `DECKO_SIGNIN_UNIFORM_FAILURE=off`, `DECKO_SIGNIN_THROTTLE=off` and
+    `DECKO_SESSION_REVOCATION=off`, so the port answers sign-ins as the Ruby
+    reference does.
+  - `DECKO_PASSWORD_HASH=legacy-sha1`.
+  - `DECKO_FONT_AWESOME=local` (the vendored same-origin Font Awesome), unless
+    already set.
+  - `DECKO_DECK_PROFILE=stock`: the deck is served as stock Decko serves it.
+  - `DECKO_ASSET_REFRESH=never`, unless already set: compiled script and style
+    outputs are never rewritten, as the Ruby reference is configured.
+  - `DECKO_MOD_PUBLIC_DIR`: the reference application's public directory
+    (not included in this package; section 5 of reference-harness/SPEC.md
+    describes the reference application), unless the run named a Decko
+    checkout, in which case that checkout. The run's records do not say which.
+
+  It left these unset, so they took their defaults:
+  - **Serializer era:** `DECKO_SERIALIZER_ERA` not set, so `stock`, the
+    default. The reasons this still matched the live Ruby 3.2.3 reference are
+    in [DEPLOYMENT.md](DEPLOYMENT.md).
+  - **Haml slot style:** `DECKO_HAML_SLOT_STYLE` not set, so `hash`, the
+    default.
+
+  On the Ruby side, view caching is not recorded. The run's records do not
+  state it. The harness's reference application (not included in this
+  package) sets no view-cache option, and its VM launcher (vm-session.sh, not
+  included in this package) starts the reference server with
+  `RAILS_ENV=development`.
+
+  These launcher settings are read from the source at this tree; the run's
+  own records state the strict-parity switches only.
+- **Fixture:** synthetic deck SHA-256
+  `e5798f2cc72905e5a5e4d581ba107e6177a8d36eba02923ac4a207056b0da93c`,
+  journeys SHA-256
+  `2f4dc0bc216e77e8dde229bc4e2cfc1462f789af21c3f31c2c66feb27934bc20`.
+- **Journey definitions:** the 51 journey definitions are not included in
+  this package, and neither are the runner and checker that ran them; of the
+  browser tools, the package includes only
+  reference-harness/browser/lib/journey-provenance.mjs. The journeys SHA-256
+  above identifies the
+  definitions that ran. Section 8 of reference-harness/SPEC.md describes the
+  journey format and how the two sides are compared.
+- **Reference:** journey captures from a live Ruby 3.2.3 server on a Linux
+  machine running stock Decko 0.20.0 / card 1.110.0.
+- **Checker:** decko-journey-checker/1.
+- **Result:** 51 / 51 journeys pass, 0 not graded; verdict pass. The checker
+  states its own scope: an isolated host comparison, not acceptance of a
+  deployed site.
+
+Excerpt of the checker's summary output:
+
+```
+journeys: 51 / 51 pass (0 not graded)
+  completion 51 / 51
+  address    89 / 89
+  text       89 / 89
+  structure  89 / 89
+  fields     89 / 89
+  mail       51 / 51
+  rows       51 / 51
+  editor     13 / 13
+```
+
+## 3. PostgreSQL 16.15, runtime database matrix
+
+- **What was measured:** the five assertions of the runtime database matrix
+  (saves; rollback of a failed save; concurrent writes on two connections;
+  concurrent reads never served a save's uncommitted rows; permissions that
+  deny a write and write nothing). They ran against a native PostgreSQL 16.15
+  server, using two independent client connections.
+- **Date:** 2026-11-02.
+- **Source tree:** `df76698e65d021cb88303506f60425e6d46265a6`, the same tree
+  as the 2 November synthetic-v1 comparison. All 134 repository files bundled into the
+  run match that tree byte for byte; the bundle also holds the `node:test`
+  adapter described below and the locked dependencies.
+- **Database:** PostgreSQL 16.15 from the `postgres:16-alpine` container
+  image, in a disposable database on a Linux machine.
+- **Reference:** none. This is an engine-level test of the port against
+  PostgreSQL 16.15 itself, not a Ruby comparison.
+- **How it ran:** the original assertion bodies were bundled with the engine
+  and run under `node:test` and `node:assert/strict` instead of Vitest. Only
+  the backend fixture changed, to use two independent `pg` client connections
+  with the project's PostgreSQL type configuration applied. This is therefore
+  not an unmodified Vitest run.
+- **Result:** 5 passed, 0 failed, 0 skipped; exit status 0.
+
+Excerpt of the test output (timing lines omitted):
+
+```
+# Subtest: matrix: PostgreSQL 16.15 (native VM scratch, two connections)
+    ok 1 - saves: a create, an update and a delete are committed and read back
+    ok 2 - rollback: a failure in a later stage of a save leaves every table as it was
+    ok 3 - concurrent writes: two saves on two handles both commit, each with its own history
+    ok 4 - concurrent reads: a reader is never served a save's uncommitted rows
+    ok 5 - permissions: a rule that grants another party denies the write and writes nothing
+# tests 5
+# pass 5
+# fail 0
+# skipped 0
+```
+
+## 4. MySQL 8.4.11 and PGlite, local runtime database matrix
+
+- **What was measured:** the same five runtime database matrix assertions as
+  in section 3, run by the project's unmodified matrix runner under Vitest,
+  one cell per backend.
+- **Date:** 2026-11-02 (run started 2026-11-02T17:38:15Z).
+- **Source tree:** `df76698e65d021cb88303506f60425e6d46265a6`, the same tree
+  as the 2 November run in section 1 and as section 3, as recorded by the
+  run's evidence manifest.
+- **Machine:** a Windows x64 workstation, Node 24.22.1. MySQL 8.4.11 ran
+  natively from server binaries already installed on that workstation; PGlite
+  is PostgreSQL compiled to WebAssembly and embedded in the Node process, with
+  one database session.
+- **Reference:** none. Like section 3, this is an engine-level test against
+  each database, not a Ruby comparison.
+- **Configuration:** a local-only run; no hosted service was contacted. No
+  result cache or automatic retry was used; Vitest may reuse unchanged
+  compiled transforms.
+- **Result:**
+
+  | Backend | Passed | Skipped | Failed |
+  | --- | ---: | ---: | ---: |
+  | MySQL 8.4.11 (native) | 5 | 0 | 0 |
+  | PGlite (one session) | 3 | 2 | 0 |
+
+  The two PGlite skips are the concurrent-writes and concurrent-reads
+  assertions, which need two independent database sessions that PGlite does
+  not offer. They are not passes, and the runner marks the PGlite cell
+  incomplete for that reason. The same run also passed 5 of 5 on native
+  SQLite and on three local stand-ins for hosted drivers (Cloudflare D1 under
+  Miniflare, and the HTTP drivers for libSQL and for the hosted database
+  service of the Bunny (bunny.net) edge platform, each against a local mock
+  server); those local stand-ins are not
+  hosted-provider evidence.
+
+The runner's per-case results for these two backends, from its summary
+record, reformatted as one line per case:
+
+```
+matrix: MySQL 8.4 (native)
+  passed  saves: a create, an update and a delete are committed and read back
+  passed  rollback: a failure in a later stage of a save leaves every table as it was
+  passed  concurrent writes: two saves on two handles both commit, each with its own history
+  passed  concurrent reads: a reader is never served a save's uncommitted rows
+  passed  permissions: a rule that grants another party denies the write and writes nothing
+matrix: PostgreSQL (PGlite WASM, one session)
+  passed  saves: a create, an update and a delete are committed and read back
+  passed  rollback: a failure in a later stage of a save leaves every table as it was
+  skipped concurrent writes: two saves on two handles both commit, each with its own history
+  skipped concurrent reads: a reader is never served a save's uncommitted rows
+  passed  permissions: a rule that grants another party denies the write and writes nothing
+```
+
+## What these results do not cover
+
+They do not grade every later combined source or exported package, establish
+arbitrary PostgreSQL/MySQL migrations, or prove native Bun, hosted-provider
+or deployed-site acceptance. The current MySQL reference was freshly captured
+with Ruby 3.2.3; the later TypeScript grade reads those recorded answers.
+Unavailable inputs, export exclusions and remaining failures are listed in
+[UNTESTED-INPUTS.md](UNTESTED-INPUTS.md).

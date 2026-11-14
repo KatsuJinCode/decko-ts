@@ -1,0 +1,50 @@
+{
+  "row": "remove-public-link-on-delete",
+  "event": "remove_public_link_on_delete",
+  "pinned_file": "card-mod-carrierwave-0.20.0/set/abstract/attachment/local.rb",
+  "pinned_declaration": "event :remove_public_link_on_delete, :integrate, on: :delete, when: :local? do",
+  "pinned_declaration_line": 5,
+  "pinned_body": "  remove_public_links",
+  "pinned_body_lines": [
+    {
+      "line": 6,
+      "text": "  remove_public_links"
+    }
+  ],
+  "executed": true,
+  "notes": [
+    "the helper the body calls (remove_public_links, local.rb:37-42) touches the file system, so its own bytes are NOT executed here; the capture records the body asking for the removal, and the helper's bytes stay in the pinned gem for a reader to read"
+  ],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a delete of a local attachment: the body asks to remove the public link tree",
+      "supplied_answers": {
+        "attributes": [],
+        "returns": [
+          "remove_public_links"
+        ],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "remove_public_links",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    }
+  ]
+}

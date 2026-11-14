@@ -1,0 +1,6 @@
+These minimal historical receipt excerpts are inputs to the workbatch inventory
+test. They retain the original row identifiers and referenced instrument paths.
+`provenance.json` pins each complete source receipt and the extracted bytes.
+Full historical reports remain in Git; tests do not read them from the working
+tree. These fixtures establish inventory consistency, not fresh runtime,
+compatibility or release acceptance.

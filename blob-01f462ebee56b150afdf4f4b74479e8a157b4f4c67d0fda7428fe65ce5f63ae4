@@ -1,0 +1,3 @@
+# reg-dsl-B22: closed on the reproduced quirk
+`src/cql/parser.ts`: `ParsedValue` carries `nullFromScalar`, set only by the
+Test pins, `tests/cql/sql-generation.test.ts` (the old `is NULL` pin is

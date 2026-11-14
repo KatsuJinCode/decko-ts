@@ -1,0 +1,38 @@
+[
+  {
+    "name": "replace-existing-and-append-missing",
+    "result": "$blue: #00f !default;\n$red: #ff0000 !default;\n$gray-100: #eee !default;\n$primary: $blue !default;\n"
+  },
+  {
+    "name": "no-matching-lines-appends-both-groups",
+    "result": "$body-bg: #fff !default;\n$teal: #0aa !default;\n$danger: #d9534f !default;\n"
+  },
+  {
+    "name": "names-outside-vocabulary-are-sliced-away",
+    "result": "$pink: #f0f !default;\n"
+  },
+  {
+    "name": "empty-params-groups-noop",
+    "result": "$blue: #0000ff !default;\n"
+  },
+  {
+    "name": "absent-group-key-noop",
+    "result": "$cyan: #0cc !default;\n$indigo: #6610f2 !default;\n"
+  },
+  {
+    "name": "gsub-replaces-every-matching-line",
+    "result": "  $blue:   #00f !default;\n$blue: #00f !default;\n$x: 1 !default;\n"
+  },
+  {
+    "name": "value-with-internal-default-token-replaced-to-line-end",
+    "result": "$white: #fff !default;\n"
+  },
+  {
+    "name": "empty-string-value-appends-empty",
+    "result": "$orange:  !default;\n"
+  },
+  {
+    "name": "gray-dash-names-replace",
+    "result": "$gray-600: #555 !default;\n"
+  }
+]

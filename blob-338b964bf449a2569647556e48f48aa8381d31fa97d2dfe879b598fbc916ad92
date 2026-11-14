@@ -1,0 +1,15 @@
+{
+  "row": "expire-old-name",
+  "event_file": "card-1.110.0/mod/core/set/all/name_events.rb",
+  "event": "expire_old_name",
+  "scenarios": [
+    {
+      "name": "a renamed card expires the name it had before the act",
+      "attributes": { "name": "New+Name", "name_before_act": "Old+Name" }
+    },
+    {
+      "name": "a card whose previous name is nil pushes nil onto the expirees, which is what Ruby pushes",
+      "attributes": { "name": "New+Name", "name_before_act": null }
+    }
+  ]
+}

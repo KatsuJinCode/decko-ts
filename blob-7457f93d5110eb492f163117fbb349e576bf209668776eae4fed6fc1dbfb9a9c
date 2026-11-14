@@ -1,0 +1,29 @@
+{
+  "row": "rename-in-trash",
+  "event_file": "card-1.110.0/mod/core/set/all/name_events.rb",
+  "event": "rename_in_trash",
+  "scenarios": [
+    {
+      "name": "a trashed card already owns the key: the body renames it as the trash obstacle",
+      "attributes": {
+        "name": { "__calls__": { "key": "old+name", "to_s": "Old+Name" } }
+      },
+      "class_methods": {
+        "Card": {
+          "find_by_key_and_trash": { "__calls__": { "to_s": "Other+Card" } }
+        }
+      }
+    },
+    {
+      "name": "no trashed card owns the key: the body returns before it renames anything",
+      "attributes": {
+        "name": { "__calls__": { "key": "old+name", "to_s": "Old+Name" } }
+      },
+      "class_methods": {
+        "Card": {
+          "find_by_key_and_trash": null
+        }
+      }
+    }
+  ]
+}

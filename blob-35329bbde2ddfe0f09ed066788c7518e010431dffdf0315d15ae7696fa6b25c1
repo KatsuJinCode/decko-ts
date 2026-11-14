@@ -1,0 +1,98 @@
+{
+  "ruby": "ruby 3.4.11 (2026-09-23 revision 592f1ffdb3) +PRISM [x64-mingw-ucrt]",
+  "active_support": "7.2.4",
+  "id_lookup_fixture": {
+    "1001": "A",
+    "1002": "B",
+    "1003": "C"
+  },
+  "sources": {
+    "normalization": "37330fe2e6e63084d9551e337436751d3e76bfec3a8d4f552dc8895f8ada11bd",
+    "run": "fd1f344b164374fd599e89a55638bd7bfed27c4b17315dbb3d799b44a953e2eb",
+    "card_name": "9f1b65d1d09b34865d8dca16b24bd433536ee36f7090adc49c74c40417cda845",
+    "cardname": "67a84cf2cfdede50632587419f60dea8311735245052cda87d8dac4efc979c19"
+  },
+  "rows": [
+    {
+      "clauses": {
+        "append": [
+          "A",
+          "B"
+        ]
+      },
+      "name": "C+A+B"
+    },
+    {
+      "clauses": {
+        "prepend": [
+          "A",
+          "B"
+        ]
+      },
+      "name": "A+B+C"
+    },
+    {
+      "clauses": {
+        "append": [
+          "A"
+        ]
+      },
+      "name": "C+A"
+    },
+    {
+      "clauses": {
+        "append": []
+      },
+      "name": "C"
+    },
+    {
+      "clauses": {
+        "prepend": []
+      },
+      "name": "C"
+    },
+    {
+      "clauses": {
+        "append": [
+          [
+            "A"
+          ],
+          [
+            "B"
+          ]
+        ]
+      },
+      "name": "C+A+B"
+    },
+    {
+      "clauses": {
+        "append": [
+          null
+        ]
+      },
+      "name": "C+"
+    },
+    {
+      "clauses": {
+        "append": [
+          "A",
+          null,
+          "B"
+        ]
+      },
+      "name": "C+A++B"
+    },
+    {
+      "clauses": {
+        "append": 1001
+      },
+      "name": "C+A"
+    },
+    {
+      "clauses": {
+        "prepend": 1002
+      },
+      "name": "B+C"
+    }
+  ]
+}

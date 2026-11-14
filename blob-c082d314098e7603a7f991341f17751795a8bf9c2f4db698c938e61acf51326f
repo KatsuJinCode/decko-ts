@@ -1,0 +1,17 @@
+import { readFileSync } from "node:fs";
+import { afterEach, expect, it } from "vitest";
+import { DeckoName } from "../../../src/card/name.js";
+import { applyDeckInflections, resetDeckInflections, singularize } from "../../../src/card/name/inflect.js";
+
+afterEach(()=>resetDeckInflections());
+const oracle=JSON.parse(readFileSync(new URL("./unicode-word-name-results.json",import.meta.url),"utf8")) as {
+  rows:{input:string;key:string;safeKey:string;urlKey:string}[];
+};
+it.each(oracle.rows)("matches native Word membership for $input",row=>{
+  const name=DeckoName.parse(row.input);
+  expect({key:name.key,safeKey:name.safeKey,urlKey:name.urlKey}).toEqual({key:row.key,safeKey:row.safeKey,urlKey:row.urlKey});
+});
+it("preserves the syntax and flags of caller-supplied inflection expressions",()=>{
+  applyDeckInflections({singular:[[/\_$/i,"z"]]});
+  expect(singularize("word_")).toBe("wordz");
+});

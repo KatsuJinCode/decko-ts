@@ -1,0 +1,63 @@
+# Compiler fixture input fidelity
+
+Issue 305, Plane DECKO-757. Only the Bootstrap colorpicker input string is
+corrected. Every captured compiler output and every other fixture field is
+unchanged. The correction is an input-fidelity repair, not a new Ruby capture
+or a change to expected behavior.
+
+## Provenance and mechanism
+
+Commit `77df2156d62dc9f96aa486cbdac5d2af5fc86fee` changed only
+`compile_pins[1].source` among all compiler input/output fields. At byte 8804,
+`rgba(0, 0, 0, 0.2)` became `rhbq(0, 0, 0, 0.2)`; length stayed 13,640 bytes.
+The compiled expectations did not change. The parent input SHA256 is
+`27166b0e6b957e2f2295ffec37567f5464f781abc9b1dbd690ad2086122a6ace`,
+identical to the existing approved asset and its independently retained
+source profile. The changed input SHA256 was
+`7ad885ae343fcea63f2282f481f0e2499faa44eebe9ae90f6b06daab72164f4f`.
+
+The previous tests accept a compiler error for this source because its
+standalone input lacks `$white`; both strings still throw. They therefore
+cannot detect this input corruption. The new offline Node controls bind all
+twelve stored compiler input strings to the admitted asset profile's exact
+path, byte length and SHA256. Generic text editing can no longer change a
+stored input unnoticed. This binds the declared historical snapshot, not
+publisher authenticity or a complete source-supply audit.
+
+The fixture was patched at that one verified token. A structural comparison
+confirmed that restoring the old source field makes the complete before/after
+JSON objects equal. No compiled expectation was regenerated or normalized.
+Whole-fixture SHA256 changes from
+`0eccb6284a28cb89b195401abc2230a9b105d13df723b803c777bec5ef590cbf` to
+`eadd612caf450a605397815f567e29a754b988edff8d21b4abad228308859486`.
+
+## Executed checks
+
+- Before correction, the new Node controls execute twelve identities: eleven
+  pass and the colorpicker source hash fails, native exit 1.
+- After correction, all twelve Node identities pass without failures/skips,
+  native exit 0.
+- The original affected compiler file executes all twenty cases with the
+  explicit approved child-only GEM_HOME: twenty pass, none fail/skip, native
+  exit 0. Its original compiler-output assertions remain unchanged.
+- TypeScript checking exits 0 on the combined reviewed integration plus this
+  repair. The earlier selector-only colorpicker check also passed before the
+  correction; it is not negative evidence for input fidelity.
+
+Exact original test command:
+`node node_modules/vitest/vitest.mjs run tests/card/mod-loader/compile-engines-pin.test.ts`.
+New guard command:
+`node --test tests/tools/compiler-fixture-source-fidelity.test.mjs`.
+Compiler command: `node tools/typescript/typecheck.mjs --noEmit`.
+
+Native logs and the structural-repair receipt are retained in the lead's
+existing local evidence folder as `lead-305-*`. These are fresh local outcomes,
+not a model judgment, automatic retry or cached test verdict; compiler and OS
+caches may be warm. No runtime install, new checkout, hosted/VM call, machine
+setting change, source-tree copy or broad suite ran. Independent exact-head
+review and final combined release evidence remain separate requirements.
+
+The fixture retains all original CRLF line endings. Default `git diff --check`
+reports that carriage return on the changed JSON line; the read-only
+`git -c core.whitespace=cr-at-eol diff --check` accepts the preserved encoding.
+No repository/global setting or fixture line ending was changed.

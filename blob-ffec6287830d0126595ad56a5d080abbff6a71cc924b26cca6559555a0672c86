@@ -1,0 +1,4 @@
+# reg-routes-A22: closed, the verification now checkable at the shipped tree
+`npx vitest run tests/server/wildcard-bad-address-parity.test.ts
+tests/deploy/bunny-edge-bad-address-wildcard.test.ts
+tests/deploy/staging-bad-address-wildcard-endpoint.test.ts` reads 3 files,

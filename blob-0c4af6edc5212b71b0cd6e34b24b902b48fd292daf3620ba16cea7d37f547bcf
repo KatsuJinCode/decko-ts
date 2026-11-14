@@ -1,0 +1,25 @@
+import {afterEach, expect, it} from "vitest";
+import {allRenderingErrorsRaise, setRaiseAllRenderingErrors, UnsupportedViewError} from "../../../src/card/render/format.js";
+import {renderPageBytes} from "../../../src/card/render/page.js";
+import {createRenderTestStorage, seedCard} from "./render-test-storage.js";
+
+const prior = allRenderingErrorsRaise();
+afterEach(() => setRaiseAllRenderingErrors(prior));
+
+it("propagates focal view errors in production while supported views still render", async () => {
+  const storage = await createRenderTestStorage();
+  try {
+    await seedCard(storage, {id: 2, name: "Basic", codename: "basic", typeId: 2});
+    await seedCard(storage, {id: 20, name: "Probe", typeId: 2, dbContent: "public probe"});
+    await storage.fetcher.codenames.ensureLoaded();
+    storage.fetcher.installNameEnvironment();
+    storage.engine.modLoader = undefined;
+    storage.engine.views.public_probe = () => "public probe";
+    storage.engine.views.broken_probe = () => {throw new Error("ordinary render failure");};
+    setRaiseAllRenderingErrors(false);
+    expect(await renderPageBytes(storage.engine, "Probe", "public_probe", undefined, {})).toBe("public probe");
+    await expect(renderPageBytes(storage.engine, "Probe", "broken_probe", undefined, {})).rejects.toThrow("ordinary render failure");
+    await expect(renderPageBytes(storage.engine, "Probe", "not_a_real_view", undefined, {}))
+      .rejects.toBeInstanceOf(UnsupportedViewError);
+  } finally {storage.close();}
+});

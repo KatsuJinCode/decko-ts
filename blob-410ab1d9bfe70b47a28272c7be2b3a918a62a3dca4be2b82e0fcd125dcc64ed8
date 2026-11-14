@@ -1,0 +1,130 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { DatabaseSync } from "node:sqlite";
+import "../../support/typescript-source-loader.mjs";
+const { FetchEngine } = await import("../../../src/card/fetch.ts");
+const { CardActionEngine } = await import("../../../src/card/actions/card-action-engine.ts");
+const { ModEventRegistry } = await import("../../../src/card/mod-loader/mod-event-registry.ts");
+await import("../../../src/card/mod-loader/default-mod-deck.ts");
+const { default: coreMod, coreModEventPredicates } = await import("../../../src/card/mod-loader/mods/core-mod.ts");
+const { servingModEventRuntime } = await import("../../../src/server/write-routes.ts");
+
+// Copy only the committed synthetic-v1 database into RAM. Never open a private
+// deck or write a database, test profile, fixture, or scratch directory on disk.
+function fixture() {
+  // immutable=1: the committed deck is WAL-mode, and a plain read-only handle
+  // on it creates -wal/-shm sidecars beside the fixture. Immutable reads never
+  // create them, and the database is copied to memory below either way.
+  const committed = new URL("../../../reference-harness/fixtures/synthetic-v1/deck/deck.sqlite3", import.meta.url);
+  committed.searchParams.set("mode", "ro");
+  committed.searchParams.set("immutable", "1");
+  const source = new DatabaseSync(committed, { readOnly: true });
+  const db = new DatabaseSync(":memory:");
+  const quote = name => `"${name.replaceAll('"', '""')}"`;
+  try {
+    for (const { name, sql } of source.prepare("SELECT name,sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all()) {
+      db.exec(sql);
+      const columns = source.prepare(`PRAGMA table_info(${quote(name)})`).all().map(row => row.name);
+      const insert = db.prepare(`INSERT INTO ${quote(name)} (${columns.map(quote)}) VALUES (${columns.map(() => "?")})`);
+      for (const row of source.prepare(`SELECT * FROM ${quote(name)}`).all()) insert.run(...columns.map(column => row[column]));
+    }
+    for (const { sql } of source.prepare("SELECT sql FROM sqlite_master WHERE type='index' AND sql IS NOT NULL").all()) db.exec(sql);
+  } finally { source.close(); }
+  const execute = (sql, params = []) => {
+    const statement = db.prepare(sql);
+    const args = params.map(value => value === undefined ? null : value);
+    if (statement.columns().length) return { rows: statement.all(...args), rowsAffected: 0 };
+    const result = statement.run(...args);
+    return { rows: [], rowsAffected: Number(result.changes), lastInsertRowId: Number(result.lastInsertRowid) };
+  };
+  const driver = {
+    async query(sql, params) { return execute(sql, params); },
+    async batch(statements) { return statements.map(s => execute(s.sql, s.params)); },
+    async transaction(work) {
+      db.exec("BEGIN");
+      try { const result = await work(); db.exec("COMMIT"); return result; }
+      catch (error) { db.exec("ROLLBACK"); throw error; }
+    },
+    transactionGuarantee: {
+      mechanism: "native", atomicOnFailure: true, crashRecovery: "database",
+      readersIsolated: true, serializedWriters: "database", atomicBatch: false, idsReusedAfterRollback: true,
+    },
+  };
+  const registry = new ModEventRegistry();
+  const set = coreMod.setModules.find(set => set.setPath === "type/cardtype");
+  const guard = set.events.find(event => event.event === "check_for_cards_of_type_when_type_changed");
+  registry.register({ ...guard, setPath: set.setPath, modName: "core" });
+  const fetch = new FetchEngine(driver);
+  const engine = new CardActionEngine(fetch, {
+    actor: { id: 1, name: "Decko Bot" }, ipAddress: null,
+    now: () => new Date("2026-09-19T12:00:00Z"),
+    modEvents: { registry, predicates: coreModEventPredicates },
+  });
+  const topic = execute("SELECT id,type_id FROM cards WHERE name='Topic'").rows[0];
+  const basic = execute("SELECT id FROM cards WHERE codename='basic'").rows[0].id;
+  const instances = () => execute("SELECT * FROM cards WHERE type_id=? AND trash=0 ORDER BY id", [topic.id]).rows;
+  assert.ok(instances().length > 0, "synthetic-v1 must contain live Topic instances");
+  return { db, execute, registry, engine, fetch, topic, basic, instances };
+}
+
+test("F78: direct-found Cardtype update persists its new type and history with live instances", async () => {
+  const f = fixture();
+  try {
+    const instances = f.instances();
+    const actions = () => f.execute("SELECT * FROM card_actions WHERE card_id=? ORDER BY id", [f.topic.id]).rows;
+    const changes = () => f.execute("SELECT c.* FROM card_changes c JOIN card_actions a ON a.id=c.card_action_id WHERE a.card_id=? ORDER BY c.id", [f.topic.id]).rows;
+    const beforeActions = actions().length;
+    const beforeChanges = changes().length;
+    await f.engine.updateCard({ cardId: f.topic.id, typeId: f.basic, receiver: "find" });
+    assert.equal(f.execute("SELECT type_id FROM cards WHERE id=?", [f.topic.id]).rows[0].type_id, f.basic);
+    assert.deepEqual(f.instances(), instances, "changing the type card must preserve its instances");
+    assert.equal(actions().length, beforeActions + 1);
+    const addedChanges = changes().slice(beforeChanges);
+    const typeChanges = addedChanges.filter(change => change.field === 1);
+    // The stock fixture has a creation action without change rows. The writer
+    // backfills its original type before recording the update's new value.
+    assert.deepEqual(typeChanges.map(change => String(change.value)), [String(f.topic.type_id), String(f.basic)]);
+    const change = typeChanges.at(-1);
+    assert.equal(change.field, 1, "type_id history field");
+    assert.equal(String(change.value), String(f.basic));
+  } finally { f.db.close(); }
+});
+
+for (const receiver of [undefined, "fetch"]) test(`initialized Cardtype update retains its guard (${receiver ?? "default"})`, async () => {
+  const f = fixture();
+  try {
+    const before = JSON.stringify(f.execute("SELECT * FROM cards").rows);
+    const history = ["card_acts", "card_actions", "card_changes"].map(table => f.execute(`SELECT COUNT(*) n FROM ${table}`).rows[0].n);
+    await assert.rejects(f.engine.updateCard({ cardId: f.topic.id, typeId: f.basic, receiver }), /can't alter this type; Topic cards still exist/);
+    assert.equal(JSON.stringify(f.execute("SELECT * FROM cards").rows), before);
+    assert.deepEqual(["card_acts", "card_actions", "card_changes"].map(table => f.execute(`SELECT COUNT(*) n FROM ${table}`).rows[0].n), history);
+  } finally { f.db.close(); }
+});
+
+test("direct-found saves attach only the assigned type throughout the save lifecycle", async () => {
+  const f = fixture();
+  try {
+    const seen = [];
+    const stages = ["initialize", "prepare_to_validate", "validate", "prepare_to_store", "store", "finalize", "integrate"];
+    for (const at of stages) for (const [setPath, label] of [["type/cardtype", "old"], ["type/basic", "new"]]) {
+      f.registry.register({ event: `${at}_${label}`, at, setPath, modName: "test", changing: ["type"], fn: card => seen.push([at, label, card.typeId]) });
+    }
+    await f.engine.updateCard({ cardId: f.topic.id, typeId: f.basic, receiver: "find" });
+    assert.deepEqual(seen, stages.map(stage => [stage, "new", f.basic]));
+  } finally { f.db.close(); }
+});
+
+test("F78 also persists with the complete serving mod runtime", async () => {
+  const f = fixture();
+  try {
+    const instances = f.instances();
+    const engine = new CardActionEngine(f.fetch, {
+      actor: { id: 1, name: "Decko Bot" }, ipAddress: null,
+      now: () => new Date("2026-09-19T12:00:00Z"),
+      modEvents: await servingModEventRuntime(),
+    });
+    await engine.updateCard({ cardId: f.topic.id, typeId: f.basic, receiver: "find" });
+    assert.equal(f.execute("SELECT type_id FROM cards WHERE id=?", [f.topic.id]).rows[0].type_id, f.basic);
+    assert.deepEqual(f.instances(), instances);
+  } finally { f.db.close(); }
+});

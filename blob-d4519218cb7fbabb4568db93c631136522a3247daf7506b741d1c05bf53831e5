@@ -1,0 +1,49 @@
+# VM-only execution of transferred original sources with existing native gems.
+# This loads source files in a temporary tree; it installs no gem or runtime.
+raise "RubySourceProbeVmRequiresLinux" unless RUBY_PLATFORM.include?("linux")
+require "rubygems"
+require "digest"
+installed = File.join(ENV.fetch("DECKO_ORACLE_BUNDLE_PATH"), "ruby", "3.2.0")
+source_gems = ARGV.shift
+probe = ARGV.shift
+native_paths = [installed, *Gem.default_path]
+Gem.use_paths(installed, native_paths)
+# The unchanged wrapper probe calls Gem.use_paths itself. Keep the VM's
+# existing native extensions available alongside its transferred source tree.
+Gem.singleton_class.prepend(Module.new do
+  define_method(:use_paths) do |home, *paths|
+    super(home, *(paths.flatten + native_paths))
+  end
+end)
+if source_gems != "-"
+  $LOAD_PATH.unshift(File.join(source_gems, "actionview-7.2.4/lib"),
+                     File.join(source_gems, "activesupport-7.2.4/lib"))
+end
+begin
+  if probe == "--batch"
+    require "json"
+    require "open3"
+    require "rbconfig"
+    target = ARGV.shift
+    setting_id = ARGV.shift
+    results = ARGV.map do |database|
+      stdout, stderr, status = Open3.capture3(RbConfig.ruby, __FILE__, source_gems, target, database, setting_id)
+      { status: status.exitstatus, stdout: stdout, stderr: stderr }
+    end
+    puts JSON.generate(results)
+  elsif probe == "-e"
+    require "json"
+    eval(ARGV.shift, TOPLEVEL_BINDING, "vm-inline-oracle", 1)
+  else
+    ARGV.unshift(source_gems)
+    load probe
+  end
+ensure
+  require "json"
+  warn "RUBY_VM_PROVENANCE=" + JSON.generate({ runtime: RUBY_DESCRIPTION,
+    source_libraries: source_gems == "-" ? [] : ["actionview-7.2.4/lib", "activesupport-7.2.4/lib"].select { |library| File.directory?(File.join(source_gems, library)) },
+    loaded_source_files: $LOADED_FEATURES.select { |file| file.start_with?(source_gems + "/", installed + "/") && File.file?(file) }
+      .to_h { |file| [file, Digest::SHA256.file(file).hexdigest] },
+    loaded_gems: Gem.loaded_specs.sort.to_h { |name, spec| [name, { version: spec.version.to_s,
+      specification_sha256: File.file?(spec.loaded_from) ? Digest::SHA256.file(spec.loaded_from).hexdigest : nil }] } })
+end

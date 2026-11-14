@@ -1,0 +1,145 @@
+{
+  "row": "reg-routes-A9",
+  "gemset": "decko-0.20.0 + card-mod-format-0.20.0 (pinned)",
+  "registeredFormats": [
+    "css",
+    "csv",
+    "html",
+    "js",
+    "json",
+    "jsonld",
+    "rss",
+    "scss",
+    "text",
+    "txt",
+    "xml",
+    "yaml",
+    "yml"
+  ],
+  "cardViewRoute": {
+    "verb": "get",
+    "patterns": [
+      "card/:view(/:mark(.:format))"
+    ],
+    "requirements": {
+      "view": "new|edit"
+    },
+    "action": "card#read",
+    "order": 10
+  },
+  "viewRequirement": {
+    "source": "new|edit",
+    "matches": [
+      {
+        "segment": "new",
+        "matches": true
+      },
+      {
+        "segment": "edit",
+        "matches": true
+      },
+      {
+        "segment": "open",
+        "matches": false
+      },
+      {
+        "segment": "editing",
+        "matches": true
+      },
+      {
+        "segment": "newer",
+        "matches": true
+      }
+    ]
+  },
+  "fallthroughRoutes": [
+    {
+      "verb": "get",
+      "patterns": [
+        ":mark/:view(.:format)"
+      ],
+      "requirements": {},
+      "action": "card#read",
+      "order": 27
+    },
+    {
+      "verb": "get",
+      "patterns": [
+        "*mark"
+      ],
+      "requirements": {
+        "view": "bad_address"
+      },
+      "action": "card#read",
+      "order": 28
+    }
+  ],
+  "routeTableSize": 29,
+  "implicitMark": [
+    {
+      "label": "the markless /card/edit case",
+      "mark": "Home"
+    },
+    {
+      "label": "the markless /card/edit case, the *home rule names another card",
+      "mark": "Target"
+    }
+  ],
+  "viewFromParams": [
+    {
+      "label": "the captured :view segment",
+      "params": {
+        "view": "edit",
+        "mark": "Front"
+      },
+      "viewFromParams": "edit"
+    },
+    {
+      "label": "the v alias",
+      "params": {
+        "v": "edit",
+        "mark": "Front"
+      },
+      "viewFromParams": "edit"
+    },
+    {
+      "label": "no view at all",
+      "params": {
+        "mark": "Front"
+      },
+      "viewFromParams": null
+    }
+  ],
+  "renderPage": [
+    {
+      "label": "the card/:view route's edit arm",
+      "params": {
+        "view": "edit",
+        "mark": "Front"
+      },
+      "error": null,
+      "result": "PAGE(html,\"edit\")",
+      "pageCalls": [
+        {
+          "view": "\"edit\"",
+          "format": "html"
+        }
+      ]
+    },
+    {
+      "label": "the card/:view route's new arm",
+      "params": {
+        "view": "new",
+        "mark": "Front"
+      },
+      "error": null,
+      "result": "PAGE(html,\"new\")",
+      "pageCalls": [
+        {
+          "view": "\"new\"",
+          "format": "html"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { test } from 'node:test';
+import { transformSync } from 'esbuild';
+
+const root = new URL('../../../', import.meta.url);
+const catalog = JSON.parse(readFileSync(new URL('tools/compat-report/withheld-tests.json', root), 'utf8'));
+const expected = new Map([
+  ['fixtures/captured/readonly-follow-defaults-and-core-shape.json', []],
+  ['fixtures/captured/readonly-rule-card-core-type-shape.json', ['tools/edge-signed-in-exercise/test/rule-set-legs.test.mjs']],
+  ['fixtures/captured/codename-reset-and-read-rule-union-oracle.json', ['tests/card/permissions/read-rule-derive-and-codename-reset-oracle.test.ts']],
+  ['fixtures/captured/view-registry-directives-oracle.json', ['tests/card/permissions/view-registry-directives-oracle.test.ts']],
+]);
+
+test('unknown capture origins have exact release exclusions and reasons', () => {
+  assert.ok(Array.isArray(catalog.capture_paths), 'missing unknown-origin capture exclusions');
+  assert.deepEqual([...catalog.capture_paths].sort(), [...expected.keys()].sort());
+  assert.deepEqual([...catalog.paths].sort(), [...expected.values()].flat().sort());
+  assert.equal(catalog.origin_status, 'unknown');
+  assert.match(catalog.requalification, /producer evidence/i);
+  assert.match(catalog.requalification, /fresh stock capture/i);
+  for (const path of [...catalog.capture_paths, ...catalog.paths]) {
+    assert.ok(catalog.reasons[path]?.length > 30, path);
+  }
+});
+
+test('withheld consumers read the catalogued input in executable code', () => {
+  for (const [capture, consumers] of expected) {
+    assert.doesNotThrow(() => JSON.parse(readFileSync(new URL(capture, root), 'utf8')));
+    const basename = capture.split('/').at(-1);
+    for (const consumer of consumers) {
+      const text = readFileSync(new URL(consumer, root), 'utf8');
+      const { code } = transformSync(text, { loader: 'ts', legalComments: 'none' });
+      const calls = code.match(/readFileSync\([^;]+/g) ?? [];
+      assert.ok(calls.some(call => call.includes(basename)), `${consumer}: ${capture}`);
+      assert.ok(catalog.paths.includes(consumer), consumer);
+    }
+  }
+});
+
+test('comment-only references do not withhold source-backed tests', () => {
+  for (const path of [
+    'tests/card/mod-loader/card-mod-follow-views.test.ts',
+    'tests/card/mod-loader/card-mod-help.test.ts',
+    'tests/card/permissions/view-perms-table.test.ts',
+  ]) assert.equal(catalog.paths.includes(path), false, path);
+});

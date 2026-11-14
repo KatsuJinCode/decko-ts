@@ -1,0 +1,335 @@
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { createHash } from "node:crypto";
+import { Miniflare, convertV4MiniflareOptions } from "miniflare";
+import { LocalSqliteDriver } from "../../src/server/drivers/local-sqlite.js";
+import { CloudflareD1Adapter } from "../../src/server/drivers/d1.js";
+import { D1_STATEMENT_EXECUTOR_SCRIPT, d1BindingOverWorkerFetch } from "../support/d1-binding-over-worker-fetch.js";
+import type { SQLDatabaseDriver, SQLStatement } from "../../src/server/driver.js";
+import { DEPLOY_MIGRATION_ORDER, unappliedDeployMigrations } from "../../src/server/deploy-migrations.js";
+import { splitSqlStatements } from "../card/render/render-test-storage.js";
+import { FetchEngine } from "../../src/card/fetch.js";
+import { RenderEngine } from "../../src/card/render.js";
+import { CardActionEngine } from "../../src/card/actions/card-action-engine.js";
+import { readPermissionStatements, readPermissionStateFromViewerResults } from "../../src/card/permissions/read-rules.js";
+import { planMembersKeyRecovery, applyMembersKeyRecovery } from "../../tools/migrate/members-key-recovery.mjs";
+
+const historicalSeed = readFileSync(new URL("./fixtures/members-key-old-0006.sql.fixture", import.meta.url), "utf8");
+if (createHash("sha256").update(historicalSeed).digest("hex") !== "261766c7ba708e75cae2df729b44ea92b7263361e5c9b2352c62ffc52cfe7643") throw Error("historical-0006-fixture-changed");
+const migrationSources = new Map<string, string>();
+const migrationSql = (filename: string): string => {
+  let sql = migrationSources.get(filename);
+  if (sql === undefined) migrationSources.set(filename, sql = readFileSync(new URL(`../../deploy/migrations/${filename}`, import.meta.url), "utf8"));
+  return sql;
+};
+const preservedTables = ["cards", "card_acts", "card_actions", "card_changes", "card_revisions", "card_references", "deck_data_version", "d1_migrations"];
+
+// The historical deploy: the ledger table, then each migration's statements
+// followed by its ledger row, in deploy order (old 0006 in place of today's).
+const historicalApply: SQLStatement[] = [
+  { sql: "CREATE TABLE d1_migrations(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT UNIQUE,applied_at TEXT)", params: [] },
+  ...DEPLOY_MIGRATION_ORDER.flatMap(migration => [
+    ...splitSqlStatements(migration.filename === "0006-demo-role-substrate.sql" ? historicalSeed : migrationSql(migration.filename)).map(sql => ({ sql, params: [] })),
+    { sql: "INSERT INTO d1_migrations(name,applied_at) VALUES(?,'synthetic-historical-apply')", params: [migration.filename] },
+  ]),
+];
+
+// Every D1 test gets its own empty database. One Miniflare (one workerd
+// process) declares a binding per test instead of each test starting its own
+// workerd: a fresh binding is the same empty in-memory D1 database, without
+// the process start-up.
+const D1_DATABASES_PER_SUITE = 40;
+
+for (const provider of ["sqlite", "d1"] as const) describe(`existing members-key recovery: ${provider}`, () => {
+  let driver: SQLDatabaseDriver;
+  let dispose: () => Promise<void>;
+  let mf: Miniflare | undefined;
+  let d1Next = 0;
+  beforeAll(async () => {
+    if (provider !== "d1") return;
+    const d1Databases: Record<string, string> = {};
+    for (let i = 1; i <= D1_DATABASES_PER_SUITE; i++) d1Databases[`DB${i}`] = `owned-members-recovery-${i}`;
+    mf = new Miniflare(convertV4MiniflareOptions({ modules: true, script: D1_STATEMENT_EXECUTOR_SCRIPT, compatibilityDate: "2026-08-01", d1Databases }) as never);
+  }, 120_000);
+  afterAll(async () => { await mf?.dispose(); });
+  beforeEach(async () => {
+    if (provider === "sqlite") {
+      const sqlite = new LocalSqliteDriver({ path: ":memory:" });
+      driver = sqlite; dispose = async () => sqlite.close();
+      await driver.query("CREATE TABLE d1_migrations(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT UNIQUE,applied_at TEXT)", []);
+      for (const migration of DEPLOY_MIGRATION_ORDER) {
+        const sql = migration.filename === "0006-demo-role-substrate.sql" ? historicalSeed : migrationSql(migration.filename);
+        await driver.batch(splitSqlStatements(sql).map(sql => ({ sql, params: [] })));
+        await driver.query("INSERT INTO d1_migrations(name,applied_at) VALUES(?,'synthetic-historical-apply')", [migration.filename]);
+      }
+    } else {
+      d1Next += 1;
+      if (d1Next > D1_DATABASES_PER_SUITE) throw Error(`members-key recovery suite needs more than ${D1_DATABASES_PER_SUITE} D1 databases; raise D1_DATABASES_PER_SUITE`);
+      dispose = async () => {};
+      const binding = d1BindingOverWorkerFetch(mf!, `DB${d1Next}`);
+      driver = new CloudflareD1Adapter(binding);
+      // The same statements in the same order, in one D1 batch on the
+      // binding: one round trip instead of one per file and ledger row.
+      await binding.batch(historicalApply.map(statement => binding.prepare(statement.sql).bind(...(statement.params as string[]))));
+    }
+  });
+  afterEach(async () => { await dispose?.(); });
+
+  async function snapshot() {
+    const out: Record<string, unknown[]> = {};
+    for (const table of preservedTables) out[table] = (await driver.query(`SELECT * FROM ${table} ORDER BY id`, [])).rows;
+    return out;
+  }
+  function retain(name: string, evidence: unknown) {
+    const directory = process.env.MEMBERS_RECOVERY_EVIDENCE_DIR;
+    if (directory === undefined) return;
+    mkdirSync(directory, { recursive: true });
+    writeFileSync(join(directory, `${provider}-${name}.json`), JSON.stringify(evidence, null, 2), { flag: "wx" });
+  }
+  async function code(name: string) {
+    const rows = (await driver.query<{ id: number }>("SELECT id FROM cards WHERE codename=?", [name])).rows;
+    expect(rows).toHaveLength(1); return rows[0].id;
+  }
+  async function insertCard(fields: Record<string, unknown>) {
+    const bot = await code("decko_bot");
+    const row = { created_at: "synthetic-owned-fixture", updated_at: "synthetic-owned-fixture", creator_id: bot, updater_id: bot, trash: 0, db_content: "", ...fields };
+    await driver.query(`INSERT INTO cards(${Object.keys(row).join(",")}) VALUES(${Object.keys(row).map(() => "?").join(",")})`, Object.values(row));
+    return (await driver.query<{ id: number }>("SELECT id FROM cards ORDER BY id DESC LIMIT 1", [])).rows[0].id;
+  }
+  async function actor(name = "Recovery Reader") {
+    return insertCard({ name, key: name.toLowerCase().replaceAll(" ", "_"), type_id: await code("user") });
+  }
+  async function list(content: string, side = 0, role = "administrator") {
+    return insertCard({ left_id: await code(role), right_id: side || await code("members"), type_id: await code("basic"), db_content: content });
+  }
+  async function state(actorId?: number) {
+    const viewer = actorId === undefined ? { signedIn: false } : { signedIn: true, actorId };
+    return readPermissionStateFromViewerResults(await driver.batch(readPermissionStatements(viewer)), viewer);
+  }
+  function wrapped(batch: (statements: SQLStatement[]) => ReturnType<SQLDatabaseDriver["batch"]>): SQLDatabaseDriver {
+    return { query: driver.query.bind(driver), batch, transactionGuarantee: driver.transactionGuarantee };
+  }
+  async function storedHistory(cardId: number) {
+    await driver.query("INSERT INTO card_acts(card_id,actor_id,acted_at) VALUES(?,?,'synthetic-history')", [cardId, await code("decko_bot")]);
+    const act = (await driver.query<{ id: number }>("SELECT id FROM card_acts WHERE card_id=? ORDER BY id DESC", [cardId])).rows[0].id;
+    await driver.query("INSERT INTO card_actions(card_id,card_act_id,action_type,comment) VALUES(?,?,0,'meaningful retained creation')", [cardId, act]);
+    const action = (await driver.query<{ id: number }>("SELECT id FROM card_actions WHERE card_id=? ORDER BY id DESC", [cardId])).rows[0].id;
+    await driver.query("INSERT INTO card_changes(card_action_id,field,value) VALUES(?,2,'meaningful retained prior membership')", [action]);
+  }
+
+  it("reproduces recorded old 0006 and the guarded-replay nonrepair", async () => {
+    const recorded = (await driver.query<{ name: string }>("SELECT name FROM d1_migrations ORDER BY id", [])).rows.map(row => row.name);
+    expect(unappliedDeployMigrations(recorded)).not.toContain("0006-demo-role-substrate.sql");
+    const corrected = historicalSeed.replace("1202, '*members', '*members', 'members'", "1202, '*members', '*member', 'members'");
+    expect(corrected).not.toBe(historicalSeed);
+    const before = await snapshot();
+    await driver.batch(splitSqlStatements(corrected).map(sql => ({ sql, params: [] })));
+    expect(await snapshot()).toEqual(before);
+    expect((await planMembersKeyRecovery(driver)).status).toBe("ready");
+  });
+
+  it("repairs the uncontested key once while retaining ids, compound contents, history and ledger", async () => {
+    const member = await actor(); const membership = await list(`~${member}`);
+    await storedHistory(membership);
+    const before = await snapshot(); const plan = await planMembersKeyRecovery(driver);
+    expect(plan.status).toBe("ready");
+    const result = await applyMembersKeyRecovery(driver, plan.sha256);
+    expect(result).toMatchObject({ status: "applied", membersId: await code("members"), referencesAdded: 1 });
+    const after = await snapshot();
+    expect(after.cards).toEqual((before.cards as Array<Record<string, unknown>>).map(row => row.codename === "members" ? { ...row, key: "*member" } : row));
+    for (const table of ["card_acts", "card_actions", "card_changes", "card_revisions", "d1_migrations"]) expect(after[table]).toEqual(before[table]);
+    expect(after.card_references).toHaveLength(before.card_references.length + 1);
+    expect(after.card_references.slice(0, before.card_references.length)).toEqual(before.card_references);
+    expect((await driver.query("SELECT referer_id,referee_id,referee_key,ref_type FROM card_references WHERE referer_id=?", [membership])).rows).toEqual([{ referer_id: membership, referee_id: member, referee_key: null, ref_type: "L" }]);
+    const finished = await planMembersKeyRecovery(driver);
+    expect(finished.status).toBe("noop");
+    expect(await applyMembersKeyRecovery(driver, finished.sha256)).toMatchObject({ status: "noop" });
+    expect(await snapshot()).toEqual(after);
+    retain("uncontested", { plan, result, before, after });
+  });
+
+  it("repairs missing references on an already-correct side without rewriting its history", async () => {
+    await driver.query("UPDATE cards SET key='*member' WHERE codename='members'", []);
+    const id = await actor(); await list(`~${id}`);
+    const plan = await planMembersKeyRecovery(driver); expect(plan.keyUpdate).toBeNull();
+    expect(await applyMembersKeyRecovery(driver, plan.sha256)).toMatchObject({ keyChanged: false, referencesAdded: 1 });
+    expect((await state(id)).alwaysOk).toBe(true);
+  });
+
+  it("preserves an already-complete reference id and leaves correct data a byte-shaped no-op", async () => {
+    await driver.query("UPDATE cards SET key='*member' WHERE codename='members'", []);
+    const id = await actor(); const lid = await list(`~${id}`);
+    await driver.query("INSERT INTO card_references(referer_id,referee_id,referee_key,ref_type) VALUES(?,?,NULL,'L')", [lid, id]);
+    const before = await snapshot(), plan = await planMembersKeyRecovery(driver);
+    expect(plan.status).toBe("noop"); await applyMembersKeyRecovery(driver, plan.sha256);
+    expect(await snapshot()).toEqual(before);
+  });
+
+  it("reports a missing members codename as a blocker rather than a successful no-op", async () => {
+    await driver.query("UPDATE cards SET codename=NULL WHERE codename='members'", []);
+    const before = await snapshot(), plan = await planMembersKeyRecovery(driver);
+    expect(plan.status).toBe("blocked"); expect(plan.blockers).toContainEqual({ code: "members-codename-missing" });
+    await expect(applyMembersKeyRecovery(driver, plan.sha256)).rejects.toMatchObject({ code: "members-recovery-reconciliation-required" });
+    expect(await snapshot()).toEqual(before);
+  });
+
+  it("retains an empty canonical duplicate instead of deleting or repurposing its identity", async () => {
+    await insertCard({ name: "*members", key: "*member", type_id: await code("basic") });
+    const before = await snapshot(), plan = await planMembersKeyRecovery(driver);
+    expect(plan.status).toBe("blocked"); expect(plan.reconciliation?.sideIds).toHaveLength(2);
+    await expect(applyMembersKeyRecovery(driver, plan.sha256)).rejects.toMatchObject({ code: "members-recovery-reconciliation-required" });
+    expect(await snapshot()).toEqual(before);
+    retain("empty-collision", { plan, before, after: await snapshot() });
+  });
+
+  it("retains populated compound collisions, history and references with a concrete reconciliation report", async () => {
+    const reader = await actor(), second = await actor("Other Recovery Reader");
+    const originalList = await list(`~${reader}`); await storedHistory(originalList);
+    await insertCard({ name: "*members", key: "*member", type_id: await code("basic"), db_content: "meaningful duplicate side" });
+    const duplicate = (await driver.query<{ id: number }>("SELECT id FROM cards WHERE key='*member'", [])).rows[0].id;
+    const duplicateList = await list(`~${second}`, duplicate); await storedHistory(duplicateList);
+    await driver.query("INSERT INTO card_references(referer_id,referee_id,referee_key,ref_type) VALUES(?,?,NULL,'L')", [duplicateList, second]);
+    const before = await snapshot(), plan = await planMembersKeyRecovery(driver);
+    expect(plan.status).toBe("blocked");
+    expect(plan.reconciliation?.compoundCollisions).toContainEqual({ originalCompoundId: originalList, canonicalCompoundId: duplicateList, leftId: await code("administrator") });
+    expect(plan.reconciliation?.historyCounts).toHaveLength(2);
+    expect(plan.reconciliation?.steps.join(" ")).toContain("neither identity is discarded");
+    await expect(applyMembersKeyRecovery(driver, plan.sha256)).rejects.toMatchObject({ code: "members-recovery-reconciliation-required" });
+    expect(await snapshot()).toEqual(before);
+    retain("populated-collision", { plan, before, after: await snapshot() });
+  });
+
+  it("reproduces a real engine's historical duplicate and refuses to silently choose its membership", async () => {
+    const reader = await actor(); const fetcher = new FetchEngine(driver);
+    const botId = await code("decko_bot");
+    const engine = new CardActionEngine(fetcher, { actor: { id: botId, name: "Decko Bot" } });
+    const created = await engine.createCard({ name: "Administrator+*members", content: `~${reader}` });
+    const rows = (await driver.query<{ id: number; codename: string | null }>("SELECT id,codename FROM cards WHERE name='*members' ORDER BY id", [])).rows;
+    expect(rows).toHaveLength(2); expect(rows.filter(row => row.codename === "members")).toHaveLength(1);
+    const before = await snapshot(), plan = await planMembersKeyRecovery(driver);
+    expect(plan.status).toBe("blocked"); expect(plan.reconciliation?.compounds?.some(row => row.id === created.cardId)).toBe(true);
+    expect(await snapshot()).toEqual(before);
+  });
+
+  it.each(["named", "dangling", "conflicting-reference", "duplicate-reference", "anonymous"])("leaves ambiguous %s membership unchanged", async defect => {
+    const member = await actor();
+    const content = defect === "named" ? "Recovery Reader" : defect === "dangling" ? "~99999999" : defect === "anonymous" ? `~${await code("anonymous")}` : `~${member}`;
+    const lid = await list(content);
+    if (defect === "conflicting-reference") await driver.query("INSERT INTO card_references(referer_id,referee_id,referee_key,ref_type) VALUES(?,?,NULL,'L')", [lid, await code("decko_bot")]);
+    if (defect === "duplicate-reference") for (let i = 0; i < 2; i++) await driver.query("INSERT INTO card_references(referer_id,referee_id,referee_key,ref_type) VALUES(?,?,NULL,'L')", [lid, member]);
+    const before = await snapshot(), plan = await planMembersKeyRecovery(driver);
+    expect(plan.status).toBe("blocked"); expect(plan.reconciliation?.steps.length).toBeGreaterThan(0);
+    await expect(applyMembersKeyRecovery(driver, plan.sha256)).rejects.toMatchObject({ code: "members-recovery-reconciliation-required" });
+    expect(await snapshot()).toEqual(before);
+  });
+
+  it("refuses a stale reviewed plan without writing", async () => {
+    const plan = await planMembersKeyRecovery(driver); await actor(); const before = await snapshot();
+    await expect(applyMembersKeyRecovery(driver, plan.sha256)).rejects.toMatchObject({ code: "members-recovery-reviewed-plan-changed" });
+    expect(await snapshot()).toEqual(before);
+  });
+
+  it("catches mutation after final planning inside the same atomic-batch guard", async () => {
+    const plan = await planMembersKeyRecovery(driver); let changed: Awaited<ReturnType<typeof snapshot>>;
+    const fenced = wrapped(async statements => { await actor(); changed = await snapshot(); return driver.batch(statements); });
+    await expect(applyMembersKeyRecovery(fenced, plan.sha256)).rejects.toMatchObject({ code: "members-recovery-apply-outcome-unconfirmed" });
+    expect(await snapshot()).toEqual(changed!);
+  });
+
+  it("catches a write-trigger change after planning even when the data stamp has not moved", async () => {
+    const plan = await planMembersKeyRecovery(driver), before = await snapshot();
+    const changed = wrapped(async statements => {
+      await driver.query("CREATE TRIGGER late_members_instrumentation AFTER UPDATE ON cards BEGIN SELECT 1; END", []);
+      return driver.batch(statements);
+    });
+    await expect(applyMembersKeyRecovery(changed, plan.sha256)).rejects.toMatchObject({ code: "members-recovery-apply-outcome-unconfirmed" });
+    expect(await snapshot()).toEqual(before);
+    expect((await planMembersKeyRecovery(driver)).blockers).toContainEqual({ code: "unreviewed-write-triggers", names: ["late_members_instrumentation"] });
+  });
+
+  it("rolls back a native SQL failure after the key update, retaining all rows, versions and ledger", async () => {
+    await list(`~${await actor()}`); const plan = await planMembersKeyRecovery(driver), before = await snapshot();
+    const broken = wrapped(statements => driver.batch([...statements.slice(0, 2), { sql: "INSERT INTO card_references(referer_id) VALUES(NULL)", params: [] }, ...statements.slice(2)]));
+    await expect(applyMembersKeyRecovery(broken, plan.sha256)).rejects.toMatchObject({ code: "members-recovery-apply-outcome-unconfirmed", cause: expect.any(Error) });
+    expect(await snapshot()).toEqual(before);
+    retain("sql-rollback", { plan, before, after: await snapshot() });
+  });
+
+  it("does not replay or undo a commit whose acknowledgement is lost", async () => {
+    await list(`~${await actor()}`); const plan = await planMembersKeyRecovery(driver);
+    const lost = new Error("synthetic committed acknowledgement lost");
+    const ambiguous = wrapped(async statements => { await driver.batch(statements); throw lost; });
+    await expect(applyMembersKeyRecovery(ambiguous, plan.sha256)).rejects.toMatchObject({ code: "members-recovery-apply-outcome-unconfirmed", cause: lost });
+    const committed = await snapshot(); expect((await planMembersKeyRecovery(driver)).status).toBe("noop");
+    await expect(applyMembersKeyRecovery(driver, plan.sha256)).rejects.toMatchObject({ code: "members-recovery-reviewed-plan-changed" });
+    expect(await snapshot()).toEqual(committed);
+    retain("lost-acknowledgement", { plan, committed, inspected: await planMembersKeyRecovery(driver) });
+  });
+
+  it("rolls back a failed postcondition inside the native batch", async () => {
+    await list(`~${await actor()}`); const plan = await planMembersKeyRecovery(driver), before = await snapshot();
+    const broken = wrapped(statements => driver.batch(statements.map((statement, index) => index === statements.length - 1 ? { ...statement, params: [Number(statement.params[0]) + 1, ...statement.params.slice(1)] } : statement)));
+    await expect(applyMembersKeyRecovery(broken, plan.sha256)).rejects.toMatchObject({ code: "members-recovery-apply-outcome-unconfirmed" });
+    expect(await snapshot()).toEqual(before);
+  });
+
+  it("retains committed state when the returned batch receipt is missing", async () => {
+    await list(`~${await actor()}`); const plan = await planMembersKeyRecovery(driver);
+    const missing = wrapped(async statements => { await driver.batch(statements); return []; });
+    await expect(applyMembersKeyRecovery(missing, plan.sha256)).rejects.toMatchObject({ code: "members-recovery-apply-receipt-unconfirmed" });
+    const committed = await snapshot(); expect((await planMembersKeyRecovery(driver)).status).toBe("noop");
+    await expect(applyMembersKeyRecovery(driver, plan.sha256)).rejects.toMatchObject({ code: "members-recovery-reviewed-plan-changed" });
+    expect(await snapshot()).toEqual(committed);
+  });
+
+  it("diagnoses additional write triggers without granting them mutation authority", async () => {
+    await driver.query("CREATE TRIGGER custom_members_instrumentation AFTER UPDATE ON cards BEGIN SELECT 1; END", []);
+    const before = await snapshot(), plan = await planMembersKeyRecovery(driver);
+    expect(plan.status).toBe("blocked");
+    expect(plan.blockers).toContainEqual({ code: "unreviewed-write-triggers", names: ["custom_members_instrumentation"] });
+    await expect(applyMembersKeyRecovery(driver, plan.sha256)).rejects.toMatchObject({ code: "members-recovery-reconciliation-required" });
+    expect(await snapshot()).toEqual(before);
+  });
+
+  it("refuses unknown foreign-key side effects rather than risking cascaded data changes", async () => {
+    await driver.query("CREATE TABLE retained_custom_members_history(member_key TEXT REFERENCES cards(key) ON UPDATE CASCADE)", []);
+    const before = await snapshot(), plan = await planMembersKeyRecovery(driver);
+    expect(plan.status).toBe("blocked");
+    expect(plan.blockers).toContainEqual({ code: "unreviewed-foreign-key-effects", foreignKeys: [{ table_name: "retained_custom_members_history", id: 0, target_table: "cards", source_column: "member_key", target_column: "key" }] });
+    await expect(applyMembersKeyRecovery(driver, plan.sha256)).rejects.toMatchObject({ code: "members-recovery-reconciliation-required" });
+    expect(await snapshot()).toEqual(before);
+  });
+
+  it("refuses absent native batch guarantees and unqualified freshness triggers", async () => {
+    const unsafe = { ...wrapped(driver.batch.bind(driver)), transactionGuarantee: undefined };
+    const before = await snapshot();
+    await expect(planMembersKeyRecovery(unsafe)).rejects.toMatchObject({ code: "members-recovery-native-atomic-batch-required" });
+    expect(await snapshot()).toEqual(before);
+    await driver.query("DROP TRIGGER cards_bump_deck_data_version_upd", []);
+    await expect(planMembersKeyRecovery(driver)).rejects.toMatchObject({ code: "members-recovery-unqualified-write-triggers" });
+  });
+
+  it("changes normal role/cache results only for explicit members and preserves anonymous denial", async () => {
+    const member = await actor(), stranger = await actor("Stranger Recovery Reader"); await list(`~${member}`);
+    expect((await state(member)).alwaysOk).toBe(false); expect((await state(stranger)).alwaysOk).toBe(false);
+    const anonymous = await state(); expect(anonymous.alwaysOk).toBe(false);
+    const rule = (await driver.query<{ id: number }>("SELECT r.id FROM cards r JOIN cards s ON s.id=r.left_id WHERE s.left_id=(SELECT id FROM cards WHERE codename='password') AND s.right_id=(SELECT id FROM cards WHERE codename='right') AND r.right_id=(SELECT id FROM cards WHERE codename='read')", [])).rows[0].id;
+    await insertCard({ name: "Recovery Secret", key: "recovery_secret", type_id: await code("basic"), db_content: "private synthetic body", read_rule_id: rule, read_rule_class: "*right" });
+    const fetcher = new FetchEngine(driver), warm = new RenderEngine(fetcher); warm.viewer = { signedIn: true, actorId: member };
+    await warm.ensureFreshness(); const target = (await fetcher.fetchByName("Recovery Secret"))!;
+    const warmBefore = await warm.canReadCard(target); expect(warmBefore).toBe(false);
+    const plan = await planMembersKeyRecovery(driver); await applyMembersKeyRecovery(driver, plan.sha256);
+    await warm.ensureFreshness(); const warmAfter = await warm.canReadCard((await fetcher.fetchByName("Recovery Secret"))!); expect(warmAfter).toBe(true);
+    const afterMember = await state(member), afterStranger = await state(stranger), afterAnonymous = await state();
+    expect(afterMember.alwaysOk).toBe(true); expect(afterStranger.alwaysOk).toBe(false);
+    expect(afterAnonymous).toEqual(anonymous);
+    const anonymousEngine = new RenderEngine(new FetchEngine(driver));
+    expect(await anonymousEngine.canReadCard((await anonymousEngine.fetcher.fetchByName("Recovery Secret"))!)).toBe(false);
+    const beforeAnonymousWrite = await snapshot();
+    const anonymousWriter = new CardActionEngine(new FetchEngine(driver), { actor: { id: await code("anonymous"), name: "Anonymous" } });
+    await expect(anonymousWriter.updateCard({ cardId: target.id!, content: "anonymous must not write this" })).rejects.toMatchObject({ code: "permission-denied" });
+    expect(await snapshot()).toEqual(beforeAnonymousWrite);
+    retain("role-cache", { plan, warmBefore, warmAfter, anonymousBefore: anonymous, anonymousAfter: afterAnonymous, afterMember, afterStranger, beforeAnonymousWrite, afterAnonymousWrite: await snapshot() });
+  });
+});

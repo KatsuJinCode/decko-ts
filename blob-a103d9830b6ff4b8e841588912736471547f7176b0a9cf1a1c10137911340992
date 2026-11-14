@@ -1,0 +1,314 @@
+{
+  "schema": "decko-ruby-symbol-inspection/1",
+  "reference": "DEC102",
+  "source": "require \"json\";keys=JSON.parse(STDIN.read);puts JSON.generate({runtime:RUBY_DESCRIPTION,rows:keys.map{|key|{key:key,symbol:key.to_sym.inspect,hash:{key.to_sym=>nil}.inspect}}})",
+  "provenance": {
+    "target": "ubuntu@170.9.231.182",
+    "runtime": "ruby 3.2.3 (2024-01-18 revision 52bb2ac0a6) [aarch64-linux-gnu]",
+    "sourceFiles": 0,
+    "requestSha256": "f79ff93511e7a447c7b38cdaa50228b3e95b887eef5d7b8829d4f27ad52c1ffd",
+    "stdinSha256": "a557d6832dc0ca029fa951f7f809be9ec6e237975a889ca3ad99717294c907ab",
+    "status": 0,
+    "sources": []
+  },
+  "observations": {
+    "runtime": "ruby 3.2.3 (2024-01-18 revision 52bb2ac0a6) [aarch64-linux-gnu]",
+    "rows": [
+      {
+        "key": "foo",
+        "symbol": ":foo",
+        "hash": "{:foo=>nil}"
+      },
+      {
+        "key": "foo=",
+        "symbol": ":foo=",
+        "hash": "{:foo==>nil}"
+      },
+      {
+        "key": "foo!",
+        "symbol": ":foo!",
+        "hash": "{:foo!=>nil}"
+      },
+      {
+        "key": "foo?",
+        "symbol": ":foo?",
+        "hash": "{:foo?=>nil}"
+      },
+      {
+        "key": "@x",
+        "symbol": ":@x",
+        "hash": "{:@x=>nil}"
+      },
+      {
+        "key": "@@x",
+        "symbol": ":@@x",
+        "hash": "{:@@x=>nil}"
+      },
+      {
+        "key": "$x",
+        "symbol": ":$x",
+        "hash": "{:$x=>nil}"
+      },
+      {
+        "key": "$1",
+        "symbol": ":$1",
+        "hash": "{:$1=>nil}"
+      },
+      {
+        "key": "$-w",
+        "symbol": ":$-w",
+        "hash": "{:$-w=>nil}"
+      },
+      {
+        "key": "$~",
+        "symbol": ":$~",
+        "hash": "{:$~=>nil}"
+      },
+      {
+        "key": "$!",
+        "symbol": ":$!",
+        "hash": "{:$!=>nil}"
+      },
+      {
+        "key": "$@",
+        "symbol": ":$@",
+        "hash": "{:$@=>nil}"
+      },
+      {
+        "key": "$_",
+        "symbol": ":$_",
+        "hash": "{:$_=>nil}"
+      },
+      {
+        "key": "$:",
+        "symbol": ":$:",
+        "hash": "{:$:=>nil}"
+      },
+      {
+        "key": "$?",
+        "symbol": ":$?",
+        "hash": "{:$?=>nil}"
+      },
+      {
+        "key": "$0",
+        "symbol": ":$0",
+        "hash": "{:$0=>nil}"
+      },
+      {
+        "key": "[]",
+        "symbol": ":[]",
+        "hash": "{:[]=>nil}"
+      },
+      {
+        "key": "[]=",
+        "symbol": ":[]=",
+        "hash": "{:[]==>nil}"
+      },
+      {
+        "key": "+@",
+        "symbol": ":+@",
+        "hash": "{:+@=>nil}"
+      },
+      {
+        "key": "-@",
+        "symbol": ":-@",
+        "hash": "{:-@=>nil}"
+      },
+      {
+        "key": "~@",
+        "symbol": ":\"~@\"",
+        "hash": "{:\"~@\"=>nil}"
+      },
+      {
+        "key": "!@",
+        "symbol": ":\"!@\"",
+        "hash": "{:\"!@\"=>nil}"
+      },
+      {
+        "key": "~",
+        "symbol": ":~",
+        "hash": "{:~=>nil}"
+      },
+      {
+        "key": "!",
+        "symbol": ":!",
+        "hash": "{:!=>nil}"
+      },
+      {
+        "key": "!=",
+        "symbol": ":!=",
+        "hash": "{:!==>nil}"
+      },
+      {
+        "key": "!~",
+        "symbol": ":!~",
+        "hash": "{:!~=>nil}"
+      },
+      {
+        "key": "<=>",
+        "symbol": ":<=>",
+        "hash": "{:<=>=>nil}"
+      },
+      {
+        "key": "==",
+        "symbol": ":==",
+        "hash": "{:===>nil}"
+      },
+      {
+        "key": "===",
+        "symbol": ":===",
+        "hash": "{:====>nil}"
+      },
+      {
+        "key": "=~",
+        "symbol": ":=~",
+        "hash": "{:=~=>nil}"
+      },
+      {
+        "key": "<",
+        "symbol": ":<",
+        "hash": "{:<=>nil}"
+      },
+      {
+        "key": "<=",
+        "symbol": ":<=",
+        "hash": "{:<==>nil}"
+      },
+      {
+        "key": ">",
+        "symbol": ":>",
+        "hash": "{:>=>nil}"
+      },
+      {
+        "key": ">=",
+        "symbol": ":>=",
+        "hash": "{:>==>nil}"
+      },
+      {
+        "key": "<<",
+        "symbol": ":<<",
+        "hash": "{:<<=>nil}"
+      },
+      {
+        "key": ">>",
+        "symbol": ":>>",
+        "hash": "{:>>=>nil}"
+      },
+      {
+        "key": "+",
+        "symbol": ":+",
+        "hash": "{:+=>nil}"
+      },
+      {
+        "key": "-",
+        "symbol": ":-",
+        "hash": "{:-=>nil}"
+      },
+      {
+        "key": "*",
+        "symbol": ":*",
+        "hash": "{:*=>nil}"
+      },
+      {
+        "key": "**",
+        "symbol": ":**",
+        "hash": "{:**=>nil}"
+      },
+      {
+        "key": "/",
+        "symbol": ":/",
+        "hash": "{:/=>nil}"
+      },
+      {
+        "key": "%",
+        "symbol": ":%",
+        "hash": "{:%=>nil}"
+      },
+      {
+        "key": "&",
+        "symbol": ":&",
+        "hash": "{:&=>nil}"
+      },
+      {
+        "key": "|",
+        "symbol": ":|",
+        "hash": "{:|=>nil}"
+      },
+      {
+        "key": "^",
+        "symbol": ":^",
+        "hash": "{:^=>nil}"
+      },
+      {
+        "key": "a::b",
+        "symbol": ":\"a::b\"",
+        "hash": "{:\"a::b\"=>nil}"
+      },
+      {
+        "key": "",
+        "symbol": ":\"\"",
+        "hash": "{:\"\"=>nil}"
+      },
+      {
+        "key": "0foo",
+        "symbol": ":\"0foo\"",
+        "hash": "{:\"0foo\"=>nil}"
+      },
+      {
+        "key": "0é",
+        "symbol": ":\"0é\"",
+        "hash": "{:\"0é\"=>nil}"
+      },
+      {
+        "key": "é",
+        "symbol": ":é",
+        "hash": "{:é=>nil}"
+      },
+      {
+        "key": "é?",
+        "symbol": ":é?",
+        "hash": "{:é?=>nil}"
+      },
+      {
+        "key": "😀",
+        "symbol": ":😀",
+        "hash": "{:😀=>nil}"
+      },
+      {
+        "key": "a b",
+        "symbol": ":\"a b\"",
+        "hash": "{:\"a b\"=>nil}"
+      },
+      {
+        "key": "a-b",
+        "symbol": ":\"a-b\"",
+        "hash": "{:\"a-b\"=>nil}"
+      },
+      {
+        "key": "@1",
+        "symbol": ":\"@1\"",
+        "hash": "{:\"@1\"=>nil}"
+      },
+      {
+        "key": "@@1",
+        "symbol": ":\"@@1\"",
+        "hash": "{:\"@@1\"=>nil}"
+      },
+      {
+        "key": "$",
+        "symbol": ":\"$\"",
+        "hash": "{:\"$\"=>nil}"
+      },
+      {
+        "key": "@",
+        "symbol": ":\"@\"",
+        "hash": "{:\"@\"=>nil}"
+      },
+      {
+        "key": "@@",
+        "symbol": ":\"@@\"",
+        "hash": "{:\"@@\"=>nil}"
+      }
+    ]
+  }
+}

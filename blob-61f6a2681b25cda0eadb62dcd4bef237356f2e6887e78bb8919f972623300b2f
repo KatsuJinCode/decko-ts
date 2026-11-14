@@ -1,0 +1,25 @@
+import assert from "node:assert/strict";
+import { register } from "node:module";
+import test from "node:test";
+register(new URL("../../../tools/oracle/typescript-source-loader.mjs", import.meta.url).href, import.meta.url);
+const { WriteTrackingDriver } = await import("../../adapters/ts-mysql/mysql-mirror.js");
+const { MysqlDriver } = await import("../../../src/server/drivers/mysql.js");
+const { nestIndexTableExists } = await import("../../../src/card/nest-index-cache.js");
+
+test("write tracking retains the native MySQL identity for cache-table discovery", { timeout: 5000 }, async () => {
+  // The connection is the external SQL boundary. The real driver, wrapper,
+  // dialect detection and optional-table discovery all execute unchanged.
+  const connection = {
+    async query({ sql, values }) {
+      if (sql.includes("sqlite_master")) throw new Error("ER_NO_SUCH_TABLE: sqlite_master");
+      assert.match(sql, /information_schema\.TABLES/);
+      assert.deepEqual(values, ["decko_nest_edges"]);
+      return [[{ n: 1 }], []];
+    },
+  };
+  const native = new MysqlDriver(connection);
+  const tracked = new WriteTrackingDriver(native);
+  assert.equal(await nestIndexTableExists(tracked, "decko_nest_edges"), true);
+  assert.equal(tracked.dirty, false);
+  assert.equal(tracked.base, native);
+});

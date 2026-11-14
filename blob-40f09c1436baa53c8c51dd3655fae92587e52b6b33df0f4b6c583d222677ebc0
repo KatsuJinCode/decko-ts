@@ -1,0 +1,50 @@
+{
+  "captures": {
+    "outcome.json": {
+      "book": "Book_mvmv9gmq",
+      "bookId": 912,
+      "isBook": false,
+      "name": "D5_TypeChange_mvmv9gmq",
+      "ownership": {
+        "formAction": "/update/D5_TypeChange_mvmv9gmq",
+        "formFields": [
+          "utf8",
+          "_method",
+          "card[type]",
+          "assign",
+          "card[last_action_id_before_edit]",
+          "card[content]"
+        ],
+        "formsInModal": [
+          {
+            "action": "/update/D5_TypeChange_mvmv9gmq",
+            "fields": [
+              "utf8",
+              "_method",
+              "card[type]",
+              "assign",
+              "card[last_action_id_before_edit]",
+              "card[content]"
+            ]
+          }
+        ],
+        "selectFormOwnerViaFormAttr": null,
+        "selectInForm": true
+      },
+      "posts": [
+        {
+          "path": "/update/D5_TypeChange_mvmv9gmq",
+          "postData": "utf8=%E2%9C%93&_method=patch&card%5Btype%5D=Book_mvmv9gmq&assign=true&card%5Blast_action_id_before_edit%5D=997&card%5Bcontent%5D=subject+D5_TypeChange_mvmv9gmq&button="
+        }
+      ],
+      "seen": {
+        "path": "/update/D5_TypeChange_mvmv9gmq",
+        "status": 200
+      },
+      "storedTypeId": null,
+      "valueAfter": "Book_mvmv9gmq"
+    }
+  },
+  "leg": "ruby33",
+  "row": "select-owner-form"
+}

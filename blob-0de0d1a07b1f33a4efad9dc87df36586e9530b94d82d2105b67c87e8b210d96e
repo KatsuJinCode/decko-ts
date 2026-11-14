@@ -1,0 +1,133 @@
+// Execute the exact launcher with in-memory dependencies; never load a real browser.
+import fs from 'node:fs';
+import path from 'node:path';
+import {fileURLToPath, pathToFileURL} from 'node:url';
+import vm from 'node:vm';
+import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
+import {execFileSync} from 'node:child_process';
+import {EventEmitter} from 'node:events';
+
+const mode = process.argv[2];
+const root = fileURLToPath(new URL('../../..', import.meta.url));
+const file = 'reference-harness/browser/lib/launch.mjs';
+const revision = process.argv[3];
+const bytes = revision ? execFileSync('git', ['show', `${revision}:${file}`], {cwd: root, windowsHide: true}) : fs.readFileSync(path.join(root, file));
+const events = [];
+let alive = false, profileExists = false, options, removeFailure = mode.includes('remove-failure');
+let closeFailure = mode.includes('close-failure');
+let staysConnected = mode === 'close-with-live-browser';
+let closing = false;
+const primary = new Error('offline primary initialization failure');
+const closeError = new Error('offline context close failure');
+const removeError = new Error('offline profile removal failure');
+const browserCloseError = new Error('offline owned browser close failure');
+let predicate;
+const realm = vm.createContext({process: {env: {HARNESS_CHROME: 'offline-browser', HARNESS_OFFLINE: '1'}, pid: 123, stderr: {write() {}}, kill() {throw Error('Offline control forbids process operations');}}});
+const synthetic = value => new vm.SyntheticModule(Object.keys(value), function () { for (const [key, item] of Object.entries(value)) this.setExport(key, item); }, {context: realm});
+const context = Object.assign(new EventEmitter(), {
+  async route(select, abort) {
+    events.push('route'); predicate = select;
+    assert.equal(await abort({abort: reason => reason}), 'blockedbyclient');
+    if (mode.startsWith('route-')) throw primary;
+  },
+  async close() {
+    events.push('context-close');
+    if (mode.includes('sdk-dispose-failure') && closing) return;
+    closing = true;
+    if (closeFailure || mode.includes('sdk-dispose-failure')) throw closeError;
+    if (!staysConnected) { alive = false; context.emit('close'); }
+  },
+  isClosed() { return closing; },
+  browser() { return {isConnected: () => alive,
+    async close() {
+      events.push('owned-browser-close');
+      if (closeFailure || staysConnected) throw browserCloseError;
+      alive = false; context.emit('close');
+    },
+    version() { if (mode === 'version-failure') throw primary; return 'offline-control'; }}; },
+});
+const mockedFs = {
+  readdirSync() { return []; },
+  mkdtempSync(prefix) { events.push('fresh-profile'); profileExists = true; return prefix + 'offline-owned'; },
+  writeFileSync() { events.push('owner-receipt'); if (mode === 'owner-remove-failure') throw primary; },
+  rmSync() {
+    events.push(alive ? 'unsafe-profile-removal' : 'profile-removal');
+    assert.equal(alive, false, 'Profile removal requires confirmed browser closure');
+    if (removeFailure) throw removeError;
+    profileExists = false;
+  },
+};
+const playwright = synthetic({chromium: {async launchPersistentContext(_profile, supplied) {
+  events.push('context-launch'); options = supplied; alive = true;
+  if (mode === 'launch-failure') throw primary;
+  return context;
+}}});
+const module = new vm.SourceTextModule(bytes.toString(), {context: realm, identifier: pathToFileURL(path.join(root, file)).href,
+  importModuleDynamically: async name => {
+    assert.equal(name, 'playwright-core');
+    if (playwright.status === 'unlinked') await playwright.link(() => {throw Error('Unexpected browser dependency');});
+    await playwright.evaluate(); return playwright;
+  }});
+const imports = {'node:fs': {default: mockedFs}, 'node:os': {default: {tmpdir: () => path.resolve('offline-profiles')}},
+  'node:path': {default: path}, 'node:module': {createRequire() {throw Error('Real package loading forbidden');}}, 'node:url': {pathToFileURL}};
+await module.link(name => { assert.ok(name in imports); return synthetic(imports[name]); });
+await module.evaluate();
+let failure, browser;
+try {
+  browser = await module.namespace.launchBrowser();
+  await Promise.all([browser.close(), browser.close()]);
+  await browser.close();
+} catch (error) { failure = error; }
+const beforeRetry = {alive, profileExists, events: [...events]};
+console.log(JSON.stringify({mode, revision: revision ?? null, sourceSha256: createHash('sha256').update(bytes).digest('hex'), beforeRetry,
+  error: failure ? {name: failure.name, message: failure.message, errors: failure.errors?.map(error => error.message), profile: failure.profile, contextClosed: failure.contextClosed, retryAvailable: typeof failure.retryCleanup === 'function'} : null, options}));
+if (options) {
+  assert.equal(options.headless, true); assert.equal(options.acceptDownloads, false);
+  assert.ok(options.args.includes('--mute-audio')); assert.ok(options.args.includes('--disable-extensions'));
+  assert.ok(!options.args.some(argument => /remote-debugging|user-data-dir/.test(argument)));
+}
+if (mode === 'normal') {
+  assert.equal(failure, undefined); assert.equal(alive, false); assert.equal(profileExists, false);
+  assert.equal(events.filter(event => event === 'context-close').length, 1);
+  assert.equal(events.filter(event => event === 'profile-removal').length, 1);
+  assert.equal(predicate(new URL('http://127.0.0.1:123/')), false);
+  assert.equal(predicate(new URL('https://outside.invalid/')), true);
+  assert.equal(predicate(new URL('https://code.jquery.com/library.js')), true);
+  assert.equal(module.namespace.allowedBrowserRequest(new URL('https://code.jquery.com/library.js'), false), true);
+} else if (mode === 'route-failure' || mode === 'version-failure') {
+  assert.equal(failure, primary); assert.equal(alive, false); assert.equal(profileExists, false);
+  assert.equal(events.filter(event => event === 'context-close').length, 1);
+} else if (mode.includes('sdk-dispose-failure') && !closeFailure) {
+  assert.equal(failure.name, 'AggregateError');
+  assert.equal(failure.cleanupError, closeError);
+  if (mode.startsWith('route-')) assert.equal(failure.primaryError, primary);
+  assert.equal(alive, false); assert.equal(profileExists, false);
+  assert.equal(events.filter(event => event === 'owned-browser-close').length, 1);
+  assert.equal(failure.profileCleanupPending, false);
+} else {
+  assert.equal(failure.name, 'AggregateError');
+  assert.equal(profileExists, true); assert.ok(!events.includes('unsafe-profile-removal'));
+  if (mode.startsWith('route-') || mode.startsWith('owner-') || mode === 'launch-failure') {
+    assert.equal(failure.cause, primary); assert.equal(failure.errors[0], primary);
+  }
+  if (mode.includes('close-failure')) {
+    assert.equal(alive, true); assert.equal(failure.cleanupError, closeError);
+    assert.ok(!events.includes('profile-removal'));
+  }
+  if (mode.includes('remove-failure')) assert.equal(failure.cleanupError, removeError);
+  if (staysConnected) {
+    assert.equal(alive, true); assert.ok(failure.errors.some(error => /closure is unconfirmed/.test(error.message)));
+    assert.ok(!events.includes('profile-removal'));
+  }
+  if (mode === 'launch-failure') {
+    assert.equal(alive, true); assert.equal(failure.retryCleanup, undefined);
+    assert.match(failure.cleanupError.message, /quiescence is unknown/);
+  } else {
+    closeFailure = false; removeFailure = false; staysConnected = false;
+    await failure.retryCleanup();
+    assert.equal(alive, false); assert.equal(profileExists, false);
+    if (mode.includes('sdk-dispose-failure')) assert.equal(events.filter(event => event === 'owned-browser-close').length, 2);
+    if (mode.includes('remove-failure')) assert.equal(events.filter(event => event === 'context-close').length, mode === 'owner-remove-failure' ? 0 : 1);
+  }
+}

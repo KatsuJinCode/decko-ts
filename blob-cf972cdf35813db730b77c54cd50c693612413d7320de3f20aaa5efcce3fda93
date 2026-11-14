@@ -1,0 +1,47 @@
+import {statSync} from 'node:fs';
+import {spawnSync} from 'node:child_process';
+import {homedir} from 'node:os';
+import {isAbsolute, join, parse, resolve} from 'node:path';
+
+export function resolveCleanupIssueTool(repoRoot, env = process.env, platform = process.platform) {
+  if (env.FLIGHTDECK_ISSUE_TOOL) {
+    if (!isAbsolute(env.FLIGHTDECK_ISSUE_TOOL)) throw Error('FlightdeckIssueToolMustBeAbsolute');
+    if (!statSync(env.FLIGHTDECK_ISSUE_TOOL).isFile()) throw Error('FlightdeckIssueToolNotFile');
+    return env.FLIGHTDECK_ISSUE_TOOL;
+  }
+  let root;
+  if (env.FLIGHTDECK_ROOT) root = resolve(env.FLIGHTDECK_ROOT);
+  else switch (platform) {
+    case 'win32': root = join(parse(repoRoot).root, 'localProjects', 'juc-relay'); break;
+    case 'linux': root = join(homedir(), 'localProjects', 'juc-relay'); break;
+    default: throw Error(`UnsupportedCleanupEscalationPlatform:${platform}`);
+  }
+  const tool = join(root, 'tools', 'relay-improvement-issues.mjs');
+  if (!statSync(tool).isFile()) throw Error('FlightdeckIssueToolNotFile');
+  return tool;
+}
+
+function failureDetails(error, seen = new Set()) {
+  if (error && typeof error === 'object') {
+    if (seen.has(error)) return '[Repeated cleanup error]';
+    seen.add(error);
+  }
+  let text = typeof error?.stack === 'string' ? error.stack : String(error);
+  if (Array.isArray(error?.errors)) text += '\nUnderlying failures:\n' + error.errors.map(entry => failureDetails(entry, seen)).join('\n');
+  if (error?.cause !== undefined) text += '\nCause:\n' + failureDetails(error.cause, seen);
+  return text;
+}
+
+export function escalateCleanupFailure(error, repoRoot, {run = spawnSync, resolveTool = resolveCleanupIssueTool} = {}) {
+  const text = failureDetails(error);
+  const result = run(process.execPath, [resolveTool(repoRoot), 'file',
+    '--title', 'Decko project scratch cleanup failed', '--body',
+    `Checkout: ${repoRoot}\nCleanup failed and remains unconfirmed. Retain unresolved scratch; inspect the native error before recovery.\n${text}`,
+    '--priority', 'high', '--global'], {cwd: repoRoot, windowsHide: true, encoding: 'utf8'});
+  if (result.error) throw result.error;
+  if (result.status !== 0) throw Error(`FlightdeckCleanupEscalationFailed: exit=${result.status} signal=${result.signal}\n${result.stdout}\n${result.stderr}`);
+  const receipt = JSON.parse(result.stdout);
+  if (typeof receipt.id !== 'string' || !receipt.id) throw Error('FlightdeckCleanupEscalationMissingReceipt');
+  console.error(`Flightdeck cleanup escalation recorded: ${receipt.id}`);
+  return receipt;
+}

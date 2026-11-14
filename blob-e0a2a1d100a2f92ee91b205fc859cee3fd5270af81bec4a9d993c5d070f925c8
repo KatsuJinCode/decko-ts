@@ -1,0 +1,350 @@
+# Coverage inventory — what the public package measures, and what it does not
+
+Every parity figure this repository quotes names an instrument and a scope.
+This document is the single place that says, for each of the four parity
+domains, what is actually measured, where the evidence lives, and what is
+**not** measured by anything committed here. When a claim about this engine's
+compatibility is quoted anywhere, it should be checkable against this page.
+
+The method behind the instruments is in [parity-method.md](parity-method.md).
+The mod-compatibility boundary is its own decision record
+([decisions/0004](decisions/0004-mods-compiled-into-the-view-registry.md)).
+
+---
+
+## The four domains, and what is measured in each
+
+| Domain | What parity means | Measured by (public package) | Headline figure |
+| --- | --- | --- | --- |
+| Rendering | HTML/format output byte-identical to Ruby's | Reference-harness render ops; miniature smoke fixture; corpus replay | 1,754 / 1,754 renders byte-identical, `synthetic-v1` reference-harness grade, graded on 2026-11-02 on tree `df76698e` ([handover/EVIDENCE.md](handover/EVIDENCE.md), section 1) and again on 2026-11-03, with the same tallies, on a commit of the release-candidate tree `d47ed936` without its run-record folders ([runs/synthetic-v1-release-candidate-grade-2026-11-03](runs/synthetic-v1-release-candidate-grade-2026-11-03/README.md)); both against the Windows Ruby 3.3.12 answers the fixture then held; and again on 2026-11-03, with the same tallies, against the answers the fixture now holds, captured with the reference Ruby 3.2.3 on the project's VM on 2026-11-03 ([handover/EVIDENCE.md](handover/EVIDENCE.md), section 1). Not a byte grade, but alongside it: 51 / 51 browser journeys match a live Ruby 3.2.3 server on page text, structure and form fields on 2026-11-02 (tree `f174eac2`, strict-parity switches at their defaults; [handover/EVIDENCE.md](handover/EVIDENCE.md), section 2). The with-mods corpus replay measured 167,674 / 180,442 views byte-identical (92.9%) on 2026-09-23, on an earlier revision of the engine |
+| Semantics | Names, keys, types, sets, rules, permissions, CQL answer as Ruby answers | Reference-harness semantics ops; CQL batteries in `fixtures/captured/` | 2,389 / 2,389 semantics comparisons, `synthetic-v1` fixture, in both grades named under Rendering — the fixture's `ops/semantics.jsonl` holds **2,388** lines, plus the 1 scenario step whose op is `ask`, which the grader also grades as semantics (`reference-harness/runner/grade-lib.mjs:317`). See "Why two counts of the same fixture" below |
+| Persistence | The rows a write leaves behind match Ruby's, table by table | Reference-harness scenario steps (raw row deltas); the 70-step write probe on `write-battery-v1` | 16 write steps, one raw row-delta comparison each (16 / 16 in both synthetic-v1 grades named under Rendering); the write probe: of its 70 operations, **67 are public** — **65** leave row deltas byte-identical to Ruby's on the committed `write-battery-v1` synthetic deck and **2 are declared deliberate differences**, with **0 unexpected**; the other **3 are withheld until disclosure** (`docs/SECURITY.md`) and print a `NOT RUN` line when absent |
+| Side effects | Saved/refused verdicts, errors, mail, sign-in identity match Ruby's | Reference-harness write and sign-in step answers; captured mail; the 90-step scenario battery on `write-battery-v1`; the mail and database rows of the 51 browser journeys | 19 comparisons: 16 write answers + 3 sign-in answers (19 / 19 in both synthetic-v1 grades above); the 51 browser journeys match on mail 51 / 51 and rows 51 / 51; the scenario battery: of its 90 steps, **87 are public** — **76** match Ruby on the committed `write-battery-v1` synthetic deck, **2** are pinned mismatches from the port's session revocation (`admin-close-own-account` leaves the port's session anonymous where Ruby's stays signed in, and `after-admin-close-write` is then refused with `403` where Ruby saves), and **9** are declared deliberate differences (`get-home`, `admin-update-current-skin-colors` and `admin-delete-script-card` on the script and style bundles' file names: Ruby names each by the wall clock, the port's default names each by its content; `signin-unknown`, `signin-wrong-password` and `reset-unknown-email` under approved divergence 4 in `docs/SECURITY.md`; `admin-create-skin-bad-parent` where Ruby's skin validation answers 500 and the port answers 422; `restore-file-revision` where Ruby's carrierwave override answers 500 and the port restores the version and answers 303; `admin-deny-signup` as the knock-on of that failed restore's location history), each with its own reason in `tools/parity-side-effects/scenarios.json` (`deliberate.why`); the other **3 are withheld until disclosure** (`tests/tools/side-effects-scenario-battery.test.ts` pins every verdict; with the strict-parity switches on it pins 84 matching, 1 declared and the same 2 mismatches) |
+
+The standing test net (`tests/standing-net.json`, 125 manifest files) is
+regression protection, not a parity measurement; the parity figures are the
+ones above, and the full-suite result for this tree is in `KNOWN_FAILURES.md`. Members of that net that are not redistributed with this
+repository print `[not redistributed] NOT RUN <file>`; the runner counts them
+separately and never reports them as passed.
+
+### The public batteries, accounted
+
+Two batteries carry the deepest evidence a clean clone can run. Each accounts
+for every step it runs: a match, a declared difference, or a mismatch the suite pins by name.
+
+**Where each battery's bytes live matters to whether you can run it.** The
+reference-harness fixture is in the public package. The two probe batteries run
+on `reference-harness/fixtures/write-battery-v1`, also in the public package.
+Anything reading `fixtures/captured/` is **not** — that directory is on the
+exclusion list, so the CQL batteries and the smoke fixture named below are
+private-repository material, and their suites are excluded alongside them.
+
+### Why two counts of the same fixture
+
+`synthetic-v1` is described twice in this repository, and both numbers are
+right — they count different things, and the difference is exactly one step of
+each kind:
+
+| Figure | What it counts | Where it comes from |
+| --- | --- | --- |
+| **2,388** semantics operations, **1,752** render operations | the fixture's op files | `wc -l reference-harness/fixtures/synthetic-v1/ops/semantics.jsonl` and `ops/render.jsonl` |
+| **2,389** semantics comparisons, **1,754** renders | what the grader grades | the same ops, **plus** the scenario steps whose op is `ask` (1) and `render` (2), which `grade-lib.mjs:316-317` grades into the semantics and rendering tallies |
+
+So the harness grade is 1,754 / 1,754 and 2,389 / 2,389; the op files hold
+1,752 and 2,388. Cite the figure that names its instrument. The counting rule
+is asserted by the suite itself (`reference-harness/runner/test/normalize.test.mjs:509-512`).
+
+| Battery | Where | Steps | Accounted as |
+| --- | --- | ---: | --- |
+| Reference-harness scenarios | `reference-harness/fixtures/synthetic-v1` | 22 | 16 write steps' row deltas (persistence 16/16) + 19 step answers (side effects 19/19: 16 write answers, 3 sign-in answers); the 2 renders and 1 question among them grade as rendering and semantics, reads write only what the oracle's reads wrote (read writes 8/8, other tables 12/12) |
+| The 70-step write probe | `tests/tools/persist-write-probe.test.ts` on `write-battery-v1` | 70 | 67 public: 65 identical row deltas + 2 declared deliberate differences; 3 withheld until disclosure |
+| The 90-step scenario battery | `tests/tools/side-effects-scenario-battery.test.ts` on `write-battery-v1` | 90 | 87 public: 76 match + 9 declared + 2 pinned mismatches (the port's session revocation after an account closes itself); 3 withheld until disclosure. The nine declared steps and the reason for each are in `tools/parity-side-effects/scenarios.json` (`deliberate.why`); the suite pins the two mismatches at `tests/tools/side-effects-scenario-battery.test.ts:135-150` and the tally at `:313-328` |
+
+Every step of all three is pinned: a change in any of them fails the suite
+that runs it. The production-deck runs of the same two batteries remain the
+deeper, non-public evidence — see Persistence below and What the public
+package does NOT measure, item 6.
+
+---
+
+## Where each measurement lives
+
+### Rendering
+
+- **Corpus replay** (private corpus, not committed): the full-deck capture —
+  every card record and every recorded view compared byte for byte. The
+  2026-09-23 with-mods run measured 167,674 of 180,442 captured views
+  byte-identical (92.9%). **That figure is not a pure Ruby-oracle grade**: 50
+  of its expected entries are bytes fetched from the live site (an earlier Decko),
+  not the 0.20.0 oracle — two disjoint swap sets of 13 and 37, entry keys
+  checked distinct, per-entry manifests kept with the capture). Method, the
+  full breakdown and the failure families: [parity-method.md](parity-method.md),
+  `tools/corpus-failure-classes/`.
+- **Miniature fixture** (not redistributed; `fixtures/captured/` is excluded
+  from the published package): the captured smoke oracle — a small seeded
+  deck with four rendered views per card. Its consuming suites are excluded
+  with it, so a clean clone does not replay this one.
+- **Reference harness** (committed): `reference-harness/fixtures/synthetic-v1/`
+  — 1,752 render operations in the fixture's op file, graded as 1,754
+  comparisons once the 2 scenario render steps are included (see "Why two
+  counts of the same fixture" above), against one built synthetic deck, with
+  the Ruby oracle's answers committed under `expected/`. Grading needs Node and
+  the engine, not Ruby ([../reference-harness/SPEC.md](../reference-harness/SPEC.md)).
+  Graded 1,754 / 1,754 on 2026-11-02 (tree `df76698e`) and on 2026-11-03
+  (a commit of the release-candidate tree `d47ed936` without its run-record
+  folders); see the Rendering row above.
+- **Browser journeys** (committed run record): 51 journeys on the synthetic
+  deck, each driven by one browser against the port and against a live Ruby
+  3.2.3 server, compared on completion, addresses, text, structure, form
+  fields, mail, database rows and editors: 51 / 51 on 2026-11-02
+  ([runs/signed-in-default-51-20261102](runs/signed-in-default-51-20261102/README.md)).
+  What it leaves out is item 1 of the list below.
+
+### Semantics
+
+- **Reference harness**: 2,388 semantics operations in the fixture's op file
+  on the same `synthetic-v1` deck — card identity, set membership, rule
+  lookup, permission verdicts, search results, name algebra — each compared
+  against the committed oracle answer. The grade reports 2,389 comparisons
+  because the 1 scenario `ask` step is graded as semantics too (see "Why two
+  counts of the same fixture" above).
+- **CQL batteries** (not redistributed; `fixtures/captured/` is excluded
+  from the published package): the captured cql-basic oracle (11
+  canonical query shapes) and the captured cql-mysql-match oracle (the
+  `match` battery, 30 queries, captured against a MySQL-protocol server —
+  see [decisions/0005](decisions/0005-cql-match-semantics.md)).
+
+### Persistence
+
+- **Reference harness scenarios**: `synthetic-v1`'s `ops/scenarios.json` holds
+  16 scenarios of 22 steps — 16 writes, 3 sign-ins, 1 question, 2 renders.
+  Every write step's raw row delta (ids and timestamps as stored, across
+  `cards`, `card_acts`, `card_actions`, `card_changes`, `card_references`,
+  `card_virtuals`) is compared against Ruby's: **16 persistence comparisons**.
+  Read steps must additionally leave exactly the rows Ruby's reads left.
+- **The 70-step write probe** (committed):
+  `tests/tools/persist-write-probe.test.ts` runs the 70-operation list
+  against the committed synthetic `write-battery-v1` deck
+  (`reference-harness/fixtures/write-battery-v1`) and compares every
+  operation's row delta with the Ruby oracle dumps recorded on that same
+  deck. **67 operations are public: 65 match byte for byte and 2 are
+  declared deliberate differences, 0 unexpected.** The two, as declared in
+  `reference-harness/fixtures/write-battery-v1/expected/persist-steps/deliberate-differences.json`,
+  are upstream Ruby defects the port does not reproduce: step **7** (a trashed
+  junction revived before its part id resolves, which only inserts on the
+  oracle deck's missing `UNIQUE (left_id, right_id)` index) and step **67**
+  (a revert of a rename that stores rows and then raises, losing the act's
+  history rows; the port completes the revert). The remaining **3
+  operations are withheld until disclosure** (`docs/SECURITY.md`, "Reporting a
+  vulnerability"); without them the suite prints a `[withheld until
+  disclosure] NOT RUN` line. Password storage is not among the declared
+  differences: on this synthetic deck the probe defaults to
+  `DECKO_PASSWORD_HASH=legacy-sha1` (the deck is Ruby-built with salted SHA-1
+  digests), so steps 57 and 58 match exactly. It runs from a clean checkout;
+  no Ruby, no private deck.
+- **The 90-step scenario battery** (recording committed):
+  `tests/tools/side-effects-scenario-battery.test.ts` drives the TypeScript
+  engine through HTTP-shaped steps (`tools/parity-side-effects/`) from the
+  committed `reference-harness/fixtures/write-battery-v1` deck, and compares
+  every step's verdict — what the request was told, which error it showed,
+  what mail it sent, who is signed in afterwards — against the Ruby trace
+  recorded on that deck (`expected/side-effects-ruby.json`, recorded with
+  Ruby's production error handling). **87 steps are public: 76 match Ruby, 9
+  are declared deliberate differences and 2 are pinned mismatches**: the
+  port's session revocation ends the session of an account that closes
+  itself (`admin-close-own-account`) and refuses that session's next write
+  with `403` (`after-admin-close-write`), where Ruby keeps the session and
+  saves. Of the declared differences, `get-home`,
+  `admin-update-current-skin-colors` and `admin-delete-script-card` are three
+  of the nine: Ruby names each script and style bundle file by the wall clock,
+  while the port's default names each by its content;
+  `signin-unknown`, `signin-wrong-password` and
+  `reset-unknown-email` are the approved sign-in divergence 4 in
+  `docs/SECURITY.md`. With the strict-parity switches on, the same suite pins
+  84 matching, 1 declared and the same 2 mismatches. The other **3 steps are
+  withheld until disclosure**. Every verdict is pinned step by step, so any
+  change on either side fails the suite.
+- **The runtime database matrix** (engine-level, no Ruby comparison): its five
+  assertions — saves, rollback of a failed save, concurrent writes on two
+  connections, concurrent reads never served a save's uncommitted rows, and
+  permissions that deny a write and write nothing — passed 5 of 5 against a
+  native PostgreSQL 16.15 server on 2026-11-02, with the original assertion
+  bodies run under `node:test` instead of Vitest, and 5 of 5 under Vitest on
+  MySQL 8.4.11; PGlite passed 3, with the 2 concurrency assertions skipped
+  because it offers one session
+  ([handover/EVIDENCE.md](handover/EVIDENCE.md), sections 3 and 4;
+  [runs/engine-checks-decko256-2026-11-02](runs/engine-checks-decko256-2026-11-02/REPORT.md)).
+  It ran on the port's own schema in disposable databases, so it does not
+  show the port running on an existing Decko PostgreSQL or MySQL deck.
+- **The pod import/export round-trips remain private**:
+  `tests/tools/pod-round-trip.test.ts` and `tests/tools/pod-features.test.ts`
+  skip unless `PODS_SRC_DECK` / `PODS_BASE_DECK` name a private oracle deck.
+  They announce their skip loudly; none of their results are in the public
+  package. The production-deck runs of the two batteries above (a copy of a
+  real deck, its dumps not redistributed) remain the deeper, non-public
+  evidence.
+
+### Side effects
+
+- **Reference harness**: every write step's answer (saved or refused, the
+  error messages, the mail the write sent, the resulting card) and every
+  sign-in's answer (signed in or not, the actor afterwards) is compared
+  against Ruby's: **19 side-effect comparisons** (16 write answers + 3
+  sign-in answers). The counts are recountable from
+  `reference-harness/fixtures/synthetic-v1/ops/scenarios.json`.
+- Captured notification mail and permission-denial bytes are also exercised
+  by their own suites (see [parity-method.md](parity-method.md), "Side
+  effects" layer).
+
+---
+
+## What the public package does NOT measure
+
+Stated plainly, with where the gap closes when it closes:
+
+1. **Browser journeys beyond one isolated host comparison.** The machinery is
+   committed (`reference-harness/browser/`), the 51 journeys are defined as
+   data (`reference-harness/browser/journeys/synthetic-v1.json`), and a
+   comparison run is committed: on 2026-11-02 all 51 journeys, signed-in and
+   anonymous, matched a live Ruby 3.2.3 server running stock Decko 0.20.0 /
+   card 1.110.0 on completion, addresses, text, structure, form fields, mail,
+   database rows and editors, with the strict-parity switches at their
+   defaults and the test settings the harness's port launcher applies
+   ([handover/EVIDENCE.md](handover/EVIDENCE.md), section 2;
+   [runs/signed-in-default-51-20261102](runs/signed-in-default-51-20261102/README.md)).
+   Not measured: that comparison on any tree later than the one it ran on
+   (`f174eac2`), the per-journey raw observations (not committed), and a
+   deployed site — the checker states its own scope as an isolated host
+   comparison, not acceptance of a deployed site.
+2. **PBKDF2 storage of a newly set password, in the harness grade.** The
+   default PBKDF2 policy is graded by its own adapter configuration,
+   `reference-harness/adapters/ts-pbkdf2/`, which runs the full synthetic-v1
+   grade with PBKDF2 on and declares one divergence to the grader
+   (`--declared-divergences`, `reference-harness/runner/divergences.mjs`),
+   one column wide: `cards.db_content` of a `+*password` card. Every other
+   byte is compared. Stated plainly, the exception hides one behavioural
+   difference: Ruby writes nothing at sign-in, while the port rewrites that
+   digest; the grade establishes that the rewrite changes the digest and
+   nothing else.
+   Reproduce it with `node reference-harness/runner/run.mjs --adapter
+   reference-harness/adapters/ts-pbkdf2/adapter.json --fixture
+   reference-harness/fixtures/synthetic-v1 --out tmp/grade-pbkdf2-results`
+   and then `node reference-harness/runner/grade.mjs --fixture
+   reference-harness/fixtures/synthetic-v1 --actual tmp/grade-pbkdf2-results
+   --declared-divergences
+   reference-harness/adapters/ts-pbkdf2/declared-divergences.json`; the
+   report from 2026-10-14 (commit 77c4423d) is
+   `reference-harness/grade-reports/synthetic-v1-pbkdf2-report.json`. No
+   synthetic-v1 scenario sets a password, so storing a new password as
+   PBKDF2 is not graded. If one did, it would fail: the `card_changes`
+   history row holds the digest too, and that column is not masked. It is
+   covered by unit tests (`tests/card/auth/password-hash.test.ts`,
+   `tests/card/auth/signin.test.ts`), not by the harness grade.
+3. **Hosted D1 / Bunny write semantics.** The transaction and atomic-save
+   suites ran against workerd's local D1 under Miniflare and a Hrana v2 test
+   server backed by real SQLite, and against two hosted services on
+   2026-10-14 and 2026-10-15 ([decisions/0007](decisions/0007-atomic-saves-and-transaction-contract.md),
+   adapter table; [hosted-conformance.md](hosted-conformance.md), "Hosted
+   results" and "Cloudflare D1 run, 2026-10-15"; their result records are
+   kept outside this repository):
+   - **Hosted D1.** On 2026-10-14, through a remote binding, the 7
+     transaction conformance cases and 10 save scenarios passed, in a run
+     that predates waiting reads. On 2026-10-15, through the runner on a
+     scratch database, from commit `85dd897d` (not the integration head):
+     transaction conformance and save scenarios 17 of 17, atomic saves 11 of
+     11 and multi-user read isolation 2 of 2 passed, and **concurrent saves
+     failed 2 of 3** — in both failing cases the save issued first was the
+     one refused, the opposite of what the test expects, and the cause was
+     not recorded. That run has not been repeated.
+   - **Hosted Bunny Database.** On 2026-10-14, a scratch database passed
+     transaction conformance and save scenarios 17 of 17 and atomic saves 11
+     of 11; concurrent saves failed 1 of 3 in the first run and passed 3 of 3
+     in a second run after a driver change, and multi-user read isolation
+     failed 1 of 2 in both runs with Bunny's `TRANSACTION_TIMEOUT`. A
+     2026-10-15 run from `85dd897d` passed all four suites.
+
+   Never run against sqld or Turso. No committed evidence describes a
+   production write on any host, and no hosted-provider acceptance is
+   established
+   ([handover/EVIDENCE.md](handover/EVIDENCE.md), "What these results do not
+   cover"). The intermediate-visibility
+   window on D1 is closed: a reader on another connection waits for a save
+   in progress instead of reading its rows, verified under Miniflare by
+   `tests/card/actions/d1-multi-user-saves.test.ts`. The runner that checks
+   the same suites against hosted D1, Turso and Bunny is
+   `tools/hosted-conformance/run.mjs` ([hosted-conformance.md](hosted-conformance.md)).
+4. **Mod views outside the byte grade.** Every mod Decko 0.20.0 ships is
+   ported to TypeScript; the compatibility report's behavioural verdict grades
+   378 of 565 declared views byte-identical to Ruby's captured answer, and a
+   ported view outside that set is unproven against Ruby's bytes
+   (`tools/compat-report/mod-compat-report.md`). A third-party mod written in
+   Ruby for upstream Decko must be ported to TypeScript before use, because
+   the port does not run Ruby
+   ([decisions/0004](decisions/0004-mods-compiled-into-the-view-registry.md)).
+5. **The mail a delayed job sends.** card-mod-delayed_job is ported
+   (`src/card/delayed-job/`, [delayed-jobs.md](delayed-jobs.md)):
+   `integrate_with_delay` events become `delayed_jobs` rows worked off after
+   the response on the two hosts that wire the queue, the Node host
+   (`vm-staging-server.mjs`, when `DECKO_DELAYING=true`) and the Cloudflare
+   Worker (`worker.ts`; the shipped `wrangler.toml` sets
+   `DECKO_DELAYING = "true"` and binds the `decko-ts-delayed-jobs` queue).
+   No Bunny host wires the queue, so on Bunny those events run inside the
+   request. With delaying off, the mod's default, they run in line as Ruby
+   runs them. The row and its handler document are checked against a Ruby
+   capture (`tests/card/delayed-job/delayed-job.test.ts`), and the default
+   configuration by `tests/exercise/deploy-10.test.ts`. Not measured: the
+   mail a job sends when the worker runs it, compared with Ruby's, and a
+   hosted deployment with delaying on.
+6. **Anything a skipped probe would have covered** (see Persistence above):
+   pod round-trips and the production-deck runs of the write batteries on the
+   real oracle deck. The 70-step write sequence and the 90-step scenario
+   battery are public on the committed `write-battery-v1` synthetic deck,
+   apart from the steps withheld until disclosure (above). What remains
+   non-public is the same measurement on a copy of a real production deck.
+
+---
+
+## What changed from the original proposal
+
+The proposal upstream ([decko-commons/decko#1282](https://github.com/decko-commons/decko/issues/1282))
+promised five things that later measurement moved. Each is listed here with
+the section of this page that says where the promise actually stands, so a
+claim quoted anywhere can be checked against the instrument behind it.
+
+| The proposal promised | What stands here | Check it in |
+| --- | --- | --- |
+| Hosting is effectively free ("$0 on Cloudflare's free tier") | Withdrawn as a total-cost claim. This repository holds **no cost measurements** — the Bunny deploy document says so in terms — and the page-view cost model built alongside it prices anonymous read-only views from a private deployment with provider prices read on a stated date. Cloudflare's free plan does not fit a real deck. | [deploy-bunny.md](deploy-bunny.md); [deploy-cloudflare.md](deploy-cloudflare.md) |
+| A constant number of queries regardless of depth | **Met where the stored nest index describes the content.** A cold render reads the root's whole nest closure from `card_references` (ref_type `I`, kept by the write path) in one prelude statement and costs three round trips at every depth 1 through 20 (measured 2026-10-14, `DEPTH_SWEEP_WRITE_ARTIFACT=1 npx vitest run tests/card/render/depth-sweep.test.ts`, which writes its receipt to `benchmarks/results/depth-sweep-ts.json`; the receipt is generated, not shipped). Content the index does not describe falls back to three round trips plus one per nesting level below the root, however many cards each level holds. `tests/card/render/depth-sweep.test.ts` asserts both at every depth; `tests/card/render/deep-nesting-trip-attribution.test.ts` measures the fallback. | [scaling-comparison-deep-nesting.md](scaling-comparison-deep-nesting.md) |
+| Same data, no migration required | **Withdrawn.** Import reads a SQLite deck file, a `mysqldump` text dump or deck-INSERT SQL. A separate importer loads a Ruby Decko PostgreSQL database dumped with `pg_dump` into an empty PostgreSQL database after creating the port's own schema there; it is tested on synthetic input only and is not qualified. The PostgreSQL adapter (`PostgresDriver`, `src/server/drivers/postgres.ts`) is in the tree and passed the runtime database matrix 5 of 5 against PostgreSQL 16.15 on 2026-11-02 — an engine-level test on the port's own schema, with no Ruby comparison. Not established: the port running on an existing Decko PostgreSQL deck, in Ruby's schema, without that import, and any migration onto PostgreSQL or MySQL. While Ruby still serves the deck this engine must store Ruby's own password digest, because Ruby cannot verify PBKDF2; D1's transaction semantics differ from Ruby's and SQLite's. | `tools/migrate/IMPORT_DECK_RECIPE.md`; [postgres.md](postgres.md); [handover/EVIDENCE.md](handover/EVIDENCE.md), section 3 and "What these results do not cover"; [handover/MIGRATION.md](handover/MIGRATION.md); [SECURITY.md](SECURITY.md) "Migration compatibility at a glance" |
+| Faster responses at the edge | **Not established.** No speed run is recorded against a release candidate, and no response-time comparison is committed evidence anywhere in this repository. The published, reproducible comparison is round trips per render. | [scaling-comparison-deep-nesting.md](scaling-comparison-deep-nesting.md) |
+| One click provisions everything | **Not verified.** The `wrangler.toml` the button ships asks for one Worker, one D1 database (`DB`), one R2 bucket (`FILES`), two queues, each with a producer and a consumer (`DELAYED_JOBS` on `decko-ts-delayed-jobs` for delayed jobs, `DELAYED` on `decko-ts-delayed` for the periodic sweep) and a daily cron trigger. It holds no KV namespace and no secrets. Its three `[vars]` are plain non-secret values, all on: `DECKO_WRITE_PATH = "1"` (a writable deck; `"0"` makes every card write answer `403`), `DECKO_FIRST_RUN = "1"` (the token-gated `/setup` window) and `DECKO_DELAYING = "true"`. `npm run deploy` applies the migrations in `deploy/migrations/` (schema, a small demo deck and its account system) and issues the one-time setup link. `tools/deploy/rehearse-deploy-button.mjs` rehearses the bindings offline with wrangler's local runtime; that is not a deploy through the button on a Cloudflare account. | [deploy-cloudflare.md](deploy-cloudflare.md); README, "Deploy to Cloudflare" |
+
+Two further promises are covered by the sections above rather than by an
+instrument: the mod story is that every mod Decko ships is ported, graded by
+the compatibility report's declaration labels and behavioural verdict (item 4
+above), and "exact output parity" is the
+grade of record at the top of this page, with what it leaves out stated in
+the same table.
+
+---
+
+## Reproducing the public measurements
+
+```bash
+npx vitest run tests/testing                  # replay machinery
+npm run replay                                # oracle replay over committed fixtures
+node reference-harness/runner/run.mjs --adapter reference-harness/adapters/ts/adapter.json \
+     --fixture reference-harness/fixtures/synthetic-v1 --out <resultsDir>
+node reference-harness/runner/grade.mjs --fixture reference-harness/fixtures/synthetic-v1 \
+     --actual <resultsDir> --candidate-commit <full commit hash>
+node reference-harness/browser/run-all.mjs --out <out> --reference-target vm
+```
+
+The corpus replay needs the private corpus and is a proof run, not a
+development loop; the reference-harness grade needs only Node and the engine,
+plus a Git checkout of the exact commit named by `--candidate-commit`: without
+a qualified source the grader prints `NOT A GRADE` and reports no pass rate.
+The browser journey run needs a Chromium browser and the Ruby reference
+reachable through the SSH settings `reference-harness/browser/run-all.mjs`
+documents; leave every `DECKO_STRICT_PARITY_*` switch unset to reproduce the
+default-mode run. The skipped probes print what to set to run them.

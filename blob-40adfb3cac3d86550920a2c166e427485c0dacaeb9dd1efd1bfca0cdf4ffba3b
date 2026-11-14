@@ -1,0 +1,36 @@
+export type TestGateId = "package" | "benchmarks" | "harness" | "capacity" | "deploy" | "parity" | "correctness";
+export const GATES: Array<{
+  id: Exclude<TestGateId, "correctness">;
+  label: string;
+  when: string;
+  why: string;
+  excludedFromFull?: boolean;
+  match(path: string): boolean;
+}>;
+export const DEFAULT_GATE: "correctness";
+export function listTestFiles(directory?: string, output?: string[], root?: string): string[];
+export function classify(relativePath: string): TestGateId | null;
+export function selectTestFiles(files: readonly string[], gateId: TestGateId | "full"): string[];
+export function parseGateArguments(args: string[]): { folders: string[]; extra: string[] };
+export function selectGateInventory(files: readonly string[], gateId: TestGateId | "full", folders?: string[]): {
+  selected: string[]; excluded: Array<{ file: string; gate: TestGateId | null; reason: string }>;
+};
+export function testInventoryProblems(files: readonly string[]): string[];
+export function prepareTestEnvironment(root: string, env?: NodeJS.ProcessEnv): { temporaryRoot: string };
+export function runGatePhases(options: {
+  root: string;
+  vitestFiles: readonly string[];
+  nodeFiles: string[];
+  generated: string;
+  extra: string[];
+  report: string;
+}, dependencies?: {
+  spawnVitest?: typeof import("node:child_process").spawn;
+  runNode?: (options: { root: string; files: string[]; report: string }) => Promise<{
+    pass: boolean; filesExecuted: number; summary?: unknown;
+    timings?: Array<{ name: string; kind: string; overlapGroup?: string | null; wallMs: number }>;
+  }>;
+  removeConfig?: (file: string) => void;
+  log?: (message: string) => void;
+  observeTiming?: (phase: { name: string; kind: string; overlapGroup?: string | null; wallMs: number }) => void;
+}): Promise<{ vitestStatus: number; nodePass: boolean; cleanupPass: boolean }>;

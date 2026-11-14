@@ -1,0 +1,319 @@
+# Test policy
+
+This is the single testing policy for this repository. Every agent session
+follows it. The test lead owns it and is the only one who may change it.
+
+## Test lead
+
+Current handoff, 2026-11-02: the cutover lead assigns Codex in
+`C:\localProjects\decko-ts` (Flightdeck 1655), native session
+`01a19a4e-f142-7751-a3ab-5535d67adc01`, acting hosted-test lead and sole
+integration merge owner. Its full verification checkout is
+`C:\localProjects\decko-ts-combined-release-e80a0ee9`. This supersedes the
+historical primary and backup entries below: the controller reports the primary
+checkout was emptied by the disk steward and the backup ended; both former
+working-folder paths were verified absent. No replacement backup is claimed.
+Ready changes go to this merge owner one at a time, with whole-project
+TypeScript and affected-folder checks on the exact proposed merged tree;
+a changed integration base requires checking the new tree.
+
+The currently approved hosted job is the existing staging script redeployment
+and four named anonymous page observations recorded below. It does not start
+the historical complete comparison batch or authorize worker-hosted traffic.
+
+Historical authority and owner records follow.
+
+Current authority: Julian's 2026-11-01 message relayed by Alfred assigns this
+session sole hosted-test approval/execution authority and supersedes the earlier
+consumer-lead usage hold. Hosted testing is not paused. Historical reports retain
+their original observations; they do not impose current restrictions. Before
+carrying an operational hold into a current status, check its governing source
+against this policy and the latest operator instruction. Record supersession
+here so workers do not have to reconstruct authority from old run reports.
+
+- Test lead: the port lead Codex session `01a183a1-54c7-7690-92a0-51acbf130576`
+  (Codex desktop thread, worktree
+  `C:\Users\jpswi\.codex\worktrees\decko-port-integration-recovery\decko-ts`).
+- Interim backup test lead: Codex in
+  `C:\localProjects\decko-ts-zc-fix-paths-20261101` (Relay 1358), branch
+  `fleet/review-b-20261101`. It acts only if the primary test lead is unreachable
+  for over an hour. Alfred's later 2026-11-01 instruction supersedes the initial
+  MiniMax backup while that harness's control port is unavailable. A busy
+  primary is not an absent primary.
+- Only the test lead approves and runs hosted Bunny tests (any request that
+  reaches Bunny's hosted Edge Scripting, Database, CDN or storage).
+- Worker sessions never run hosted tests. They submit a request to
+  `C:\localProjects\decko-fleet-20261101\HOSTED-TEST-QUEUE.md` and keep working
+  locally. Waiting on a hosted run is never a reason for a worker to stop.
+
+The shared queue above is outside every worktree and is the single request
+authority. [The repository queue pointer](runs/hosted-test-queue.md) is not a
+second queue. Fleet ownership and conduct are defined in
+`C:\localProjects\decko-fleet-20261101\FLEET-RULES.md`. Only the primary
+integration lead merges or pushes the integration branch. Workers push their
+own fleet branches; review and merge them in batches, with one complete
+correctness run per integrated batch.
+
+## Local first
+
+- Run everything that can run locally first: Vitest, Node tests, native
+  Worker controls, the local Bunny deployment selection, local Ruby, local
+  SQLite/libSQL/MySQL. A hosted run is only for what local runs cannot show.
+- Passing tests close tasks. Never delete, skip or weaken a test to get a pass.
+  Any change to an existing test's assertions is called out in the commit
+  message and gets independent review.
+
+## Hosted Bunny tests cost real money
+
+Published prices (from [cost-model.md](cost-model.md), read 2026-10-14):
+$0.20 per started million Edge Scripting requests, $0.02 per started 1,000
+CPU-seconds, $0.30 per billion Database rows read, $0.01 per GB CDN bandwidth,
+and a $1.00 account minimum.
+
+Measured cost per run: the test lead records the real charge of every hosted
+run in the log below, from Bunny's billing/usage view or the account's past
+charges, before and after the run. Until a measured figure exists, estimate
+from the published prices above and say so. Hosted Bunny charges were under
+investigation on 2026-11-01; the test lead reconciles them first and records
+the measured per-run cost here. Reconciliation records unknown attribution as
+unknown; it does not pause authorized essential testing. The prior first-pair
+run has no independently attributable before/after billing measurement yet.
+
+Before any hosted run, the run first proves that the deployed build equals the
+commit under test. Every tool that sends requests to a hosted copy calls
+`tools/hosted-build-guard/assert-hosted-build-matches-commit.mjs` first: it reads
+the deployed build's identity from the host's `/_status` (one GET) and refuses
+with exit 1, before any test request, when that identity is missing, unreadable,
+built from uncommitted changes, or not the commit the run claims to test. The
+deploy step stamps the commit into each bundle (`tools/hosted-build-guard/build-stamp.mjs`),
+so a bundle without a stamp cannot pass.
+
+## What qualifies as an essential hosted run
+
+A hosted run is essential only when all of these hold:
+
+1. It checks something no local test can (real Bunny runtime, real hosted
+   database, real CDN behavior, or the Ruby-vs-Bunny comparison on shared data).
+2. The code or configuration it checks changed since the last hosted run of
+   the same test, or it has never run. No feel-good repeats.
+3. Its result changes a decision (accept or reject a fix, or release).
+
+## Batching and reruns
+
+- Batch: collect queued requests and run them together in the fewest runs.
+  The full Ruby-vs-Bunny comparison runs once, as one planned run, after the
+  pending fixes land.
+- Never rerun the same hosted test without a code change that justifies it;
+  name the commit in the log.
+- Money is never a reason to stop work. If hosted testing looks too
+  expensive, the tests are wasteful: make them cheaper, batched or local.
+
+## Hosted run log
+
+| Date (PT) | Run | Commit | Requests batched | Why essential | Estimated cost | Measured cost |
+|---|---|---|---|---|---|---|
+| 2026-11-01 | Historical first controlled Ruby/Bunny title pair, release1197225 | Latest-source continuity unproven; see fragment242 report | One paired page observation; complete setup/provider request count not established | First actual shared-selected-data comparison; found an added LF | Not retrospectively derived from wall time or account totals | Unknown: no attributable before/after billing pair was captured |
+| 2026-11-01 | Requested shared-data batch: preflight failed, awaiting triage | ff3ab5fd6fad6688a73cdfcfd48a2a17d9ec62c0 | Three management GETs retained; zero application requests; 1,439 anonymous reads planned per engine | Explicit current order starts the existing planned batch at the merged PR275 head; actual hosted runtime/source/data continuity remains required | Scripting planning scenario $1.08 if all 1,439 pages each use the documented nominal 30 CPU seconds, with whole account increments; database, asset storage and CDN charges additional and unmeasured | Unknown; account-wide before observation retained, after observation and attributable usage still pending |
+| 2026-11-02 | DECKO-765 approved existing staging redeployment and four anonymous views | f5a9fe47c1ef5f6d6db993aca3b83151564f699a | One build-identity GET, then exactly four page GETs; four existing raw Wasm/license integrity GETs; management/setup reads retained separately | First requested observation of the rebuilt full engine on the real staging runtime; local package checks do not establish hosted rendering | Published account increments: $0.20 per million requests and $0.02 per 1,000 CPU seconds; database/CDN additional; no per-run cap or bill inferred | Unknown per run. Account total $1.08014827549916 before and $1.10014827549916 after; Scripting $0.82 to $0.84. Shared traffic and aggregation prevent attributing the $0.02 account delta to these requests |
+
+### DECKO-765 four-view result
+
+The acting test lead deployed only the independently reviewed full-engine
+artifact, 6,177,654 bytes, SHA256
+`21d5614044992ae38a5e9dfabc9cabe348726e97c7a49a3da012b84847d027b5`,
+to existing script 96895. All four existing raw Wasm/license responses were
+HTTP 200 and matched their complete manifest lengths and hashes; no new assets,
+resources, variables, credentials or linked zones were created or changed.
+Code upload returned 204 and its exact code hash was read back. A publication
+SSH connection ended with EOF and no response; no blind mutation replay followed.
+The first attempt's submission outcome remains unknown. Read-only code,
+active-release and five latest-release observations showed the old active
+release 1269751 and no target code among those inspected releases; they do not
+prove non-submission or cover all release history. This inspected-state recovery
+preceded the next explicit publication, which returned 204; active release
+1270907 contains the exact reviewed code. Only modification time, release ID
+and monthly usage counters changed in the script metadata.
+
+The unchanged PR332 guard, through the pinned comparison helper with
+its supported explicit expected-commit override, made one `/_status` GET.
+Its full raw response was retained before any page request: HTTP 200,
+1,090 body bytes, SHA256
+`b486701240f70b77cd48857ee49554b9e26b397e043bfe077a0707bd2848c36c`,
+with `build.commit` equal to the source hash above and `tree_dirty: false`.
+The guard approved before the first page request.
+
+| Anonymous request, once each | HTTP | Body bytes | SHA256 |
+| --- | ---: | ---: | --- |
+| `/Home?view=title` | 200 | 49 | `6e6386cf74efda689565d8e036894aab04a23d76681921367103c7692d401365` |
+| `/Anyone?view=title` | 200 | 53 | `2f235cee3ace7c3d278f7eddee0d130ae466fd0515e7379d48855170125ffcb0` |
+| `/RichText?view=title` | 200 | 57 | `caf518a118f720f8f6becb730b372280f2b59f4871caf5e1adbeedda4a8a789d` |
+| `/Home?view=core` | 200 | 66815 | `8a74b4419f3ab54c63128fb9f55c39788b588fb3c5b0c94d73986ea6fd544406` |
+
+Counts are complete response-body bytes, without trimming or normalization.
+Requests originated on the existing VM with the original anonymous comparison
+headers and `Accept-Encoding: identity`; redirects and retries were disabled.
+All four responses report CDN MISS and engine `cache=miss+stored`; no result
+cache or model supplied the observations, while provider runtime/database caches
+were not controlled. RichText returned 200, so the conditional function-log
+fetch was unnecessary. These observations do not establish complete parity,
+fresh Ruby execution, signed-in coverage or release acceptance.
+
+The complete private raw guard/page, code, management and billing receipts,
+controller sources and package reviews are retained in the registered evidence
+folder `<fleet-briefs>/routing-20261101/lead-765-hosted-b75-20261102`;
+the folder retains its initial candidate name and separately pins the deployed
+`package-f5a9`. Account usage increased by 615 requests and 689,733 reported CPU
+units over the before/after observations; these are account-wide counters, not
+the five application/guard requests or attributable CPU consumption. No zero-cost
+claim follows from the charge records. The raw guard and result are also recorded
+on DECKO-765. The four status/body counts were sent to the cutover lead.
+Independent local review approved closure of this four-route observation:
+`lead-765-hosted-ending-independent-review-01a19bf5.json`, SHA256
+`9a2aa690c4f3f0869e1023258695d1c068772d8146d03890b2b257ce51e76146`.
+It verified complete raw responses, active code, guard/page event order, settings
+and account billing. The reported initial SSH exit 255 has no separate retained
+native exit receipt and is not independent proof of that attempt's outcome.
+
+### DECKO-818 RichText common-profile acceptance, 2026-11-02
+
+The cutover lead accepted the full and core RichText observations after
+matching the reference's independent deployment settings:
+`DECKO_SERIALIZER_ERA=live` and `DECKO_HAML_SLOT_STYLE=hash`.
+The existing staging script 96895 serves active release 1271414, with exact
+clean build `f79db4fee914adecdb41fc31cfbda8ab2e4bba85`. Full-engine Code is
+6,177,654 bytes, SHA256
+`e9c87a4450c6b9e61bbd51e97d235fb9f73cfc71012a54b6e9aa91cd2d7eb89d`.
+The code differs from the previously reviewed f5a9 artifact only in its commit
+stamp. Configuration readbacks verify the two named changes and preserve every
+other variable, secret and linked zone. No new account resource was created.
+
+Before the final two page requests, the unchanged comparison-runner gate
+returned HTTP 200 with the expected clean f79 build: 1,113 body bytes,
+SHA256 `a7640c41e5294ddd9881849aebb0bc9e590b95761fbd7559af888e194c222b5d`.
+The complete raw guard precedes the page events in the retained JSONL.
+
+| Actual anonymous view | Ruby HTTP / raw bytes | Bunny HTTP / raw bytes | Normalized result |
+| --- | --- | --- | --- |
+| `/RichText` | 200 / 59072 | 200 / 59072 | Equal: 58,384 bytes, SHA256 `414e971dd756caaef59926abea7e2366649c3dcc4f1c13cd165f1822d2049552` |
+| `/RichText?view=core` | 200 / 57485 | 200 / 57485 | Equal: 56,813 bytes, SHA256 `38cc60e66557d466d6f560cac9ddbc1c3f83698d54020582bd77cc084add4180` |
+
+Only the existing structural N1/N3 normalization applies. Raw bodies remain
+unequal; no new mask, trimming, model verdict or request retry supplies a pass.
+Both Bunny responses report CDN MISS and engine miss+stored. Compiled code and
+OS/database caches may be warm. The final source statement below describes a
+selected-record boundary, not an exclusive writer freeze or whole database.
+
+The retained current read transaction captured every selected typed value:
+23,316 cards hash `672b34a62f68c4f20af7c9e6ac978724ff2092ed03f874aaadd353ff1684f266`
+and 50,223 references hash `908dbcfb53ae72fa90f281727e031038f4b0e209d5c570d49d7b803ae375a54e`.
+Both match the Ruby projection. Its final confirmation and close returned
+`STREAM_EXPIRED`; those raw failures remain unchanged. The cutover lead ruled
+this a collector fault, and accepted the hashes after one fresh HTTP pipeline
+with two protocol operations read the same application version 5037 and
+confirmed close. No successful original COMMIT/close is inferred.
+The collector now keyset-pages both tables and defers all hashing until after
+close; two offline lifecycle controls pass, and whole-project typecheck passes
+on source `efd4cfdcc224862930c1def8ff3c51c99e3a1a06`. No unnecessary live recapture ran.
+
+Original cache-on full-first/core-first Ruby controls reproduce the earlier
+issue 253 cache-order behavior. The accepted cold-per-view comparison passes,
+and a fresh full-then-core Ruby execution with actual runtime health reporting
+`viewCache=false` and `raiseAllRenderingErrors=false` independently confirms
+both results. Its original app/Gemfile hashes and selected profiles match;
+the owned process shuts down through HTTP with exit zero. No C renderer change
+was made. Cache-on compatibility remains a known behavior the port does not
+reproduce, as stated in [the handover deployment configuration](handover/DEPLOYMENT.md).
+
+Independent reviewer 1743 accepted this two-route common profile, not full
+compatibility: `lead-818-cache-off-f79-independent-review-01a19bf5.json`, SHA256
+`5ac5824a5aa67d9765deed49a616e159e1c7e4084e80ba22c50a43320affe37c`.
+Its preceding causal finding is SHA256
+`41dcd230aadc1ac05265f78f00ce41e062d54c8c75313713cf3de328ffa5f37a`.
+The result is recorded as met on DECKO-818. Complete private raw bodies, guards,
+profiles and failed observations remain in registered
+`<fleet-briefs>/routing-20261101/lead-765-hosted-b75-20261102`,
+under the explicitly named stock, serializer-live, Haml-hash, cold and cache-off
+phases. Initial failures were sent raw before any fix wave. The expanded job
+contains six Bunny page reads in three changed-configuration rounds, four
+build-guard GETs, 34 direct read-only database HTTP observations including the
+two expired responses, and six Ruby page observations. Management/source reads
+are retained separately; these counts do not count app-internal statements.
+
+Billing is account-wide: the before-expanded total is $1.10014827549916 and
+the after total is $1.16581014531244; Scripting is $0.84 to $0.88. Shared traffic
+and billing aggregation prevent attributing that delta to this job. Per-run
+cost is unknown, not zero. Native/hosted test, handover and release acceptance
+remain separate. The private rich corpus was not found in the checked C input
+locations, so its routed tests remain unverified. The two live trial cases
+also lack their declared trial credentials; production credentials are not
+substituted. The next full run waits for independently signed PR 382 and its
+gate-admission repair, runs with the MySQL provider, and sends any new raw
+failure to the cutover lead before fixes.
+
+The three owned Ruby VM roots were retired after their raw evidence was
+preserved and process, open-file and byte-identity checks passed. The removal
+manifest records 3,322 files and 137,417,028 logical bytes removed, zero bytes
+added by retirement, and all three roots absent. Filesystem allocation reclaimed
+was not measured; no process was stopped. Private evidence remains registered
+on C: as a retained deliverable.
+
+### Historical complete-batch preparation
+
+The current batch supersedes the earlier instruction to wait for every pending
+fix. It does not authorize a second comparison batch or a repeat of failed
+application requests. The test lead performs no package install, pruning, dependency rebuild or
+change inside node_modules for this run. Local preparation belongs to the
+separately assigned comparison agent; it does not grant that agent hosted
+execution authority.
+
+The directly retrieved [Scripting pricing](https://docs.bunny.net/scripting/pricing.md)
+and [runtime limits](https://docs.bunny.net/scripting/limits) supply the scenario
+above. Thirty CPU seconds is the nominal per-request limit, and the provider
+explicitly tolerates occasional spikes, so $1.08 is a planning scenario rather
+than a guaranteed bill cap. Account increments aggregate across scripts.
+
+At the before observation on 2026-11-01 at 15:11 PT, account-wide November
+charges were $0.57055432093426, including Scripting $0.44. This is a starting
+account total, not this run's cost. Its private raw response SHA-256 is
+`e5fe50725f573441c8413f487b72376db3e685c748ea7741de775dc0b8efc077`.
+Three read-only management responses cover billing, script metadata and script
+code. The inspected historical staging script 96895 still reports
+CurrentReleaseId 1197225 and LastModified 2026-10-19T16:33:41; its 7,126,714
+code bytes hash to
+`45d1ead3c8c203c6e39cfcdf8789de95e78d064dbbd9cd9d461a59ee9e35fd9e`.
+These observations do not bind its deployed code or data to the requested
+ff3ab5fd6 source. No anonymous page has been fetched for this batch and no
+account resource has been changed. Raw provider responses and the explicit
+unqualified-source result remain private in the test lead's existing runtime
+evidence directory. The next step is to qualify an existing artifact and the
+exact shared dataset before collecting the planned application responses.
+
+One project packaging attempt then used the existing compiler, without an npm
+package command or requested write inside node_modules. It stopped at the
+runtime-import check with `Unresolved runtime imports`, native exit 1. No
+package directory was written and no application request followed. The original
+tool-delivered output and exact packaging source are retained in
+`docs/runs/hosted-comparison-preflight-2026-11-01/`. The first triage cut at
+`c4d01bb7` authorized no failure fix. The subsequent decision at `0e8b5f46b`
+classifies this checker as TEST BUG and permits import detection correction
+only. That correction passes author regressions and stays unmerged pending
+fresh-full-clone proof and exact-head independent ACCEPT. No package rerun or
+hosted result is supplied by these local checks.
+
+Billing reconciliation, fresh account read 2026-11-01 at 09:09 PT: the account
+reports November charges of $0.443740482529569, including Scripting $0.34
+($0.20 request component plus $0.14 CPU), storage $0.102037326259568 and
+regional traffic components totalling $0.00170315627. Database charges report
+$0. The November 1 monthly usage record is $6.4676887046109455 for the preceding
+usage month; it is not a new charge caused by the first-pair test. These are
+account-wide observations from one successful billing GET, with no model,
+automatic retry or result-cache verdict; provider aggregation/lag and unrelated
+traffic prevent assigning them to individual runs. They do not establish a
+measured per-run cost. The test lead must retain attributable run measurements
+when available and otherwise explicitly record that limitation. No zero-cost
+claim is inferred from a rounded or unchanged bill.
+
+Before the planned complete comparison, capture this billing baseline again
+as part of that one run and retain the matching after-read, response hashes,
+actual request counts and available per-script usage. Keep billing credentials
+and raw account responses local; record sanitized amounts and attribution here.

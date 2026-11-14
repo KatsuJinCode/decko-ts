@@ -1,0 +1,59 @@
+{
+  "runs": {
+    "a": "the 2026-11-03 Ruby 3.2.3 VM capture, committed as reference-harness/fixtures/synthetic-v1/expected",
+    "b": "the superseded 2026-10-08 Ruby 3.3.12 Windows capture of synthetic-v1"
+  },
+  "environments": {
+    "a": {
+      "engine": "decko-ruby",
+      "ruby": "3.2.3",
+      "platform": "aarch64-linux-gnu",
+      "ruby_engine": "ruby",
+      "decko": "0.20.0",
+      "card": "1.110.0"
+    },
+    "b": {
+      "engine": "decko-ruby",
+      "ruby": null,
+      "platform": null,
+      "ruby_engine": null,
+      "decko": "0.20.0",
+      "card": "1.110.0"
+    }
+  },
+  "axis": {
+    "axis": "unknown",
+    "detail": "a run predates the environment recording (ruby: 3.2.3 vs ?)"
+  },
+  "kinds": {
+    "render": {
+      "items": 1752,
+      "equal_raw": 402,
+      "equal_after_N1": 672,
+      "equal_after_N1_N3": 678,
+      "class_token_order": 678,
+      "unclassified": 0
+    },
+    "semantics": {
+      "items": 2388,
+      "equal_raw": 2388,
+      "equal_after_N1": 0,
+      "equal_after_N1_N3": 0,
+      "class_token_order": 0,
+      "unclassified": 0
+    },
+    "scenarios": {
+      "items": 16,
+      "equal_raw": 15,
+      "equal_after_N1": 1,
+      "equal_after_N1_N3": 0,
+      "class_token_order": 0,
+      "unclassified": 0
+    }
+  },
+  "class_token_order": {
+    "items": 678,
+    "tags_reordered": 0
+  },
+  "unclassified": []
+}

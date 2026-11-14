@@ -1,0 +1,84 @@
+{
+  "ruby": "ruby 3.4.11 (2026-09-23 revision 592f1ffdb3) +PRISM [x64-mingw-ucrt]",
+  "activeSupport": "7.2.4",
+  "sources": {
+    "card-1.110.0/lib/card/name.rb": "9f1b65d1d09b34865d8dca16b24bd433536ee36f7090adc49c74c40417cda845",
+    "card-1.110.0/lib/card/name/name_variants.rb": "f779c48d2c24c1566edeecd4a369c805b0b8a100258b23ed744ac530f2ab5792",
+    "cardname-1.110.0/lib/cardname.rb": "67a84cf2cfdede50632587419f60dea8311735245052cda87d8dac4efc979c19",
+    "cardname-1.110.0/lib/cardname/variants.rb": "ac4382afada81c3ec13cb09b374d3dba51418f91b1e3c2c46465437e0e5b7aaf"
+  },
+  "rows": [
+    {
+      "input": "\u2163",
+      "s": "\u2163",
+      "key": "\u2163",
+      "urlKey": "\u2163",
+      "safeKey": "\u2163",
+      "decoded": "\u2163",
+      "stripped": "\u2163",
+      "parts": [
+        "\u2163"
+      ]
+    },
+    {
+      "input": "\u2173",
+      "s": "\u2173",
+      "key": "\u2173",
+      "urlKey": "\u2173",
+      "safeKey": "\u2173",
+      "decoded": "\u2173",
+      "stripped": "\u2173",
+      "parts": [
+        "\u2173"
+      ]
+    },
+    {
+      "input": "A\u200cB",
+      "s": "A\u200cB",
+      "key": "a\u200cb",
+      "urlKey": "A\u200cB",
+      "safeKey": "a\u200cb",
+      "decoded": "A\u200cB",
+      "stripped": "A\u200cB",
+      "parts": [
+        "A\u200cB"
+      ]
+    },
+    {
+      "input": "\u200c",
+      "s": "\u200c",
+      "key": "\u200c",
+      "urlKey": "\u200c",
+      "safeKey": "\u200c",
+      "decoded": "\u200c",
+      "stripped": "\u200c",
+      "parts": [
+        "\u200c"
+      ]
+    },
+    {
+      "input": "\u00b2",
+      "s": "\u00b2",
+      "key": "",
+      "urlKey": "",
+      "safeKey": "",
+      "decoded": "\u00b2",
+      "stripped": "\u00b2",
+      "parts": [
+        "\u00b2"
+      ]
+    },
+    {
+      "input": "A\u00b2B",
+      "s": "A\u00b2B",
+      "key": "a_b",
+      "urlKey": "A_B",
+      "safeKey": "a_b",
+      "decoded": "A\u00b2B",
+      "stripped": "A\u00b2B",
+      "parts": [
+        "A\u00b2B"
+      ]
+    }
+  ]
+}

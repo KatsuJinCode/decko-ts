@@ -1,0 +1,15 @@
+{
+  "row": "add-and-drop-items",
+  "event_file": "card-mod-list-0.20.0/set/abstract/01_list/events.rb",
+  "event": "add_and_drop_items",
+  "scenarios": [
+    {
+      "name": "a save that added one item and dropped another: the body adds and drops each of them",
+      "env_params": { "add_item": "New+Card", "drop_item": ["Old+Card"] }
+    },
+    {
+      "name": "a save that touched no item: the body asks for neither and does nothing",
+      "env_params": {}
+    }
+  ]
+}
