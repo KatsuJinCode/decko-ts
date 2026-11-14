@@ -1,0 +1,179 @@
+{
+  "benchmark": "ruby-prototype-prefetch-dividend",
+  "date": "2026-09-22T02:22:41Z",
+  "depth": 8,
+  "renders_per_phase": 5,
+  "prefix": "PrefR1",
+  "phase_a_depth_first": {
+    "cold_renders": [
+      {
+        "ok": true,
+        "error": null,
+        "queries_non_schema": 11,
+        "queries_all": 11,
+        "wall_ms": 72.71,
+        "html_bytes": 23655,
+        "cache_local_only": false
+      },
+      {
+        "ok": true,
+        "error": null,
+        "queries_non_schema": 11,
+        "queries_all": 11,
+        "wall_ms": 97.434,
+        "html_bytes": 23655,
+        "cache_local_only": false
+      },
+      {
+        "ok": true,
+        "error": null,
+        "queries_non_schema": 11,
+        "queries_all": 11,
+        "wall_ms": 114.247,
+        "html_bytes": 23655,
+        "cache_local_only": false
+      },
+      {
+        "ok": true,
+        "error": null,
+        "queries_non_schema": 11,
+        "queries_all": 11,
+        "wall_ms": 115.875,
+        "html_bytes": 23655,
+        "cache_local_only": false
+      },
+      {
+        "ok": true,
+        "error": null,
+        "queries_non_schema": 11,
+        "queries_all": 11,
+        "wall_ms": 122.422,
+        "html_bytes": 23655,
+        "cache_local_only": false
+      }
+    ],
+    "warm_renders": [
+      {
+        "queries_non_schema": 0,
+        "queries_all": 0,
+        "wall_ms": 66.677,
+        "html_bytes": 23655
+      },
+      {
+        "queries_non_schema": 0,
+        "queries_all": 0,
+        "wall_ms": 62.495,
+        "html_bytes": 23655
+      },
+      {
+        "queries_non_schema": 0,
+        "queries_all": 0,
+        "wall_ms": 88.838,
+        "html_bytes": 23655
+      },
+      {
+        "queries_non_schema": 0,
+        "queries_all": 0,
+        "wall_ms": 67.465,
+        "html_bytes": 23655
+      },
+      {
+        "queries_non_schema": 0,
+        "queries_all": 0,
+        "wall_ms": 63.205,
+        "html_bytes": 23655
+      }
+    ]
+  },
+  "phase_b_closure_prefetch": {
+    "cold_renders": [
+      {
+        "ok": true,
+        "error": null,
+        "queries_non_schema": 11,
+        "queries_all": 11,
+        "wall_ms": 120.806,
+        "html_bytes": 23655,
+        "cache_local_only": false
+      },
+      {
+        "ok": true,
+        "error": null,
+        "queries_non_schema": 11,
+        "queries_all": 11,
+        "wall_ms": 137.785,
+        "html_bytes": 23655,
+        "cache_local_only": false
+      },
+      {
+        "ok": true,
+        "error": null,
+        "queries_non_schema": 11,
+        "queries_all": 11,
+        "wall_ms": 100.949,
+        "html_bytes": 23655,
+        "cache_local_only": false
+      },
+      {
+        "ok": true,
+        "error": null,
+        "queries_non_schema": 11,
+        "queries_all": 11,
+        "wall_ms": 80.911,
+        "html_bytes": 23655,
+        "cache_local_only": false
+      },
+      {
+        "ok": true,
+        "error": null,
+        "queries_non_schema": 11,
+        "queries_all": 11,
+        "wall_ms": 116.244,
+        "html_bytes": 23655,
+        "cache_local_only": false
+      }
+    ],
+    "warm_renders": [
+      {
+        "queries_non_schema": 0,
+        "queries_all": 0,
+        "wall_ms": 41.024,
+        "html_bytes": 23655
+      },
+      {
+        "queries_non_schema": 0,
+        "queries_all": 0,
+        "wall_ms": 59.793,
+        "html_bytes": 23655
+      },
+      {
+        "queries_non_schema": 0,
+        "queries_all": 0,
+        "wall_ms": 79.463,
+        "html_bytes": 23655
+      },
+      {
+        "queries_non_schema": 0,
+        "queries_all": 0,
+        "wall_ms": 67.736,
+        "html_bytes": 23655
+      },
+      {
+        "queries_non_schema": 0,
+        "queries_all": 0,
+        "wall_ms": 48.817,
+        "html_bytes": 23655
+      }
+    ]
+  },
+  "dividend": {
+    "cold_queries_median_phase_a": 11,
+    "cold_queries_median_phase_b": 11,
+    "reduction_pct": 0.0
+  },
+  "cleanup": {
+    "remaining_live": 0,
+    "cards_before": 627,
+    "cards_after": 627
+  }
+}

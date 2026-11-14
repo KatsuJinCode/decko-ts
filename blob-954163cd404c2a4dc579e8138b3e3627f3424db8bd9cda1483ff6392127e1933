@@ -1,0 +1,2 @@
+# reg-routes-A23: closed, the measured skip now checkable at the shipped tree
+`npx vitest run tests/deploy/jasmine-mount-inertness.test.ts` reads 1 file,

@@ -1,0 +1,1169 @@
+{
+  "comment": "The operation sequence both drives run, in order, on copies of the same start deck. params is the nested Rails params hash; each drive encodes it the same way (bracketed form keys, or multipart when a step uploads). upload values name a file under fixtures/.",
+  "steps": [
+    {
+      "name": "get-home",
+      "mod": "core",
+      "method": "get",
+      "path": "/",
+      "deliberate": {
+        "why": "Ruby names each script bundle by its wall clock, and the battery's fixture clock names each write by its own step, so the two engines' .js entries differ in count. The output card has no history (card-mod-assets set/right/asset_output.rb:9-11), so its file takes the stand-in action id Time.now.to_i (card-mod-carrierwave lib/carrier_wave/file_card_uploader.rb:147-151, 202-205, 225-226), and store_output writes it on each update (card-mod-assets set/abstract/asset_outputter.rb:36-51). The first request's Card::Assets.refresh (:cautious, card-mod-assets lib/card/assets.rb:13-27, 86-91) re-stores the 15 mod script inputs one at a time, and each re-store rewrites the bundle (card-mod-assets set/abstract/asset_inputter.rb update_referers_after_input_changed). The committed deck holds those inputs unminified (it was built under the development environment), and the refresh stores each one minified (compress_assets true, card-mod-script set/abstract/00_script.rb:18-27), so each of the 15 script writes carries different bytes and the last is the fully minified bundle; the stylesheet writes repeat identical bytes, which Ruby re-files under a new clock name every time. DECKO_STRICT_PARITY_SCRIPT_BUNDLE_CLOCK_NAMES=off (the default) names each file by its own bytes (src/card/actions/style-asset-events.ts assetOutputNameSlot), so the 15 distinct script bundles keep 15 names and the identical stylesheet bytes land on ONE name; the pin holds that default-mode file set. DECKO_STRICT_PARITY_SCRIPT_BUNDLE_CLOCK_NAMES=on restores Ruby's stand-in action id one for one (strictTs holds that run's pin); with the drive's fixture clock, one second per read, its 15 script writes keep 15 names where Ruby's wall clock lands 13 (two writes reuse a second an earlier write took and overwrite it). No fixed clock reproduces Ruby's collisions.",
+        "ruby": {
+          "files": ".css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.js sha256:1cc6ed5385ee93217c5e219ac88f3208e53b302c392e0ea2135e30ca407754cb,.js sha256:35216b665b7af49374e6d2ee4c6c9ee09f541fe52a38f1be02b9d5a17e5df154,.js sha256:57b5d4960daa6604ae62be109fcb3e542a81a3107bfe3a51349253313ff3cb94,.js sha256:6c27187018f97fac3ea7bd2d5dd4bf154676146ad5d81c90bd1da9fb5a078c57,.js sha256:81a41dfbd3018117ec42d6c1079e191c42eef58934fc3ff9d11f6c82d7f26ee4,.js sha256:856f1f72ec792bcf112819dae782c56860cf5cdd1ccba38cea75a3f3f944c26d,.js sha256:b8b3e91160ff5d2fff2e8e2562ab71944fe5b50feae684560100809120cfc0c1,.js sha256:ba2d59fd817ecdac83819b975481638e735db129172919143c355ffdc1b9ba65,.js sha256:ba532c1c7aaa9f0f9a9d04efb0edb70f5a7fb768ac40a32934b88e2a4b6c754f,.js sha256:d5abac64d8e708530009935300b60a37039a404d1e60b0a58cd6ac14b766ec04,.js sha256:ead0a7ef57b222d0d640b81293af235fdbc20715352eb6673ed961229644b567,.js sha256:f857fd89f1d95013a6a1ef237cdee51dde1b15063e98c9d4cab14e14ccacbda6,.js sha256:fc75a2e63837df3cc87a78a89854aae44740e6e3ce5f99a3daa92ea3d60a0021"
+        },
+        "ts": {
+          "files": ".css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.js sha256:1cc6ed5385ee93217c5e219ac88f3208e53b302c392e0ea2135e30ca407754cb,.js sha256:35216b665b7af49374e6d2ee4c6c9ee09f541fe52a38f1be02b9d5a17e5df154,.js sha256:435be625a5dc2340589f685e3ae92eaced3bb078d810e9ad83a17aeacc504c33,.js sha256:57b5d4960daa6604ae62be109fcb3e542a81a3107bfe3a51349253313ff3cb94,.js sha256:6c27187018f97fac3ea7bd2d5dd4bf154676146ad5d81c90bd1da9fb5a078c57,.js sha256:81a41dfbd3018117ec42d6c1079e191c42eef58934fc3ff9d11f6c82d7f26ee4,.js sha256:856f1f72ec792bcf112819dae782c56860cf5cdd1ccba38cea75a3f3f944c26d,.js sha256:b8b3e91160ff5d2fff2e8e2562ab71944fe5b50feae684560100809120cfc0c1,.js sha256:ba2d59fd817ecdac83819b975481638e735db129172919143c355ffdc1b9ba65,.js sha256:ba532c1c7aaa9f0f9a9d04efb0edb70f5a7fb768ac40a32934b88e2a4b6c754f,.js sha256:d5abac64d8e708530009935300b60a37039a404d1e60b0a58cd6ac14b766ec04,.js sha256:ead0a7ef57b222d0d640b81293af235fdbc20715352eb6673ed961229644b567,.js sha256:eadba6d5ab669ae8bfe1391857ee5966ac452c1847593db567b8500206b2a012,.js sha256:f857fd89f1d95013a6a1ef237cdee51dde1b15063e98c9d4cab14e14ccacbda6,.js sha256:fc75a2e63837df3cc87a78a89854aae44740e6e3ce5f99a3daa92ea3d60a0021"
+        },
+        "strictTs": {
+          "files": ".css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.js sha256:1cc6ed5385ee93217c5e219ac88f3208e53b302c392e0ea2135e30ca407754cb,.js sha256:35216b665b7af49374e6d2ee4c6c9ee09f541fe52a38f1be02b9d5a17e5df154,.js sha256:435be625a5dc2340589f685e3ae92eaced3bb078d810e9ad83a17aeacc504c33,.js sha256:57b5d4960daa6604ae62be109fcb3e542a81a3107bfe3a51349253313ff3cb94,.js sha256:6c27187018f97fac3ea7bd2d5dd4bf154676146ad5d81c90bd1da9fb5a078c57,.js sha256:81a41dfbd3018117ec42d6c1079e191c42eef58934fc3ff9d11f6c82d7f26ee4,.js sha256:856f1f72ec792bcf112819dae782c56860cf5cdd1ccba38cea75a3f3f944c26d,.js sha256:b8b3e91160ff5d2fff2e8e2562ab71944fe5b50feae684560100809120cfc0c1,.js sha256:ba2d59fd817ecdac83819b975481638e735db129172919143c355ffdc1b9ba65,.js sha256:ba532c1c7aaa9f0f9a9d04efb0edb70f5a7fb768ac40a32934b88e2a4b6c754f,.js sha256:d5abac64d8e708530009935300b60a37039a404d1e60b0a58cd6ac14b766ec04,.js sha256:ead0a7ef57b222d0d640b81293af235fdbc20715352eb6673ed961229644b567,.js sha256:eadba6d5ab669ae8bfe1391857ee5966ac452c1847593db567b8500206b2a012,.js sha256:f857fd89f1d95013a6a1ef237cdee51dde1b15063e98c9d4cab14e14ccacbda6,.js sha256:fc75a2e63837df3cc87a78a89854aae44740e6e3ce5f99a3daa92ea3d60a0021"
+        }
+      }
+    },
+    {
+      "name": "get-missing",
+      "mod": "core",
+      "method": "get",
+      "path": "/No_Such_Card"
+    },
+    {
+      "name": "anon-create-card",
+      "mod": "permissions",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Probe Card"
+        }
+      }
+    },
+    {
+      "name": "anon-update-card",
+      "mod": "permissions",
+      "method": "put",
+      "path": "/Parity_Probe_Card",
+      "params": {
+        "card": {
+          "content": "x"
+        }
+      }
+    },
+    {
+      "name": "anon-update-existing-json",
+      "mod": "permissions",
+      "method": "put",
+      "path": "/Home.json",
+      "params": {
+        "card": {
+          "content": "anonymous edit"
+        }
+      }
+    },
+    {
+      "name": "anon-delete-missing",
+      "mod": "core",
+      "method": "delete",
+      "path": "/Parity_Probe_Card"
+    },
+    {
+      "name": "anon-create-type",
+      "mod": "permissions",
+      "method": "post",
+      "path": "/type/Phrase",
+      "params": {
+        "card": {
+          "name": "Parity Phrase"
+        }
+      }
+    },
+    {
+      "name": "signin-blank-email",
+      "mod": "account",
+      "method": "patch",
+      "path": "/update/*signin",
+      "params": {
+        "card": {
+          "subcards": {
+            "+*email": {
+              "content": ""
+            },
+            "+*password": {
+              "content": "Correct horse battery 1!"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "signin-blank-password",
+      "mod": "account",
+      "method": "patch",
+      "path": "/update/*signin",
+      "params": {
+        "card": {
+          "subcards": {
+            "+*email": {
+              "content": "parity.probe@example.com"
+            },
+            "+*password": {
+              "content": ""
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "signin-unknown",
+      "mod": "account",
+      "method": "patch",
+      "path": "/update/*signin",
+      "params": {
+        "card": {
+          "subcards": {
+            "+*email": {
+              "content": "nobody@example.com"
+            },
+            "+*password": {
+              "content": "Correct horse battery 1!"
+            }
+          }
+        }
+      },
+      "deliberate": {
+        "why": "An approved security divergence, docs/SECURITY.md \"Sign-in: throttled, uniform in its answers, and sessions end with the credential\" (divergence 4). card-mod-account's :signin event names the field that failed, so this answer (\"Unrecognized email.\") says the address has no account; the port answers every sign-in failure with \"Wrong email or password.\" and still pays one password derivation for an unknown identifier. The port also answers before the signin event fires, so its event list is empty where Ruby's holds the :signin chain. DECKO_SIGNIN_UNIFORM_FAILURE=off restores Ruby's field-naming answers. DECKO_STRICT_PARITY_SIGNIN_DETAILED_ERRORS=on restores Ruby's field-naming answer exactly, and the step then passes on agreement (the pin describes the default mode).",
+        "ruby": {
+          "errors": "SIGNIN: Unrecognized email."
+        },
+        "ts": {
+          "errors": "SIGNIN: Wrong email or password."
+        },
+        "strictErases": true
+      }
+    },
+    {
+      "name": "signin-wrong-password",
+      "mod": "account",
+      "method": "patch",
+      "path": "/update/*signin",
+      "params": {
+        "card": {
+          "subcards": {
+            "+*email": {
+              "content": "parity.probe@example.com"
+            },
+            "+*password": {
+              "content": "Wrong horse battery 2@"
+            }
+          }
+        }
+      },
+      "deliberate": {
+        "why": "An approved security divergence, docs/SECURITY.md \"Sign-in: throttled, uniform in its answers, and sessions end with the credential\" (divergence 4). card-mod-account's :signin event names the field that failed (\"Wrong password\"); the port answers every sign-in failure, a wrong password among them, with \"Wrong email or password.\", so the answer says nothing about whether the address has an account. The port also answers before the signin event fires, so its event list is empty where Ruby's holds the :signin chain. DECKO_SIGNIN_UNIFORM_FAILURE=off restores Ruby's field-naming answers. DECKO_STRICT_PARITY_SIGNIN_DETAILED_ERRORS=on restores Ruby's field-naming answer exactly, and the step then passes on agreement (the pin describes the default mode).",
+        "ruby": {
+          "errors": "SIGNIN: Wrong password"
+        },
+        "ts": {
+          "errors": "SIGNIN: Wrong email or password."
+        },
+        "strictErases": true
+      }
+    },
+    {
+      "name": "signin-success",
+      "mod": "account",
+      "method": "patch",
+      "path": "/update/*signin",
+      "params": {
+        "card": {
+          "subcards": {
+            "+*email": {
+              "content": "parity.probe@example.com"
+            },
+            "+*password": {
+              "content": "Correct horse battery 1!"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "probe-update-own-account",
+      "mod": "account",
+      "method": "put",
+      "path": "/Parity_Probe+*account",
+      "params": {
+        "card": {
+          "subcards": {
+            "+*email": {
+              "content": "parity.probe@example.com"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "signed-in-read-home",
+      "mod": "session",
+      "method": "get",
+      "path": "/"
+    },
+    {
+      "name": "signed-in-delete-missing",
+      "mod": "core",
+      "method": "delete",
+      "path": "/Never_Was"
+    },
+    {
+      "name": "signed-in-delete-missing-json",
+      "mod": "core",
+      "method": "delete",
+      "path": "/Never_Was.json"
+    },
+    {
+      "name": "signed-in-create-card",
+      "mod": "core",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Probe Card",
+          "content": "created while signed in"
+        }
+      }
+    },
+    {
+      "name": "create-duplicate-name",
+      "mod": "core",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Probe Card",
+          "content": "again"
+        }
+      }
+    },
+    {
+      "name": "create-blank-name",
+      "mod": "core",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "",
+          "content": "nameless"
+        }
+      }
+    },
+    {
+      "name": "create-illegal-name",
+      "mod": "core",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity/Slash",
+          "content": "x"
+        }
+      }
+    },
+    {
+      "name": "create-unknown-type",
+      "mod": "core",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Typeless",
+          "type": "No Such Type"
+        }
+      }
+    },
+    {
+      "name": "create-number-invalid",
+      "mod": "format",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Number Bad",
+          "type": "Number",
+          "content": "abc"
+        }
+      }
+    },
+    {
+      "name": "create-number-valid",
+      "mod": "format",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Number Good",
+          "type": "Number",
+          "content": "42"
+        }
+      }
+    },
+    {
+      "name": "create-json-invalid",
+      "mod": "format",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Json Bad",
+          "type": "JSON",
+          "content": "{bad"
+        }
+      }
+    },
+    {
+      "name": "create-json-valid",
+      "mod": "format",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Json Good",
+          "type": "JSON",
+          "content": "{\"a\": 1}"
+        }
+      }
+    },
+    {
+      "name": "create-compound",
+      "mod": "core",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Probe Card+Parity Field",
+          "content": "field value"
+        }
+      }
+    },
+    {
+      "name": "signed-in-update-card",
+      "mod": "core",
+      "method": "put",
+      "path": "/Parity_Probe_Card",
+      "params": {
+        "card": {
+          "content": "updated while signed in"
+        }
+      }
+    },
+    {
+      "name": "rename-to-existing",
+      "mod": "core",
+      "method": "put",
+      "path": "/Parity_Number_Good",
+      "params": {
+        "card": {
+          "name": "Parity Json Good"
+        }
+      }
+    },
+    {
+      "name": "signed-in-read-json",
+      "mod": "core",
+      "method": "get",
+      "path": "/Parity_Probe_Card.json"
+    },
+    {
+      "name": "upload-file",
+      "mod": "carrierwave",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity File",
+          "type": "File",
+          "file": {
+            "upload": "parity-upload.txt",
+            "mime": "text/plain"
+          }
+        }
+      }
+    },
+    {
+      "name": "upload-cache-new-file",
+      "mod": "carrierwave",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "type": "File",
+          "file": {
+            "upload": "parity-upload.txt",
+            "mime": "text/plain"
+          }
+        },
+        "attachment_upload": "card[file]"
+      }
+    },
+    {
+      "name": "create-from-cached-upload",
+      "mod": "carrierwave",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Cached File",
+          "type": "File",
+          "action_id_of_cached_upload": "$rev_id"
+        }
+      }
+    },
+    {
+      "name": "upload-cache-existing-file",
+      "mod": "carrierwave",
+      "method": "put",
+      "path": "/Parity_Cached_File",
+      "params": {
+        "card": {
+          "file": {
+            "upload": "parity-image.png",
+            "mime": "image/png"
+          }
+        },
+        "attachment_upload": "card[file]"
+      }
+    },
+    {
+      "name": "update-from-cached-upload",
+      "mod": "carrierwave",
+      "method": "put",
+      "path": "/Parity_Cached_File",
+      "params": {
+        "card": {
+          "action_id_of_cached_upload": "$rev_id"
+        }
+      }
+    },
+    {
+      "name": "upload-image",
+      "mod": "carrierwave",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Image",
+          "type": "Image",
+          "image": {
+            "upload": "parity-image.png",
+            "mime": "image/png"
+          }
+        }
+      }
+    },
+    {
+      "name": "upload-large-image",
+      "mod": "carrierwave",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Photo",
+          "type": "Image",
+          "image": {
+            "upload": "parity-photo.png",
+            "mime": "image/png"
+          }
+        }
+      }
+    },
+    {
+      "name": "upload-corrupt-image",
+      "mod": "carrierwave",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Broken Image",
+          "type": "Image",
+          "image": {
+            "upload": "parity-corrupt.png",
+            "mime": "image/png"
+          }
+        }
+      }
+    },
+    {
+      "name": "read-probe-page",
+      "mod": "session",
+      "method": "get",
+      "path": "/Parity_Probe_Card"
+    },
+    {
+      "name": "read-image-page",
+      "mod": "session",
+      "method": "get",
+      "path": "/Parity_Image"
+    },
+    {
+      "name": "signed-in-delete-card",
+      "mod": "core",
+      "method": "delete",
+      "path": "/Parity_Number_Good"
+    },
+    {
+      "name": "rename-account-holder",
+      "mod": "account",
+      "method": "put",
+      "path": "/Parity_Probe",
+      "params": {
+        "card": {
+          "name": "Parity Probe Renamed"
+        }
+      }
+    },
+    {
+      "name": "update-file",
+      "mod": "carrierwave",
+      "method": "put",
+      "path": "/Parity_File",
+      "params": {
+        "card": {
+          "file": {
+            "upload": "parity-image.png",
+            "mime": "image/png"
+          }
+        }
+      }
+    },
+    {
+      "name": "delete-file",
+      "mod": "carrierwave",
+      "method": "delete",
+      "path": "/Parity_File"
+    },
+    {
+      "name": "delete-image",
+      "mod": "carrierwave",
+      "method": "delete",
+      "path": "/Parity_Image"
+    },
+    {
+      "name": "reset-unknown-email",
+      "mod": "account",
+      "method": "patch",
+      "path": "/update/*signin",
+      "params": {
+        "card": {
+          "trigger": "send_reset_password_token",
+          "subcards": {
+            "+*email": {
+              "content": "nobody@example.com"
+            }
+          }
+        },
+        "success": {
+          "view": "reset_password_success"
+        }
+      },
+      "deliberate": {
+        "why": "An approved security divergence, docs/SECURITY.md \"Sign-in: throttled, uniform in its answers, and sessions end with the credential\" (divergence 4). The forgot-password trigger answers an unknown address with the redirect a sent reset gets, and sends nothing. Ruby answers 422 \"EMAIL: not recognized\" and fires send_reset_password_token, which finds no account; the port answers 303 to /*signin/reset_password_success and sends nothing. DECKO_SIGNIN_UNIFORM_FAILURE=off restores Ruby's answer. DECKO_STRICT_PARITY_SIGNIN_DETAILED_ERRORS=on restores Ruby's answer exactly (422, no redirect), and the step then passes on agreement (the pin describes the default mode).",
+        "ruby": {
+          "status": "422",
+          "location": "-",
+          "errors": "EMAIL: not recognized"
+        },
+        "ts": {
+          "status": "303",
+          "location": "/*signin/reset_password_success",
+          "errors": ""
+        },
+        "strictErases": true
+      }
+    },
+    {
+      "name": "reset-known-email",
+      "mod": "account",
+      "method": "patch",
+      "path": "/update/*signin",
+      "params": {
+        "card": {
+          "trigger": "send_reset_password_token",
+          "subcards": {
+            "+*email": {
+              "content": "parity.probe@example.com"
+            }
+          }
+        },
+        "success": {
+          "view": "reset_password_success"
+        }
+      }
+    },
+    {
+      "name": "signout",
+      "mod": "account",
+      "method": "delete",
+      "path": "/delete/*signin"
+    },
+    {
+      "name": "after-signout-write",
+      "mod": "permissions",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity After Signout"
+        }
+      }
+    },
+    {
+      "name": "anon-approve-signup",
+      "mod": "account",
+      "method": "put",
+      "path": "/Parity_Pending",
+      "params": {
+        "card": {
+          "trigger": "approve_without_verification"
+        }
+      }
+    },
+    {
+      "name": "anon-session-card-create",
+      "mod": "session",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Session Probe",
+          "type": "Session",
+          "content": "x"
+        }
+      }
+    },
+    {
+      "name": "anon-session-card-update",
+      "mod": "session",
+      "method": "put",
+      "path": "/Parity_Session_Probe",
+      "params": {
+        "card": {
+          "content": "y"
+        }
+      }
+    },
+    {
+      "name": "anon-session-card-read",
+      "mod": "session",
+      "method": "get",
+      "path": "/Parity_Session_Probe"
+    },
+    {
+      "name": "anon-session-card-delete",
+      "mod": "session",
+      "method": "delete",
+      "path": "/Parity_Session_Probe"
+    },
+    {
+      "name": "anon-session-card-read-after-delete",
+      "mod": "session",
+      "method": "get",
+      "path": "/Parity_Session_Probe"
+    },
+    {
+      "name": "signup",
+      "mod": "account",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Joiner",
+          "type": "Sign up",
+          "subcards": {
+            "+*account": {
+              "subcards": {
+                "+*email": {
+                  "content": "joiner.probe@example.com"
+                },
+                "+*password": {
+                  "content": "Joiner horse battery 4$"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "signup-duplicate-email",
+      "mod": "account",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Joiner Two",
+          "type": "Sign up",
+          "subcards": {
+            "+*account": {
+              "subcards": {
+                "+*email": {
+                  "content": "joiner.probe@example.com"
+                },
+                "+*password": {
+                  "content": "Joiner horse battery 4$"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "signup-bad-email",
+      "mod": "account",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Joiner Three",
+          "type": "Sign up",
+          "subcards": {
+            "+*account": {
+              "subcards": {
+                "+*email": {
+                  "content": "not-an-email"
+                },
+                "+*password": {
+                  "content": "Joiner horse battery 4$"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "signup-short-password",
+      "mod": "account",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Joiner Four",
+          "type": "Sign up",
+          "subcards": {
+            "+*account": {
+              "subcards": {
+                "+*email": {
+                  "content": "joiner4.probe@example.com"
+                },
+                "+*password": {
+                  "content": "ab"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "admin-signin",
+      "mod": "account",
+      "method": "patch",
+      "path": "/update/*signin",
+      "params": {
+        "card": {
+          "subcards": {
+            "+*email": {
+              "content": "admin.probe@example.com"
+            },
+            "+*password": {
+              "content": "Admin horse battery 5%"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "restore-file-revision",
+      "mod": "carrierwave",
+      "method": "put",
+      "path": "/Parity_Cached_File",
+      "params": {
+        "revert_actions": [
+          "$create_action:Parity Cached File"
+        ],
+        "card": {
+          "skip": "validate_renaming"
+        }
+      },
+      "deliberate": {
+        "why": "Ruby crashes: the history mod calls revision(action, before_action) positionally and card-mod-carrierwave's override takes a keyword (ArgumentError), so restoring an old version of any File or Image card answers 500. The port restores the version, which is what the revert was written to do. The recorded 500 is what a deployed site answers (card-mod-format's server_error view); the recording no longer runs the oracle with Rails' developer error handling, so the page carries no exception message. DECKO_STRICT_PARITY_REVISION_RESTORE_500=on reproduces the crash one for one (the same 500, the same server_error page, nothing stored), and the step then passes on agreement (the pin describes the default mode).",
+        "ruby": {
+          "status": "500",
+          "errors": "Wild Card! 500 Server Error Yuck, sorry about that."
+        },
+        "ts": {
+          "status": "303",
+          "errors": ""
+        },
+        "absentIn": "ruby",
+        "consequences": [
+          "location",
+          "writes",
+          "actions",
+          "stamps",
+          "stored",
+          "mail",
+          "mailText",
+          "mailHtml",
+          "files"
+        ],
+        "strictErases": true
+      }
+    },
+    {
+      "name": "admin-create-signup",
+      "mod": "account",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Invitee",
+          "type": "Sign up",
+          "subcards": {
+            "+*account": {
+              "subcards": {
+                "+*email": {
+                  "content": "Invitee.Probe@Example.com"
+                },
+                "+*password": {
+                  "content": "Invitee horse battery 6&"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "admin-approve-with-verification",
+      "mod": "account",
+      "method": "put",
+      "path": "/Parity_Pending",
+      "params": {
+        "card": {
+          "trigger": "approve_with_verification"
+        }
+      }
+    },
+    {
+      "name": "admin-approve-without-verification",
+      "mod": "account",
+      "method": "put",
+      "path": "/Parity_Pending",
+      "params": {
+        "card": {
+          "trigger": "approve_without_verification"
+        }
+      }
+    },
+    {
+      "name": "admin-deny-signup",
+      "mod": "account",
+      "method": "delete",
+      "path": "/Parity_Joiner",
+      "deliberate": {
+        "why": "A knock-on of restore-file-revision, not a difference of its own. The delete's configure_successful_deletion redirects to the session's *previous location (card-mod-session set/all/location_history.rb:9-17, env/location_history.rb:19-21). Ruby renders a page on the failed restore — its controller rescue shows the server_error view, whose before: :show_page fires :save_current_location — so /Parity_Cached_File joins the history at restore-file-revision and is the entry this redirect resolves to. The port does not render on that step (it restores the version, the deliberate difference pinned there), so its history still names /Parity_Pending. Every other field agrees; only the redirect target differs, and only because of the earlier step. DECKO_STRICT_PARITY_REVISION_RESTORE_500=on erases this knock-on with its cause: the strict 500 renders the server_error view through the page machinery, whose save_current_location puts /Parity Cached File into the history, and the deny's redirect then matches Ruby (the pin describes the default mode).",
+        "ruby": {
+          "location": "/Parity_Cached_File"
+        },
+        "ts": {
+          "location": "/Parity_Pending"
+        },
+        "strictErases": true
+      }
+    },
+    {
+      "name": "admin-update-role-members",
+      "mod": "account",
+      "method": "put",
+      "path": "/Help_Desk+*members",
+      "params": {
+        "card": {
+          "content": "$id:Parity Follower"
+        }
+      }
+    },
+    {
+      "name": "admin-create-skin",
+      "mod": "bootstrap",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Skin",
+          "type": "Bootswatch skin"
+        }
+      }
+    },
+    {
+      "name": "admin-create-skin-bad-parent",
+      "mod": "bootstrap",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Child Skin",
+          "type": "Bootswatch skin",
+          "subcards": {
+            "+parent": {
+              "content": "[[Parity Probe Card]]"
+            }
+          }
+        }
+      },
+      "deliberate": {
+        "why": "Ruby crashes: validate_theme_template calls theme_card on a parent that is not a skin (NoMethodError) and answers 500. The port gives the error the event was written to give (bootstrap_not_valid_theme); neither engine writes anything. The recorded 500 is what a deployed site answers (card-mod-format's server_error view); the recording no longer runs the oracle with Rails' developer error handling, so the page carries no exception message. The port refusal page renders the abort message bare (the html error view's simple_error_message shape); the pinned ts errors value is that page's alert text. DECKO_STRICT_PARITY_SKIN_CREATE_500=on reproduces the crash one for one (the same 500, the same server_error page, nothing stored), and the step then passes on agreement (the pin describes the default mode).",
+        "ruby": {
+          "status": "500",
+          "errors": "Wild Card! 500 Server Error Yuck, sorry about that."
+        },
+        "ts": {
+          "status": "422",
+          "errors": "not a valid theme Parity Probe Card"
+        },
+        "strictErases": true
+      }
+    },
+    {
+      "name": "admin-create-old-skin",
+      "mod": "bootstrap",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Old Skin",
+          "type": "Skin",
+          "content": "bootstrap default skin\nParity Probe Card"
+        }
+      }
+    },
+    {
+      "name": "admin-skin-type-change",
+      "mod": "bootstrap",
+      "method": "put",
+      "path": "/Parity_Old_Skin",
+      "params": {
+        "card": {
+          "type": "Bootswatch skin"
+        }
+      }
+    },
+    {
+      "name": "admin-use-skin",
+      "mod": "bootstrap",
+      "method": "put",
+      "path": "/Parity_Skin",
+      "params": {
+        "card": {
+          "trigger": "use_as_current_skin"
+        }
+      }
+    },
+    {
+      "name": "admin-update-scss",
+      "mod": "assets",
+      "method": "put",
+      "path": "/yeti_skin+*colors",
+      "params": {
+        "card": {
+          "content": "$primary: #123456;"
+        }
+      }
+    },
+    {
+      "name": "admin-update-current-skin-colors",
+      "mod": "assets",
+      "method": "put",
+      "path": "/Parity_Skin+*colors",
+      "params": {
+        "card": {
+          "content": "$primary: #345678;"
+        }
+      },
+      "deliberate": {
+        "why": "DECKO_STRICT_PARITY_SCRIPT_BUNDLE_CLOCK_NAMES=off (the default) names each bundle file by its own bytes, so the stylesheet this save re-stores - the skin_field.rb one-save lag's PRE-ACT assembly, byte-identical to the file the previous step stored (the recording's own sha256) - lands on the name it already has and no new file is written. Ruby's stand-in action id Time.now.to_i (card-mod-carrierwave lib/carrier_wave/file_card_uploader.rb:147-151) names a fresh copy of the same bytes on every re-store. The flag on restores that, one file for one file, and the step passes on agreement (the pin describes the default mode).",
+        "ruby": {
+          "files": ".css sha256:9cb969663f4747d7431c177ba2b05e8d736c9575de8ac326a1134e8ce37cb669"
+        },
+        "ts": {
+          "files": "-"
+        },
+        "strictErases": true
+      }
+    },
+    {
+      "name": "admin-update-current-skin-colors-again",
+      "mod": "assets",
+      "method": "put",
+      "path": "/Parity_Skin+*colors",
+      "params": {
+        "card": {
+          "content": "$primary: #876543;"
+        }
+      }
+    },
+    {
+      "name": "admin-create-script-card",
+      "mod": "script",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Probe Script",
+          "type": "JavaScript",
+          "content": "window.parityProbeCount = 1;\n"
+        }
+      }
+    },
+    {
+      "name": "admin-edit-site-script",
+      "mod": "script",
+      "method": "put",
+      "path": "/*all+*script",
+      "params": {
+        "card": {
+          "content": "mod: format+*script\nmod: list+*script\nmod: search+*script\nmod: rules+*script\nmod: edit+*script\nmod: account+*script\nmod: carrierwave+*script\nmod: ace editor+*script\nmod: bar and box+*script\nmod: bootstrap+*script\nmod: follow+*script\nmod: tabs+*script\nmod: layout+*script\nmod: recaptcha+*script\nmod: tinymce editor+*script\nParity Probe Script"
+        }
+      }
+    },
+    {
+      "name": "admin-edit-script-card",
+      "mod": "script",
+      "method": "put",
+      "path": "/Parity_Probe_Script",
+      "params": {
+        "card": {
+          "content": "window.parityProbeCount = 2;\n"
+        }
+      }
+    },
+    {
+      "name": "admin-delete-script-card",
+      "mod": "script",
+      "method": "delete",
+      "path": "/Parity_Probe_Script",
+      "deliberate": {
+        "why": "DECKO_STRICT_PARITY_SCRIPT_BUNDLE_CLOCK_NAMES=off (the default) names each bundle file by its own bytes: deleting the script card rebuilds the bundle without it, and those bytes are exactly the pre-create bundle's, so the rebuilt file takes the name it already has and no new file is written. Ruby's stand-in action id Time.now.to_i (card-mod-carrierwave lib/carrier_wave/file_card_uploader.rb:147-151) writes a fresh copy under a new clock name. The flag on restores that, one file for one file, and the step passes on agreement (the pin describes the default mode).",
+        "ruby": {
+          "files": ".js sha256:57b5d4960daa6604ae62be109fcb3e542a81a3107bfe3a51349253313ff3cb94"
+        },
+        "ts": {
+          "files": "-"
+        },
+        "strictErases": true
+      }
+    },
+    {
+      "name": "admin-update-layout",
+      "mod": "layout",
+      "method": "put",
+      "path": "/Default_Layout",
+      "params": {
+        "card": {
+          "content": "<!-- parity -->{{_main}}"
+        }
+      }
+    },
+    {
+      "name": "admin-update-layout-no-main",
+      "mod": "layout",
+      "method": "put",
+      "path": "/Default_Layout",
+      "params": {
+        "card": {
+          "content": "<!-- parity -->"
+        }
+      }
+    },
+    {
+      "name": "admin-signout",
+      "mod": "account",
+      "method": "delete",
+      "path": "/delete/*signin"
+    },
+    {
+      "name": "leaver-signin",
+      "mod": "account",
+      "method": "patch",
+      "path": "/update/*signin",
+      "params": {
+        "card": {
+          "subcards": {
+            "+*email": {
+              "content": "leaver.probe@example.com"
+            },
+            "+*password": {
+              "content": "Leaver horse battery 8("
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "leaver-close-account",
+      "mod": "account",
+      "method": "delete",
+      "path": "/Parity_Leaver+*account"
+    },
+    {
+      "name": "after-close-write",
+      "mod": "permissions",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity After Close"
+        }
+      }
+    },
+    {
+      "name": "admin-signin-again",
+      "mod": "account",
+      "method": "patch",
+      "path": "/update/*signin",
+      "params": {
+        "card": {
+          "subcards": {
+            "+*email": {
+              "content": "admin.probe@example.com"
+            },
+            "+*password": {
+              "content": "Admin horse battery 5%"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "admin-close-account",
+      "mod": "account",
+      "method": "delete",
+      "path": "/Parity_Leaver+*account"
+    },
+    {
+      "name": "admin-close-own-account",
+      "mod": "account",
+      "method": "delete",
+      "path": "/Parity_Admin+*account"
+    },
+    {
+      "name": "after-admin-close-write",
+      "mod": "permissions",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity After Admin Close"
+        }
+      }
+    }
+  ]
+}

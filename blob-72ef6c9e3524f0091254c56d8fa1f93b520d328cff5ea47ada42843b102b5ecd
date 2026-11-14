@@ -1,0 +1,44 @@
+// Selects the native MySQL 8.4 server the MySQL driver tests run against, before
+// the test gate starts. A gate run names the server it selected, or names the
+// exact mysqld binary it is missing, so a missing provider is never discovered
+// only as a file-load failure inside the test files.
+//
+// The selection order matches tests/server/drivers/mysql-server.ts:
+//   1. DECKO_MYSQL_BASEDIR, when set (a MySQL 8.4 install holding bin/mysqld).
+//   2. On Windows, the fetch-mysql.mjs cache: <parent of the checkout>/.mysql-test-cache
+//      (overridable with DECKO_MYSQL_CACHE), under 8.4.11/mysql-8.4.11-winx64.
+//   3. Otherwise there is no selection and the run reports that.
+// Nothing is downloaded or installed here.
+
+import { join, resolve } from "node:path";
+
+export const MYSQL_VERSION = "8.4.11";
+
+/** The base directory and where it came from, before checking that it exists. */
+export function mysqlBaseDirCandidate({ repoRoot, env, platform }) {
+  if (env.DECKO_MYSQL_BASEDIR) return { baseDir: env.DECKO_MYSQL_BASEDIR, source: "DECKO_MYSQL_BASEDIR" };
+  if (platform !== "win32") return { baseDir: null, source: null };
+  const cache = env.DECKO_MYSQL_CACHE ?? resolve(repoRoot, "..", ".mysql-test-cache");
+  return { baseDir: join(cache, MYSQL_VERSION, `mysql-${MYSQL_VERSION}-winx64`), source: "fetch-mysql cache" };
+}
+
+/**
+ * Returns { selected, baseDir, source, mysqld, problem }.
+ * `selected` is true only when bin/mysqld (mysqld.exe on Windows) exists at the candidate.
+ * `exists` is injected so the selection is testable without a real server.
+ */
+export function resolveMysqlProvider({ repoRoot, env = {}, platform = process.platform, exists }) {
+  const { baseDir, source } = mysqlBaseDirCandidate({ repoRoot, env, platform });
+  if (!baseDir) {
+    return {
+      selected: false, baseDir: null, source: null, mysqld: null,
+      problem: `no MySQL base directory: set DECKO_MYSQL_BASEDIR to a MySQL ${MYSQL_VERSION} install (Linux binaries are not fetched by tools/mysql/fetch-mysql.mjs)`,
+    };
+  }
+  const mysqld = join(baseDir, "bin", platform === "win32" ? "mysqld.exe" : "mysqld");
+  if (exists(mysqld)) return { selected: true, baseDir, source, mysqld, problem: null };
+  return {
+    selected: false, baseDir, source, mysqld,
+    problem: `MySQL ${MYSQL_VERSION} server binary missing: ${mysqld} (selected from ${source}). Restore that install, or set DECKO_MYSQL_BASEDIR to a MySQL ${MYSQL_VERSION} install that contains bin/mysqld.`,
+  };
+}

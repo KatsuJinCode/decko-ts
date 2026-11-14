@@ -1,0 +1,74 @@
+import {existsSync, lstatSync, mkdtempSync, readFileSync, rmdirSync, unlinkSync} from "node:fs";
+import {tmpdir} from "node:os";
+import path from "node:path";
+import {runInNewContext} from "node:vm";
+import {describe, expect, it} from "vitest";
+import {LocalSqliteDriver} from "../../src/server/drivers/local-sqlite.js";
+import type {SQLDatabaseDriver} from "../../src/server/driver.js";
+import {NEST_INDEX_BUILD_VERSION, NEST_INDEX_META_DDL, readNestIndexMarker} from "../../src/card/nest-index.js";
+import {NEST_EDGE_CACHE_DDL, nestEdgeCacheAvailable} from "../../src/card/nest-index-cache.js";
+
+const host = readFileSync(new URL("../../vm-staging-server.mjs", import.meta.url), "utf8");
+const start = host.indexOf("async function inspectOptionalNestCache("), end = host.indexOf("\n}", start);
+if (start < 0 || end <= start) throw new Error("NodeCacheDiscoveryFunctionMissing");
+const inspect = host.slice(start, end + 2);
+
+function wrapper(base: SQLDatabaseDriver): SQLDatabaseDriver & {base: SQLDatabaseDriver} {
+  return {base, query: base.query.bind(base), batch: base.batch.bind(base)};
+}
+
+describe("Node prepared nest-cache discovery connection identity", () => {
+  for (const state of ["missing", "stale", "current"] as const) {
+    it(`discovers ${state} state on the actual read-only browse connection through wrappers`, async () => {
+      const directory = mkdtempSync(path.join(tmpdir(), "decko-cache-identity-"));
+      const database = path.join(directory, "deck.sqlite3");
+      const authentication = new LocalSqliteDriver({path: database, readonly: false});
+      let browse: LocalSqliteDriver | undefined;
+      try {
+        if (state !== "missing") {
+          await authentication.query(NEST_INDEX_META_DDL, []);
+          await authentication.query("INSERT INTO nest_index_meta (meta_key,meta_value) VALUES (?,?)",
+            ["build_version", String(state === "current" ? NEST_INDEX_BUILD_VERSION : 999)]);
+          await authentication.query(NEST_EDGE_CACHE_DDL, []);
+        }
+        browse = new LocalSqliteDriver({path: database, readonly: true});
+        const renderDriver = wrapper(wrapper(browse));
+        const warnings: string[] = [];
+        const authMarker = await readNestIndexMarker(authentication);
+        expect(authMarker.state).toBe(state);
+        expect(nestEdgeCacheAvailable(authentication)).toBe(state === "current");
+        // A shared filename does not share a terminal driver's WeakMap entry.
+        expect(nestEdgeCacheAvailable(renderDriver)).toBe(false);
+        const marker = await runInNewContext(`${inspect}; inspectOptionalNestCache(renderDriver)`, {
+          renderDriver, readNestIndexMarker, console: {warn(message: string) {warnings.push(message);}},
+        });
+        expect(marker.state).toBe(state);
+        expect(nestEdgeCacheAvailable(browse)).toBe(state === "current");
+        expect(nestEdgeCacheAvailable(wrapper(browse))).toBe(state === "current");
+        expect(warnings.length).toBe(state === "current" ? 0 : 1);
+        if (state === "missing") {
+          const tables = await browse.query<{name: string}>("SELECT name FROM sqlite_master WHERE type='table'", []);
+          expect(tables.rows).toEqual([]);
+        }
+        // The actual read-only connection makes any accidental rebuild/write fail.
+        browse.close();
+        warnings.length = 0;
+        await expect(runInNewContext(`${inspect}; inspectOptionalNestCache(renderDriver)`, {
+          renderDriver, readNestIndexMarker, console: {warn(message: string) {warnings.push(message);}},
+        })).rejects.toThrow();
+        expect(warnings).toEqual([]);
+        browse = undefined;
+      } finally {
+        browse?.close();
+        authentication.close();
+        for (const file of [database, `${database}-wal`, `${database}-shm`]) {
+          if (!existsSync(file)) continue;
+          const stat = lstatSync(file);
+          if (!stat.isFile() || stat.isSymbolicLink()) throw new Error("UnexpectedCacheIdentityScratchFile");
+          unlinkSync(file);
+        }
+        rmdirSync(directory);
+      }
+    });
+  }
+});

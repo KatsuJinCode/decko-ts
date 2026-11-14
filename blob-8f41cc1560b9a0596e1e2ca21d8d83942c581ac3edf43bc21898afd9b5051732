@@ -1,0 +1,150 @@
+# The register-routes C10 landing: the render entries offer an unknown main card to the format
+
+The row's recorded unblock was: "the render entry points offer an unknown
+main card to the format, so the arm answers :not_found and writes the 404
+the way the pinned one does." This landing does exactly that, on the
+candidate branch deploy/full-candidate-20261104 at tip a1b8a215, in the
+exclusive worktree for branch port/not-found-404-20261027.
+
+## What the code does now
+
+- `src/card/render/page.ts`, both render entry points
+  (renderPageBytesWithPageConfigInner and renderOutsideOfLayout): the
+  controller's new-card fetch (fetchByName with the request's new-card
+  arguments) admits the phantom on EVERY posture. The admission no longer
+  gates on `RenderEngine#renderAbsentCards`, so the format's main+root
+  viewForUnknown arm (format.ts, the block that writes pageErrorStatus and
+  answers `canCreate ? "new" : "not_found"`) is what answers for an
+  unknown MAIN card from both entries. The residual `card not found`
+  throws at the two fetch sites fire only when a fetcher cannot build a
+  phantom at all (a test stub): nothing then exists to offer the format.
+  The admitted phantom's own bare renders (the prepare pass, the modal
+  prepare) carry `absentCard: true` this render alone
+  (HistoryRenderParams#absentCard), so the offer does not die at the
+  prepare pass.
+- The two entry-side `:new` pre-substitutions are gone. Ruby renders the
+  body with the requested or layout's own main view and the arm
+  substitutes at dispatch (view/permission.rb altered_view ->
+  format/error.rb view_for_unknown); the voo keeps the REQUESTED view.
+  The old explicit "new" bypassed that: :new is itself a perms-:none
+  view, so permission.rb skip_check? short-circuited the substitution and
+  a not-creatable viewer took the create-form denial (error.rb ok? maps
+  :update to :create on a new card) where Ruby's arm answers the
+  not_found page at 404. With the arm answering, the may-create slot JSON
+  also matches the pinned recording (voo.raw_view keeps the requested
+  view). The former `card not found` raise at the outside-of-layout
+  create gate and the twin gate inside the prepare pass are removed with
+  the same reason: Ruby raises nothing there, the arm is the answer.
+- `src/card/render/format.ts`: the viewForUnknown doc comment now states
+  the arm is reached from the page entries on every posture and keeps the
+  measurement trail (MEASURED SKIP-AND-NAME, the earlier landing's ten
+  moved host assertions, the serving boot's flag seat, this landing).
+- `vm-staging-server.mjs`: the non-stock boot's page branch reads the
+  page's own status (renderPageWithStatus) instead of the unconditional
+  200. That 200 was the early-refusal contract (a missing card raised, so
+  a returned page was always 200); with the arm answering, the format's
+  own answer is the contract on both boot postures. This resolves the
+  divergence the staging wildcard suite had pinned as named
+  (tests/deploy/staging-bad-address-wildcard-endpoint.test.ts, the known
+  junction's 200 where the pinned deck answers 404).
+
+## Why the landing is safe to make now (the measurement trail, corrected)
+
+The row's earlier finding ("the offer moved TEN pinned host assertions, a
+serving-surface change with the error page's render budget behind it")
+was measured before commit 1640bd872 seated `renderAbsentCards = true` on
+every engine the serving boot builds (bunny-edge-deck-boot.ts bootDeck).
+The serving paths (the edge's shared deck engine, each live render's own
+engines, the wildcard bad_address arm, the Node staging host's stock
+profile) therefore already answered unknown main cards through the arm;
+what refused the card was the ENGINE-DEFAULT posture (the flag off: the
+parity test's storage.engine and the deploy tests' realDeck engines).
+This landing puts the offer inside the entries themselves, so the posture
+an engine boots with no longer decides the arm's reachability. On
+flag-seated engines the behavior is unchanged.
+
+## What moved, deliberately (suites updated with the reason in the leg)
+
+- tests/server/not-found-404-view-parity.test.ts: the "NAMED, NOT
+  LANDED" leg is now "LANDED (was NAMED, NOT LANDED)": the page entry
+  answers :not_found at 404 on the engine-default posture it used to
+  refuse; the bare slot seam's refusal for an unknown name stands (a slot
+  render is never a MAIN card render). The file header's posture story is
+  updated the same way.
+- tests/server/bad-address-wildcard-view-parity.test.ts (row C15): the
+  wildcard address resolving to nothing renders the not_found arm at 404
+  instead of refusing; the deck seeds the page-chrome codename cards the
+  render now needs (the same cards the NotFound parity deck seeds).
+- tests/server/wildcard-bad-address-parity.test.ts (row A22): the named
+  remainder's comment states the landing; the source-text pin now reads
+  the residual stub-fetcher refusal, with that stated.
+- tests/deploy/bunny-edge-error-page.test.ts: the missing-card GET legs
+  pin the engine's not_found page at 404 (the byte shape the reference
+  harness records); the builder-shape leg reaches the builder the way the
+  serving paths still do, through a raise whose message maps to 404, and
+  keeps its configured-identity pins there.
+- tests/deploy/staging-bad-address-wildcard-endpoint.test.ts: the known
+  junction's status pin updates from the named host divergence (200) to
+  the page's own 404, with the resolved branch cited.
+
+## The new proof suite
+
+tests/server/not-found-404-entry-points.test.ts walks BOTH entries on the
+engine-default posture: the not_found frame inside the deck's page at 404
+for a viewer who may not create, the :new create form at 200 for one who
+may, the outside-of-layout entry's body frame plus the requested view's
+own dispatch (the 403 loud denial whose denied task is create, exactly
+error.rb's ok?-on-new-card semantics), the bare slot seam's standing
+refusal, a known card's 200 beside them, and the phantom fetch writing
+nothing.
+
+## The runs (this worktree, this landing's tip)
+
+- npx tsc --noEmit: exit 0, clean.
+- npx vitest run tests/server/: 1752 passed, 14 failed, 30 skipped
+  (both the first run and the second run after the entry-side
+  substitution change land on the same failure set) - every failure
+  verified against a pristine a1b8a215 worktree run of the same files:
+  seven suites fail identically at the base (candidate-tip drift in
+  source-line pins of files this landing does not touch:
+  card-action-engine.ts, card-mod-history.ts, first-run-setup.ts,
+  worker-shared-surface.ts, follow-mail-views.ts, the bunny-edge-files
+  cache-header pin) and the three drivers files are the documented
+  absent-MySQL-binary environment (the fetch step has not been run on
+  this checkout).
+- npx vitest run tests/deploy/: 730 passed, 4 failed, 10 skipped. The
+  baseline run of the files that failed with the landing (pristine
+  a1b8a215, this lane's paired baseline worktree) showed 4 of the 12
+  first-run failures pre-existing: the three staging-rss legs
+  (GET /Welcome.rss, GET /Welcome?format=rss, the rss request for a card
+  that does not exist) and the documented worker-edge-cache-runtime
+  workerd failure. The other 8 were the landing's moved pins, each
+  updated in its leg as listed above, and the final run is green on all
+  of them: bunny-edge-bad-address-wildcard (5/5),
+  bunny-edge-engine-request-new-card-route (5/5), bunny-edge-error-page
+  (15/15), staging-bad-address-wildcard-endpoint (3/3),
+  staging-registered-format-d5 (6/6), and the two moved staging-rss deep
+  path legs (the other three staging-rss failures are the pre-existing
+  base set).
+- The Ruby oracle capture (fixtures/captured/not-found-404-view-ruby-oracle.json)
+  and its parity test run green; the second-404-producer rows are
+  unchanged by this landing.
+
+## Named for the lane that owns it (not this row's cell)
+
+- The built-in code layout's interior (codeDefaultLayoutInterior in
+  page.ts) splices {{_main}} through an ordinary programmatic nest, which
+  for an unknown main card takes the nested :unknown posture (empty for a
+  viewer who may not create) where Ruby's chunk dispatch splices
+  main.rendered (the not_found frame). On a card-layout deck (every real
+  deck; the recorded harness pages) the splice goes through mainNest and
+  the frame lands; the entry-point suite seeds the card-layout lane for
+  its full-page pins for exactly that reason. Changing the code lane's
+  interior would move every known-card code-layout page's slot bytes, so
+  it is named here for the layout lane, not changed in this row.
+- The bare render entry (RenderEngine#render, the hosts' renderSlot
+  seam) still refuses an unknown name; the nested :unknown posture, not
+  the main+root arm, is its surface. Pinned in both the parity test and
+  the entry-point suite.
+
+Nothing deployed, no live-host traffic, no source-deck.example touch.

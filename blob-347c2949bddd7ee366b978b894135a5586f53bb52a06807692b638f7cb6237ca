@@ -1,0 +1,19 @@
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// Source files are separate from Ruby's executable gem environment. The full
+// gate clears GEM_HOME so unrelated Ruby children keep their default gems.
+// Reading the pinned oracle source must not depend on restoring that variable.
+export function oracleGemSourceDirectory(env = process.env) {
+  const selected = env.DECKO_ORACLE_GEM_DIR ?? env.DECKO_RUBY_GEMSET ?? env.GEM_HOME;
+  if (selected !== undefined) {
+    if (!path.isAbsolute(selected) || selected.trim() !== selected) throw Error('OracleGemSourceDirectoryInvalid');
+    const directory = path.basename(selected) === 'gems' ? selected : path.join(selected, 'gems');
+    if (!existsSync(path.join(directory, 'card-mod-ace_editor-0.20.0'))) throw Error('OracleGemSourceDirectoryUnavailable: ' + directory);
+    return directory;
+  }
+  const repo = fileURLToPath(new URL('../../', import.meta.url));
+  const installed = path.resolve(repo, '..', 'decko-ruby-oracle-gems', 'ruby', '3.4.0', 'gems');
+  return existsSync(path.join(installed, 'card-mod-ace_editor-0.20.0')) ? installed : undefined;
+}

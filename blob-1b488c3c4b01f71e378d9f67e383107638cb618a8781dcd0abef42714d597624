@@ -1,0 +1,200 @@
+// A D1 binding for test code running in Node whose statements execute inside
+// workerd, one dispatchFetch per call.
+//
+// WHY. Miniflare's Node-side binding (mf.getD1Database) is a generic proxy:
+// every prepare() and bind() is a synchronous round trip to workerd that
+// blocks the test process's event loop (Atomics.wait), so CloudflareD1Adapter,
+// which prepares and binds every statement and adds a `SELECT changes()` after
+// each write, pays several round trips per SQL statement. Measured on the
+// two-processor release VM: about 12 ms per prepare and 7.5 ms per bind, 71 ms
+// per single query, against 143 ms to execute a 100-statement batch and 17 ms
+// per dispatchFetch.
+//
+// WHAT IS THE SAME. The D1 database is Miniflare's own, in workerd; each
+// all()/run() and each batch() is executed there by the real binding exactly
+// as the proxy would have it executed (a batch stays one atomic D1 batch).
+// Results come back with the same rows and meta, byte values keep their type
+// (ArrayBuffer, Uint8Array or number array), and a D1 failure is rethrown
+// with the same name, message and cause text the adapter inspects
+// (isMissingLockStateTable, isLeaseAssertFailure). Only the transport differs:
+// prepare() and bind() build the statement in Node, and nothing blocks the
+// event loop. d1-binding-over-worker-fetch.test.ts checks this binding
+// against the proxy for the same statements.
+//
+// USE. Give the Miniflare instance D1_STATEMENT_EXECUTOR_SCRIPT as its worker
+// script (it declares the D1 bindings), then take bindings with
+// d1BindingOverWorkerFetch(mf, "DB1") where the proxy's getD1Database("DB1")
+// was used. When the instance runs a real worker of its own, add
+// d1StatementExecutorWorker({ DB: <database id> }) to its `workers` list (the
+// same database id is the same D1 database for both workers) and take the
+// binding with `await d1BindingOverExecutorWorker(mf, "DB")`.
+import { Miniflare } from "miniflare";
+import type { D1BindValue, D1DatabaseLike, D1PreparedStatementLike, D1ResultLike } from "../../src/server/drivers/d1.js";
+
+/** The worker script: POST {binding, batch, statements: [{sql, params}]}
+ *  executes the statements on env[binding] (one D1 batch, or one all()) and
+ *  answers {results} or {error}. Byte values cross as {"$bytes": base64,
+ *  "$type": "ArrayBuffer" | "Uint8Array"} in both directions. */
+export const D1_STATEMENT_EXECUTOR_SCRIPT = `
+const encodeBytes = (bytes, type) => {
+  let text = "";
+  for (const byte of bytes) text += String.fromCharCode(byte);
+  return { $bytes: btoa(text), $type: type };
+};
+const decodeBytes = (value) => {
+  const text = atob(value.$bytes);
+  const bytes = new Uint8Array(text.length);
+  for (let i = 0; i < text.length; i++) bytes[i] = text.charCodeAt(i);
+  return value.$type === "ArrayBuffer" ? bytes.buffer : bytes;
+};
+const encodeValue = (value) =>
+  value instanceof ArrayBuffer ? encodeBytes(new Uint8Array(value), "ArrayBuffer")
+  : value instanceof Uint8Array ? encodeBytes(value, "Uint8Array")
+  : value;
+const encodeResult = (result) => ({
+  ...result,
+  results: result.results?.map((row) => Array.isArray(row)
+    ? row.map(encodeValue)
+    : Object.fromEntries(Object.entries(row).map(([key, value]) => [key, encodeValue(value)]))),
+});
+const describeError = (error) => error instanceof Error
+  ? { name: error.name, message: error.message, cause: error.cause === undefined ? undefined : describeError(error.cause) }
+  : { name: "Error", message: String(error) };
+export default {
+  async fetch(request, env) {
+    const { binding, batch, statements } = await request.json();
+    const db = env[binding];
+    if (db === undefined) {
+      return Response.json({ error: { name: "Error", message: 'No D1 database binding named "' + binding + '" found in the worker' } });
+    }
+    try {
+      const prepared = statements.map((s) =>
+        db.prepare(s.sql).bind(...s.params.map((p) => p !== null && typeof p === "object" && "$bytes" in p ? decodeBytes(p) : p)));
+      const results = batch ? await db.batch(prepared) : [await prepared[0].all()];
+      return Response.json({ results: results.map(encodeResult) });
+    } catch (error) {
+      return Response.json({ error: describeError(error) });
+    }
+  },
+};
+`;
+
+/** The executor's worker name, when it runs beside another worker. */
+export const D1_STATEMENT_EXECUTOR_WORKER = "d1-statement-executor";
+
+/** The executor as one entry of a Miniflare `workers` list, bound to the
+ *  given D1 databases (binding name -> database id). */
+export function d1StatementExecutorWorker(d1Databases: Record<string, string>) {
+  return { name: D1_STATEMENT_EXECUTOR_WORKER, modules: true, script: D1_STATEMENT_EXECUTOR_SCRIPT, d1Databases };
+}
+
+/** A worker's fetcher, as `mf.getWorker(name)` returns it. */
+interface WorkerFetcher {
+  fetch(url: string, init: { method: string; headers: Record<string, string>; body: string }): Promise<{ json(): Promise<unknown> }>;
+}
+
+/** Where the executor answers: the Miniflare instance whose entry worker is
+ *  the executor, or the executor worker's own fetcher. */
+type ExecutorTarget = Miniflare | WorkerFetcher;
+
+interface EncodedBytes {
+  $bytes: string;
+  $type: "ArrayBuffer" | "Uint8Array";
+}
+
+interface DescribedError {
+  name: string;
+  message: string;
+  cause?: DescribedError;
+}
+
+function isEncodedBytes(value: unknown): value is EncodedBytes {
+  return value !== null && typeof value === "object" && "$bytes" in value;
+}
+
+function encodeParam(value: D1BindValue): unknown {
+  if (value instanceof ArrayBuffer) return { $bytes: Buffer.from(value).toString("base64"), $type: "ArrayBuffer" };
+  if (value instanceof Uint8Array) return { $bytes: Buffer.from(value).toString("base64"), $type: "Uint8Array" };
+  return value;
+}
+
+function decodeValue(value: unknown): unknown {
+  if (!isEncodedBytes(value)) return value;
+  const bytes = new Uint8Array(Buffer.from(value.$bytes, "base64"));
+  return value.$type === "ArrayBuffer" ? bytes.buffer : bytes;
+}
+
+function decodeResult(result: D1ResultLike): D1ResultLike {
+  if (result.results === undefined) return result;
+  return {
+    ...result,
+    results: result.results.map((row) =>
+      Array.isArray(row)
+        ? (row.map(decodeValue) as unknown as Record<string, unknown>)
+        : Object.fromEntries(Object.entries(row).map(([key, value]) => [key, decodeValue(value)])),
+    ),
+  };
+}
+
+function rebuildError(described: DescribedError): Error {
+  const error = new Error(described.message, described.cause === undefined ? undefined : { cause: rebuildError(described.cause) });
+  error.name = described.name;
+  return error;
+}
+
+class StatementOverWorkerFetch implements D1PreparedStatementLike {
+  constructor(
+    private readonly execute: (statements: StatementOverWorkerFetch[], batch: boolean) => Promise<D1ResultLike[]>,
+    readonly sql: string,
+    readonly params: readonly D1BindValue[] = [],
+  ) {}
+
+  bind(...values: D1BindValue[]): D1PreparedStatementLike {
+    return new StatementOverWorkerFetch(this.execute, this.sql, values);
+  }
+
+  async all(): Promise<D1ResultLike> {
+    return (await this.execute([this], false))[0]!;
+  }
+
+  async run(): Promise<D1ResultLike> {
+    return this.all();
+  }
+}
+
+/** The D1 binding `bindingName` of the executor worker that runs beside
+ *  another worker in `mf` (d1StatementExecutorWorker). */
+export async function d1BindingOverExecutorWorker(mf: Miniflare, bindingName: string): Promise<D1DatabaseLike> {
+  // Miniflare declares getWorker's result through ReplaceWorkersTypes, which
+  // resolves the Fetcher to a Request type here; the object it returns is the
+  // worker's fetcher.
+  const executor = (await mf.getWorker(D1_STATEMENT_EXECUTOR_WORKER)) as unknown as WorkerFetcher;
+  return d1BindingOverWorkerFetch(executor, bindingName);
+}
+
+/** The D1 binding `bindingName` of the executor at `target`, executed inside
+ *  workerd. */
+export function d1BindingOverWorkerFetch(target: ExecutorTarget, bindingName: string): D1DatabaseLike {
+  const execute = async (statements: StatementOverWorkerFetch[], batch: boolean): Promise<D1ResultLike[]> => {
+    const request = {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        binding: bindingName,
+        batch,
+        statements: statements.map((statement) => ({ sql: statement.sql, params: statement.params.map(encodeParam) })),
+      }),
+    };
+    const url = "http://d1-statement-executor.test/";
+    // A worker's fetcher is a Miniflare proxy that claims every property, so
+    // the instance is told apart by its class.
+    const response = target instanceof Miniflare ? await target.dispatchFetch(url, request) : await (target as WorkerFetcher).fetch(url, request);
+    const answer = (await response.json()) as { results?: D1ResultLike[]; error?: DescribedError };
+    if (answer.error !== undefined) throw rebuildError(answer.error);
+    return answer.results!.map(decodeResult);
+  };
+  return {
+    prepare: (sql) => new StatementOverWorkerFetch(execute, sql),
+    batch: (statements) => execute(statements as StatementOverWorkerFetch[], true),
+  };
+}

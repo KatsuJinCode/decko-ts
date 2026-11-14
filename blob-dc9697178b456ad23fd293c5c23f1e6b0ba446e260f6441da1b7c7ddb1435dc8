@@ -1,0 +1,39 @@
+// Guard for DECKO-829: the detached test-queue runner must not keep a directory inside a
+// caller's scratch tree as its working directory. A scratch directory whose queue directory
+// lives inside it must be removable right after the submitter returns.
+//
+// Without the fix the runner is spawned with cwd = DECKO_TEST_QUEUE_DIR (inside the scratch
+// tree) and holds that directory for at least its 2 s poll interval: rmSync fails with EPERM.
+
+import { describe, expect, it } from "vitest";
+import { spawnSync } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { scratchDir, removeScratchDir } from "../../tests/support/scratch-dir.mjs";
+
+const TOOL_DIR = path.dirname(fileURLToPath(import.meta.url));
+const SUBMIT = path.join(TOOL_DIR, "submit-test-job.mjs");
+
+describe("detached queue runner does not hold a caller's scratch directory", () => {
+  it("removes a scratch tree that contains the queue directory right after submission", () => {
+    const scratch = scratchDir("runner-cwd-guard-");
+    const queueDir = path.join(scratch, "queue");
+    const worktree = path.join(scratch, "worktree");
+    fs.mkdirSync(worktree, { recursive: true });
+    try {
+      const submit = spawnSync(
+        process.execPath,
+        [SUBMIT, "--name", "runner-cwd-guard", "--cwd", worktree, "--cmd", "node -e 0", "--no-wait"],
+        { env: { ...process.env, DECKO_TEST_QUEUE_DIR: queueDir }, encoding: "utf8", timeout: 60_000, windowsHide: true },
+      );
+      expect(submit.status, submit.stderr).toBe(0);
+      // A single attempt, no retries: the runner is alive for its whole poll interval, so
+      // any hold it keeps on the directory shows here.
+      expect(() => fs.rmSync(scratch, { recursive: true, force: true, maxRetries: 0 })).not.toThrow();
+    } finally {
+      // Already removed on success; a failure leaves the directory for removeScratchDir's own report.
+      try { removeScratchDir(scratch); } catch { /* the test above reports the failure */ }
+    }
+  }, 60_000);
+});

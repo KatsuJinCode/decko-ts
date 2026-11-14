@@ -1,0 +1,26 @@
+// Shared path resolution for the committed miniature test corpus
+// (fixtures/test-corpus/ — see its README).
+//
+// Every path resolves to the COMMITTED miniatures — every clone, every
+// machine, nothing machine-local involved. This is the contract: `npm test`
+// must run from these bytes alone.
+//
+// Consumers: tests/card/render/permission-corpus-seeding.ts,
+// tests/card/render/structure-corpus-seeding.ts, the corpus-replay tests
+// with their own path constants, and the auth fixtures.
+
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = path.resolve(HERE, "..", "..");
+const FIXTURE_CORPUS_DIR = path.join(REPO_ROOT, "fixtures", "test-corpus");
+
+/** The corpus sqlite the seeding helpers and replay drivers open. */
+export const CORPUS_DB_PATH = path.join(FIXTURE_CORPUS_DIR, "test-corpus.sqlite3");
+
+/** The shard the corpus replay tests read entries from. */
+export const SHARD_000000_PATH = path.join(FIXTURE_CORPUS_DIR, "test-corpus-shard-000000.jsonl");
+
+/** The depth-3 junction replay's shard. */
+export const SHARD_000014_PATH = path.join(FIXTURE_CORPUS_DIR, "test-corpus-shard-000014.jsonl");

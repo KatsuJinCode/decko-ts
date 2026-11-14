@@ -1,0 +1,494 @@
+// The virtual card's save, in Ruby and in the port (register row 33,
+// card-mod-virtual).
+//
+// RUBY (card-mod-virtual-0.20.0 set/abstract/virtual_cache.rb:21-29):
+//
+//   event :save_virtual_content, :prepare_to_store, on: :save do
+//     Virtual.save self
+//     abort :success
+//   end
+//
+//   event :delete_virtual_content, :prepare_to_store, on: :delete do
+//     Virtual.delete self
+//     abort :success unless real?
+//   end
+//
+// The abort unwinds the save, so a virtual card's OWN cards row is never
+// written: the content lives in the card_virtuals row the Virtual.save
+// wrote, and nothing else.
+//
+// THE THREE MECHANISMS, CLOSED (the row's measured gap and its repair):
+//
+// 1. THE PORT'S ABORT IS A THROW, AND THE BODY THROWS IT. The port models
+//    abort :success as the ModEventAbortSuccess throw
+//    (src/card/actions/types.ts). The registered bodies are the Ruby
+//    bodies: they run Virtual.save / Virtual.delete and throw the abort.
+//
+// 2. THE WRITE ORDER RUNS THE BODIES, AND THE ROW WRITE NEVER COMES. Both
+//    events are write-order owned (card-action-engine.ts
+//    WRITE_ORDER_OWNED_EVENTS): the create arm (after the ordinary
+//    validation phase), the update arm (before the row write) and the
+//    delete arm (before the trash write) run the registered body with the
+//    virtualContent seat and answer its abort with the no-write success,
+//    returning rather than throwing so the card_virtuals write persists.
+//    The Virtual side effect runs exactly once and the cards row is never
+//    written. Without a registered body the arms run the mod's exported
+//    bodies directly.
+//
+// 3. THE SET CHAIN RESOLVES. Ruby's only include_set call site in the
+//    pinned tree is card-mod-assets set/right/asset_input.rb:1 `include_set
+//    Abstract::VirtualCache`, so the set is exactly the RIGHT asset_input
+//    cards. The generated view graph (set-include-graph.ts) records view
+//    modules and names no includer; the event dispatch's membership rides
+//    the serving runtime's setMember instead, whose abstract/virtual_cache
+//    arm (src/server/write-routes.ts, the abstract/attachment arm's
+//    shape) resolves the same membership.
+
+import { readFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
+
+import { SET_INCLUDE_GRAPH } from "../../../src/card/mod-loader/set-include-graph.js";
+import cardModVirtual from "../../../src/card/mod-loader/mods/card-mod-virtual.js";
+import { ModEventAbortSuccess } from "../../../src/card/actions/types.js";
+import { ModEventRegistry } from "../../../src/card/mod-loader/mod-event-registry.js";
+import { runModEventStage } from "../../../src/card/mod-loader/mod-event-dispatch.js";
+import cardModAccount, { accountModEventPredicates } from "../../../src/card/mod-loader/mods/card-mod-account.js";
+import {
+  actionEngine,
+  createActionsTestStorage,
+  fakeClock,
+  IP,
+  JOE,
+  seedCard,
+  seedStandardDeck,
+  type ActionsTestStorage,
+  type StandardFixture,
+} from "../actions/actions-test-storage.js";
+import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
+import { ModLoader } from "../../../src/card/mod-loader.js";
+import type { ModEventRuntime } from "../../../src/card/mod-loader/mod-event-dispatch.js";
+import type { DeckoModManifest, ModEventFn } from "../../../src/card/mod-loader/mod-manifest.js";
+import { runAuthMigrations, SessionStore } from "../../../src/card/auth/index.js";
+import {
+  handleWriteRequest,
+  observedModEventRuntime,
+  sessionCookieHeader,
+  type WriteRouteContext,
+} from "../../../src/server/write-routes.js";
+
+const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+const ENGINE = join(REPO, "src", "card", "actions", "card-action-engine.ts");
+const ROUTES = join(REPO, "src", "server", "write-routes.ts");
+
+/** Every abstract set module the generated include graph names as
+ *  included, with the concrete set module that includes it. */
+const includersOf = (abstractModule: string): string[] => {
+  const includers: string[] = [];
+  for (const [setModule, includes] of Object.entries(SET_INCLUDE_GRAPH)) {
+    for (const format of ["html", "base"] as const) {
+      if (includes[format]?.includes(abstractModule) === true) includers.push(setModule);
+    }
+  }
+  return includers.sort();
+};
+
+const virtualEvents = () => {
+  const module = (cardModVirtual.setModules ?? []).find(
+    (entry) => entry.setPath === "abstract/virtual_cache",
+  );
+  return module?.events ?? [];
+};
+
+describe("the virtual card's save: the abort marker, the body's seat and the set chain", () => {
+  it("the generated view graph still names no includer; the membership rides the serving runtime's setMember", () => {
+    expect(includersOf("Abstract::VirtualCache")).toEqual([]);
+    // The dispatch's membership resolver carries the arm per Ruby's one
+    // include_set call site (card-mod-assets set/right/asset_input.rb:1).
+    const routes = readFileSync(ROUTES, "utf8");
+    expect(routes).toContain("abstract/virtual_cache");
+    expect(routes).toContain('"asset_input"');
+  });
+
+  it("the mod registers both events on the abstract/virtual_cache set path", () => {
+    const names = virtualEvents().map((event) => event.event);
+    expect(names).toContain("save_virtual_content");
+    expect(names).toContain("delete_virtual_content");
+  });
+
+  it("the port's abort is the ModEventAbortSuccess THROW, and the save entries answer it", () => {
+    expect(new ModEventAbortSuccess()).toBeInstanceOf(Error);
+    expect(new ModEventAbortSuccess().name).toBe("ModEventAbortSuccess");
+    // The engine is the body: its write path carries the diversion and the
+    // entries catch the abort it throws.
+    const engine = readFileSync(ENGINE, "utf8");
+    expect(engine).toContain("save_virtual_content");
+    expect(engine).toContain("delete_virtual_content");
+    expect(engine).toContain("saveVirtualContent(");
+    expect(engine).toContain("deleteVirtualContent(");
+  });
+
+  it("the registered bodies do nothing without the write order's seat: a stage walk never runs the Virtual write", async () => {
+    for (const event of virtualEvents()) {
+      await expect(
+        (async () => event.fn?.({ name: "Probe" }, {} as never, {} as never))(),
+      ).resolves.toBeUndefined();
+    }
+  });
+
+  it("the dispatch retains an actual signout body's returned outcome", async () => {
+    const event = cardModAccount.setModules?.find(module => module.setPath === "right/account/events")?.events?.find(event => event.event === "signout_upon_delete");
+    if (event === undefined) throw Error("Native signout_upon_delete registration missing");
+    const registry = new ModEventRegistry();
+    registry.register({...event, setPath: "right/account/events", modName: "account"});
+    const report = await runModEventStage({registry, setMember: () => true, predicates: accountModEventPredicates}, "integrate", {
+      name: "Synthetic Holder+*account", id: 50, authCurrentId: 50, action: "delete", act: {action: "delete"},
+    }, {} as Parameters<typeof runModEventStage>[3]);
+    expect(report.fired).toEqual(["signout_upon_delete"]);
+    expect(report.bodyOutcomes).toEqual([{signout: true}]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// the write path's diversion, against storage
+// ---------------------------------------------------------------------------
+
+const ANCHOR_ID = 1200;
+const LEFT_ID = 1201;
+const ROWFUL_ID = 1202;
+const SECOND_LEFT_ID = 1203;
+
+async function virtualFixture(): Promise<StandardFixture> {
+  const storage = await createActionsTestStorage();
+  const fixture = await seedStandardDeck(storage);
+  await runAuthMigrations(storage.driver);
+  // The RIGHT anchor (codename asset_input) and two left cards, so both
+  // sides resolve the way Ruby's Virtual.save validates them. The row-ful
+  // card's name is the first left's; the create test uses the second left
+  // so its name is fresh.
+  await seedCard(storage, { id: ANCHOR_ID, name: "*asset input", codename: "asset_input" });
+  await seedCard(storage, { id: LEFT_ID, name: "Probe Style", typeId: 2 });
+  await seedCard(storage, { id: SECOND_LEFT_ID, name: "Second Style", typeId: 2 });
+  // A row-ful virtual card: seeded BEFORE this closure the port wrote
+  // rows; its save now diverts.
+  await seedCard(storage, {
+    id: ROWFUL_ID,
+    leftId: LEFT_ID,
+    rightId: ANCHOR_ID,
+    dbContent: "old input",
+  });
+  return fixture;
+}
+
+const servingSetMember = async (storage: ActionsTestStorage) => {
+  const runtime = await observedModEventRuntime({
+    driver: storage.driver,
+    fetcher: storage.engine,
+  } as WriteRouteContext);
+  return runtime.setMember;
+};
+
+describe("the engine's virtual-card diversion (virtual_cache.rb:21-29)", () => {
+  it("a create of a RIGHT asset_input card writes card_virtuals, no cards row, and answers the no-write success", async () => {
+    const f = await virtualFixture();
+    const engine = actionEngine(f.storage);
+    const result = await engine.createCard({
+      name: "Second Style+*asset input",
+      content: "compiled input bytes",
+    });
+    // The abort :success answer: Ruby's abortable wrapper returns true,
+    // the controller renders the ordinary success; the port's no-write
+    // success result.
+    expect(result.verb).toBe("create");
+    expect(result.cardId).toBe(0);
+    expect(result.actId).toBe(0);
+    // No cards row, no act rows: the content lives in card_virtuals and
+    // nothing else.
+    const lexicon = await f.storage.selectAll<{ id: number }>(
+      "SELECT id FROM cards WHERE key = 'probe_style+*asset_input'",
+      [],
+    );
+    expect(lexicon).toEqual([]);
+    expect(await f.storage.count("card_actions")).toBe(0);
+    const virtuals = await f.storage.selectAll<{ content: string | null; left_id: number | null; right_id: number | null }>(
+      "SELECT content, left_id, right_id FROM card_virtuals",
+      [],
+    );
+    expect(virtuals).toHaveLength(1);
+    expect(virtuals[0]?.content).toBe("compiled input bytes");
+    expect(virtuals[0]?.left_id).toBe(SECOND_LEFT_ID);
+    expect(virtuals[0]?.right_id).toBe(ANCHOR_ID);
+    f.storage.close();
+  });
+
+  it("an update of a virtual card rewrites card_virtuals and leaves the cards row alone", async () => {
+    const f = await virtualFixture();
+    const engine = actionEngine(f.storage);
+    const result = await engine.updateCard({
+      cardId: ROWFUL_ID,
+      name: "Probe Style+*asset input",
+      content: "new input bytes",
+    });
+    // updateCard's abort catch answers the no-write success (null).
+    expect(result).toBeNull();
+    const row = await f.storage.selectOne<{ db_content: string | null; trash: number }>(
+      "SELECT db_content, trash FROM cards WHERE id = ?",
+      [ROWFUL_ID],
+    );
+    expect(row?.db_content).toBe("old input"); // the row write never came
+    expect(row?.trash).toBe(0);
+    const virtuals = await f.storage.selectAll<{ content: string | null }>(
+      "SELECT content FROM card_virtuals WHERE left_id = ? AND right_id = ?",
+      [LEFT_ID, ANCHOR_ID],
+    );
+    expect(virtuals).toHaveLength(1);
+    expect(virtuals[0]?.content).toBe("new input bytes");
+    f.storage.close();
+  });
+
+  it("a delete of a real virtual card runs Virtual.delete and the ordinary delete proceeds", async () => {
+    const f = await virtualFixture();
+    await f.storage.driver.query(
+      "INSERT INTO card_virtuals (left_id, right_id, left_key, content, updated_at) VALUES (?, ?, ?, ?, ?)",
+      [LEFT_ID, ANCHOR_ID, "probe_style", "cached bytes", "2026-10-25 00:00:00"],
+    );
+    const engine = actionEngine(f.storage);
+    const result = await engine.deleteCard({ cardId: ROWFUL_ID });
+    // real? -> no abort: the ordinary delete runs.
+    expect(result?.verb).toBe("delete");
+    const row = await f.storage.selectOne<{ trash: number }>(
+      "SELECT trash FROM cards WHERE id = ?",
+      [ROWFUL_ID],
+    );
+    expect(row?.trash).toBe(1);
+    // Virtual.delete ran: the card_virtuals row went with the cache entry.
+    const virtuals = await f.storage.selectAll<{ id: number }>(
+      "SELECT id FROM card_virtuals WHERE left_id = ? AND right_id = ?",
+      [LEFT_ID, ANCHOR_ID],
+    );
+    expect(virtuals).toEqual([]);
+    f.storage.close();
+  });
+
+  it("an ordinary card's save is not diverted: its row write still comes", async () => {
+    const f = await virtualFixture();
+    const engine = actionEngine(f.storage);
+    const result = await engine.updateCard({
+      cardId: LEFT_ID,
+      name: "Probe Style",
+      content: "plain content",
+    });
+    expect(result?.verb).toBe("update");
+    const row = await f.storage.selectOne<{ db_content: string | null }>(
+      "SELECT db_content FROM cards WHERE id = ?",
+      [LEFT_ID],
+    );
+    expect(row?.db_content).toBe("plain content");
+    f.storage.close();
+  });
+
+  it("the serving runtime's setMember resolves abstract/virtual_cache for the RIGHT asset_input card only", async () => {
+    const f = await virtualFixture();
+    const setMember = await servingSetMember(f.storage);
+    expect(setMember).toBeTypeOf("function");
+    const yes = await setMember?.("abstract/virtual_cache", {
+      name: "Probe Style+*asset input",
+    } as never);
+    expect(yes).toBe(true);
+    const noRight = await setMember?.("abstract/virtual_cache", {
+      name: "Probe Style",
+    } as never);
+    expect(noRight).toBe(false);
+    const otherRight = await setMember?.("abstract/virtual_cache", {
+      name: "Probe Style+*members",
+    } as never);
+    expect(otherRight).toBe(false);
+    f.storage.close();
+  });
+
+  it("a route-driven save of a virtual card answers success and writes no row (the dispatch path)", async () => {
+    const f = await virtualFixture();
+    const previousWritePath = process.env.DECKO_WRITE_PATH;
+    process.env.DECKO_WRITE_PATH = "1";
+    try {
+      // A signed-in writer (the write path refuses anonymous writes); the
+      // standard deck's signed-in account, whose rule walk allows the
+      // update (the engine-level case above uses the same actor).
+      const token = (await new SessionStore({ driver: f.storage.driver }).createSession(50)).token;
+      const res = await handleWriteRequest(
+        { driver: f.storage.driver, fetcher: f.storage.engine },
+        {
+          method: "POST",
+          pathname: "/card/update",
+          host: "deck.example",
+          scheme: "https",
+          headers: {
+            origin: "https://deck.example",
+            "content-type": "application/x-www-form-urlencoded",
+            cookie: sessionCookieHeader(token).split(";")[0],
+          },
+          body: new URLSearchParams({
+            "card[name]": "Probe Style+*asset input",
+            "card[content]": "route input bytes",
+          }).toString(),
+        },
+      );
+      expect(res?.status).toBe(303);
+      const row = await f.storage.selectOne<{ db_content: string | null }>(
+        "SELECT db_content FROM cards WHERE id = ?",
+        [ROWFUL_ID],
+      );
+      expect(row?.db_content).toBe("old input");
+      const virtuals = await f.storage.selectAll<{ content: string | null }>(
+        "SELECT content FROM card_virtuals WHERE left_id = ? AND right_id = ?",
+        [LEFT_ID, ANCHOR_ID],
+      );
+      expect(virtuals[0]?.content).toBe("route input bytes");
+    } finally {
+      if (previousWritePath === undefined) delete process.env.DECKO_WRITE_PATH;
+      else process.env.DECKO_WRITE_PATH = previousWritePath;
+    }
+    f.storage.close();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// the registered bodies, run by the write order (the mod loaded at the
+// save path's runtime, as the serving deck loads it)
+// ---------------------------------------------------------------------------
+
+/** An engine whose save path carries the mod's REGISTERED bodies, each
+ *  wrapped so the test can count how often the write order ran it. */
+function registeredVirtualEngine(
+  storage: ActionsTestStorage,
+  opts: { skip?: readonly string[] } = {},
+) {
+  const calls: string[] = [];
+  const manifest: DeckoModManifest = {
+    ...cardModVirtual,
+    setModules: (cardModVirtual.setModules ?? []).map((module) => ({
+      ...module,
+      events: (module.events ?? []).map((event) => ({
+        ...event,
+        fn: (async (card, host, ctx) => {
+          calls.push(event.event);
+          return event.fn?.(card, host, ctx);
+        }) as ModEventFn,
+      })),
+    })),
+  };
+  const loader = new ModLoader([{ manifest }]);
+  loader.resolveOrder({ gemMods: [manifest.name] });
+  loader.load();
+  const runtime: ModEventRuntime = {
+    registry: loader.eventRegistry(),
+    predicates: {},
+    ...(opts.skip !== undefined ? { skip: opts.skip } : {}),
+  };
+  const engine = new CardActionEngine(storage.engine, {
+    actor: JOE,
+    ipAddress: IP,
+    now: fakeClock(),
+    modEvents: runtime,
+  });
+  return { engine, calls };
+}
+
+async function historyCounts(storage: ActionsTestStorage) {
+  return {
+    acts: await storage.count("card_acts"),
+    actions: await storage.count("card_actions"),
+    changes: await storage.count("card_changes"),
+  };
+}
+
+describe("the registered virtual bodies at the write order (virtual_cache.rb:21-29)", () => {
+  it("a create runs save_virtual_content once: card_virtuals written, no cards row, no history", async () => {
+    const f = await virtualFixture();
+    const before = await historyCounts(f.storage);
+    const cardsBefore = await f.storage.count("cards");
+    const { engine, calls } = registeredVirtualEngine(f.storage);
+    const result = await engine.createCard({
+      name: "Second Style+*asset input",
+      content: "registered input bytes",
+    });
+    expect(calls).toEqual(["save_virtual_content"]);
+    expect(result).toMatchObject({ cardId: 0, actionId: 0, actId: 0, verb: "create" });
+    expect(await f.storage.count("cards")).toBe(cardsBefore);
+    expect(await historyCounts(f.storage)).toEqual(before);
+    const virtuals = await f.storage.selectAll<{ left_id: number; right_id: number; content: string }>(
+      "SELECT left_id, right_id, content FROM card_virtuals",
+    );
+    expect(virtuals).toEqual([
+      { left_id: SECOND_LEFT_ID, right_id: ANCHOR_ID, content: "registered input bytes" },
+    ]);
+    f.storage.close();
+  });
+
+  it("an update runs save_virtual_content once: card_virtuals rewritten, the cards row and history untouched", async () => {
+    const f = await virtualFixture();
+    const before = await historyCounts(f.storage);
+    const { engine, calls } = registeredVirtualEngine(f.storage);
+    const result = await engine.updateCard({
+      cardId: ROWFUL_ID,
+      name: "Probe Style+*asset input",
+      content: "registered new bytes",
+    });
+    expect(calls).toEqual(["save_virtual_content"]);
+    expect(result).toBeNull();
+    const row = await f.storage.selectOne<{ db_content: string | null }>(
+      "SELECT db_content FROM cards WHERE id = ?",
+      [ROWFUL_ID],
+    );
+    expect(row?.db_content).toBe("old input");
+    expect(await historyCounts(f.storage)).toEqual(before);
+    const virtuals = await f.storage.selectAll<{ content: string }>(
+      "SELECT content FROM card_virtuals WHERE left_id = ? AND right_id = ?",
+      [LEFT_ID, ANCHOR_ID],
+    );
+    expect(virtuals).toEqual([{ content: "registered new bytes" }]);
+    f.storage.close();
+  });
+
+  it("a real card's delete runs delete_virtual_content once: card_virtuals cleared, the trash write proceeds", async () => {
+    const f = await virtualFixture();
+    await f.storage.driver.query(
+      "INSERT INTO card_virtuals (left_id, right_id, left_key, content, updated_at) VALUES (?, ?, ?, ?, ?)",
+      [LEFT_ID, ANCHOR_ID, "probe_style", "cached bytes", "2026-10-25 00:00:00"],
+    );
+    const { engine, calls } = registeredVirtualEngine(f.storage);
+    const result = await engine.deleteCard({ cardId: ROWFUL_ID });
+    expect(calls).toEqual(["delete_virtual_content"]);
+    expect(result?.verb).toBe("delete");
+    expect(result?.cardId).toBe(ROWFUL_ID);
+    const row = await f.storage.selectOne<{ trash: number }>("SELECT trash FROM cards WHERE id = ?", [
+      ROWFUL_ID,
+    ]);
+    expect(row?.trash).toBe(1);
+    expect(await f.storage.count("card_virtuals")).toBe(0);
+    const actions = await f.storage.selectAll<{ card_id: number; action_type: number }>(
+      "SELECT card_id, action_type FROM card_actions",
+    );
+    expect(actions.map((a) => a.card_id)).toEqual([ROWFUL_ID]);
+    f.storage.close();
+  });
+
+  it("a skipped save_virtual_content leaves the save to its ordinary path: the cards row is written", async () => {
+    const f = await virtualFixture();
+    const { engine, calls } = registeredVirtualEngine(f.storage, { skip: ["save_virtual_content"] });
+    const result = await engine.createCard({
+      name: "Second Style+*asset input",
+      content: "ordinary bytes",
+    });
+    expect(calls).toEqual([]);
+    expect(result.cardId).toBeGreaterThan(0);
+    const row = await f.storage.selectOne<{ db_content: string | null }>(
+      "SELECT db_content FROM cards WHERE id = ?",
+      [result.cardId],
+    );
+    expect(row?.db_content).toBe("ordinary bytes");
+    expect(await f.storage.count("card_virtuals")).toBe(0);
+    f.storage.close();
+  });
+});

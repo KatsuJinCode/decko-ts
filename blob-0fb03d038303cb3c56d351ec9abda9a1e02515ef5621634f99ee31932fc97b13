@@ -1,0 +1,19 @@
+import { describe, expect, it } from "vitest";
+import { parseCql } from "../../src/cql/parser.js";
+import { generateSql } from "../../src/cql/sql.js";
+
+// Direct translation of card-1.110.0/spec/card/query/abstract_query_spec.rb.
+describe("original AbstractQuery fasten examples", () => {
+  for (const [fasten, expected] of [
+    ["join", /JOIN/],
+    ["exist", /WHERE EXISTS/],
+    ["in", /WHERE c\d\.id IN/],
+  ] as const) {
+    it(`contains the original ${fasten} FASTEN_SQL`, () => {
+      const { sql } = generateSql(parseCql({ fasten, link_to: "A" }, {
+        resolveCardId: name => name.toLowerCase() === "a" ? 1001 : undefined,
+      }));
+      expect(sql).toMatch(expected);
+    });
+  }
+});

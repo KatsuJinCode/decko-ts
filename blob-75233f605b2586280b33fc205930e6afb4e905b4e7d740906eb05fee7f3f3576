@@ -1,0 +1,40 @@
+import assert from 'node:assert/strict';
+import { readFileSync, existsSync } from 'node:fs';
+import { test } from 'node:test';
+import { classify, GATES, selectTestFiles } from '../../../tools/test-gates.mjs';
+
+const routes = JSON.parse(readFileSync(new URL('../../../tools/test-gate-routing/private-inputs.json', import.meta.url), 'utf8'));
+
+test('every explicit on-demand input file has a reason and remains runnable in its named gate', () => {
+  assert.ok(routes.length > 0);
+  assert.equal(new Set(routes.map(route => route.file)).size, routes.length);
+  for (const route of routes) {
+    assert.ok(route.reason.trim(), route.file);
+    assert.ok(existsSync(new URL('../../../' + route.file, import.meta.url)), route.file);
+    assert.equal(classify(route.file), route.gate, route.file);
+    assert.ok(!selectTestFiles([route.file], 'full').includes(route.file), route.file);
+    assert.deepEqual(selectTestFiles([route.file], route.gate), [route.file]);
+  }
+  // The port does not depend on private data, so no gate exists to run tests
+  // that need a private corpus.
+  assert.equal(GATES.some(gate => gate.id === 'corpus'), false);
+});
+
+test('the explicit private list does not capture independent synthetic and source-only checks', () => {
+  for (const file of [
+    'tests/card/one-trip/search-nest-posture.test.ts',
+    'tests/card/content/mod-object-address-shape-parity.test.ts',
+    'tests/card/render/cardtype-add-button-page-interface-parity.test.ts',
+    'tests/card/render/content-options-catalog-render-path-pins.test.ts',
+    'tests/card/render/content-options-one-line-count-capture-state-pins.test.ts',
+    'tests/card/render/cql-append-sort-execution-pins.test.ts',
+    'tests/card/render/layout-whitespace-single-newline-corpus-parity.test.ts',
+    'tests/card/render/parityfix-row6-bootswatch-skin-parent-pointer-corpus-replay.test.ts',
+    'tests/card/render/code-highlighting/coderay-byte-identity.test.ts',
+    'tests/card/render/missing-card-inclusion-anchor-pins.test.ts',
+  ]) {
+    assert.deepEqual(selectTestFiles([file], 'full'), [file]);
+  }
+  assert.equal(classify('tests/card/render/render-engine.test.ts'), 'correctness');
+  assert.deepEqual(selectTestFiles(['tests/deploy/example.test.ts', 'tools/example.test.mjs'], 'full'), ['tests/deploy/example.test.ts', 'tools/example.test.mjs']);
+});

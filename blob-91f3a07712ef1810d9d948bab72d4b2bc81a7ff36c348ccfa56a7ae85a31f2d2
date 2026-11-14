@@ -1,0 +1,448 @@
+"""Owned Windows runtime broker; native delivery remains unaccepted until reviewed.
+
+The hidden broker owns its console. Only its newly created child process group
+receives CTRL_BREAK. CRT descriptor layout follows the documented implementation
+in libuv src/win/process-stdio.c (MIT); no installed dependency is modified.
+Importing this module does not bind Win32 APIs or start a process.
+"""
+import base64
+import ctypes as C
+from ctypes import wintypes as W
+import hashlib
+import json
+import os
+import pathlib
+import re
+import struct
+import subprocess
+import sys
+import threading
+
+
+class BrokerError(RuntimeError):
+    pass
+
+
+class OwnedHandles:
+    """Startup transaction: every acquired native handle has one owner."""
+    def __init__(self, close):
+        self.close_handle, self.handles = close, []
+
+    def add(self, handle):
+        self.handles.append(handle)
+        return handle
+
+    def close(self, handle):
+        self.close_handle(handle)
+        self.handles.remove(handle)
+
+    def release(self):
+        self.handles.clear()
+
+    def rollback(self):
+        errors = []
+        for handle in list(reversed(self.handles)):
+            try:
+                self.close(handle)
+            except Exception as error:
+                errors.append(str(error))
+        if errors:
+            raise BrokerError("startup-handle-cleanup-failed:" + ";".join(errors))
+
+
+def assert_source_pin(spec):
+    pins = {"1.20261023.1": "7caf6dee5bfe9af1b7710ddf66222900007af080",
+            "1.20261029.1": "c82276613b30e6f1a9b5b28067318c5201dc7956"}
+    pin = spec.get("sourcePin", {})
+    if not isinstance(pin, dict) or not all(isinstance(pin.get(key), str) for key in ("version", "sourceCommit", "imageSha256")) \
+            or pin["version"] not in pins or pins[pin["version"]] != pin["sourceCommit"] \
+            or not re.fullmatch("[a-f0-9]{64}", pin["imageSha256"]):
+        raise BrokerError("unverified-drain-source")
+
+
+def crt_descriptor_table(handles, pointer_size):
+    if len(handles) != 4 or pointer_size not in (4, 8) or any(h <= 0 for h in handles):
+        raise BrokerError("invalid-owned-descriptor-table")
+    # CRT: uint32 count, one FOPEN|FPIPE byte per descriptor, pointer values.
+    return struct.pack("<I", 4) + bytes([0x09] * 4) + struct.pack("<" + ("Q" if pointer_size == 8 else "I") * 4, *handles)
+
+
+class Broker:
+    def __init__(self, token, native, emit):
+        if not isinstance(token, str) or len(token) != 64:
+            raise BrokerError("missing-launch-token")
+        self.token, self.native, self.emit = token, native, emit
+        self.process = None
+        self.draining = False
+        self.receipt = None
+
+    def command(self, message):
+        if message.get("token") != self.token:
+            raise BrokerError("foreign-launch-token")
+        command = message.get("command")
+        if command == "start":
+            if self.process is not None:
+                raise BrokerError("duplicate-start")
+            assert_source_pin(message["spec"])
+            self.process = self.native.start(message["spec"])
+            self.emit({"event": "started", "identity": self.process.identity})
+            self.process.start_readers(self.emit)
+            return False
+        if self.process is None:
+            raise BrokerError("no-owned-process")
+        if command in ("verify", "drain"):
+            expected = message.get("identity")
+            if expected != self.process.identity:
+                raise BrokerError("foreign-process-identity")
+            self.process.verify_identity()
+            if command == "drain" and not self.draining:
+                self.draining = True
+                self.process.request_drain()
+            self.emit({"event": "ack", "id": message["id"], "identity": self.process.identity})
+        elif command == "stdin":
+            self.process.write(base64.b64decode(message["data"], validate=True))
+        elif command == "stdin-end":
+            self.process.end_input()
+        elif command == "close":
+            if self.receipt is None:
+                raise BrokerError("close-before-native-exit")
+            self.process.close()
+            return True
+        else:
+            raise BrokerError("unknown-broker-command")
+        return False
+
+    def observe_exit(self):
+        receipt = self.process.wait()
+        self.receipt = receipt
+        self.emit({"event": "exit", "exit": receipt, "expected": self.draining})
+        if not self.draining:
+            raise BrokerError("unexpected-native-exit")
+
+    def drain_after_transport_failure(self):
+        # Losing the parent is failure, but does not abandon an owned child.
+        # The same custody checks and targeted drain apply; no forced fallback.
+        if self.process is not None and self.receipt is None and not self.draining:
+            self.process.verify_identity()
+            self.draining = True
+            self.process.request_drain()
+
+
+class STARTUPINFOW(C.Structure):
+    _fields_ = [("cb", W.DWORD), ("lpReserved", W.LPWSTR), ("lpDesktop", W.LPWSTR),
+                ("lpTitle", W.LPWSTR), ("dwX", W.DWORD), ("dwY", W.DWORD),
+                ("dwXSize", W.DWORD), ("dwYSize", W.DWORD), ("dwXCountChars", W.DWORD),
+                ("dwYCountChars", W.DWORD), ("dwFillAttribute", W.DWORD), ("dwFlags", W.DWORD),
+                ("wShowWindow", W.WORD), ("cbReserved2", W.WORD), ("lpReserved2", C.POINTER(C.c_ubyte)),
+                ("hStdInput", W.HANDLE), ("hStdOutput", W.HANDLE), ("hStdError", W.HANDLE)]
+
+
+class STARTUPINFOEXW(C.Structure):
+    _fields_ = [("StartupInfo", STARTUPINFOW), ("lpAttributeList", C.c_void_p)]
+
+
+class PROCESS_INFORMATION(C.Structure):
+    _fields_ = [("hProcess", W.HANDLE), ("hThread", W.HANDLE), ("dwProcessId", W.DWORD), ("dwThreadId", W.DWORD)]
+
+
+class PROCESSENTRY32W(C.Structure):
+    _fields_ = [("dwSize", W.DWORD), ("cntUsage", W.DWORD), ("th32ProcessID", W.DWORD),
+                ("th32DefaultHeapID", C.c_size_t), ("th32ModuleID", W.DWORD), ("cntThreads", W.DWORD),
+                ("th32ParentProcessID", W.DWORD), ("pcPriClassBase", W.LONG), ("dwFlags", W.DWORD),
+                ("szExeFile", W.WCHAR * 260)]
+
+
+class Win32:
+    def __init__(self):
+        if os.name != "nt":
+            raise BrokerError("UnsupportedRuntimePlatform:WindowsBroker")
+        self.kernel = C.WinDLL("kernel32", use_last_error=True)
+        self.user = C.WinDLL("user32", use_last_error=True)
+        definitions = {
+            "CreatePipe": (W.BOOL, [C.POINTER(W.HANDLE), C.POINTER(W.HANDLE), C.c_void_p, W.DWORD]),
+            "SetHandleInformation": (W.BOOL, [W.HANDLE, W.DWORD, W.DWORD]),
+            "CloseHandle": (W.BOOL, [W.HANDLE]),
+            "GetConsoleWindow": (W.HWND, []),
+            "GenerateConsoleCtrlEvent": (W.BOOL, [W.DWORD, W.DWORD]),
+            "GetProcessTimes": (W.BOOL, [W.HANDLE] + [C.POINTER(W.FILETIME)] * 4),
+            "QueryFullProcessImageNameW": (W.BOOL, [W.HANDLE, W.DWORD, W.LPWSTR, C.POINTER(W.DWORD)]),
+            "GetExitCodeProcess": (W.BOOL, [W.HANDLE, C.POINTER(W.DWORD)]),
+            "WaitForSingleObject": (W.DWORD, [W.HANDLE, W.DWORD]),
+            "ResumeThread": (W.DWORD, [W.HANDLE]),
+            "TerminateProcess": (W.BOOL, [W.HANDLE, W.UINT]),
+            "ReadFile": (W.BOOL, [W.HANDLE, C.c_void_p, W.DWORD, C.POINTER(W.DWORD), C.c_void_p]),
+            "WriteFile": (W.BOOL, [W.HANDLE, C.c_void_p, W.DWORD, C.POINTER(W.DWORD), C.c_void_p]),
+            "InitializeProcThreadAttributeList": (W.BOOL, [C.c_void_p, W.DWORD, W.DWORD, C.POINTER(C.c_size_t)]),
+            "UpdateProcThreadAttribute": (W.BOOL, [C.c_void_p, W.DWORD, C.c_size_t, C.c_void_p, C.c_size_t, C.c_void_p, C.c_void_p]),
+            "DeleteProcThreadAttributeList": (None, [C.c_void_p]),
+            "CreateProcessW": (W.BOOL, [W.LPCWSTR, W.LPWSTR, C.c_void_p, C.c_void_p, W.BOOL,
+                                        W.DWORD, C.c_void_p, W.LPCWSTR, C.c_void_p, C.POINTER(PROCESS_INFORMATION)]),
+            "CreateToolhelp32Snapshot": (W.HANDLE, [W.DWORD, W.DWORD]),
+            "Process32FirstW": (W.BOOL, [W.HANDLE, C.POINTER(PROCESSENTRY32W)]),
+            "Process32NextW": (W.BOOL, [W.HANDLE, C.POINTER(PROCESSENTRY32W)]),
+        }
+        for name, (result, args) in definitions.items():
+            method = getattr(self.kernel, name)
+            method.restype, method.argtypes = result, args
+        self.user.IsWindowVisible.restype = W.BOOL
+        self.user.IsWindowVisible.argtypes = [W.HWND]
+
+    def check(self, result, operation):
+        if not result:
+            raise BrokerError(f"{operation}:{C.get_last_error()}")
+        return result
+
+    def close(self, handle):
+        self.check(self.kernel.CloseHandle(handle), "CloseHandle")
+
+    def start(self, spec):
+        console = self.kernel.GetConsoleWindow()
+        if not console or self.user.IsWindowVisible(console):
+            raise BrokerError("private-hidden-console-not-established")
+        return WindowsProcess(self, spec)
+
+    def descendants(self, pid):
+        snapshot = self.kernel.CreateToolhelp32Snapshot(2, 0)
+        if snapshot == C.c_void_p(-1).value:
+            raise BrokerError("process-snapshot-failed")
+        parents = {}
+        entry = PROCESSENTRY32W()
+        entry.dwSize = C.sizeof(entry)
+        try:
+            ok = self.kernel.Process32FirstW(snapshot, C.byref(entry))
+            while ok:
+                parents[int(entry.th32ProcessID)] = int(entry.th32ParentProcessID)
+                ok = self.kernel.Process32NextW(snapshot, C.byref(entry))
+            if C.get_last_error() != 18:
+                raise BrokerError("process-snapshot-incomplete")
+        finally:
+            self.close(snapshot)
+        found = {pid}
+        while True:
+            expanded = found | {child for child, parent in parents.items() if parent in found}
+            if expanded == found:
+                return sorted(found - {pid})
+            found = expanded
+
+
+class WindowsProcess:
+    def __init__(self, api, spec):
+        self.api, self.spec, self.readers, self.input_closed = api, spec, [], False
+        self.closed_handles = set()
+        if any(not pathlib.PureWindowsPath(value).is_absolute() or pathlib.PureWindowsPath(value).drive.lower() != "c:"
+               for value in (spec["executable"], spec["cwd"])):
+            raise BrokerError("runtime-image-outside-C-workspace")
+        executable = pathlib.Path(spec["executable"]).resolve(strict=True)
+        if executable.drive.lower() != "c:":
+            raise BrokerError("resolved-runtime-image-outside-C-workspace")
+        expected = spec["sourcePin"]["imageSha256"]
+        if hashlib.sha256(executable.read_bytes()).hexdigest() != expected:
+            raise BrokerError("runtime-image-hash-mismatch")
+        if any("\0" in value for value in [str(executable), *spec["args"], spec["cwd"], *spec["env"].keys(), *spec["env"].values()]):
+            raise BrokerError("invalid-nul-in-launch")
+        # Limit inheritance to the four explicitly owned pipe handles.
+        class SECURITY_ATTRIBUTES(C.Structure):
+            _fields_ = [("nLength", W.DWORD), ("lpSecurityDescriptor", C.c_void_p), ("bInheritHandle", W.BOOL)]
+        security = SECURITY_ATTRIBUTES(C.sizeof(SECURITY_ATTRIBUTES), None, True)
+        parent, child, attributes = [], [], None
+        handles = OwnedHandles(api.close)
+        process = PROCESS_INFORMATION()
+        command = subprocess.list2cmdline([str(executable), *spec["args"]])
+        environment = "\0".join(f"{key}={value}" for key, value in sorted(spec["env"].items(), key=lambda item: item[0].upper())) + "\0\0"
+        created, resumed = False, False
+        try:
+            for index in range(4):
+                read, write = W.HANDLE(), W.HANDLE()
+                api.check(api.kernel.CreatePipe(C.byref(read), C.byref(write), C.byref(security), 0), "CreatePipe")
+                handles.add(read.value)
+                handles.add(write.value)
+                mine, theirs = (write.value, read.value) if index == 0 else (read.value, write.value)
+                api.check(api.kernel.SetHandleInformation(mine, 1, 0), "SetHandleInformation")
+                parent.append(mine)
+                child.append(theirs)
+            self.pipes = parent
+            descriptor_bytes = crt_descriptor_table(child, C.sizeof(C.c_void_p))
+            descriptors = C.create_string_buffer(descriptor_bytes)
+            startup = STARTUPINFOEXW()
+            startup.StartupInfo.cb = C.sizeof(startup)
+            startup.StartupInfo.dwFlags = 0x100 | 0x1
+            startup.StartupInfo.wShowWindow = 0
+            startup.StartupInfo.hStdInput, startup.StartupInfo.hStdOutput, startup.StartupInfo.hStdError = child[:3]
+            startup.StartupInfo.cbReserved2 = len(descriptor_bytes)
+            startup.StartupInfo.lpReserved2 = C.cast(descriptors, C.POINTER(C.c_ubyte))
+            attribute_size = C.c_size_t()
+            api.kernel.InitializeProcThreadAttributeList(None, 1, 0, C.byref(attribute_size))
+            if attribute_size.value == 0:
+                raise BrokerError("missing-attribute-list-size")
+            attribute_buffer = C.create_string_buffer(attribute_size.value)
+            api.check(api.kernel.InitializeProcThreadAttributeList(attribute_buffer, 1, 0, C.byref(attribute_size)), "InitializeAttributes")
+            attributes = attribute_buffer
+            startup.lpAttributeList = C.cast(attributes, C.c_void_p)
+            handle_list = (W.HANDLE * 4)(*child)
+            api.check(api.kernel.UpdateProcThreadAttribute(attributes, 0, 0x20002, handle_list,
+                                                           C.sizeof(handle_list), None, None), "RestrictInheritedHandles")
+            # The broker already owns a hidden console. NEW_CONSOLE here
+            # would disable NEW_PROCESS_GROUP and invalidate targeted drain.
+            # Start suspended: native code cannot run before custody exists.
+            flags = 0x4 | 0x200 | 0x400 | 0x80000
+            api.check(api.kernel.CreateProcessW(str(executable), C.create_unicode_buffer(command), None, None,
+                                                True, flags, C.create_unicode_buffer(environment), spec["cwd"],
+                                                C.byref(startup), C.byref(process)), "CreateOwnedRuntime")
+            created = True
+            self.process, self.pid = handles.add(process.hProcess), int(process.dwProcessId)
+            handles.add(process.hThread)
+            self.identity = {"pid": self.pid, "executable": str(executable), "arguments": spec["args"],
+                             "imageSha256": expected, "creationIdentity": self.creation_identity()}
+            self.command_line = command
+            for handle in child:
+                handles.close(handle)
+            if api.kernel.ResumeThread(process.hThread) == 0xFFFFFFFF:
+                raise BrokerError("ResumeOwnedRuntimeFailed")
+            resumed = True
+            self.thread = process.hThread
+            handles.release()  # pipes, process and thread pass to this object
+        except Exception:
+            if created and not resumed:
+                # Startup rollback only: this exact child has never executed.
+                # A running/draining child never takes this forceful path.
+                api.check(api.kernel.TerminateProcess(process.hProcess, 1), "RollbackSuspendedRuntime")
+                if api.kernel.WaitForSingleObject(process.hProcess, 0xFFFFFFFF) != 0:
+                    raise BrokerError("RollbackSuspendedRuntimeWaitFailed")
+            if not resumed:
+                handles.rollback()
+            raise
+        finally:
+            if attributes is not None:
+                api.kernel.DeleteProcThreadAttributeList(attributes)
+
+    def creation_identity(self):
+        times = [W.FILETIME() for _ in range(4)]
+        self.api.check(self.api.kernel.GetProcessTimes(self.process, *[C.byref(t) for t in times]), "GetProcessTimes")
+        return str((int(times[0].dwHighDateTime) << 32) | int(times[0].dwLowDateTime))
+
+    def verify_identity(self):
+        size, image, status = W.DWORD(32768), C.create_unicode_buffer(32768), W.DWORD()
+        self.api.check(self.api.kernel.QueryFullProcessImageNameW(self.process, 0, image, C.byref(size)), "QueryImage")
+        self.api.check(self.api.kernel.GetExitCodeProcess(self.process, C.byref(status)), "QueryExitStatus")
+        if status.value != 259 or self.creation_identity() != self.identity["creationIdentity"] \
+                or os.path.normcase(image.value) != os.path.normcase(self.identity["executable"]):
+            raise BrokerError("owned-runtime-identity-changed-or-exited")
+
+    def request_drain(self):
+        self.verify_identity()
+        if self.pid <= 0:
+            raise BrokerError("broadcast-drain-forbidden")
+        self.api.check(self.api.kernel.GenerateConsoleCtrlEvent(1, self.pid), "TargetedCtrlBreak")
+
+    def write(self, data):
+        if self.input_closed:
+            raise BrokerError("stdin-already-ended")
+        offset = 0
+        while offset < len(data):
+            count = W.DWORD()
+            chunk = C.create_string_buffer(data[offset:])
+            self.api.check(self.api.kernel.WriteFile(self.pipes[0], chunk, len(data) - offset, C.byref(count), None), "WriteConfig")
+            if count.value == 0:
+                raise BrokerError("zero-byte-config-write")
+            offset += count.value
+
+    def end_input(self):
+        if not self.input_closed:
+            self.api.close(self.pipes[0])
+            self.input_closed = True
+
+    def start_readers(self, emit):
+        def read_channel(channel, handle):
+            try:
+                while True:
+                    buffer, count = C.create_string_buffer(65536), W.DWORD()
+                    ok = self.api.kernel.ReadFile(handle, buffer, len(buffer), C.byref(count), None)
+                    if not ok:
+                        error = C.get_last_error()
+                        if error in (109, 233):
+                            break
+                        raise BrokerError(f"ReadRuntimePipe:{error}")
+                    if not count.value:
+                        break
+                    emit({"event": "data", "channel": channel,
+                          "data": base64.b64encode(buffer.raw[:count.value]).decode("ascii")})
+            except Exception as error:
+                emit({"event": "error", "reason": str(error)})
+        for channel, handle in zip(("stdout", "stderr", "control"), self.pipes[1:]):
+            thread = threading.Thread(target=read_channel, args=(channel, handle))
+            thread.start()
+            self.readers.append(thread)
+
+    def wait(self):
+        if self.api.kernel.WaitForSingleObject(self.process, 0xFFFFFFFF) != 0:
+            raise BrokerError("WaitOwnedRuntimeFailed")
+        status = W.DWORD()
+        self.api.check(self.api.kernel.GetExitCodeProcess(self.process, C.byref(status)), "GetOwnedExitCode")
+        for thread in self.readers:
+            thread.join()
+        return {"code": int(status.value), "signal": None, "descendantPids": self.api.descendants(self.pid)}
+
+    def close(self):
+        self.end_input()
+        for handle in [*self.pipes[1:], self.thread, self.process]:
+            if handle not in self.closed_handles:
+                self.api.close(handle)
+                self.closed_handles.add(handle)
+
+
+def main(mode):
+    if os.name != "nt":
+        raise BrokerError("UnsupportedRuntimePlatform:WindowsBroker")
+    if mode == "launch":
+        startup = subprocess.STARTUPINFO()
+        startup.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        startup.wShowWindow = subprocess.SW_HIDE
+        # This owned host has a private hidden console; it creates the runtime
+        # group within that console. The launcher waits for the complete host.
+        child = subprocess.Popen([sys.executable, "-I", __file__, "host"], stdin=sys.stdin,
+                                 stdout=sys.stdout, stderr=sys.stderr, startupinfo=startup,
+                                 creationflags=subprocess.CREATE_NEW_CONSOLE, close_fds=True)
+        return child.wait()
+    if mode != "host":
+        raise BrokerError("unknown-broker-mode")
+    first = json.loads(sys.stdin.buffer.readline())
+    lock = threading.Lock()
+    token = first.get("token")
+    def emit(message):
+        with lock:
+            sys.stdout.write(json.dumps({**message, "token": token}) + "\n")
+            sys.stdout.flush()
+    broker = Broker(token, Win32(), emit)
+    waiter = None
+    try:
+        broker.command(first)
+        waiter = threading.Thread(target=lambda: observe(broker, emit))
+        waiter.start()
+        for line in sys.stdin.buffer:
+            if broker.command(json.loads(line)):
+                waiter.join()
+                return 0
+        if broker.receipt is None:
+            raise BrokerError("parent-transport-ended-before-graceful-close")
+        raise BrokerError("parent-ended-without-close-acknowledgement")
+    except Exception as error:
+        try:
+            emit({"event": "error", "reason": str(error)})
+        finally:
+            broker.drain_after_transport_failure()
+            if waiter is not None:
+                waiter.join()
+            if broker.receipt is not None:
+                broker.process.close()
+        return 1
+
+
+def observe(broker, emit):
+    try:
+        broker.observe_exit()
+    except Exception as error:
+        emit({"event": "error", "reason": str(error)})
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1] if len(sys.argv) > 1 else ""))

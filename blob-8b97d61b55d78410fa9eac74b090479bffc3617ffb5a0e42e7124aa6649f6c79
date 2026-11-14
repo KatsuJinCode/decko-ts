@@ -1,0 +1,36 @@
+// card-mod-follow's rule_editor builds its missing preference card with
+// `Card.fetch preference_name, new: { type_id: PointerID }`
+// (set/right/following.rb:40-43). PointerID is the id the deck's codename
+// table holds for `pointer`, which differs from deck to deck, so the port
+// reads it from that table and fixes no deck's id.
+import {describe, expect, it} from "vitest";
+import {followProbeSurface} from "../../../src/card/mod-loader/mods/card-mod-follow.js";
+
+type Engine = Parameters<typeof followProbeSurface.pointerTypeFrom>[0];
+
+function engineDouble(opts: {pointerId?: number; pointerCard?: {id: number}}): Engine {
+  return {
+    peekIdByCodename: (codename: string) => (codename === "pointer" ? opts.pointerId : undefined),
+    fetchRenderCard: (name: string) =>
+      name === "Pointer" && opts.pointerCard !== undefined ? {id: opts.pointerCard.id, unknown: false} : undefined,
+  } as unknown as Engine;
+}
+
+describe("the follow rule_editor's Pointer type", () => {
+  it("takes the id of the deck's pointer codename", () => {
+    expect(followProbeSurface.pointerTypeFrom(engineDouble({pointerId: 56}))).toEqual({
+      typeId: 56,
+      typeName: "Pointer",
+      typeCode: "pointer",
+    });
+    expect(followProbeSurface.pointerTypeFrom(engineDouble({pointerId: 7123, pointerCard: {id: 99}})).typeId).toBe(7123);
+  });
+
+  it("falls back to the warm card named Pointer when the codename table cannot answer", () => {
+    expect(followProbeSurface.pointerTypeFrom(engineDouble({pointerCard: {id: 61}})).typeId).toBe(61);
+  });
+
+  it("carries the Pointer name with no type id when the deck has neither", () => {
+    expect(followProbeSurface.pointerTypeFrom(engineDouble({}))).toEqual({typeName: "Pointer", typeCode: "pointer"});
+  });
+});

@@ -1,0 +1,237 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import vm from 'node:vm';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { spawnNativeTypeScript, resolveInstalledNativeTypeScriptCompiler } from '../../tools/platform/native-typescript-compiler.mjs';
+import { scratchDir, removeScratchDir } from '../support/scratch-dir.mjs';
+
+const root = fileURLToPath(new URL('../../', import.meta.url));
+const source = file => fs.readFileSync(path.join(root, file), 'utf8');
+const helper = source('tools/platform/native-typescript-compiler.mjs').replace(/^import .*;\r?\n/gm, '').replace(/^export /gm, '');
+
+test('saved pre-fix callers reproduce indirect compiler dispatch, while the saved build caller is already native', () => {
+  const baseline = file => execFileSync('git', ['show', 'ba9df20aabe71f6e80ca84fd65a839b2bf07dada:' + file], { cwd: root, windowsHide: true, encoding: 'utf8' });
+  const observations = [];
+  for (const [file, following] of [
+    ['tools/edge-signed-in-exercise/check-bindings.mjs', 'const output='],
+    ['tests/card/auth/staging-server-dist-bootstrap.ts', '// Do not inventory'],
+  ]) {
+    const text = baseline(file), start = text.indexOf('const result');
+    vm.runInNewContext(text.slice(start, text.indexOf(following, start)), {
+      path, process: { execPath: process.execPath }, REPO: root, REPO_ROOT: root,
+      TSC_BIN: path.join(root, 'node_modules/typescript/bin/tsc'), config: 'config.json',
+      spawnSync(executable, args, options) { observations.push({ file, executable, args: [...args], windowsHide: options.windowsHide });return { status: 0 }; },
+    });
+  }
+  assert(observations.every(row => row.executable === process.execPath && row.args[0].replaceAll('\\', '/').endsWith('/node_modules/typescript/bin/tsc') && row.windowsHide));
+  assert.match(baseline('scripts/check-scoped.mjs'), /spawnSync\("npx", \["tsc"/);
+  assert.equal(JSON.parse(baseline('package.json')).scripts.typecheck, 'tsc --noEmit');
+  assert.match(baseline('tools/dist/build-engine.mjs'), /spawnSync\(compilerExecutable\(\)/);
+  const launcher = fs.readFileSync(path.join(root, 'node_modules/typescript/lib/tsc.js'), 'utf8');
+  assert.match(launcher, /execFileSync\(exe, process.argv.slice\(2\), \{ stdio: "inherit" \}\)/);
+  console.info(JSON.stringify({ kind: 'pre-fix-launch-counterexamples', baseline: 'ba9df20aabe71f6e80ca84fd65a839b2bf07dada', observations, nestedNativeOptions: { stdio: 'inherit', windowsHide: 'omitted' }, alreadyCorrectBuildCaller: true }));
+});
+
+function resolverFixture(kind = 'valid', platform = process.platform, architecture = process.arch) {
+  let call;
+  const packageFile = path.join(root, 'fixture-typescript/package.json');
+  const nativeFile = path.join(root, 'fixture-native/package.json');
+  const metadata = { version: '7.0.2', optionalDependencies: { [`@typescript/typescript-${platform}-${architecture}`]: '7.0.2' } };
+  const context = {
+    path, process: { platform, arch: architecture },
+    createRequire: () => ({ resolve(name) {
+      if (kind === 'missing-launcher' || (kind === 'missing-native' && name !== 'typescript/package.json')) throw Error('MODULE_NOT_FOUND');
+      return name === 'typescript/package.json' ? packageFile : nativeFile;
+    } }),
+    readFileSync: file => file === packageFile ? JSON.stringify(metadata) : JSON.stringify({ version: kind === 'wrong-version' ? '7.0.1' : '7.0.2' }),
+    existsSync: () => kind !== 'missing-executable',
+    spawnSync(executable, args, options) { call = { executable, args, options }; return { status: 17, signal: null, stdout: 'diagnostic', stderr: 'detail' }; },
+  };
+  const api = vm.runInNewContext(helper + '\n({resolveInstalledNativeTypeScriptCompiler,spawnNativeTypeScript})', context);
+  return { api, call: () => call, metadata, nativeFile };
+}
+
+for (const platform of ['win32', 'linux', 'darwin']) test(`platform resolver selects the declared ${platform} native executable`, () => {
+  const f = resolverFixture('valid', platform, 'x64');
+  assert.equal(f.api.resolveInstalledNativeTypeScriptCompiler(root), path.join(path.dirname(f.nativeFile), 'lib', platform === 'win32' ? 'tsc.exe' : 'tsc'));
+});
+
+for (const kind of ['missing-launcher', 'missing-native', 'wrong-version', 'missing-executable']) test(`resolver refuses ${kind} without invoking a process`, () => {
+  const f = resolverFixture(kind);
+  assert.throws(() => f.api.spawnNativeTypeScript(root, []), { name: 'NativeTypeScriptPlatformError' });
+  assert.equal(f.call(), undefined);
+});
+
+test('resolver refuses undeclared platform and architecture and an unsupported declared platform', () => {
+  const f = resolverFixture();
+  for (const [platform, architecture] of [['foreign', process.arch], [process.platform, 'foreign']]) assert.throws(() => f.api.resolveInstalledNativeTypeScriptCompiler(root, platform, architecture), { name: 'NativeTypeScriptPlatformError' });
+  const declared = resolverFixture('valid', 'foreign', 'x64');
+  assert.throws(() => declared.api.resolveInstalledNativeTypeScriptCompiler(root), { name: 'NativeTypeScriptPlatformError' });
+});
+
+const declared = { optionalDependencies: { '@typescript/typescript-win32-x64': '7.0.2' } };
+for (const [name, launcher, native] of [
+  ['missing both versions must refuse without spawn', declared, {}],
+  ['empty both versions must refuse without spawn', { ...declared, version: '' }, { version: '' }],
+  ['null metadata must retain named platform refusal', null, { version: 'null' }],
+  ['array launcher metadata refuses', [], { version: '7.0.2' }],
+  ['null native metadata refuses', { ...declared, version: '7.0.2' }, null],
+  ['boolean versions refuse', { ...declared, version: true }, { version: true }],
+  ['numeric versions refuse', { ...declared, version: 7 }, { version: 7 }],
+  ['whitespace versions refuse', { ...declared, version: ' ' }, { version: ' ' }],
+  ['non-version strings refuse', { ...declared, version: 'unknown' }, { version: 'unknown' }],
+  ['missing native version refuses', { ...declared, version: '7.0.2' }, {}],
+]) test(name, () => {
+  let calls = 0;
+  const api = vm.runInNewContext(helper + '\n({spawnNativeTypeScript})', {
+    path, process: { platform: 'win32', arch: 'x64' }, createRequire: () => ({ resolve: name => name === 'typescript/package.json' ? 'C' + ':/launcher/package.json' : 'C' + ':/native/package.json' }),
+    readFileSync: file => JSON.stringify(file === 'C' + ':/launcher/package.json' ? launcher : native), existsSync: () => true, spawnSync() { calls++;return { status: 0 }; },
+  });
+  assert.throws(() => api.spawnNativeTypeScript(root, []), { name: 'NativeTypeScriptPlatformError' });assert.equal(calls, 0);
+});
+
+test('native dispatch preserves arguments, environment, diagnostics and status while forcing hidden shell-free spawn', () => {
+  const f = resolverFixture();
+  const args = ['-p', 'configuration with spaces.json', '--pretty', 'false'];
+  const env = { CONTROL: 'retained' };
+  const result = f.api.spawnNativeTypeScript(root, args, { cwd: root, encoding: 'utf8', env, timeout: 9000, maxBuffer: Infinity, windowsHide: false, shell: true });
+  assert.equal(f.call().args, args);assert.equal(f.call().options.env, env);
+  assert.equal(f.call().options.windowsHide, true);assert.equal(f.call().options.shell, false);
+  assert.equal(f.call().options.timeout, 9000);assert.equal(f.call().options.maxBuffer, Infinity);
+  assert.equal(result.status, 17);assert.equal(result.stdout, 'diagnostic');assert.equal(result.stderr, 'detail');
+});
+
+function callExpression(file, following) {
+  const text = source(file), start = text.indexOf('const result');
+  assert(start >= 0, file);
+  return text.slice(start, text.indexOf(following, start));
+}
+
+for (const [file, following, expected] of [
+  ['tools/dist/build-engine.mjs', 'if (result.status', ['-p', path.join(root, 'tsconfig.dist.json')]],
+  ['tools/edge-signed-in-exercise/check-bindings.mjs', 'const output=', ['-p', 'test-config.json', '--pretty', 'false']],
+  ['tests/card/auth/staging-server-dist-bootstrap.ts', '// Do not inventory', ['-p', path.join(root, 'tsconfig.json')]],
+]) test(`${file} dispatches its exact native compiler arguments`, () => {
+  let observed;
+  vm.runInNewContext(callExpression(file, following), {
+    path, repo: root, REPO: root, REPO_ROOT: root, config: file.includes('build-engine') ? 'tsconfig.dist.json' : 'test-config.json',
+    spawnNativeTypeScript(repo, args, options) { observed = { repo, args: [...args], options }; return { status: 0 }; },
+  });
+  assert.equal(observed.repo, root);assert.deepEqual(observed.args, expected);assert.equal(observed.options.cwd, root);
+});
+
+function scoped(result, strict = true) {
+  let exit, dispatch;
+  const body = source('scripts/check-scoped.mjs').replace(/^import .*;\r?\n/gm, '').replaceAll('import.meta.url', JSON.stringify(new URL('../../scripts/check-scoped.mjs', import.meta.url).href));
+  try {
+    vm.runInNewContext(body, { path, URL, statSync: () => ({ mtimeMs: Date.now() }), spawnNativeTypeScript(repo, args, options) { dispatch = { repo, args: [...args], options }; return result; }, console: { error() {}, log() {} }, process: { argv: ['node', 'check', ...(strict ? ['--strict'] : [])], exit(code) { exit = code;throw Error('fixture exit'); } } });
+  } catch (error) { assert.equal(error.message, 'fixture exit'); }
+  return { exit, dispatch };
+}
+
+test('scoped checker dispatches exact arguments and refuses compiler infrastructure failure', () => {
+  const failed = scoped({ status: 1, signal: null, stdout: '', stderr: 'compiler refused configuration' });
+  assert.equal(failed.exit, 1);assert.deepEqual(failed.dispatch.args, ['--noEmit', '--pretty', 'false']);
+  for (const result of [{ status: null, signal: 'SIGTERM' }, { status: null, error: Error('ENOENT') }]) assert.equal(scoped(result).exit, 1);
+});
+
+test('scoped checker retains strict diagnostic failure and intentional fresh-edit suppression', () => {
+  const result = { status: 1, signal: null, stdout: 'src/example.ts(1,1): error TS2322: incompatible\n', stderr: '' };
+  assert.equal(scoped(result).exit, 1);assert.equal(scoped(result, false).exit, undefined);
+});
+
+test('configuration and mixed global failures never enter fresh source suppression', () => {
+  for (const stdout of [
+    'tsconfig.json(6,5): error TS5069: Invalid declarationMap option\n',
+    'error TS2318: Cannot find global type\nsrc/example.ts(1,1): error TS2322: incompatible\n',
+  ]) assert.equal(scoped({ status: 1, signal: null, stdout, stderr: '' }, false).exit, 1);
+});
+
+test('actual TS5097 source import retains fresh/owned suppression while strict fails', () => {
+  const dir = scratchDir('native-typescript-source-import-');
+  try {
+    for (const file of ['scripts/check-scoped.mjs', 'tools/platform/native-typescript-compiler.mjs']) {
+      fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });fs.writeFileSync(path.join(dir, file), source(file));
+    }
+    fs.writeFileSync(path.join(dir, 'package.json'), '{"type":"module","private":true}\n');
+    const imported = path.join(dir, 'source.ts');
+    fs.writeFileSync(imported, 'import {value} from "./exported.ts";\nexport const result = value;\n');
+    fs.writeFileSync(path.join(dir, 'exported.ts'), 'export const value: string = "valid";\n');
+    const config = JSON.stringify({ compilerOptions: { noEmit: true, strict: true, types: [], module: 'NodeNext', moduleResolution: 'NodeNext' }, files: [imported, path.join(dir, 'exported.ts')], include: [] }, null, 2) + '\n';
+    fs.writeFileSync(path.join(dir, 'tsconfig.json'), config);
+    const native = spawnNativeTypeScript(dir, ['--noEmit', '--pretty', 'false'], { cwd: dir, encoding: 'utf8' });
+    assert.equal(native.status, 1);assert.match(native.stdout + native.stderr, /source\.ts\(1,21\): error TS5097:/);
+    const scoped = [];
+    for (const args of [[], ['--running', 'source.ts=review-source'], ['--strict']]) {
+      const result = execFileSyncResult(process.execPath, [path.join(dir, 'scripts/check-scoped.mjs'), ...args], dir);
+      assert.equal(result.status, args.includes('--strict') ? 1 : 0, result.stderr);assert.match(result.stderr, /TS5097/);assert.equal(result.signal, null);assert.equal(result.error, null);
+      assert.equal(result.stderr.includes('[check-scoped] PASS'), !args.includes('--strict'));scoped.push({ args, ...result });
+    }
+    fs.writeFileSync(imported, 'import {value} from "./exported.js";\nexport const result = value;\n');
+    const valid = spawnNativeTypeScript(dir, ['--noEmit', '--pretty', 'false'], { cwd: dir, encoding: 'utf8' });
+    assert.equal(valid.status, 0, valid.stdout + valid.stderr);assert.equal(valid.signal, null);assert.equal(valid.error, undefined);
+    assert.equal(fs.readFileSync(path.join(dir, 'tsconfig.json'), 'utf8'), config);
+    console.info(JSON.stringify({ kind: 'actual-native-TS5097-source-boundary', native: { status: native.status, stdout: native.stdout, stderr: native.stderr }, scoped, correctedImport: { status: valid.status, stdout: valid.stdout, stderr: valid.stderr }, configurationUnchanged: true }));
+  } finally { removeScratchDir(dir); }
+});
+
+test('owned configuration failure must not become a successful scoped CLI', () => {
+  const dir = scratchDir('native-typescript-configuration-');
+  try {
+    for (const file of ['scripts/check-scoped.mjs', 'tools/platform/native-typescript-compiler.mjs']) {
+      fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });fs.writeFileSync(path.join(dir, file), source(file));
+    }
+    fs.writeFileSync(path.join(dir, 'package.json'), '{"type":"module","private":true}\n');
+    fs.writeFileSync(path.join(dir, 'valid.ts'), 'export const answer: string = "valid";\n');
+    fs.writeFileSync(path.join(dir, 'tsconfig.json'), JSON.stringify({ compilerOptions: { noEmit: true, strict: true, types: [], declarationMap: true, declaration: false }, files: [path.join(dir, 'valid.ts')], include: [] }, null, 2) + '\n');
+    const native = spawnNativeTypeScript(dir, ['--noEmit', '--pretty', 'false'], { cwd: dir, encoding: 'utf8' });
+    assert.equal(native.status, 1);assert.match(native.stdout + native.stderr, /error TS5069:/);
+    const receipts = [];
+    for (const args of [[], ['--running', 'tsconfig.json=review-fixture'], ['--strict']]) {
+      const result = execFileSyncResult(process.execPath, [path.join(dir, 'scripts/check-scoped.mjs'), ...args], dir);
+      assert.equal(result.status, 1, result.stderr);assert.equal(result.signal, null);assert.equal(result.error, null);assert.match(result.stderr, /TS5069/);assert(!result.stderr.includes('[check-scoped] PASS'));
+      receipts.push({ args, ...result });
+    }
+    console.info(JSON.stringify({ kind: 'actual-native-positioned-configuration-refusal', native: { status: native.status, signal: native.signal, error: native.error?.message ?? null, stdout: native.stdout, stderr: native.stderr }, scoped: receipts }));
+  } finally { removeScratchDir(dir); }
+});
+
+function execFileSyncResult(executable, args, cwd) {
+  const result = spawnSync(executable, args, { cwd, windowsHide: true, shell: false, encoding: 'utf8', maxBuffer: Infinity });
+  return { status: result.status, signal: result.signal, error: result.error?.message ?? null, stdout: result.stdout, stderr: result.stderr };
+}
+
+test('package CLI dispatches forwarded arguments and propagates actual status and signals', () => {
+  const body = source('tools/typescript/typecheck.mjs').replace(/^#!.*\r?\n/, '').replace(/^import .*;\r?\n/gm, '').replaceAll('import.meta.url', JSON.stringify(new URL('../../tools/typescript/typecheck.mjs', import.meta.url).href));
+  for (const result of [{ status: 0 }, { status: 7 }, { status: null, signal: 'SIGTERM' }, { status: null, error: Error('ENOENT') }]) {
+    let call;const process = { argv: ['node', 'typecheck', '--noEmit', '--pretty', 'false'] };
+    vm.runInNewContext(body, { URL, fileURLToPath, process, console: { error() {} }, spawnNativeTypeScript(repo, args, options) { call = { repo, args: [...args], options };return result; } });
+    assert.deepEqual(call.args, ['--noEmit', '--pretty', 'false']);assert.equal(call.options.stdio, 'inherit');
+    assert.equal(process.exitCode, result.signal || result.error ? 1 : result.status);
+  }
+  assert.equal(JSON.parse(source('package.json')).scripts.typecheck, 'node tools/typescript/typecheck.mjs --noEmit');
+});
+
+test('build tooling helper closure has declarations and no dependency on excluded tests', () => {
+  assert(!source('tools/platform/native-typescript-compiler.mjs').includes('/tests/'));
+  assert(fs.existsSync(path.join(root, 'tools/platform/native-typescript-compiler.d.mts')));
+  assert(source('tests/support/native-typescript-compiler.ts').includes('../../tools/platform/native-typescript-compiler.mjs'));
+});
+
+test('existing native compiler accepts valid source and returns actual TS2322 for invalid source', () => {
+  const dir = scratchDir('native-typescript-dispatch-');
+  try {
+    const file = path.join(dir, 'consumer.ts'), config = path.join(dir, 'tsconfig.json');
+    fs.writeFileSync(config, JSON.stringify({ extends: path.join(root, 'tsconfig.json'), compilerOptions: { rootDir: dir }, files: [file], include: [], exclude: [] }));
+    fs.writeFileSync(file, 'export const answer: string = "valid";\n');
+    const valid = spawnNativeTypeScript(root, ['--noEmit', '-p', config], { cwd: root, encoding: 'utf8', maxBuffer: Infinity });
+    fs.writeFileSync(file, 'export const answer: string = 1;\n');
+    const invalid = spawnNativeTypeScript(root, ['--noEmit', '-p', config], { cwd: root, encoding: 'utf8', maxBuffer: Infinity });
+    assert.equal(valid.status, 0, valid.stdout + valid.stderr);assert.equal(invalid.status, 1, invalid.stdout + invalid.stderr);assert.match(invalid.stdout + invalid.stderr, /error TS2322:/);
+    for (const result of [valid, invalid]) { assert.equal(result.signal, null);assert.equal(result.error, undefined); }
+    console.info(JSON.stringify({ kind: 'actual-existing-native-compiler', executable: resolveInstalledNativeTypeScriptCompiler(root), valid: { pid: valid.pid, status: valid.status, stdout: valid.stdout, stderr: valid.stderr }, invalid: { pid: invalid.pid, status: invalid.status, stdout: invalid.stdout, stderr: invalid.stderr } }));
+  } finally { removeScratchDir(dir); }
+});

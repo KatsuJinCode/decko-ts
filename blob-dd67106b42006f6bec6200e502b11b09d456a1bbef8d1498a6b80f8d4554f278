@@ -1,0 +1,119 @@
+// The five navbar entries the enumeration audit named as unnamed roster gaps
+// (docs/runs/enumeration-audit-2026-10-25.md, part A3: "Add type",
+// "Configure skin", "Basic configuration", "Change this menu", "Learn more").
+//
+// THE ORIGINAL'S RECORDED RENDER (the audit's own sources, all read in this
+// checkout):
+//   - fixtures/captured/followers-address-junction.json and
+//     fixtures/captured/search-list-views.json each record the original's
+//     navbar page text: "Getting started Add type Configure skin Basic
+//     configuration Change this menu Learn more Recent Changes Sign up
+//     Sign in" (the anonymous http* textDigest fields).
+//   - the recorded deck carries the two seed
+//     cards behind it: card 22748 "*header" (the layout nests
+//     {{:main_menu|navbar_links}}) and card 38248 "*getting started links"
+//     with the five entries verbatim:
+//       [[/new/Cardtype | Add type]]
+//       [[:all+:style | Configure skin]]
+//       [[Administrator| Basic configuration]]
+//       [[/:main_menu/edit | Change this menu]]
+//       [[https://decko.org/Features | Learn more]]
+//   - The synthetic-v1 fixture deck carries the same seeds (*main menu id 498,
+//     *getting started links id 528, type Link list), so the render below is
+//     the same deck the browser harness serves.
+//
+// THE PORT'S ANSWER, measured 2026-10-25 on this tree before this pin was
+// written: the serving host (reference-harness/browser/engines/ts-server.mjs
+// over a staged fixture copy) answers GET / with the full navbar, and the
+// normalized navbar text is exactly the recorded sequence. This suite pins
+// that shape on the edge page seam (liveRenderPage over
+// bootEdgeServingEngines, the same full-page closure the bunny worker's page
+// route takes), which rendered the same five entries with the same hrefs.
+//
+// Coverage note: the audit's gap is at the roster-row level (no roster row
+// named the entries); the port surface itself needed no fix, so this file
+// closes the gap by pinning the surface, in the shape gapbatch-2 used for the
+// captured rule-board addresses.
+
+import { describe, expect, it } from "vitest";
+import { copyFileSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
+import { ensureFreshnessStamp } from "../../../src/server/freshness-stamp.js";
+import { bootEdgeServingEngines } from "../../../deploy/bunny-worker-src/bunny-edge-deck-boot.js";
+import { liveRenderPage, withLiveRenderScope } from "../../../src/card/live/live-render.js";
+
+/** The five entries with the hrefs the recorded links name. */
+const ENTRIES: Array<{ label: string; href: string }> = [
+  { label: "Add type", href: "/new/Cardtype" },
+  { label: "Configure skin", href: "/*all+*style" },
+  { label: "Basic configuration", href: "/Administrator" },
+  { label: "Change this menu", href: "/:main_menu/edit" },
+  { label: "Learn more", href: "https://decko.org/Features" },
+];
+
+/** The recorded anonymous navbar sequence, from the three captures'
+ * textDigest fields (the audit's part A3 evidence line). */
+const RECORDED_SEQUENCE =
+  "Getting started Add type Configure skin Basic configuration Change this menu Learn more Recent Changes Sign up Sign in";
+
+function navbarText(pageHtml: string): string {
+  const classAt = pageHtml.indexOf("main-nav");
+  expect(classAt, "the page carries the main-nav navbar").toBeGreaterThan(-1);
+  const start = pageHtml.indexOf(">", classAt) + 1; // past the <ul ...> open tag
+  const nav = pageHtml.slice(start, pageHtml.indexOf("</nav>", start));
+  return nav
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+describe("the five getting-started navbar entries against the original's recorded render", () => {
+  it("the anonymous Home page navbar carries every recorded entry, href and sequence", async () => {
+    const root = mkdtempSync(join(tmpdir(), "decko-navbar-entries-pin-"));
+    copyFileSync(
+      "reference-harness/fixtures/synthetic-v1/deck/deck.sqlite3",
+      join(root, "deck.sqlite3"),
+    );
+    const driver = new LocalSqliteDriver({ path: join(root, "deck.sqlite3") });
+    try {
+      await ensureFreshnessStamp(driver);
+      const boot = async (d: Parameters<typeof bootEdgeServingEngines>[0]) => {
+        const engines = await bootEdgeServingEngines(d);
+        engines.render.viewer = { signedIn: false };
+        return engines;
+      };
+      await withLiveRenderScope(async (requestScope) => {
+        const page = await liveRenderPage(driver, "Home", boot, {
+          requestScope,
+          keepScope: "anonymous-owned-request",
+        });
+        expect(page.status).toBe(200);
+        const html = page.html;
+
+        for (const { label, href } of ENTRIES) {
+          const marker = `href="${href}"`;
+          expect(html.includes(marker), `navbar carries href ${marker}`).toBe(true);
+          // The anchor that carries the href carries the recorded label: the
+          // bytes from the href up to the anchor's close hold the label text.
+          const at = html.indexOf(marker);
+          const close = html.indexOf("</a>", at);
+          const anchor = html.slice(at, close + 1);
+          expect(
+            anchor.includes(">" + label + "<") || anchor.includes('title="' + label + '"'),
+            "the " + marker + " anchor carries the recorded label",
+          ).toBe(true);
+        }
+
+        // The recorded page-text sequence, verbatim, in the recorded order.
+        const text = navbarText(html);
+        expect(text).toBe(RECORDED_SEQUENCE);
+      });
+    } finally {
+      driver.close();
+      rmSync(root, { recursive: true, force: true });
+    }
+  }, 60_000);
+});

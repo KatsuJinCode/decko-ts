@@ -1,0 +1,273 @@
+// The ancestor walk's LIVENESS rides its NESTER read.
+//
+// The walk needs two facts about every card one level up the chain: that it
+// nests the card below it (the reference row), and that it is LIVE
+// (`id.card&.`, a trash-filtered fetch). The nester read already names the
+// nester, so a correlated subquery reads that nester's trash in the SAME
+// round trip, and the walk pays one round trip per level instead of two.
+//
+// The mock Hrana server runs REAL better-sqlite3 behind the REAL BunnyDb
+// driver, so "what SQLite means" here is not simulated. Each case reads the
+// requests the server actually received, which is the same thing
+// the save-statement ladder diagnostic counts on the wire.
+//
+// What is asserted:
+//   1. the nester read carries the liveness column, so the walk needs no
+//      second read of the nesters' rows;
+//   2. the walk issues no read of a card row between its nester read and
+//      its touch write (the liveness read is gone);
+//   3. the walk descends only through LIVE nesters: a trashed nester's own
+//      nester is not stamped;
+//   4. the walk stamps the ancestors the per-level liveness read named.
+
+import { describe, it, expect, afterEach } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { BunnyDbDriver } from "../../../src/card/drivers/bunny-db.js";
+import { FetchEngine } from "../../../src/card/fetch.js";
+import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
+import { startMockHranaServer, type MockHranaServer } from "../../server/drivers/mock-hrana-server.js";
+import { splitSqlStatements } from "../fetch/fetch-test-storage.js";
+import {
+  createActionsTestStorage,
+  seedStandardDeck,
+  seedCard,
+  type ActionsTestStorage,
+} from "./actions-test-storage.js";
+import { NoopTransport } from "../../../src/card/notify/index.js";
+
+const servers: MockHranaServer[] = [];
+
+afterEach(async () => {
+  for (const server of servers.splice(0)) await server.close();
+});
+
+interface WireStatement {
+  sql: string;
+  args: Array<{ type?: string; value?: string }>;
+}
+
+/** The statements of one pipeline request, in order. */
+function statementsOf(request: { body: unknown }): WireStatement[] {
+  const entries =
+    (request.body as { requests?: Array<{ type?: string; stmt?: WireStatement }> } | undefined)?.requests ?? [];
+  const out: WireStatement[] = [];
+  for (const entry of entries) {
+    if (entry.type === "execute" && typeof entry.stmt?.sql === "string") out.push(entry.stmt);
+  }
+  return out;
+}
+
+const sqlsOf = (request: { body: unknown }): string[] => statementsOf(request).map((s) => s.sql);
+
+/** The bound integers of one statement. */
+function boundInts(statement: WireStatement): number[] {
+  const out: number[] = [];
+  for (const arg of statement.args) {
+    if (arg?.type === "integer" && typeof arg.value === "string") out.push(Number(arg.value));
+  }
+  return out;
+}
+
+const CARD_ROW_BY_ID = "SELECT * FROM cards WHERE id = ? LIMIT 1";
+const NESTER_PREFIX = "SELECT DISTINCT r.referer_id AS referer_id";
+
+/** The requests the server received AFTER the save's commit. */
+function afterCommit(server: MockHranaServer): Array<{ body: unknown }> {
+  const commitAt = server.requests.findIndex((request) =>
+    sqlsOf(request).some((sql) => /^COMMIT/i.test(sql.trim())),
+  );
+  expect(commitAt).toBeGreaterThanOrEqual(0);
+  return server.requests.slice(commitAt + 1);
+}
+
+/** The same storage the action tests use, but over the REAL BunnyDb driver
+ *  and the mock Hrana server, so the statements under test are the driver's
+ *  own. */
+async function bunnyActionsTestStorage(): Promise<{ storage: ActionsTestStorage; server: MockHranaServer }> {
+  const server = await startMockHranaServer();
+  servers.push(server);
+  const driver = new BunnyDbDriver({ url: server.url, timeoutMs: 0 });
+  const ddl = readFileSync(fileURLToPath(new URL("../../../db/schema.sqlite.sql", import.meta.url)), "utf8");
+  for (const statement of splitSqlStatements(ddl)) await driver.query(statement, []);
+  const storage: ActionsTestStorage = {
+    driver,
+    engine: new FetchEngine(driver),
+    close: () => undefined,
+    selectAll: async <T>(sql: string, params: unknown[] = []) => (await driver.query<T>(sql, params)).rows,
+    selectOne: async <T>(sql: string, params: unknown[] = []) => (await driver.query<T>(sql, params)).rows[0],
+    count: async (table: string) => {
+      const r = await driver.query<{ n: number }>(`SELECT COUNT(*) AS n FROM ${table}`, []);
+      return Number(r.rows[0].n);
+    },
+  };
+  return { storage, server };
+}
+
+/** The nesting chain the walk climbs:
+ *
+ *   60 "Parent"      nests 50 (the saved card)   LIVE
+ *   61 "Grandparent" nests 60                    LIVE
+ *   62 "DeadParent"  nests 50                    TRASHED
+ *   63 "UnderDead"   nests 62                    LIVE, but behind a dead nester
+ *
+ *  The walk stamps every nester it reaches (60, 61 and 62), and descends
+ *  only through the LIVE ones, so 63 is never reached. */
+async function seedNestingChain(storage: ActionsTestStorage): Promise<void> {
+  await seedCard(storage, { id: 60, name: "Parent" });
+  await seedCard(storage, { id: 61, name: "Grandparent" });
+  await seedCard(storage, { id: 62, name: "DeadParent", trash: true });
+  await seedCard(storage, { id: 63, name: "UnderDead" });
+  for (const [refererId, refereeId] of [
+    [60, 50],
+    [61, 60],
+    [62, 50],
+    [63, 62],
+  ] as const) {
+    await storage.driver.query(
+      "INSERT INTO card_references (referer_id, referee_key, referee_id, ref_type, is_present) VALUES (?, ?, ?, 'I', NULL)",
+      [refererId, "", refereeId],
+    );
+  }
+}
+
+/** The ids the walk's touch write stamped. */
+function stampedIds(server: MockHranaServer): number[] {
+  for (const request of server.requests) {
+    for (const statement of statementsOf(request)) {
+      if (!/^UPDATE cards SET updater_id/.test(statement.sql)) continue;
+      if (!statement.sql.includes("WHERE id IN")) continue;
+      // The statement binds the actor id, the timestamp and then the ids.
+      // The timestamp is text, so the bound INTEGERS are the actor id and
+      // the ids; the id count is the number of placeholders less the two
+      // the SET clause binds.
+      const placeholders = (statement.sql.match(/\?/g) ?? []).length;
+      const ids = placeholders - 2;
+      const integers = boundInts(statement);
+      return integers.slice(integers.length - ids);
+    }
+  }
+  return [];
+}
+
+describe("the ancestor walk's liveness rides its nester read", () => {
+  it("reads the nester's liveness in the nester read itself", async () => {
+    const { storage, server } = await bunnyActionsTestStorage();
+    await seedStandardDeck(storage);
+    await seedNestingChain(storage);
+    const engine = new CardActionEngine(storage.engine, {
+      actor: { id: 9, name: "Joe User" },
+      notifyTransport: new NoopTransport(),
+    });
+    server.requests.length = 0;
+    const result = await engine.updateCard({ cardId: 50, content: "v2" });
+    expect(result).not.toBeNull();
+    const executed = server.requests.flatMap((request) => sqlsOf(request));
+    // The nester read carries the liveness column.
+    expect(executed.some((sql) => sql.startsWith(NESTER_PREFIX))).toBe(true);
+    expect(executed.some((sql) => sql.includes("referer_trash"))).toBe(true);
+  }, 30_000);
+
+  it("issues no card-row read between the nester read and the touch write", async () => {
+    const { storage, server } = await bunnyActionsTestStorage();
+    await seedStandardDeck(storage);
+    await seedNestingChain(storage);
+    const engine = new CardActionEngine(storage.engine, {
+      actor: { id: 9, name: "Joe User" },
+      notifyTransport: new NoopTransport(),
+    });
+    server.requests.length = 0;
+    await engine.updateCard({ cardId: 50, content: "v2" });
+    const requests = server.requests;
+    const nesterAt = requests.findIndex((request) =>
+      sqlsOf(request).some((sql) => sql.startsWith(NESTER_PREFIX)),
+    );
+    const touchAt = requests.findIndex((request) =>
+      sqlsOf(request).some((sql) => /^UPDATE cards SET updater_id/.test(sql) && sql.includes("WHERE id IN")),
+    );
+    expect(nesterAt).toBeGreaterThanOrEqual(0);
+    expect(touchAt).toBeGreaterThan(nesterAt);
+    // The liveness read used to be a second batch per level, between the
+    // nester read and the touch write. It is gone.
+    for (let index = nesterAt; index < touchAt; index += 1) {
+      expect(sqlsOf(requests[index] as { body: unknown })).not.toContain(CARD_ROW_BY_ID);
+    }
+  }, 30_000);
+
+  it("reads no ancestor row of its own", async () => {
+    const { storage, server } = await bunnyActionsTestStorage();
+    await seedStandardDeck(storage);
+    await seedNestingChain(storage);
+    const engine = new CardActionEngine(storage.engine, {
+      actor: { id: 9, name: "Joe User" },
+      notifyTransport: new NoopTransport(),
+    });
+    server.requests.length = 0;
+    await engine.updateCard({ cardId: 50, content: "v2" });
+    // The ancestors' own rows came back with the nester read, so the walk
+    // reads no ancestor row of its own: no card-row read after the commit
+    // binds one of the ancestors.
+    const ancestors = new Set([60, 61, 62]);
+    for (const request of afterCommit(server)) {
+      for (const statement of statementsOf(request)) {
+        if (statement.sql !== CARD_ROW_BY_ID) continue;
+        for (const id of boundInts(statement)) {
+          expect(ancestors.has(id)).toBe(false);
+        }
+      }
+    }
+  }, 30_000);
+
+  it("descends only through live nesters", async () => {
+    const { storage, server } = await bunnyActionsTestStorage();
+    await seedStandardDeck(storage);
+    await seedNestingChain(storage);
+    const engine = new CardActionEngine(storage.engine, {
+      actor: { id: 9, name: "Joe User" },
+      notifyTransport: new NoopTransport(),
+    });
+    server.requests.length = 0;
+    await engine.updateCard({ cardId: 50, content: "v2" });
+    const stamped = stampedIds(server);
+    // The live nester and its own nester are reached.
+    expect(stamped).toContain(60);
+    expect(stamped).toContain(61);
+    // The trashed nester is stamped (it nests the card), but the walk does
+    // not descend through it, so the card under it is not stamped.
+    expect(stamped).toContain(62);
+    expect(stamped).not.toContain(63);
+  }, 30_000);
+
+  it("stamps the same ancestors the per-level liveness read named", async () => {
+    const { storage, server } = await bunnyActionsTestStorage();
+    await seedStandardDeck(storage);
+    await seedNestingChain(storage);
+    const engine = new CardActionEngine(storage.engine, {
+      actor: { id: 9, name: "Joe User" },
+      notifyTransport: new NoopTransport(),
+    });
+    server.requests.length = 0;
+    await engine.updateCard({ cardId: 50, content: "v2" });
+    // The walk's set is every nester it reached, in the walk's order: the
+    // level-1 nesters first, then the level-2 ones.
+    expect(stampedIds(server).slice().sort((a, b) => a - b)).toEqual([60, 61, 62]);
+  }, 30_000);
+
+  it("still saves through a driver that has no read scope", async () => {
+    const storage = await createActionsTestStorage();
+    await seedStandardDeck(storage);
+    await seedNestingChain(storage);
+    const engine = new CardActionEngine(storage.engine, {
+      actor: { id: 9, name: "Joe User" },
+      notifyTransport: new NoopTransport(),
+    });
+    const result = await engine.updateCard({ cardId: 50, content: "v2" });
+    expect(result).not.toBeNull();
+    const row = await storage.selectOne<{ db_content: string }>(
+      "SELECT db_content FROM cards WHERE id = ?",
+      [50],
+    );
+    expect(row?.db_content).toBe("v2");
+    storage.close();
+  }, 30_000);
+});

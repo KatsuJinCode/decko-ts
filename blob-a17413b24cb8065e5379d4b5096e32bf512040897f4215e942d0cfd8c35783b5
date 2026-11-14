@@ -1,0 +1,46 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {existsSync,mkdirSync,writeFileSync} from 'node:fs';
+import {dirname,join} from 'node:path';
+import {execFileSync} from 'node:child_process';
+import {scratchDir,removeScratchDir} from '../support/scratch-dir.mjs';
+import {checkDocsLinks,VENDORED_PREFIXES} from '../../tools/hygiene/check-docs-links.mjs';
+
+// The docs link gate skips vendored upstream trees under third-party-source/
+// (unmodified copies verified against their manifests) and still checks the
+// project's own Markdown, including folders that merely share the name.
+function withRepo(files,body){
+  const root=scratchDir('docs-links-vendored-');
+  try{
+    for(const [rel,text] of Object.entries(files)){
+      mkdirSync(dirname(join(root,rel)),{recursive:true});
+      writeFileSync(join(root,rel),text);
+    }
+    const git=(...args)=>execFileSync('git',args,{cwd:root,windowsHide:true,stdio:'pipe'});
+    git('init','-q');
+    git('add','-A');
+    return body(root);
+  }finally{removeScratchDir(root);assert.equal(existsSync(root),false,'fixture must leave no files');}
+}
+
+test('third-party-source is the vendored prefix the gate skips',()=>{
+  assert.deepEqual(VENDORED_PREFIXES,['third-party-source/']);
+});
+
+test('a broken link inside a vendored upstream tree is not reported; project docs still are',()=>withRepo({
+  'third-party-source/tinymce-5.10.7/upstream/CONTRIBUTING.md':'For TinyMCE itself look to the [modules/tinymce](modules/tinymce) folder.\n',
+  'third-party-source/tinymce-5.10.7/upstream/modules/boulder/README.md':'[`katamari`]((https://www.npmjs.com/package/@ephox/katamari)\n',
+  'docs/guide.md':'See [the missing page](missing-page.md) and [the present page](present.md).\n',
+  'docs/present.md':'present\n',
+},root=>{
+  const {broken,files}=checkDocsLinks(root);
+  assert.equal(files,2,'only the two project docs are read');
+  assert.deepEqual(broken.map(b=>`${b.from} -> ${b.target}`),['docs/guide.md -> missing-page.md']);
+}));
+
+test('the prefix matches from the repository root only',()=>withRepo({
+  'docs/third-party-source/notes.md':'[gone](gone.md)\n',
+},root=>{
+  const {broken}=checkDocsLinks(root);
+  assert.deepEqual(broken.map(b=>b.from),['docs/third-party-source/notes.md']);
+}));

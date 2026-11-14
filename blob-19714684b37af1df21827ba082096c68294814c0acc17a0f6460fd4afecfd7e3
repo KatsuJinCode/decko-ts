@@ -1,0 +1,14 @@
+// Vitest setup file for the "shared-process" project in vitest.config.ts. It
+// runs first, before each test file, and drops every project module the
+// previous file in this worker process loaded, so the file imports fresh
+// copies: module-level state (caches, registries, installed engines, warmed
+// maps) never carries from one file to the next. Vitest's own runtime and the
+// packages loaded natively from node_modules stay loaded; reusing them is what
+// the shared worker process saves.
+//
+// Process-wide state (environment variables, globals, timers, module mocks)
+// is not reset here. Files that change it run in the "isolated" project; see
+// tests/support/test-isolation-routing.mjs.
+import { vi } from "vitest";
+
+vi.resetModules();

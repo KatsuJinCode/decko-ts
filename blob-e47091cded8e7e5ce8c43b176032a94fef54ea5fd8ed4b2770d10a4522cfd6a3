@@ -1,0 +1,10 @@
+# The public scene supplies the Person/account/member permission shape used
+# by the junction regression, without changing the committed source seed.
+Card::Auth.as_bot do
+  Card.ensure!(name: "Person", type: "Cardtype", codename: "person")
+  Card.ensure!(name: "Shark+*members", type: "Pointer", content: "")
+  Card.ensure!(name: "*all+*create", type: "Pointer", content: "[[Anyone Signed In]]")
+  Card.ensure!(name: "*all+*update", type: "Pointer", content: "[[Anyone Signed In]]")
+  Card.ensure!(name: "*all plus+*create", type: "Pointer", content: "_left")
+end
+puts "public scene ready"

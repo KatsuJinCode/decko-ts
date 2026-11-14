@@ -1,0 +1,28 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
+import { runRubyOracleOnVm } from '../platform/ruby-oracle-vm.mjs';
+import { vmConfig } from '../../reference-harness/browser/lib/vm-engines.mjs';
+
+const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const out = path.join(repo, 'tests/fixtures/public-oracle-v1');
+const source = path.join(repo, 'tmp/persist/pods/ts-src.yml');
+const hash = data => createHash('sha256').update(data).digest('hex');
+// The cached TS input must equal the fresh Ruby pod byte for byte. The test
+// computes it independently, before this second Ruby observation is captured.
+if (!fs.readFileSync(source).equals(fs.readFileSync(path.join(out, 'ruby-src.yml')))) throw Error('PublicOracleTsPodDiffers');
+const scripts = ['public-oracle-ts-trip.rb', 'public-oracle-bootstrap.rb', 'pod-eat.rb', 'pod-sow.rb'].map(name => path.join(repo, 'tools/persistence', name));
+const base = path.join(out, 'base.sqlite3');
+const result = runRubyOracleOnVm([scripts[0], base, source, ...scripts.slice(1), vmConfig().root + '/oracle-stock/app'], { roots: [repo], files: [...scripts, base, source] });
+const trip = JSON.parse(result.stdout);
+if (trip.receipts.some(r => r.status !== 0)) throw Error('PublicOracleTsTripFailed');
+const files = {};
+for (const [name, encoded] of Object.entries(trip.files)) {
+  if (!['ts-to-ruby.eat.json', 'ts-to-ruby.yml'].includes(name)) throw Error('PublicOracleTsTripPathInvalid');
+  const data = Buffer.from(encoded, 'base64');
+  fs.writeFileSync(path.join(out, name), data);
+  files[name] = hash(data);
+}
+fs.writeFileSync(path.join(out, 'ts-trip-manifest.json'), JSON.stringify({ runtime: result.runtime, sourceHashes: Object.fromEntries([...scripts, base].map(file => [path.relative(repo, file).replaceAll('\\', '/'), hash(fs.readFileSync(file))])), podSha256: hash(fs.readFileSync(source)), runtimeSources: trip.runtime_sources, receipts: trip.receipts, files }, null, 2) + '\n');
+console.log(JSON.stringify({ out, files, receipts: trip.receipts }));

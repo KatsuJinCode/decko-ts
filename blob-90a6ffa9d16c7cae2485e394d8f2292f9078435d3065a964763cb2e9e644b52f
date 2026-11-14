@@ -1,0 +1,150 @@
+# Storage recovery capabilities
+
+## Required outcome
+
+Recovery must preserve the original bytes and a newer writer's output. It must
+retain every needed recovery copy when an operation refuses or its outcome is
+ambiguous. Automatic rollback restoration is qualified only where storage binds
+the comparison to replacement or enforces exclusive custody across writers.
+Otherwise the unresolved state and missing capability remain visible.
+
+This is the continuation assigned against root
+`146ca1e83594692d256ada57de05026754883c7f`, tracked in private issue 133.
+Local/synthetic verification is authorized; live resources, new services,
+downloads, installation and publication are outside this work.
+
+## Inspected baseline and primary references
+
+The storage/recovery source at lane base `0c8846542` matches the named root.
+At that baseline, `BlobAttachmentStore` delegates to unconditional BlobDriver writes.
+The filesystem adapter writes a unique temporary file and renames over the
+destination. That preserves a whole file but does not compare the destination
+at replacement; raw filesystem and Ruby writers do not honor a JavaScript lock.
+
+The [R2 Workers binding reference](https://developers.cloudflare.com/r2/api/workers/workers-api-reference/)
+documents destination ETag conditions on PUT and a null result when a condition
+refuses the operation. The body and ETag must come from the same GET object;
+separate HEAD and body reads would not bind the verified bytes to that receipt.
+
+The [configured Bunny HTTP API specification](https://docs.bunny.net/api-reference/storage/openapi.json)
+lists authentication and an incoming-payload checksum for uploads, without a
+documented destination write precondition. Payload integrity is not a compare
+against the existing destination. This does not establish that every Bunny API
+rejects such conditions; it means this configured interface has no verified
+conditional replacement contract. Both primary documents were retrieved through
+the search gateway; a generated search summary was not accepted as evidence.
+
+## Implemented capability and remaining limitation
+
+`BlobAttachmentStore.restoreIfUnchanged` translates the same single-object
+files/tmp keys as its ordinary writes, then delegates only to the selected
+driver's conditional operation. Coded and multiple-rendition operations refuse;
+there is no atomic multi-object promise.
+
+The memory driver's private Map is its storage substrate. Its byte comparison
+and copied replacement run synchronously without an await or virtual put call.
+This qualifies that actual memory store, not an unrelated filesystem protected
+by an instance-local mutex.
+
+R2 reads the expected bytes and ETag from the same object snapshot and sends
+`onlyIf.etagMatches` with PUT. A null reply means refusal. A rejected write or
+invalid acknowledgement raises `blob-conditional-write-outcome-unknown` with
+`retrySafe: false`; no mutation is retried. Recovery retains every preimage on
+any refusal or uncertainty, including a partially restored set.
+
+This interface compares bytes. It does not promise upload-epoch identity:
+ETags are not unique upload versions, so an identical-byte rewrite or an ABA
+sequence ending in identical bytes is not distinguished. Metadata-only newer
+writes are not protected by a byte-comparison contract. Hosted R2 acceptance is
+not established by the local workerd tests.
+
+Filesystem and the configured Bunny HTTP driver expose precise capability
+reasons through `blob-conditional-write-unavailable`, with `retrySafe: false`.
+They do not implement unconditional read/check/write recovery. Their ordinary
+storage operations are unchanged. Automatic rollback on these stores remains
+unresolved; the replacement and backup remain available for reconciliation.
+
+## Architectural investigation for filesystem and Bunny
+
+Filesystem rename is an unconditional destination replacement. An advisory
+lock, a driver-local queue, a lock-file convention, or a configuration promise
+does not bind existing raw filesystem/Ruby writers. A filesystem solution must
+first establish either an OS-enforced destination comparison primitive valid
+on the supported platforms, or a storage design with immutable objects and an
+atomically conditional authoritative pointer. The latter requires all writers
+and serving paths, including Ruby, to participate; it is not a local adapter
+patch. No such primitive or migration was established or introduced here.
+
+For Bunny, the next qualifying evidence would be a documented destination
+conditional replacement primitive on the actual configured interface, or an
+all-writer storage migration with equivalent custody. An incoming checksum,
+an undocumented If-Match header, or a successful sequential mock PUT does not
+provide that evidence. No live provider probe or new service was authorized.
+
+## Verification
+
+The baseline control copied only the old attachment-store module from
+`0c8846542` and ran the new files/tmp positive recovery tests against it. Both
+failed with `AssetRecoveryCustodyRequiredError` at the absent storage method.
+The control source and test copies were removed; its raw output is in the
+lane's ignored `.runtime/recovery-baseline-red.txt`.
+
+Final local verification, without model calls, retries or hosted resources:
+
+- `node node_modules/vitest/vitest.mjs run` with the ten files below: 147
+  tests passed, zero skipped. The new file contributes 13 tests.
+- `node node_modules/typescript/bin/tsc --noEmit`: passed.
+- `git diff --check`: passed.
+- The cross-platform command scanner over the eight changed TypeScript source
+  and test files: zero unguarded platform-specific command hits.
+
+The selected test files are `tests/server/blob-{memory,filesystem,r2-miniflare,
+bunny-mock,cross-adapter-parity,attachment-recovery}.test.ts` and
+`tests/card/actions/{asset-recovery-concurrent-write.attack,
+asset-recovery-reconciliation,ambiguous-rollback-asset-preservation.attack,
+style-save-recovery}.test.ts`.
+
+The new tests exercise actual BlobAttachmentStore dispatch, memory and local
+workerd R2 restoration, a raw bucket writer at both read boundaries, conditional
+write reply loss before/after application, actual filesystem replacement from
+a hidden child Node process, Bunny refusal with no new PUT/DELETE, multi-object
+refusal, and retention of all backups after partial reconciliation. Each test
+owns and closes its local resources; the suite's registered scratch cleanup
+removes filesystem fixtures. No installed or hosted acceptance is claimed.
+
+## Issue 134: owned Buffer snapshots
+
+Independent review at `ba29dacea` found that defensive instance `.slice()`
+calls alias Node Buffer memory. Buffer is a valid Uint8Array input. Reusing
+the caller's Buffer after a memory PUT changed stored bytes; reusing expected
+or replacement buffers during R2 GET changed the submitted comparison or
+replacement. Native ETag enforcement cannot correct a comparison that the
+adapter itself allowed to change.
+
+The four independent tests from review commit `f8077547c` were copied without
+changing their assertions into `tests/server/conditional-blob-buffer-ownership.test.ts`.
+All four failed against `ba29dacea`; the raw failing JUnit result is retained
+in the lane's ignored `.runtime/issue134-baseline-red.xml`. The repair uses
+`new Uint8Array(bytes)` at the memory storage boundary, R2 comparison and
+replacement boundary, BlobAttachmentStore delegation, and recovery helper's
+borrowed backup/current reads. This takes owned bytes for Buffer inputs as
+well as ordinary Uint8Array inputs, before asynchronous validation.
+
+The four original attacks then passed unchanged. Two further tests cover
+borrowed backup Buffer mutation after validation and borrowed target Buffer
+mutation at conditional replacement. All 153 tests in the prior selected
+storage/recovery group plus the independent four-case file passed. Typecheck
+and diff checks passed; the explicit six-file platform scan found zero
+unguarded command hits. No database save or conditional mutation is retried.
+Filesystem/Bunny, upload-epoch and hosted acceptance limits above remain open.
+
+The lead identified the same assumption at CardActionEngine's original read,
+recovery-copy and rollback-before-image boundaries. An actual save test with
+a custom store returning a Buffer confirmed it: after partial replacement
+failed, database state rolled back but the old engine restored the mutated
+replacement rather than the original bytes. That failing result is retained
+in `.runtime/issue134-engine-baseline-red.xml`. The engine now snapshots the
+borrowed read immediately and owns separate recovery and rollback arrays.
+Its surgical delta changes only these copies. The actual save test then
+passed, bringing the final selected eleven-file run to 154 passed, zero
+skipped. These runs are successive evidence, not additive distinct-test totals.

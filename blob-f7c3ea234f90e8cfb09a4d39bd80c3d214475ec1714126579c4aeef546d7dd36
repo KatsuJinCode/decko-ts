@@ -1,0 +1,52 @@
+// Ruby's scalar deleted-ID error retains the NotFound exception alert.
+// Its body differs from the ordinary unknown-name page.
+import {describe,expect,it} from 'vitest';
+import {createRenderTestStorage,seedCard,seedReference} from './render-test-storage.js';
+import {defaultDeckLoader} from '../../../src/card/mod-loader/default-mod-deck.js';
+import {setDefaultModLoader} from '../../../src/card/mod-loader.js';
+import {renderPageWithStatus} from '../../../src/card/render/page.js';
+import {recordAsMain} from '../../../src/card/name/environment.js';
+import {createVirtualCardLookup} from '../../../src/card/fetch/virtual-cards.js';
+import {structureRuleUniverseStatement,structureUniverseFromResults,structureRuleTypesFromResults} from '../../../src/card/rules/structure.js';
+
+describe('adversarial numeric NotFound error body',()=>{
+ it.each([undefined,'history'])('retains the Ruby controller error message for view %s',async view=>{
+  const loader=defaultDeckLoader(),s=await createRenderTestStorage();
+  try{
+   for(const row of [
+    {id:2,name:'RichText',codename:'basic',typeId:5},
+    {id:5,name:'Cardtype',codename:'cardtype',typeId:5},
+    {id:6,name:'Anyone',codename:'anyone',typeId:2},
+    {id:7,name:'Anyone Signed In',codename:'anyone_signed_in',typeId:2},
+    {id:8,name:'Anonymous',codename:'anonymous',typeId:2},
+    {id:10,name:'*all',codename:'all',typeId:20},
+    {id:12,name:'*read',codename:'read',typeId:2},
+    {id:15,name:'*create',codename:'create',typeId:2},
+    {id:16,name:'*right',codename:'right',typeId:20},
+    {id:17,name:'*structure',codename:'structure',typeId:2},
+    {id:18,name:'*right+*right',leftId:16,rightId:16,typeId:20},
+    {id:19,name:'*right+*right+*structure',leftId:18,rightId:17,typeId:20,dbContent:'{"right":"_left"}'},
+    {id:20,name:'Set',codename:'set',typeId:5},
+    {id:21,name:'List',codename:'list',typeId:5},
+    {id:30,name:'*all+*read',leftId:10,rightId:12,typeId:21,dbContent:'[[Anyone]]'},
+    {id:34,name:'*all+*create',leftId:10,rightId:15,typeId:21,dbContent:'[[Anyone Signed In]]'},
+    {id:70,name:'Topic',typeId:2},
+    {id:71,name:'Topic+*right',leftId:70,rightId:16,typeId:20,trash:true},
+    {id:200,name:'header',codename:'header',typeId:2},
+    {id:201,name:'footer',codename:'footer',typeId:2},
+    {id:202,name:'sidebar',codename:'sidebar',typeId:2},
+   ])await seedCard(s,row);
+   await seedReference(s,30,6,'anyone');await seedReference(s,34,7,'anyone_signed_in');
+   await s.counting.query('UPDATE cards SET name=NULL,key=NULL WHERE left_id IS NOT NULL',[]);
+   s.engine.renderAbsentCards=true;s.engine.viewer={signedIn:false,actorId:8};
+   s.fetcher.installNameEnvironment();await s.fetcher.warmLexicon([71]);
+   const [universe]=await s.counting.batch([structureRuleUniverseStatement()]);
+   s.fetcher.virtualCardLookup=createVirtualCardLookup(s.fetcher,{contents:structureUniverseFromResults(universe),ruleTypeIds:structureRuleTypesFromResults(universe)});
+   recordAsMain(undefined,'~71');
+   const result=await renderPageWithStatus(s.engine,'~71',view);
+   expect(result.status).toBe(404);
+   expect(result.html.includes('NOTFOUND:')).toBe(true);
+   expect(result.html.includes('Card::Error::NotFound')).toBe(true);
+  }finally{s.close();loader.reset();setDefaultModLoader(undefined);}
+ });
+});

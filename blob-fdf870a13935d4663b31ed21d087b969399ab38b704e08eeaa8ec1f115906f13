@@ -1,0 +1,47 @@
+import {expect, it} from 'vitest';
+import {createRenderTestStorage, seedCard} from './render-test-storage.js';
+import {allRenderingErrorsRaise, setRaiseAllRenderingErrors} from '../../../src/card/render/format.js';
+
+// Pinned Ruby CardQuery::Normalization retains false/nil; Run#alter_results?
+// therefore does not change names when that is the only result-name clause.
+it.each([
+  ['prepend', null], ['prepend', false], ['append', null], ['append', false],
+] as const)('keeps returned names when %s is %s', async (key, value) => {
+  const storage = await createRenderTestStorage();
+  try {
+    const read = {readRuleId: storage.bootstrapRule!, readRuleClass: '*all'};
+    for (const [id, name] of [[1001, 'C'], [1002, 'D'], [1003, 'F']] as const) {
+      await seedCard(storage, {id, name, dbContent: `body ${name}`, ...read});
+    }
+    await seedCard(storage, {id: 1098, name: 'Search', codename: 'search_type', ...read});
+    await seedCard(storage, {id: 1099, name: 'Falsy result name', typeId: 1098,
+      dbContent: JSON.stringify({name: ['in', 'C', 'D', 'F'], sort: 'id', [key]: value}), ...read});
+    const html = await storage.engine.render('Falsy result name', 'content');
+    const names = [...html.matchAll(/data-card-name="([^"]*)"/g)].map(match => match[1]);
+    expect(names).toEqual(expect.arrayContaining(['C', 'D', 'F']));
+    expect(names.some(name => name?.includes('null') || name?.includes('false'))).toBe(false);
+  } finally {storage.close();}
+});
+
+it.each([
+  [{prepend: true}, 'TrueClass'], [{append: true}, 'TrueClass'],
+  [{prepend: false, append: 'Tail'}, 'FalseClass'],
+  [{prepend: 'Head', append: false}, 'FalseClass'],
+] as const)('rejects activated boolean name identifiers: %j', async (extras, rubyClass) => {
+  const storage = await createRenderTestStorage();
+  const prior = allRenderingErrorsRaise();
+  try {
+    setRaiseAllRenderingErrors(true);
+    const read = {readRuleId: storage.bootstrapRule!, readRuleClass: '*all'};
+    await seedCard(storage, {id: 1001, name: 'C', dbContent: 'body C', ...read});
+    await seedCard(storage, {id: 1098, name: 'Search', codename: 'search_type', ...read});
+    await seedCard(storage, {id: 1099, name: 'Boolean result name', typeId: 1098,
+      dbContent: JSON.stringify({name: 'C', ...extras}), ...read});
+    await expect(storage.engine.render('Boolean result name', 'content'))
+      .rejects.toThrow(`${rubyClass} not supported as name identifier`);
+    // No returned card means CardQuery::Run never attempts name construction.
+    await seedCard(storage, {id: 1100, name: 'Empty boolean query', typeId: 1098,
+      dbContent: JSON.stringify({name: 'Not Present', ...extras}), ...read});
+    await expect(storage.engine.render('Empty boolean query', 'content')).resolves.toBeDefined();
+  } finally {setRaiseAllRenderingErrors(prior); storage.close();}
+});

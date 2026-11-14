@@ -1,0 +1,13 @@
+{
+  "_provenance": "GET /accounts/{account_id}/workers/services/{service_name} with HTTP 404 — Cloudflare's standard error envelope. The teardown reads the status code, not success; see collectAccountState(). Identifiers are synthetic; see fixtures/deploy-teardown/README.md.",
+  "success": false,
+  "errors": [
+    {
+      "code": 10090,
+      "message": "workers.services.not_found",
+      "documentation_url": "https://developers.cloudflare.com/api/resources/workers/subresources/services/methods/get/"
+    }
+  ],
+  "messages": [],
+  "result": null
+}

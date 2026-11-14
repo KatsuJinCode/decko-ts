@@ -1,0 +1,150 @@
+// The strict-parity flags: one-to-one reference behaviour on demand for the
+// port's deliberate improvements. Where the port improved on the original's
+// behaviour, these switches select the particular recorded reference paths.
+// They do not establish complete engine or host compatibility. Each flag is
+// OFF by default except DECKO_STRICT_PARITY_MAIL_UNFOLLOW_REFUSAL, which is ON
+// by default to match the reference. ON selects the recorded Ruby paths in the
+// side-effects battery and separate follow-rule controls listed below:
+//
+//   * DECKO_STRICT_PARITY_SIGNIN_DETAILED_ERRORS: Ruby's sign-in and
+//     forgot-password answers name the field that failed ("Unrecognized
+//     email.", "Wrong password", 422 "EMAIL: not recognized"); the port's
+//     default answers every failure uniformly ("Wrong email or password.",
+//     the reset redirect). Uniform wording alone is not a timing-leak proof
+//     (docs/SECURITY.md, approved divergence 4).
+//     Recorded cases: signin-unknown, signin-wrong-password,
+//     reset-unknown-email. This switch forces the uniform-failure policy
+//     off while it is on (auth/signin-security.ts); DECKO_SIGNIN_UNIFORM_FAILURE
+//     keeps its own meaning beside it.
+//   * DECKO_STRICT_PARITY_REVISION_RESTORE_500: restoring an old version of
+//     a File or Image card crashes Ruby (card-mod-carrierwave's revision
+//     override takes a keyword where the history mod passes positionals,
+//     ArgumentError -> 500); the port restores the version, which is what
+//     the revert was written to do. Recorded case: admin-restore-file-revision
+//     (with admin-deny-signup its location-history knock-on).
+//   * DECKO_STRICT_PARITY_SKIN_CREATE_500: creating a Bootswatch skin whose
+//     +parent names a card that is not a skin crashes Ruby
+//     (validate_theme_template -> theme_card on a non-skin -> NoMethodError
+//     -> 500); the port refuses the create with the validation error the
+//     event was written to give (422 "ABORT: not a valid theme <name>").
+//     Recorded case: admin-create-skin-bad-parent.
+//   * DECKO_STRICT_PARITY_SCRIPT_BUNDLE_CLOCK_NAMES: Ruby names a compiled
+//     asset bundle's file by the wall clock (the stand-in action id
+//     Time.now.to_i, card-mod-carrierwave
+//     lib/carrier_wave/file_card_uploader.rb:147-151), so stored names follow
+//     clock seconds and can collide within one second; the port names the
+//     file by the bundle
+//     bytes, so a URL changes only when the bundle's content does. Recorded
+//     evidence: the get-home step of the side-effects battery.
+//   * DECKO_STRICT_PARITY_MAIL_UNFOLLOW_REFUSAL: Ruby's follow-notification
+//     mail names the bare dashboard unfollow route (card-mod-follow
+//     set/all/notify/base_views.rb:49-55, no query beyond the posted rule
+//     subcard), and the owner's dashboard write it points at is REFUSED by
+//     the standard rules (the fixture's *rstar+*update names the Shark role
+//     alone; the reference Ruby deck's probes: 403 "Sorry! You need
+//     permission to do that.", nothing applied). Explicit OFF permits
+//     the owner's dashboard write (the follow-operation contracts' mail
+//     leg), so the unfollow lands; the link it mails is the reference's
+//     bytes in EVERY configuration (appending the port's own
+//     success[redirect]=soft would be the whole of the difference in the
+//     seven notification-mail answers of the synthetic-v1 grade). Because the link posts no success
+//     envelope, the click answers the flavor Ruby's own response.rb gives a
+//     permitted write - the hard redirect (303) - and the write still
+//     lands. The default ON preserves the reference's dashboard refusal (403, nothing
+//     applied) and arms the follow-rule create's trunk-part permission fold
+//     (actions/card-action-engine.ts, the verdict-true walk): the
+//     reference's save walks the parts a follow-rule create materializes
+//     and refuses with the part-named 422 where a part denies (the reference
+//     Ruby deck's probe: GET /update/Topic_009+*self+Mira_Member+*follow as
+//     the member answers 422 and applies nothing); OFF keeps the recorded
+//     divergence, the create landing (the whole-family exercise's follow
+//     family is graded on it, tools/edge-signed-in-exercise.mjs --only
+//     content-flows).
+//
+// The settings ride the same environment surface as the other host settings
+// (the DECKO_* variables, docs/SECURITY.md's Configuration row); edge hosts
+// read them from their own settings bag through configureStrictParity, the
+// same arrangement the sign-in policy uses (auth/signin-security.ts). An
+// invalid value fails loudly, naming the setting.
+
+/** Five switches: mail unfollow refusal defaults on; the other four default off. */
+export interface StrictParityFlags {
+  readonly signinDetailedErrors: boolean;
+  readonly revisionRestore500: boolean;
+  readonly skinCreate500: boolean;
+  readonly scriptBundleClockNames: boolean;
+  readonly mailUnfollowRefusal: boolean;
+}
+
+/** The environment names the flags read, in declaration order. */
+export const STRICT_PARITY_ENV_NAMES = {
+  signinDetailedErrors: "DECKO_STRICT_PARITY_SIGNIN_DETAILED_ERRORS",
+  revisionRestore500: "DECKO_STRICT_PARITY_REVISION_RESTORE_500",
+  skinCreate500: "DECKO_STRICT_PARITY_SKIN_CREATE_500",
+  scriptBundleClockNames: "DECKO_STRICT_PARITY_SCRIPT_BUNDLE_CLOCK_NAMES",
+  mailUnfollowRefusal: "DECKO_STRICT_PARITY_MAIL_UNFOLLOW_REFUSAL",
+} as const;
+
+/** The environment shape: the five names, all optional. */
+export type StrictParityEnv = Partial<Record<(typeof STRICT_PARITY_ENV_NAMES)[keyof typeof STRICT_PARITY_ENV_NAMES], unknown>>;
+
+// `fallback` is the value an unset or blank setting takes. An explicit "on" or
+// "off" always wins over it.
+function readSwitch(raw: unknown, name: string, fallback: boolean): boolean {
+  if (raw === undefined) return fallback;
+  if (typeof raw !== "string") throw new Error(`${name} must be "on" or "off", got ${typeof raw}`);
+  const value = raw.trim().toLowerCase();
+  if (value === "") return fallback;
+  if (value === "off") return false;
+  if (value === "on") return true;
+  throw new Error(`${name} must be "on" or "off", got ${JSON.stringify(raw)}`);
+}
+
+/** Build the flags from a settings bag; unset values take the defaults: the
+ *  four improved-behaviour switches are off, and the unfollow refusal is on
+ *  to match the recorded reference. Throws on a value it
+ *  cannot honour, so a misconfiguration fails loudly. */
+export function strictParityFlagsFromEnv(env: StrictParityEnv | undefined): StrictParityFlags {
+  return {
+    signinDetailedErrors: readSwitch(env?.[STRICT_PARITY_ENV_NAMES.signinDetailedErrors], STRICT_PARITY_ENV_NAMES.signinDetailedErrors, false),
+    revisionRestore500: readSwitch(env?.[STRICT_PARITY_ENV_NAMES.revisionRestore500], STRICT_PARITY_ENV_NAMES.revisionRestore500, false),
+    skinCreate500: readSwitch(env?.[STRICT_PARITY_ENV_NAMES.skinCreate500], STRICT_PARITY_ENV_NAMES.skinCreate500, false),
+    scriptBundleClockNames: readSwitch(env?.[STRICT_PARITY_ENV_NAMES.scriptBundleClockNames], STRICT_PARITY_ENV_NAMES.scriptBundleClockNames, false),
+    mailUnfollowRefusal: readSwitch(env?.[STRICT_PARITY_ENV_NAMES.mailUnfollowRefusal], STRICT_PARITY_ENV_NAMES.mailUnfollowRefusal, true),
+  };
+}
+
+let configured: StrictParityFlags | undefined;
+
+/** Set the flags explicitly (a host with its own settings bag, such as a
+ *  Workers `env`), or clear them (undefined) to fall back to process.env. */
+export function configureStrictParity(flags: StrictParityFlags | undefined): void {
+  configured = flags;
+}
+
+function processEnv(): StrictParityEnv | undefined {
+  const proc = (globalThis as { process?: { env?: StrictParityEnv } }).process;
+  return proc?.env;
+}
+
+/** The flags in force: the configured ones, else process.env, else the
+ *  defaults. */
+export function strictParityFlags(): StrictParityFlags {
+  return configured ?? strictParityFlagsFromEnv(processEnv());
+}
+
+/** The error a strict-parity site throws to reproduce a recorded Ruby
+ *  crash. Deliberately NOT a CardActionError: Ruby's crash is not a
+ *  validation answer, and the write surface renders it as the recorded
+ *  production 500 (the "Wild Card!" server_error page), not as an errors
+ *  alert. */
+export class StrictParityCrashError extends Error {
+  /** The flag that asked for the crash, for the diagnostic record. */
+  readonly flag: string;
+
+  constructor(flag: string, message: string) {
+    super(message);
+    this.name = "StrictParityCrashError";
+    this.flag = flag;
+  }
+}

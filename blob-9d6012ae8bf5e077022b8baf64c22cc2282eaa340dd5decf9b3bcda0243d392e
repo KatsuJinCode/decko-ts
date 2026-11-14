@@ -1,0 +1,146 @@
+import {resolve,relative,isAbsolute} from 'node:path';
+
+const plain=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
+const count=value=>Number.isSafeInteger(value)&&value>=0;
+function requireEvidence(condition,message){if(!condition)throw new Error(message);}
+function selectedFiles(root,files){
+  requireEvidence(Array.isArray(files)&&files.length>0,'Nonempty selected file inventory required');
+  const selected=new Set();
+  for(const file of files){
+    requireEvidence(typeof file==='string'&&file.length>0,'Invalid selected file');
+    const absolute=resolve(root,file),rel=relative(root,absolute);
+    requireEvidence(rel!==''&&!rel.startsWith('..')&&!isAbsolute(rel),'Selected file escapes source root');
+    requireEvidence(!selected.has(absolute),'Duplicate selected file');selected.add(absolute);
+  }
+  return selected;
+}
+function reconcileFiles(root,selected,observed){
+  requireEvidence(observed.length===selected.size,'Reported file count differs from selected inventory');
+  const seen=new Set();
+  for(const file of observed){
+    requireEvidence(typeof file==='string'&&file.length>0,'Reported file identity missing');
+    const absolute=resolve(root,file);
+    requireEvidence(selected.has(absolute),'Unexpected reported test file');
+    requireEvidence(!seen.has(absolute),'Duplicate reported test file');seen.add(absolute);
+  }
+}
+
+/** No prose fallback: missing or invalid machine evidence remains missing. */
+export function vitestEvidence(report,root,files){
+  const selected=selectedFiles(root,files);
+  requireEvidence(plain(report)&&typeof report.success==='boolean','Vitest success field missing');
+  for(const key of ['numTotalTests','numPassedTests','numFailedTests','numPendingTests'])
+    requireEvidence(count(report[key]),'Invalid Vitest '+key);
+  const todo=report.numTodoTests??0;requireEvidence(count(todo),'Invalid Vitest todo count');
+  let reporterSuccess=report.success;
+  for(const key of ['numTotalTestSuites','numPassedTestSuites','numFailedTestSuites','numPendingTestSuites','numRuntimeErrorTestSuites']){
+    if(!Object.hasOwn(report,key))continue;
+    requireEvidence(count(report[key]),'Invalid Vitest '+key);
+    if(['numFailedTestSuites','numPendingTestSuites','numRuntimeErrorTestSuites'].includes(key)&&report[key]>0)reporterSuccess=false;
+  }
+  if(Object.hasOwn(report,'wasInterrupted')){
+    requireEvidence(typeof report.wasInterrupted==='boolean','Invalid Vitest interruption field');
+    if(report.wasInterrupted)reporterSuccess=false;
+  }
+  if(Object.hasOwn(report,'openHandles')){
+    requireEvidence(Array.isArray(report.openHandles),'Invalid Vitest open-handle evidence');
+    if(report.openHandles.length)reporterSuccess=false;
+  }
+  requireEvidence(Array.isArray(report.testResults),'Vitest file results missing');
+  reconcileFiles(root,selected,report.testResults.map(file=>file?.name));
+  const measured={passed:0,failed:0,skipped:0},failedFiles=[];
+  for(const file of report.testResults){
+    requireEvidence(plain(file)&&['passed','failed','pending','skipped'].includes(file.status),'Invalid Vitest file status');
+    requireEvidence(Array.isArray(file.assertionResults),'Vitest assertion results missing');
+    if(file.status==='failed')failedFiles.push(relative(root,resolve(root,file.name)).replaceAll('\\','/'));
+    if(file.status==='pending'||file.status==='skipped')reporterSuccess=false;
+    for(const assertion of file.assertionResults){
+      requireEvidence(plain(assertion)&&['passed','failed','skipped','pending','todo'].includes(assertion.status),'Invalid Vitest assertion status');
+      if(assertion.status==='passed')measured.passed++;
+      else if(assertion.status==='failed')measured.failed++;
+      else measured.skipped++;
+    }
+  }
+  requireEvidence(measured.passed===report.numPassedTests&&measured.failed===report.numFailedTests
+    &&measured.skipped===report.numPendingTests+todo,'Vitest global/assertion counts disagree');
+  requireEvidence(measured.passed+measured.failed+measured.skipped===report.numTotalTests,'Vitest total count disagrees');
+  return {counts:measured,failedFiles,reporterSuccess,filesExecuted:selected.size};
+}
+
+export function nodeEvidence(report,root,files){
+  const selected=selectedFiles(root,files);
+  requireEvidence(plain(report)&&report.runner==='node:test','Node machine report missing');
+  requireEvidence(Array.isArray(report.files),'Node file inventory missing');
+  reconcileFiles(root,selected,report.files);
+  requireEvidence(report.filesExecuted===selected.size&&Array.isArray(report.missing)&&report.missing.length===0,'Node files missing');
+  requireEvidence(report.sourceUnchanged===true,'Node test sources changed');
+  for(const key of ['sourceBefore','sourceAfter']){
+    requireEvidence(Array.isArray(report[key]),'Node source inventory missing');
+    reconcileFiles(root,selected,report[key].map(entry=>entry?.file));
+    for(const entry of report[key])requireEvidence(typeof entry.sha256==='string'&&/^[a-f0-9]{64}$/.test(entry.sha256),'Invalid Node source hash');
+  }
+  requireEvidence(JSON.stringify(report.sourceBefore)===JSON.stringify(report.sourceAfter),'Node source hashes disagree');
+  requireEvidence(plain(report.summary)&&typeof report.summary.success==='boolean'&&plain(report.summary.counts),'Node summary missing');
+  const counters=report.summary.counts;
+  for(const key of ['tests','passed','failed','cancelled','skipped','todo'])requireEvidence(count(counters[key]),'Invalid Node '+key+' count');
+  requireEvidence(counters.tests===counters.passed+counters.failed+counters.cancelled+counters.skipped+counters.todo,'Node totals disagree');
+  requireEvidence(Array.isArray(report.failures),'Node failure records missing');
+  const failedFiles=[...new Set(report.failures.map(failure=>{
+    if(typeof failure?.file==='string'&&selected.has(resolve(root,failure.file)))return relative(root,resolve(root,failure.file)).replaceAll('\\','/');
+    return '[unattributed Node failure]';
+  }))];
+  return {counts:{passed:counters.passed,failed:counters.failed+counters.cancelled,skipped:counters.skipped+counters.todo},
+    failedFiles,reporterSuccess:report.summary.success&&report.pass===true,filesExecuted:selected.size};
+}
+
+/** Process facts cannot be replaced with a boolean saying the runner started. */
+export function classifyStage(evidence,termination,known=new Set()){
+  const problems=[];
+  if(!plain(termination)||!Object.hasOwn(termination,'code')||!Object.hasOwn(termination,'signal')||!Object.hasOwn(termination,'error'))
+    problems.push('Runner termination facts missing');
+  else {
+    if(termination.error!==null)problems.push('Runner error: '+(termination.error?.message??String(termination.error)));
+    if(termination.signal!==null)problems.push('Runner terminated by signal: '+termination.signal);
+    if(termination.code!==0)problems.push('Runner exit: '+String(termination.code));
+  }
+  const valid=plain(evidence)&&plain(evidence.counts)&&['passed','failed','skipped'].every(key=>count(evidence.counts[key]))
+    &&Array.isArray(evidence.failedFiles)&&evidence.failedFiles.every(file=>typeof file==='string')&&typeof evidence.reporterSuccess==='boolean';
+  if(!valid)return {result:'INCOMPLETE',reason:[...problems,'Machine evidence missing or malformed'].join('; '),counts:null,failed:[],known:[],termination};
+  const counts=evidence.counts,knownFiles=evidence.failedFiles.filter(file=>known.has(file)),newFiles=evidence.failedFiles.filter(file=>!known.has(file));
+  if(!evidence.reporterSuccess)problems.push('Reporter did not record success');
+  if(counts.failed>0||evidence.failedFiles.length>0){
+    const result=newFiles.length||!knownFiles.length?'FAIL':'BASELINE';
+    return {result,reason:[...problems,counts.failed+' failed assertions'].join('; '),counts,failed:newFiles,known:knownFiles,termination};
+  }
+  if(counts.skipped>0)problems.push(counts.skipped+' required assertions skipped or pending');
+  if(counts.passed===0)problems.push('No passing assertions observed');
+  return {result:problems.length?'INCOMPLETE':'PASS',reason:problems.join('; '),counts,failed:[],known:[],termination};
+}
+
+export function qualifyRevision(before,after){
+  const problems=[];
+  for(const [phase,value] of [['before',before],['after',after]]){
+    if(!plain(value)||typeof value.commit!=='string'||!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(value.commit)||typeof value.status!=='string'){
+      problems.push('Git revision/status observation missing or malformed '+phase);continue;
+    }
+    if(value.status!=='')problems.push('Uncommitted source '+phase+' the battery');
+  }
+  if(plain(before)&&plain(after)&&before.commit!==after.commit)problems.push('Git revision changed during the battery');
+  return {sourceQualified:problems.length===0,problems};
+}
+
+export function batteryVerdict(rows,expectedStages,qualification){
+  const problems=[];
+  const validExpected=Array.isArray(expectedStages)&&expectedStages.length>0&&expectedStages.every(name=>typeof name==='string'&&name.length>0)
+    &&new Set(expectedStages).size===expectedStages.length;
+  if(!validExpected)problems.push('Invalid expected stage inventory');
+  const expected=validExpected?expectedStages:[];
+  const names=Array.isArray(rows)?rows.map(row=>row?.stage):[];
+  if(names.length!==expected.length||new Set(names).size!==names.length||names.some(name=>!expected.includes(name)))problems.push('Stage inventory mismatch');
+  if(!Array.isArray(rows)||rows.some(row=>row?.result!=='PASS'))problems.push('A required stage failed or is incomplete');
+  const diagnosticChecksPassed=problems.length===0;
+  const sourceQualified=plain(qualification)&&qualification.sourceQualified===true&&Array.isArray(qualification.problems)&&qualification.problems.length===0;
+  if(!sourceQualified)problems.push(...(Array.isArray(qualification?.problems)&&qualification.problems.length?qualification.problems:['Committed-source qualification missing']));
+  return {batteryPassed:problems.length===0,diagnosticChecksPassed,sourceQualified,problems,
+    scope:'Local test battery and capture preflight only; full runtime/backend, four-category and migration acceptance remain separate'};
+}

@@ -1,0 +1,54 @@
+import { afterEach, describe, expect, it } from "vitest";
+import { createActionsTestStorage, seedCard, seedReference, seedStandardDeck,
+  type ActionsTestStorage } from "../card/actions/actions-test-storage.js";
+import { runAuthMigrations, SessionStore } from "../../src/card/auth/index.js";
+import { handleWriteRequest } from "../../src/server/write-routes.js";
+
+// Revocation controls adapted from the independent Area1 HTTP fixture at
+// 1cb87872d. Approval-policy differences are outside this session contract.
+let storage: ActionsTestStorage | undefined;
+afterEach(() => storage?.close());
+
+describe("changed accounts lose HTTP write authority", () => {
+  for (const change of ["closed", "trashed holder", "trashed account", "changed password"]) {
+    it(`${change} refuses an existing cookie without changing cards, history or references`, async () => {
+      const s = storage = await createActionsTestStorage();
+      await seedStandardDeck(s);
+      for (const [id, name, codename, typeId] of [
+        [410, "*account", "account", 2], [411, "*status", "status", 2],
+        [415, "*password", "password", 2], [412, "Person", "user", 3],
+        [430, "Member", "", 412], [440, "Anyone Signed In", "anyone_signed_in", 2],
+      ] as const) await seedCard(s, { id, name, codename: codename || undefined, typeId });
+      await seedCard(s, { id: 433, leftId: 430, rightId: 410 });
+      await seedCard(s, { id: 434, leftId: 433, rightId: 411, dbContent: "active" });
+      s.engine.installNameEnvironment();
+      await runAuthMigrations(s.driver);
+      const token = (await new SessionStore({ driver: s.driver }).createSession(430)).token;
+      await s.driver.query("DELETE FROM card_references WHERE referer_id = 306", []);
+      await s.driver.query("UPDATE cards SET db_content = ? WHERE id = 306", ["[[Anyone Signed In]]"]);
+      await seedReference(s, 306, 440, "anyone_signed_in");
+      const save = (content: string) => handleWriteRequest(
+        { driver: s.driver, fetcher: s.engine },
+        { method: "PATCH", pathname: "/update/Pudding.json", host: "deck.example",
+          headers: { "content-type": "application/json", cookie: `decko_ts_session=${token}` },
+          body: JSON.stringify({ card: { content } }) },
+      );
+      const snapshot = async () => ({
+        cards: await s.selectAll("SELECT * FROM cards ORDER BY id"),
+        acts: await s.selectAll("SELECT * FROM card_acts ORDER BY id"),
+        actions: await s.selectAll("SELECT * FROM card_actions ORDER BY id"),
+        changes: await s.selectAll("SELECT * FROM card_changes ORDER BY id"),
+        references: await s.selectAll("SELECT * FROM card_references ORDER BY id"),
+      });
+      expect((await save("authorized member write"))?.status).toBe(200);
+      if (change === "closed") await s.driver.query("UPDATE cards SET db_content = 'closed' WHERE id = 434", []);
+      else if (change === "changed password") await seedCard(s, {
+        id: 435, leftId: 433, rightId: 415, dbContent: "synthetic changed digest", updatedAt: "2999-01-01 00:00:00",
+      });
+      else await s.driver.query("UPDATE cards SET trash = 1 WHERE id = ?", [change === "trashed holder" ? 430 : 433]);
+      const before = await snapshot();
+      expect((await save("forbidden stale-session write"))?.status).toBe(403);
+      expect(await snapshot()).toEqual(before);
+    });
+  }
+});

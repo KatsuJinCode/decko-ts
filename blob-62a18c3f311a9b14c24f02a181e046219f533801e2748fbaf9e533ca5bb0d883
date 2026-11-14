@@ -1,0 +1,68 @@
+import { expect, it } from "vitest";
+import { copyFileSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { resolve } from "node:path";
+import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
+import { openSameDatabase } from "../../../src/server/same-database.js";
+import { FetchEngine } from "../../../src/card/fetch.js";
+import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
+import { actorBot } from "../../../src/card/auth/actor.js";
+import { defaultDeckLoader } from "../../../src/card/mod-loader/default-mod-deck.js";
+import { observedModEventRuntime } from "../../../src/server/write-routes.js";
+import { ruleContentForCard } from "../../../src/card/actions/rule-content-walk.js";
+import { CountingRenderDriver } from "../render/render-test-storage.js";
+
+it("reads rule content in its own transaction without caching uncommitted values or a second content query", async () => {
+  mkdirSync(resolve("tmp"), { recursive: true });
+  const dir = mkdtempSync(resolve("tmp/area3-rule-content-transaction-")), database = resolve(dir, "deck.sqlite3");
+  copyFileSync(resolve("reference-harness/fixtures/synthetic-v1/deck/deck.sqlite3"), database);
+  const writerDriver = new LocalSqliteDriver({ path: database });
+  let readerDriver: LocalSqliteDriver | undefined;
+  try {
+    await openSameDatabase(writerDriver); defaultDeckLoader();
+    const writerCounting = new CountingRenderDriver(writerDriver);
+    const writer = new FetchEngine(writerCounting); writer.installNameEnvironment();
+    const admin = new CardActionEngine(writer, { actor: await actorBot(writerCounting),
+      modEvents: await observedModEventRuntime({ driver: writerCounting, fetcher: writer }) });
+    const book = (await admin.createCard({ name: "Transaction Rule Book", typeName: "Cardtype" })).cardId;
+    const specific = (await admin.createCard({ name: "Transaction Rule Book+*type+*captcha", content: "0" })).cardId;
+    readerDriver = new LocalSqliteDriver({ path: database });
+    const readerCounting = new CountingRenderDriver(readerDriver);
+    const reader = new FetchEngine(readerCounting);
+    const input = { name: "Example", isNew: true, typeId: book, typeName: "Transaction Rule Book" };
+    const counts = new Map<FetchEngine, number>();
+    for (const [fetcher, driver] of [[writer, writerDriver], [reader, readerDriver]] as const) {
+      const query = driver.query.bind(driver);
+      driver.query = async <T = unknown>(sql: string, params: unknown[]) => {
+        if (sql.includes("rules.db_content AS rule_content")) counts.set(fetcher, (counts.get(fetcher) ?? 0) + 1);
+        return query<T>(sql, params);
+      };
+    }
+    const warmed = new Set<FetchEngine>();
+    async function read(fetcher: FetchEngine, expected: string) {
+      const before = counts.get(fetcher) ?? 0;
+      const counter = fetcher === writer ? writerCounting : readerCounting;
+      const costBefore = counter.snapshot();
+      expect(await ruleContentForCard(fetcher, input, "captcha")).toBe(expected);
+      expect((counts.get(fetcher) ?? 0) - before).toBe(1);
+      if (warmed.has(fetcher)) {
+        const costAfter = counter.snapshot();
+        expect({ roundTrips: costAfter.roundTrips - costBefore.roundTrips,
+          statements: costAfter.statements - costBefore.statements }).toEqual({ roundTrips: 1, statements: 1 });
+      }
+      warmed.add(fetcher);
+    }
+    await read(writer, "0"); await read(reader, "0");
+    const cached = await writer.fetchById(specific);
+    // Direct owned-fixture SQL isolates transaction visibility. This is not
+    // an additional ordinary-administrator-action or native Ruby claim.
+    await expect(writerDriver.transaction!(async () => {
+      await writerDriver.query("UPDATE cards SET db_content = ? WHERE id = ?", ["1", specific]);
+      await read(writer, "1"); await read(reader, "0");
+      expect(cached?.dbContent).toBe("0");
+      throw Error("synthetic content rollback");
+    })).rejects.toThrow("synthetic content rollback");
+    await read(writer, "0"); await read(reader, "0");
+  } finally {
+    readerDriver?.close(); writerDriver.close(); rmSync(dir, { recursive: true });
+  }
+});

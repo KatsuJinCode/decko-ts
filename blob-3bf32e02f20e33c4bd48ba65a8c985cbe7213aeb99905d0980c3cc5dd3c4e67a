@@ -1,0 +1,43 @@
+{
+  "actor": "List Viewer",
+  "hosts": [
+    {
+      "name": "Link Host",
+      "item_type": "Project",
+      "html": "<div class=\"card-list card-list-link pointer-list\"><div class=\"pointer-item item-link\"><a class=\"known-card\" href=\"/Alpha+Beta\"><span class=\"card-title\" title=\"Alpha+Beta\">Alpha<span>+</span>Beta</span></a></div>\n<div class=\"pointer-item item-link\"><a class=\"wanted-card\" href=\"/Gamma?card%5Btype%5D=Project\"><span class=\"card-title\" title=\"Gamma\">Gamma</span></a></div></div>\n",
+      "sha256": "cec2218f1362b2baf67734494591cc9c0bf0fa1f0471a692de425475ccba7eb4"
+    },
+    {
+      "name": "Blank Host",
+      "item_type": "Project",
+      "html": "<div class=\"card-list card-list-link pointer-list\"><div class=\"pointer-item item-link\"><a class=\"known-card\" href=\"/Alpha+Plan_B+Tasks?card%5Bname%5D=Alpha%2BPlan+-+B%2BTasks\"><span class=\"card-title\" title=\"Alpha+Plan - B+Tasks\">Alpha<span>+</span>Plan - B<span>+</span>Tasks</span></a></div></div>\n",
+      "sha256": "b779e89da2660b7fe0d948a79248cb4f2875981f5d3e1a9c2956072ccc1d365e"
+    },
+    {
+      "name": "Bar Host",
+      "item_type": "Project",
+      "html": "<div class=\"card-list card-list-bar pointer-list\"><div class=\"pointer-item item-bar\"><div id=\"alpha-betum-bar-view\" class=\"card-slot bar-view ALL ALL_PLUS TYPE-project RIGHT-betum TYPE_PLUS_RIGHT-rich_text-betum\" data-card-name=\"Alpha+Beta\" data-card-type-id=\"911\" data-card-type-name=\"Project\" data-card-link-name=\"Alpha+Beta\" data-slot-id=\"c8d10c5f7e29ee8f2ed3\" data-slot=\"{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;Alpha+Beta&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;type&quot;:&quot;Project&quot;}\"><div class='nodblclick d-flex _card-link bar ALL ALL_PLUS TYPE-project RIGHT-betum TYPE_PLUS_RIGHT-rich_text-betum with-bar-menu' data-card-link-name='Alpha+Beta' data-card-name='Alpha+Beta' data-card-type-id='911' data-card-type-name='Project' data-slot-id='8f6d20986077cc59d662'>\n<div class='row g-0 bar-body'>\n<div class='bar-left col-9'>\n<span class=\"card-title\" title=\"Alpha+Beta\">Alpha<span>+</span>Beta</span>\n</div>\n<div class='bar-right col-3'>\n\n</div>\n</div>\n\n<div class='bar-menu _over-card-link _card-link-clickable'>\n<div class='bar-menu-dropdown dropdown'>\n<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>\n<i class=\"notranslate material-icons\">more_horiz</i>\n</div>\n<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>\n<div class='dropdown-item'>\n<a class=\"full-page-link wanted-card\" href=\"/Alpha+Beta\"><i class=\"notranslate material-icons\">open_in_full</i> page</a>\n</div>\n<div class='dropdown-item'>\n<a data-slotter-mode=\"modal\" data-modal-class=\"modal-dialog modal-dialog-centered modal-xl\" size=\"xl\" class=\"_modal-page-link slotter\" href=\"/Alpha+Beta?layout=modal\" data-remote=\"true\"><i class=\"notranslate material-icons\">fullscreen</i> modal</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"edit-link slotter\" title=\"Edit\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal\" data-modal-class=\"modal-lg\" href=\"/Alpha+Beta/edit\" data-remote=\"true\"><i class=\"notranslate material-icons\">edit</i> create</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"board-link slotter\" title=\"Advanced\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal-replace\" href=\"/Alpha+Beta/board\" data-remote=\"true\"><i class=\"notranslate material-icons\">space_dashboard</i> advanced</a>\n</div>\n</div>\n</div>\n</div>\n\n</div>\n</div></div>\n<div class=\"pointer-item item-bar\"><div id=\"gamma-mini_bar-view\" class=\"card-slot mini_bar-view ALL TYPE-project\" data-card-name=\"Gamma\" data-card-type-id=\"911\" data-card-type-name=\"Project\" data-card-link-name=\"Gamma\" data-slot-id=\"bd593146be2e9715de49\" data-slot=\"{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;Gamma&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;type&quot;:&quot;Project&quot;}\"><div class='nodblclick d-flex _card-link bar ALL TYPE-project with-bar-menu' data-card-link-name='Gamma' data-card-name='Gamma' data-card-type-id='911' data-card-type-name='Project' data-slot-id='058be3910ed4241be189'>\n<div class='row g-0 bar-body'>\n<div class='bar-left col-9'>\n<span class=\"card-title\" title=\"Gamma\">Gamma</span>\n</div>\n<div class='bar-right col-3'>\n\n</div>\n</div>\n\n<div class='bar-menu _over-card-link _card-link-clickable'>\n<div class='bar-menu-dropdown dropdown'>\n<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>\n<i class=\"notranslate material-icons\">more_horiz</i>\n</div>\n<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>\n<div class='dropdown-item'>\n<a class=\"full-page-link wanted-card\" href=\"/Gamma\"><i class=\"notranslate material-icons\">open_in_full</i> page</a>\n</div>\n<div class='dropdown-item'>\n<a data-slotter-mode=\"modal\" data-modal-class=\"modal-dialog modal-dialog-centered modal-xl\" size=\"xl\" class=\"_modal-page-link slotter\" href=\"/Gamma?layout=modal\" data-remote=\"true\"><i class=\"notranslate material-icons\">fullscreen</i> modal</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"edit-link slotter\" title=\"Edit\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal\" data-modal-class=\"modal-lg\" href=\"/Gamma/edit\" data-remote=\"true\"><i class=\"notranslate material-icons\">edit</i> create</a>\n</div>\n<div class='dropdown-item'>\n<a rel=\"nofollow\" class=\"board-link slotter\" title=\"Advanced\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal-replace\" href=\"/Gamma/board\" data-remote=\"true\"><i class=\"notranslate material-icons\">space_dashboard</i> advanced</a>\n</div>\n</div>\n</div>\n</div>\n\n</div>\n</div></div></div>\n",
+      "sha256": "5d7aa92ab0ba1e39789bcd61344e79617d5e9659f37608cf6df939065d3642a3"
+    }
+  ],
+  "sets": [
+    {
+      "name": "Project+*type",
+      "type": "Set"
+    },
+    {
+      "name": "Tasks+*right",
+      "type": "Set"
+    }
+  ],
+  "runtime": {
+    "engine": "ruby",
+    "ruby": "3.2.3",
+    "card": "1.110.0",
+    "decko": "0.20.0",
+    "sqlite_regexp_adapter": "ruby-regexp-ignorecase-when-absent/v1",
+    "stock_sqlite_match_bound": true
+  },
+  "sessionId": "journeys-1793644046266-rwsydp",
+  "sourceCommit": "f5a9fe47c1ef5f6d6db993aca3b83151564f699a"
+}
