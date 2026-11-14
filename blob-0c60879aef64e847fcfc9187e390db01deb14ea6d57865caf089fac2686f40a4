@@ -1,0 +1,761 @@
+// Follower resolution — the rule-algebra walk ported from card-mod-follow
+// (set/all/follow/follower_ids.rb + set/all/follow/followed_by.rb), tested
+// against REAL storage rows (createActionsTestStorage + seedStandardDeck,
+// seeded the same way notify-save-path-wiring.test.ts seeds junction rows
+// and rule cards).
+//
+// Covered here (the four core cases, plus the precedence cases Ruby's walk
+// defines):
+//   - an *always follower resolves, with Ruby's set name + option strings
+//   - an *never follower is excluded
+//   - a follower matching two set rules resolves ONCE, first pattern wins
+//   - a non-follower resolves to nothing
+//   - option precedence: line order inside one rule; most-specific set
+//     first (Pattern.register front-inserts, rule/all.rb:66-73 first hit)
+//   - *created / *edited restrictive options (candidate membership)
+//   - the default save-path wiring: engine with no integrationHooks
+//     resolves real followers and mails them; the actor is excluded
+//     (set/all/notify.rb:51); a followerResolver override is honored.
+
+import { describe, expect, it } from "vitest";
+import {
+  actionEngine,
+  createActionsTestStorage,
+  seedCard,
+  seedStandardDeck,
+  SET_TYPE_ID,
+  type ActionsTestStorage,
+  type StandardFixture,
+} from "../actions/actions-test-storage.js";
+import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
+import {
+  CaptureTransport,
+  defaultFollowerResolver,
+  deckEmailTemplateResolver,
+  fixedFollowerResolver,
+  NEST_COUNT_SQL,
+  resolveFollowers,
+  type SavePathEvent,
+} from "../../../src/card/notify/index.js";
+import {
+  CARD_DB_CONTENT_BY_JUNCTION_SQL,
+  CARD_ID_BY_JUNCTION_ORDERED_SQL,
+} from "../../../src/card/fetch/card-read-shapes.js";
+
+// Row ids used by the follow deck below (seedStandardDeck takes 2, 3, 7,
+// 8, 50 and, since the write-rule machinery landed, 300-307 with the
+// codenames set/create/update/delete/anyone; the wiring test took 556-562).
+const ID = {
+  // the Set TYPE rows must be typed Set (Ruby's sets.type_id = SetID,
+  // preference_cache.rb:17): reuse the FIXTURE's Set codename card — a
+  // second codename-"set" row hits cards.codename UNIQUE (the same
+  // collision rule-content-walk.test.ts hit; cards.codename is UNIQUE)
+  set: SET_TYPE_ID,
+  setting: 101,
+  user: 102,
+  follow: 103,
+  always: 104,
+  never: 105,
+  created: 106,
+  edited: 107,
+  account: 108,
+  email: 109,
+  self: 110,
+  type: 111,
+  joeUser: 11,
+  sampleUser: 12,
+  joeAccount: 209,
+  joeEmail: 309,
+  sampleUserAccount: 212,
+  sampleUserEmail: 312,
+  richTextTypeSet: 440,
+  watchedSelfSet: 460,
+  otherSelfSet: 470,
+  watchedCard: 60,
+  otherCard: 61,
+} as const;
+
+/** The codename + user + follow-rule minimum a follower-resolution test
+ *  needs on top of seedStandardDeck: the Setting/User type cards (Set
+ *  comes from the fixture itself), the *follow setting, the four option
+ *  cards, the *self/*type pattern cards, Joe + Sample User as User-typed cards
+ *  with +*account+*email children, and set rows typed Set (as Ruby's
+ *  PreferenceCache SQL requires — rule/preference_cache.rb:17
+ *  `sets.type_id = SetID`). */
+async function seedFollowDeck(storage: ActionsTestStorage): Promise<StandardFixture> {
+  const f = await seedStandardDeck(storage);
+  await seedCard(storage, { id: ID.setting, name: "Setting", codename: "setting", typeId: 3 });
+  await seedCard(storage, { id: ID.user, name: "User", codename: "user", typeId: 3 });
+  await seedCard(storage, { id: ID.follow, name: "*follow", codename: "follow", typeId: ID.setting });
+  await seedCard(storage, { id: ID.always, name: "*always", codename: "always" });
+  await seedCard(storage, { id: ID.never, name: "*never", codename: "never" });
+  await seedCard(storage, { id: ID.created, name: "*created", codename: "created" });
+  await seedCard(storage, { id: ID.edited, name: "*edited", codename: "edited" });
+  await seedCard(storage, { id: ID.self, name: "*self", codename: "self", typeId: ID.setting });
+  await seedCard(storage, { id: ID.type, name: "*type", codename: "type", typeId: ID.setting });
+  await seedCard(storage, { id: ID.account, name: "*account", codename: "account" });
+  await seedCard(storage, { id: ID.email, name: "*email", codename: "email" });
+
+  // Users (type User) + account email children (<user>+*account+*email,
+  // the path card-mod-follow set/right/account.rb:3's card_accessor :email
+  // defines on the +*account card).
+  await seedCard(storage, { id: ID.joeUser, name: "Joe User", typeId: ID.user });
+  await seedCard(storage, { id: ID.sampleUser, name: "Sample User", typeId: ID.user });
+  await seedCard(storage, { id: ID.joeAccount, leftId: ID.joeUser, rightId: ID.account });
+  await seedCard(storage, {
+    id: ID.joeEmail,
+    leftId: ID.joeAccount,
+    rightId: ID.email,
+    dbContent: "joe@example.com",
+  });
+  await seedCard(storage, { id: ID.sampleUserAccount, leftId: ID.sampleUser, rightId: ID.account });
+  await seedCard(storage, {
+    id: ID.sampleUserEmail,
+    leftId: ID.sampleUserAccount,
+    rightId: ID.email,
+    dbContent: "sample-user@example.com",
+  });
+
+  // The followed card and its *self set row.
+  await seedCard(storage, {
+    id: ID.watchedCard,
+    name: "Watched Card",
+    dbContent: "v1",
+  });
+  await seedCard(storage, {
+    id: ID.watchedSelfSet,
+    leftId: ID.watchedCard,
+    rightId: ID.self,
+    typeId: ID.set,
+  });
+
+  // RichText+*type set row (less specific than the card's self set).
+  await seedCard(storage, {
+    id: ID.richTextTypeSet,
+    leftId: 2,
+    rightId: ID.type,
+    typeId: ID.set,
+  });
+
+  // A second card with its own *self set (the non-follower case).
+  await seedCard(storage, { id: ID.otherCard, name: "Other Card", dbContent: "x" });
+  await seedCard(storage, {
+    id: ID.otherSelfSet,
+    leftId: ID.otherCard,
+    rightId: ID.self,
+    typeId: ID.set,
+  });
+  return f;
+}
+
+/** One `Set+User+*follow` preference, seeded as the three real rows
+ *  Ruby's card tree holds (set row already exists; here: the set+user
+ *  junction row + the preference row). */
+async function seedFollowRule(
+  storage: ActionsTestStorage,
+  opts: {
+    setId: number;
+    userId: number;
+    content: string;
+    prefId: number;
+    joinId: number;
+  },
+): Promise<void> {
+  await seedCard(storage, {
+    id: opts.joinId,
+    leftId: opts.setId,
+    rightId: opts.userId,
+  });
+  await seedCard(storage, {
+    id: opts.prefId,
+    leftId: opts.joinId,
+    rightId: ID.follow,
+    dbContent: opts.content,
+  });
+}
+
+/** The follower_notification_email template triple, as real rows (same
+ *  shape notify-save-path-wiring.test.ts seeds). */
+async function seedTemplateCards(storage: ActionsTestStorage): Promise<void> {
+  await seedCard(storage, { id: 556, name: "follower notification email", typeId: 2 });
+  await seedCard(storage, { id: 557, name: "*subject", typeId: 2 });
+  await seedCard(storage, { id: 558, name: "*text message", typeId: 2 });
+  await seedCard(storage, {
+    id: 560,
+    leftId: 556,
+    rightId: 557,
+    typeId: 2,
+    dbContent: "{{followed_set}} on {{follow_option}}",
+  });
+  await seedCard(storage, {
+    id: 561,
+    leftId: 556,
+    rightId: 558,
+    typeId: 2,
+    dbContent: "Hi! {{follower}} — {{followed_set}} changed.",
+  });
+}
+
+function makeEvent(actorId: number, actorName: string, cardId: number): SavePathEvent {
+  return {
+    card: {
+      id: cardId,
+      name: null,
+      leftName: null,
+      rightName: null,
+      type: null,
+      content: null,
+      trashed: false,
+    },
+    verb: "update",
+    actId: 1,
+    actionId: 1,
+    actor: { id: actorId, name: actorName, email: null },
+    silent: false,
+    isDeletePath: false,
+  };
+}
+
+async function freshDeck(): Promise<{ storage: ActionsTestStorage; f: StandardFixture }> {
+  const storage = await createActionsTestStorage();
+  const f = await seedFollowDeck(storage);
+  return { storage, f };
+}
+
+/** Count the driver's round trips, and the statements each one carries.
+ *
+ *  This counts driver calls as a transport proxy: one query or batch call
+ *  counts once. It does not observe hosted HTTP requests. Keep point reads
+ *  and batched pattern reads separate while retaining the whole-call total. */
+function countRoundTrips(driver: ActionsTestStorage["driver"]): {
+  roundTripsFor: (sql: string) => number;
+  statementsFor: (sql: string) => number;
+  pointStatementsFor: (sql: string) => number;
+  batchedStatementsFor: (sql: string) => number;
+  batchedRoundTripsFor: (sql: string) => number;
+} {
+  const roundTrips = new Map<string, number>();
+  const statements = new Map<string, number>();
+  const pointStatements = new Map<string, number>();
+  const batchedStatements = new Map<string, number>();
+  const batchedRoundTrips = new Map<string, number>();
+  const loose = driver as unknown as {
+    query: (sql: string, params?: unknown[]) => Promise<unknown>;
+    batch: (batchStatements: { sql: string; params?: unknown[] }[]) => Promise<unknown>;
+  };
+  const originalQuery = loose.query.bind(loose);
+  const originalBatch = loose.batch.bind(loose);
+  loose.query = async (sql: string, params?: unknown[]) => {
+    pointStatements.set(sql, (pointStatements.get(sql) ?? 0) + 1);
+    roundTrips.set(sql, (roundTrips.get(sql) ?? 0) + 1);
+    statements.set(sql, (statements.get(sql) ?? 0) + 1);
+    return originalQuery(sql, params);
+  };
+  loose.batch = async (batchStatements: { sql: string; params?: unknown[] }[]) => {
+    // One batch is ONE round trip, and it carries every shape in it: so a
+    // shape inside a batch counts one round trip, and the statements it
+    // carried count as statements.
+    const shapes = new Set(batchStatements.map((statement) => statement.sql));
+    for (const sql of shapes) {
+      roundTrips.set(sql, (roundTrips.get(sql) ?? 0) + 1);
+      batchedRoundTrips.set(sql, (batchedRoundTrips.get(sql) ?? 0) + 1);
+    }
+    for (const statement of batchStatements) {
+      statements.set(statement.sql, (statements.get(statement.sql) ?? 0) + 1);
+      batchedStatements.set(statement.sql, (batchedStatements.get(statement.sql) ?? 0) + 1);
+    }
+    return originalBatch(batchStatements);
+  };
+  return {
+    roundTripsFor: (sql: string) => roundTrips.get(sql) ?? 0,
+    statementsFor: (sql: string) => statements.get(sql) ?? 0,
+    pointStatementsFor: (sql: string) => pointStatements.get(sql) ?? 0,
+    batchedStatementsFor: (sql: string) => batchedStatements.get(sql) ?? 0,
+    batchedRoundTripsFor: (sql: string) => batchedRoundTrips.get(sql) ?? 0,
+  };
+}
+
+describe("follower-resolver (card-mod-follow rule algebra against real rows)", () => {
+  it("resolves an *always follower with Ruby's set name + option strings", async () => {
+    const { storage, f } = await freshDeck();
+    await seedFollowRule(storage, {
+      setId: ID.watchedSelfSet,
+      userId: ID.joeUser,
+      content: "*always",
+      joinId: 480,
+      prefId: 481,
+    });
+    const refs = await resolveFollowers(
+      f.engine,
+      ID.watchedCard,
+      makeEvent(2, "anonymous", ID.watchedCard),
+    );
+    expect(refs).toHaveLength(1);
+    expect(refs[0]?.followerId).toBe(ID.joeUser);
+    expect(refs[0]?.followerName).toBe("Joe User");
+    expect(refs[0]?.followerEmail).toBe("joe@example.com");
+    // notify.rb:58's reason: reason[:set_card].name + the bracket-stripped
+    // option line (follower_ids.rb:118) — the star survives, as in Ruby.
+    expect(refs[0]?.followedSetName).toBe("Watched Card+*self");
+    expect(refs[0]?.followOption).toBe("*always");
+    storage.close();
+  });
+
+  it("excludes an *never follower", async () => {
+    const { storage, f } = await freshDeck();
+    await seedFollowRule(storage, {
+      setId: ID.watchedSelfSet,
+      userId: ID.joeUser,
+      content: "*never",
+      joinId: 480,
+      prefId: 481,
+    });
+    const refs = await resolveFollowers(
+      f.engine,
+      ID.watchedCard,
+      makeEvent(2, "anonymous", ID.watchedCard),
+    );
+    // never.rb:5 follow_test -> false: the option never applies, so the
+    // user is not a follower (followed_by.rb:40-43 find returns nil).
+    expect(refs).toEqual([]);
+    storage.close();
+  });
+
+  it("resolves a follower matching two set rules exactly once, first pattern wins the reason", async () => {
+    const { storage, f } = await freshDeck();
+    // Numbered files load 01..09 but register inserts at index 0. The
+    // self pattern therefore precedes type and all. The first match yields the reason
+    // (follower_ids.rb:97-99 + the ids dedupe at :109).
+    await seedFollowRule(storage, {
+      setId: ID.richTextTypeSet,
+      userId: ID.joeUser,
+      content: "*always",
+      joinId: 480,
+      prefId: 481,
+    });
+    await seedFollowRule(storage, {
+      setId: ID.watchedSelfSet,
+      userId: ID.joeUser,
+      content: "*always",
+      joinId: 482,
+      prefId: 483,
+    });
+    const refs = await resolveFollowers(
+      f.engine,
+      ID.watchedCard,
+      makeEvent(2, "anonymous", ID.watchedCard),
+    );
+    expect(refs).toHaveLength(1);
+    expect(refs[0]?.followedSetName).toBe("Watched Card+*self");
+    expect(refs[0]?.followOption).toBe("*always");
+    storage.close();
+  });
+
+  it("a self *always overrides a more-general type *never, as installed Ruby lookup does", async () => {
+    const { storage, f } = await freshDeck();
+    // Ruby's preference lookup walks rule_lookup_keys and stops at the
+    // FIRST set holding any rule for the user (rule/all.rb:66-73) —
+    // user-specific before the *all-user fallback, per set, most-specific
+    // before general. The self set's *always is the first hit.
+    await seedFollowRule(storage, {
+      setId: ID.richTextTypeSet,
+      userId: ID.joeUser,
+      content: "*never",
+      joinId: 480,
+      prefId: 481,
+    });
+    await seedFollowRule(storage, {
+      setId: ID.watchedSelfSet,
+      userId: ID.joeUser,
+      content: "*always",
+      joinId: 482,
+      prefId: 483,
+    });
+    const refs = await resolveFollowers(
+      f.engine,
+      ID.watchedCard,
+      makeEvent(2, "anonymous", ID.watchedCard),
+    );
+    expect(refs.map(ref => ref.followerId)).toEqual([ID.joeUser]);
+    expect(refs[0].followedSetName).toBe('Watched Card+*self');
+    storage.close();
+  });
+
+  it("a self *never denies despite a more-general type *always", async () => {
+    const { storage, f } = await freshDeck();
+    await seedFollowRule(storage, { setId: ID.richTextTypeSet, userId: ID.joeUser, content: '*always', joinId: 480, prefId: 481 });
+    await seedFollowRule(storage, { setId: ID.watchedSelfSet, userId: ID.joeUser, content: '*never', joinId: 482, prefId: 483 });
+    expect(await resolveFollowers(f.engine, ID.watchedCard, makeEvent(2, 'anonymous', ID.watchedCard))).toEqual([]);
+    storage.close();
+  });
+
+  it("a self user preference overrides an all-user global *never without notifying other users", async () => {
+    const { storage, f } = await freshDeck();
+    const all = (await storage.selectAll<{ id: number }>("SELECT id FROM cards WHERE codename='all' AND trash=0"))[0].id;
+    await seedFollowRule(storage, { setId: all, userId: all, content: '*never', joinId: 480, prefId: 481 });
+    await seedFollowRule(storage, { setId: ID.watchedSelfSet, userId: ID.joeUser, content: '*always', joinId: 482, prefId: 483 });
+    const refs = await resolveFollowers(f.engine, ID.watchedCard, makeEvent(2, 'anonymous', ID.watchedCard));
+    expect(refs.map(ref => ref.followerId)).toEqual([ID.joeUser]);
+    storage.close();
+  });
+
+  it("applies rule lines in order: *never then *always still follows; non-matching *created falls through", async () => {
+    const { storage, f } = await freshDeck();
+    // One rule, three lines (followed_by.rb:45-50 splits content on \n
+    // and :39-43 finds the first line whose test passes). *never's test
+    // is always false (never.rb:5) so it cannot veto a later line;
+    // *created without creator membership falls through (created.rb:5-7
+    // candidates = [creator_id], seedCard writes creator_id 1, Joe is 11).
+    await seedFollowRule(storage, {
+      setId: ID.watchedSelfSet,
+      userId: ID.joeUser,
+      content: "*never\n*created\n*always",
+      joinId: 480,
+      prefId: 481,
+    });
+    const refs = await resolveFollowers(
+      f.engine,
+      ID.watchedCard,
+      makeEvent(2, "anonymous", ID.watchedCard),
+    );
+    expect(refs).toHaveLength(1);
+    expect(refs[0]?.followOption).toBe("*always");
+    storage.close();
+  });
+
+  it("non-followers get nothing (rule on another card, or no rules)", async () => {
+    const { storage, f } = await freshDeck();
+    // Joe follows Other Card only; Watched Card has no rules at all.
+    await seedFollowRule(storage, {
+      setId: ID.otherSelfSet,
+      userId: ID.joeUser,
+      content: "*always",
+      joinId: 480,
+      prefId: 481,
+    });
+    const watched = await resolveFollowers(
+      f.engine,
+      ID.watchedCard,
+      makeEvent(2, "anonymous", ID.watchedCard),
+    );
+    expect(watched).toEqual([]);
+    // and the rule does fire on the card it names:
+    const other = await resolveFollowers(
+      f.engine,
+      ID.otherCard,
+      makeEvent(2, "anonymous", ID.otherCard),
+    );
+    expect(other).toHaveLength(1);
+    expect(other[0]?.followedSetName).toBe("Other Card+*self");
+    storage.close();
+  });
+
+  it("*created matches only the creator; *edited matches actors of the card's acts", async () => {
+    const { storage, f } = await freshDeck();
+    // Make Sample User the creator of Watched Card (seedCard writes creator_id 1).
+    await storage.driver.query("UPDATE cards SET creator_id = ? WHERE id = ?", [
+      ID.sampleUser,
+      ID.watchedCard,
+    ]);
+    await seedFollowRule(storage, {
+      setId: ID.watchedSelfSet,
+      userId: ID.sampleUser,
+      content: "*created",
+      joinId: 480,
+      prefId: 481,
+    });
+    await seedFollowRule(storage, {
+      setId: ID.watchedSelfSet,
+      userId: ID.joeUser,
+      content: "*edited",
+      joinId: 482,
+      prefId: 483,
+    });
+    // Before Joe edits: only Sample User's *created matches (Joe is not yet an
+    // editor; editor_of finds actors of the card's acts).
+    const before = await resolveFollowers(
+      f.engine,
+      ID.watchedCard,
+      makeEvent(2, "anonymous", ID.watchedCard),
+    );
+    expect(before).toHaveLength(1);
+    expect(before[0]?.followerId).toBe(ID.sampleUser);
+    expect(before[0]?.followOption).toBe("*created");
+
+    // Joe performs a real update through the engine — he is now an
+    // editor (editor_of -> acts' actor_ids, action_query.rb:22-24 —
+    // tied via card_acts.actor_id, no action_type filter in Ruby).
+    const engine = actionEngine(storage, { id: ID.joeUser, name: "Joe User" });
+    await engine.updateCard({ cardId: ID.watchedCard, content: "v2" });
+    const after = await resolveFollowers(
+      f.engine,
+      ID.watchedCard,
+      makeEvent(2, "anonymous", ID.watchedCard),
+    );
+    expect(after).toHaveLength(2);
+    const byUser = new Map(after.map((r) => [r.followerId, r.followOption]));
+    expect(byUser.get(ID.sampleUser)).toBe("*created");
+    expect(byUser.get(ID.joeUser)).toBe("*edited");
+    storage.close();
+  });
+});
+
+describe("default save-path wiring (engine without integrationHooks)", () => {
+  it("resolves real followers and mails them through the deck template", async () => {
+    const { storage, f } = await freshDeck();
+    // Sample User follows Watched Card+*self with *always.
+    await seedFollowRule(storage, {
+      setId: ID.watchedSelfSet,
+      userId: ID.sampleUser,
+      content: "*always",
+      joinId: 480,
+      prefId: 481,
+    });
+    await seedTemplateCards(storage);
+    const transport = new CaptureTransport();
+    // NO integrationHooks: the built-in follow hook with the real
+    // follower resolver runs (the engine options resolve
+    // integrationHooks ?? [followHook]).
+    const engine = new CardActionEngine(f.engine, {
+      actor: { id: 11, name: "Joe User" },
+      notifyTransport: transport,
+    });
+    await engine.updateCard({ cardId: ID.watchedCard, content: "second" });
+    const mails = transport.captured();
+    expect(mails).toHaveLength(1);
+    expect(mails[0]?.to).toBe("sample-user@example.com");
+    expect(mails[0]?.subject).toBe("Watched Card+*self on *always");
+    expect(mails[0]?.textBody).toBe("Hi! Sample User — Watched Card+*self changed.");
+    storage.close();
+  });
+
+  it("excludes the acting follower from the default resolution (notify.rb:51)", async () => {
+    const { storage, f } = await freshDeck();
+    // Sample User both acts and follows — Ruby's notify_followers_of skips
+    // `follower == act.actor` (set/all/notify.rb:51).
+    await seedFollowRule(storage, {
+      setId: ID.watchedSelfSet,
+      userId: ID.sampleUser,
+      content: "*always",
+      joinId: 480,
+      prefId: 481,
+    });
+    const transport = new CaptureTransport();
+    const engine = new CardActionEngine(f.engine, {
+      actor: { id: ID.sampleUser, name: "Sample User" },
+      notifyTransport: transport,
+    });
+    await engine.updateCard({ cardId: ID.watchedCard, content: "self-edit" });
+    expect(transport.captured()).toEqual([]);
+
+    // The raw discovery keeps her (the exclusion lives at the notify
+    // layer, matching Ruby's split between follower_ids and
+    // notify_followers_of):
+    const refs = await resolveFollowers(
+      f.engine,
+      ID.watchedCard,
+      makeEvent(ID.sampleUser, "Sample User", ID.watchedCard),
+    );
+    expect(refs).toHaveLength(1);
+    expect(refs[0]?.followerId).toBe(ID.sampleUser);
+
+    // ... while the default resolver applies the notify-layer exclusion:
+    const defaulted = await defaultFollowerResolver(f.engine)(
+      ID.watchedCard,
+      makeEvent(ID.sampleUser, "Sample User", ID.watchedCard),
+    );
+    expect(defaulted).toEqual([]);
+    storage.close();
+  });
+
+  it("honors an injected followerResolver on the engine options", async () => {
+    const { storage, f } = await freshDeck();
+    await seedTemplateCards(storage);
+    const transport = new CaptureTransport();
+    const engine = new CardActionEngine(f.engine, {
+      actor: { id: 11, name: "Joe User" },
+      followerResolver: fixedFollowerResolver([
+        {
+          followerId: 12,
+          followerName: "Sample User",
+          followerEmail: "sample-user@example.com",
+          followedSetName: "Watched Card+*followed",
+          followOption: "always",
+        },
+      ]),
+      notifyTransport: transport,
+    });
+    await engine.updateCard({ cardId: ID.watchedCard, content: "second" });
+    const mails = transport.captured();
+    expect(mails).toHaveLength(1);
+    expect(mails[0]?.subject).toBe("Watched Card+*followed on always");
+    storage.close();
+  });
+
+  it("exposes the seam pair the engine wires (both plain functions of the fetch engine)", async () => {
+    const { storage, f } = await freshDeck();
+    expect(typeof defaultFollowerResolver(f.engine)).toBe("function");
+    expect(typeof deckEmailTemplateResolver(f.engine)).toBe("function");
+    storage.close();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The round trips the follower's walk takes.
+//
+// The transport packing (docs/reports/live-save-transport-design-2026-10-18.md)
+// counts ROUND TRIPS, not statements: the engine awaits every answer, so
+// the save's ladder was one statement per round trip. The follower's walk of
+// a card's set patterns read the set card ids and the rule contents ONE AT A
+// TIME, so the graded save paid 5 round trips per saved card for the walk
+// (2 for the set card ids, 3 for the rule contents), and the same two pairs
+// were read seven times over.
+//
+// The walk's reads now ride one round trip each (one batch per shape), and
+// the answers are unchanged: the rule content is still the FIRST pattern's
+// non-null content in the pattern order, which is what the one-at-a-time
+// walk returned.
+//
+// The counts below are WIRE COUNTS, so they move when the packing moves;
+// the answers are pinned by the cases above, which read the same rows.
+// ---------------------------------------------------------------------------
+
+/** Record what every round trip carried: a round trip is one `query` call
+ *  or one `batch` call, and a batch of N statements is ONE round trip. The
+ *  record is the set of shapes the round trip carried, so a shape that
+ *  always shares a round trip with another shape can be told from one that
+ *  rides alone. */
+function recordRoundTripShapes(driver: ActionsTestStorage["driver"]): {
+  statementsFor: (sql: string) => number;
+  loneRoundTripsFor: (sql: string) => number;
+  sharesRoundTripWith: (sql: string, other: string) => boolean;
+} {
+  const statements = new Map<string, number>();
+  const lone = new Map<string, number>();
+  const shared = new Map<string, Set<string>>();
+  const loose = driver as unknown as {
+    query: (sql: string, params?: unknown[]) => Promise<unknown>;
+    batch: (batchStatements: { sql: string; params?: unknown[] }[]) => Promise<unknown>;
+  };
+  const originalQuery = loose.query.bind(loose);
+  const originalBatch = loose.batch.bind(loose);
+  const record = (shapes: string[]): void => {
+    for (const sql of shapes) statements.set(sql, (statements.get(sql) ?? 0) + 1);
+    if (shapes.length === 1) lone.set(shapes[0] as string, (lone.get(shapes[0] as string) ?? 0) + 1);
+    for (const sql of shapes) {
+      const others = shared.get(sql) ?? new Set<string>();
+      for (const other of shapes) if (other !== sql) others.add(other);
+      shared.set(sql, others);
+    }
+  };
+  loose.query = async (sql: string, params?: unknown[]) => {
+    record([sql]);
+    return originalQuery(sql, params);
+  };
+  loose.batch = async (batchStatements: { sql: string; params?: unknown[] }[]) => {
+    record(batchStatements.map((statement) => statement.sql));
+    return originalBatch(batchStatements);
+  };
+  return {
+    statementsFor: (sql: string) => statements.get(sql) ?? 0,
+    loneRoundTripsFor: (sql: string) => lone.get(sql) ?? 0,
+    sharesRoundTripWith: (sql: string, other: string) => shared.get(sql)?.has(other) === true,
+  };
+}
+
+describe("follower resolution round trips", () => {  it("rides one round trip per shape for the walk's junction reads", async () => {
+    const { storage, f } = await freshDeck();
+    await seedFollowRule(storage, {
+      setId: ID.watchedSelfSet,
+      userId: ID.sampleUser,
+      content: "*always",
+      joinId: 480,
+      prefId: 481,
+    });
+    await seedCard(storage, { id: 120, name: "*follow fields", codename: "follow_fields", typeId: ID.setting });
+    await seedCard(storage, { id: 500, leftId: ID.joeAccount, rightId: ID.self, typeId: ID.set });
+    const counter = countRoundTrips(storage.driver);
+    // The card with a LEFT CHAIN: the indirect walk (follower_ids.rb:74-83)
+    // reads each left ancestor's *follow_fields rule, and that read is the
+    // walk whose junction reads this row pins.
+    await resolveFollowers(
+      f.engine,
+      ID.joeEmail,
+      makeEvent(ID.joeUser, "Joe User", ID.joeEmail),
+    );
+    // setPatternsOf first resolves two type-plus-right anchors: one for
+    // the direct card and one for the left account. They are point reads.
+    // The follow-fields set-id batches still carry four statements in two
+    // calls (one per left ancestor); account for both scopes explicitly.
+    expect(counter.pointStatementsFor(CARD_ID_BY_JUNCTION_ORDERED_SQL)).toBe(2);
+    expect(counter.batchedStatementsFor(CARD_ID_BY_JUNCTION_ORDERED_SQL)).toBe(4);
+    expect(counter.batchedRoundTripsFor(CARD_ID_BY_JUNCTION_ORDERED_SQL)).toBe(2);
+    expect(counter.statementsFor(CARD_ID_BY_JUNCTION_ORDERED_SQL)).toBe(6);
+    expect(counter.roundTripsFor(CARD_ID_BY_JUNCTION_ORDERED_SQL)).toBe(4);
+    // The rule contents of the walk's patterns: the same shape, the same
+    // halving.
+    expect(counter.statementsFor(CARD_DB_CONTENT_BY_JUNCTION_SQL)).toBe(4);
+    expect(counter.roundTripsFor(CARD_DB_CONTENT_BY_JUNCTION_SQL)).toBe(2);
+    storage.close();
+  });
+
+  it("rides the *nests arm's inclusion count on the rule-content batch, and the answer is the inclusion's", async () => {
+    // THE LEVER. The *nests arm's read (the inclusion count) used to be a
+    // round trip of its own, paid after the rule-content batch, for every
+    // left ancestor the walk visited. It is an independent read of the same
+    // walk, so it rides the batch that was already being paid.
+    const { storage, f } = await freshDeck();
+    await seedCard(storage, { id: 120, name: "*follow fields", codename: "follow_fields", typeId: ID.setting });
+    // The set card of the left ancestor's "*self" pattern, and the rule row
+    // that carries the *nests arm's key.
+    await seedCard(storage, { id: 500, leftId: ID.joeAccount, rightId: ID.self, typeId: ID.set });
+    await seedCard(storage, {
+      id: 501,
+      leftId: 500,
+      rightId: 120,
+      typeId: ID.setting,
+      dbContent: "*nests",
+    });
+    // The left ancestor's direct follower, so the arm's DECISION is
+    // observable in the resolved refs.
+    await seedFollowRule(storage, {
+      setId: 500,
+      userId: ID.sampleUser,
+      content: "*always",
+      joinId: 502,
+      prefId: 503,
+    });
+    const trips = recordRoundTripShapes(storage.driver);
+    // WITHOUT the inclusion row the arm does not fire, and the left
+    // ancestor's follower is not among the resolved refs.
+    const withoutInclusion = await resolveFollowers(
+      f.engine,
+      ID.joeEmail,
+      makeEvent(ID.joeUser, "Joe User", ID.joeEmail),
+    );
+    expect(withoutInclusion.map((ref) => ref.followerId)).not.toContain(ID.sampleUser);
+    // The inclusion count WAS read, so the arm ran.
+    expect(trips.statementsFor(NEST_COUNT_SQL)).toBeGreaterThan(0);
+    // It NEVER rides a round trip of its own: it rides the rule-content
+    // batch, which was being paid anyway.
+    expect(trips.loneRoundTripsFor(NEST_COUNT_SQL)).toBe(0);
+    expect(trips.sharesRoundTripWith(NEST_COUNT_SQL, CARD_DB_CONTENT_BY_JUNCTION_SQL)).toBe(true);
+    // WITH the inclusion row the arm fires and the left ancestor's follower
+    // IS among the resolved refs: the count's answer is the inclusion's.
+    // The INCLUSION row: the left ancestor includes the field. The actions
+    // storage's seedReference writes a LINK row, and the inclusion set is
+    // the ref_type "I" rows (card-1.110.0 lib/card/reference/all.rb:31-34),
+    // so the row is written here with its own type.
+    await storage.driver.query(
+      "INSERT INTO card_references (referer_id, referee_key, referee_id, ref_type, is_present) VALUES (?, ?, ?, 'I', NULL)",
+      [ID.joeAccount, "joe_email", ID.joeEmail],
+    );
+    const withInclusion = await resolveFollowers(
+      f.engine,
+      ID.joeEmail,
+      makeEvent(ID.joeUser, "Joe User", ID.joeEmail),
+    );
+    expect(withInclusion.map((ref) => ref.followerId)).toContain(ID.sampleUser);
+    storage.close();
+  });
+});

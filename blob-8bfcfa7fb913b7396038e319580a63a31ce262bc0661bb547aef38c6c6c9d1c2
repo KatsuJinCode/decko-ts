@@ -1,0 +1,87 @@
+import fs from "node:fs";
+import path from "node:path";
+import {createHash} from "node:crypto";
+import {fileURLToPath} from "node:url";
+import {test} from "node:test";
+import assert from "node:assert/strict";
+import {packageNodeHost, verifyNodeHostPackage} from "../../tools/dist/package-node-host.mjs";
+import {stagedTreeDigest} from "../../tools/dist/verify-staged-source.mjs";
+
+const checkout = fileURLToPath(new URL("../../", import.meta.url));
+const sha = bytes => createHash("sha256").update(bytes).digest("hex");
+function fixture(t) {
+  const root = fs.mkdtempSync(path.join(checkout, "tmp/node-package-test-"));
+  t.after(() => fs.rmSync(root, {recursive: true}));
+  const source = path.join(root, "source"), output = path.join(root, "package");
+  fs.mkdirSync(path.join(source, "dist"), {recursive: true});
+  fs.mkdirSync(path.join(source, ".runtime"));
+  const files = {};
+  for (const name of ["configured-public-page-shell.mjs", "package-lock.json", "package.json", "vm-staging-server.mjs"]) {
+    const bytes = Buffer.from(`synthetic package fixture ${name}\n`);
+    fs.writeFileSync(path.join(source, name), bytes);
+    files[name] = {byteLength: bytes.length, sha256: sha(bytes)};
+  }
+  fs.writeFileSync(path.join(source, "dist/module.js"), "// inert synthetic distribution\n");
+  const nodeRuntimeFiles = {};
+  for (const name of ["db/schema.sqlite.sql", "db/migrations/001-auth-sessions.sql"]) {
+    const bytes = Buffer.from(`-- ${name}\nCREATE TABLE IF NOT EXISTS fixture (id INTEGER);\n`);
+    fs.mkdirSync(path.dirname(path.join(source, name)), {recursive: true});
+    fs.writeFileSync(path.join(source, name), bytes);
+    nodeRuntimeFiles[name] = {byteLength: bytes.length, sha256: sha(bytes)};
+  }
+  const assets = {files: 1, bytes: 1, manifestSha256: sha("synthetic assets")};
+  const distribution = {config: "tsconfig.browser-hosts.json", distSha256: stagedTreeDigest(path.join(source, "dist")).sha256, runtimeAssets: assets};
+  const selection = {format: "decko-staging-source-selection/1", sourceCommit: "a".repeat(40),
+    sourceAcceptance: "component-reviewed", targetActivationAccepted: false, files, nodeRuntimeFiles, distributions: [distribution]};
+  fs.writeFileSync(path.join(source, ".runtime/browser-build.json"), JSON.stringify({sourceCommit: selection.sourceCommit,
+    sourceDiffSha256: sha(""), config: distribution.config, distSha256: distribution.distSha256, runtimeAssets: assets}));
+  return {source, output, selection};
+}
+
+test("a dist-only candidate fails before the package directory is created", t => {
+  const {source, output, selection} = fixture(t);
+  fs.unlinkSync(path.join(source, "db/migrations/001-auth-sessions.sql"));
+  assert.throws(() => packageNodeHost(source, output, selection), /ENOENT/);
+  assert.equal(fs.existsSync(output), false);
+});
+test("a complete package verifies SQL bytes and detects later migration corruption", t => {
+  const {source, output, selection} = fixture(t);
+  const result = packageNodeHost(source, output, selection);
+  assert.deepEqual(result.nodeRuntimeFilesVerified, Object.keys(selection.nodeRuntimeFiles).sort());
+  assert.equal(result.targetAcceptance, false);
+  assert.equal(result.activationAccepted, false);
+  const migration = "db/migrations/001-auth-sessions.sql";
+  assert.ok(fs.readFileSync(path.join(output, migration)).equals(fs.readFileSync(path.join(source, migration))));
+  fs.appendFileSync(path.join(output, migration), "-- changed\n");
+  assert.throws(() => verifyNodeHostPackage(output, selection), /SQL runtime input differs/);
+  assert.throws(() => packageNodeHost(source, output, selection), /overwrite/);
+});
+test("unlisted SQL and traversal pins fail without copying a package", t => {
+  const {source, output, selection} = fixture(t);
+  fs.writeFileSync(path.join(source, "db/migrations/unlisted.sql"), "SELECT 1;\n");
+  assert.throws(() => packageNodeHost(source, output, selection), /inventory differs/);
+  assert.equal(fs.existsSync(output), false);
+  const invalid = {...selection, nodeRuntimeFiles: {...selection.nodeRuntimeFiles, "db/../outside.sql": {byteLength: 1, sha256: sha("x")}}};
+  assert.throws(() => packageNodeHost(source, output, invalid), /Invalid SQL runtime path/);
+  assert.equal(fs.existsSync(output), false);
+});
+
+test("a migration directory ending in .sql refuses instead of passing an incomplete inventory", t => {
+  const {source, output, selection} = fixture(t);
+  fs.mkdirSync(path.join(source, "db/migrations/002-undeclared.sql"));
+  assert.throws(() => verifyNodeHostPackage(source, selection), /Nonordinary SQL package input/);
+  assert.throws(() => packageNodeHost(source, output, selection), /Nonordinary SQL package input/);
+  assert.equal(fs.existsSync(output), false);
+});
+
+test("nested outputs refuse before changing the source SQL inventory or distribution", t => {
+  const {source, selection} = fixture(t);
+  const before = stagedTreeDigest(path.join(source, "dist"));
+  for (const relative of ["db/nested-package", "dist/nested-package"]) {
+    const output = path.join(source, relative);
+    assert.throws(() => packageNodeHost(source, output, selection), /outside its source tree/);
+    assert.equal(fs.existsSync(output), false);
+    assert.deepEqual(stagedTreeDigest(path.join(source, "dist")), before);
+    assert.equal(verifyNodeHostPackage(source, selection).sourceAndArtifactMatch, true);
+  }
+});

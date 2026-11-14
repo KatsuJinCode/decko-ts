@@ -1,0 +1,145 @@
+"""Pure broker/CRT tests: no Win32 API binding, console event or runtime spawn."""
+import base64
+import importlib.util
+import pathlib
+import struct
+import unittest
+
+source = pathlib.Path(__file__).with_name("windows-runtime-broker.py")
+spec = importlib.util.spec_from_file_location("owned_windows_broker", source)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+PIN = {"version": "1.20261023.1", "sourceCommit": "7caf6dee5bfe9af1b7710ddf66222900007af080", "imageSha256": "a" * 64}
+TOKEN = "b" * 64
+
+
+class Process:
+    def __init__(self):
+        self.identity = {"pid": 123, "creationIdentity": "owned", "executable": "synthetic", "arguments": [], "imageSha256": "a" * 64}
+        self.events = []
+        self.exit = {"code": 0, "signal": None, "descendantPids": []}
+        self.during_drain = lambda: None
+
+    def verify_identity(self): self.events.append("verify")
+    def request_drain(self): self.events.append("signal-owned-group"); self.during_drain()
+    def start_readers(self, emit): self.events.append("start-readers")
+    def write(self, data): self.events.append(("stdin", data))
+    def end_input(self): self.events.append("stdin-ended")
+    def wait(self): self.events.append("native-exit"); return self.exit
+    def close(self): self.events.append("close-owned-handles")
+
+
+class Native:
+    def __init__(self): self.process, self.started = Process(), False
+    def start(self, spec): self.started = True; return self.process
+
+
+class BrokerTests(unittest.TestCase):
+    def setUp(self):
+        self.native, self.output = Native(), []
+        self.broker = module.Broker(TOKEN, self.native, self.output.append)
+
+    def send(self, command, **fields):
+        return self.broker.command({"token": TOKEN, "command": command, **fields})
+
+    def start(self): self.send("start", spec={"sourcePin": PIN})
+
+    def test_foreign_token_is_rejected_before_launch(self):
+        with self.assertRaisesRegex(module.BrokerError, "foreign-launch-token"):
+            self.broker.command({"token": "c" * 64, "command": "start"})
+        self.assertFalse(self.native.started)
+
+    def test_old_source_is_rejected_before_native_launch(self):
+        with self.assertRaisesRegex(module.BrokerError, "unverified-drain-source"):
+            self.send("start", spec={"sourcePin": {**PIN, "version": "1.20261006.1"}})
+        self.assertFalse(self.native.started)
+        with self.assertRaisesRegex(module.BrokerError, "unverified-drain-source"):
+            self.send("start", spec={"sourcePin": {"imageSha256": "a" * 64}})
+
+    def test_foreign_process_is_never_signalled(self):
+        self.start()
+        with self.assertRaisesRegex(module.BrokerError, "foreign-process-identity"):
+            self.send("drain", id=1, identity={**self.native.process.identity, "pid": 999})
+        self.assertNotIn("signal-owned-group", self.native.process.events)
+
+    def test_expected_exit_is_set_before_synchronous_drain_exit(self):
+        self.start()
+        self.native.process.during_drain = self.broker.observe_exit
+        self.send("drain", id=1, identity=self.native.process.identity)
+        self.assertEqual(self.broker.receipt["code"], 0)
+        self.assertTrue(self.send("close"))
+        self.assertLess(self.native.process.events.index("native-exit"), self.native.process.events.index("close-owned-handles"))
+
+    def test_duplicate_drain_does_not_signal_again(self):
+        self.start()
+        for number in (1, 2): self.send("drain", id=number, identity=self.native.process.identity)
+        self.assertEqual(self.native.process.events.count("signal-owned-group"), 1)
+
+    def test_pipe_close_before_exit_is_rejected(self):
+        self.start()
+        with self.assertRaisesRegex(module.BrokerError, "close-before-native-exit"): self.send("close")
+        self.assertNotIn("close-owned-handles", self.native.process.events)
+
+    def test_unexpected_exit_is_not_graceful_success(self):
+        self.start()
+        with self.assertRaisesRegex(module.BrokerError, "unexpected-native-exit"): self.broker.observe_exit()
+        self.assertIsNotNone(self.broker.receipt)
+        self.assertFalse(self.output[-1]["expected"])
+        self.assertTrue(self.send("close"))
+
+    def test_parent_transport_failure_drains_only_the_owned_child(self):
+        self.broker.drain_after_transport_failure()
+        self.assertFalse(self.native.started)
+        self.start()
+        self.broker.drain_after_transport_failure()
+        self.broker.drain_after_transport_failure()
+        self.assertEqual(self.native.process.events.count("signal-owned-group"), 1)
+        self.broker.observe_exit()
+        self.assertTrue(self.send("close"))
+
+    def test_configuration_bytes_are_not_truncated_or_reencoded(self):
+        self.start()
+        payload = bytes(range(256)) * 1024
+        self.send("stdin", data=base64.b64encode(payload).decode())
+        self.send("stdin-end")
+        self.assertIn(("stdin", payload), self.native.process.events)
+
+    def test_crt_table_has_four_independent_descriptors_on_both_pointer_sizes(self):
+        for pointer_size in (4, 8):
+            data = module.crt_descriptor_table([11, 22, 33, 44], pointer_size)
+            self.assertEqual(len(data), 4 + 4 + pointer_size * 4)
+            self.assertEqual(struct.unpack("<I", data[:4])[0], 4)
+            self.assertEqual(data[4:8], b"\x09" * 4)
+            self.assertEqual(struct.unpack("<" + ("I" if pointer_size == 4 else "Q") * 4, data[8:]), (11, 22, 33, 44))
+
+    def test_invalid_descriptor_tables_fail(self):
+        for handles, width in (([1, 2, 3], 8), ([0, 2, 3, 4], 8), ([1, 2, 3, 4], 16)):
+            with self.assertRaises(module.BrokerError): module.crt_descriptor_table(handles, width)
+
+    def test_partial_startup_handles_are_closed_once_in_reverse_order(self):
+        closed = []
+        handles = module.OwnedHandles(closed.append)
+        for handle in (11, 22, 33): handles.add(handle)
+        handles.close(22)
+        handles.rollback()
+        handles.rollback()
+        self.assertEqual(closed, [22, 33, 11])
+
+    def test_failed_handle_cleanup_is_visible_and_retains_custody(self):
+        def fail(handle): raise RuntimeError("CloseHandle failed")
+        handles = module.OwnedHandles(fail)
+        handles.add(11)
+        with self.assertRaisesRegex(module.BrokerError, "startup-handle-cleanup-failed"):
+            handles.rollback()
+        self.assertEqual(handles.handles, [11])
+
+    def test_committed_startup_handles_are_not_rolled_back(self):
+        closed = []
+        handles = module.OwnedHandles(closed.append)
+        handles.add(11)
+        handles.release()
+        handles.rollback()
+        self.assertEqual(closed, [])
+
+
+if __name__ == "__main__": unittest.main()

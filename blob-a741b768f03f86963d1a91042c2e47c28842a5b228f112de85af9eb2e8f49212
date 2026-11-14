@@ -1,0 +1,277 @@
+{
+  "row": "reg-routes-A5",
+  "gemset": "decko-0.20.0 + card-mod-format-0.20.0 (pinned)",
+  "standardRoute": {
+    "verb": "get",
+    "patterns": [
+      "/:mark(.:format)"
+    ],
+    "requirements": {},
+    "action": "card#read",
+    "order": 6
+  },
+  "routeTableHead": [
+    {
+      "verb": "root",
+      "patterns": [],
+      "requirements": {},
+      "action": "card#read",
+      "order": 0
+    },
+    {
+      "verb": "get",
+      "patterns": [
+        "/:mark/:rev_id(-:size).:format"
+      ],
+      "requirements": {
+        "mark": "[^-]+",
+        "explicit_file": "true",
+        "rev_id": "[^-]+"
+      },
+      "action": "card#read",
+      "order": 1
+    },
+    {
+      "verb": "get",
+      "patterns": [
+        "/:mark(-:size)-:rev_id.:format"
+      ],
+      "requirements": {
+        "mark": "[^-]+",
+        "explicit_file": "true",
+        "rev_id": "[^-]+"
+      },
+      "action": "card#read",
+      "order": 2
+    },
+    {
+      "verb": "get",
+      "patterns": [
+        "assets/*mark"
+      ],
+      "requirements": {},
+      "action": "card#asset",
+      "order": 3
+    },
+    {
+      "verb": "get",
+      "patterns": [
+        "javascripts/*mark"
+      ],
+      "requirements": {},
+      "action": "card#asset",
+      "order": 4
+    },
+    {
+      "verb": "get",
+      "patterns": [
+        "jasmine/*mark"
+      ],
+      "requirements": {},
+      "action": "card#asset",
+      "order": 5
+    },
+    {
+      "verb": "get",
+      "patterns": [
+        "/:mark(.:format)"
+      ],
+      "requirements": {},
+      "action": "card#read",
+      "order": 6
+    },
+    {
+      "verb": "get",
+      "patterns": [
+        "new/:type"
+      ],
+      "requirements": {
+        "view": "new"
+      },
+      "action": "card#read",
+      "order": 7
+    }
+  ],
+  "routeTableSize": 29,
+  "registeredFormats": [
+    "css",
+    "csv",
+    "html",
+    "js",
+    "json",
+    "jsonld",
+    "rss",
+    "scss",
+    "text",
+    "txt",
+    "xml",
+    "yaml",
+    "yml"
+  ],
+  "interpretMark": [
+    {
+      "label": "a plain mark",
+      "mark": "My_Card",
+      "answer": "My_Card"
+    },
+    {
+      "label": "a mark with spaces already",
+      "mark": "My Card",
+      "answer": "My Card"
+    },
+    {
+      "label": "a star mark",
+      "mark": "*home",
+      "answer": "*home"
+    }
+  ],
+  "uriFetch": [
+    {
+      "label": "an underscored mark: the UNFOLDED mark reaches the fetch, the folded name rides the new-card opts",
+      "params": {
+        "mark": "My_Card"
+      },
+      "fetchAsks": [
+        {
+          "mark": "My_Card",
+          "new": {
+            "name": "My Card"
+          },
+          "skipModules": true,
+          "lookInTrash": null
+        }
+      ],
+      "error": null
+    },
+    {
+      "label": "a spelled mark",
+      "params": {
+        "mark": "Home"
+      },
+      "fetchAsks": [
+        {
+          "mark": "Home",
+          "new": {
+            "name": "Home"
+          },
+          "skipModules": true,
+          "lookInTrash": null
+        }
+      ],
+      "error": null
+    },
+    {
+      "label": "the .json suffix lands in params[:format], not the mark",
+      "params": {
+        "mark": "My_Card",
+        "format": "json"
+      },
+      "fetchAsks": [
+        {
+          "mark": "My_Card",
+          "new": {
+            "name": "My Card"
+          },
+          "skipModules": true,
+          "lookInTrash": null
+        }
+      ],
+      "error": null
+    }
+  ],
+  "viewFromParams": [
+    {
+      "label": "the plain page read: no query view",
+      "params": {
+        "mark": "My_Card"
+      },
+      "viewFromParams": null
+    },
+    {
+      "label": "the page read with ?view=related",
+      "params": {
+        "mark": "My_Card",
+        "view": "related"
+      },
+      "viewFromParams": "related"
+    }
+  ],
+  "sources": {
+    "route": [
+      {
+        "line": 19,
+        "text": "  get \"/:mark(.:format)\" => \"card#read\"  # /decko is deprecated"
+      }
+    ],
+    "mark": [
+      {
+        "line": 10,
+        "text": "    def interpret_mark mark"
+      },
+      {
+        "line": 11,
+        "text": "      case mark"
+      },
+      {
+        "line": 12,
+        "text": "      when \"*previous\""
+      },
+      {
+        "line": 13,
+        "text": "        # Why support this? It's only needed in Success, right? Deprecate?"
+      },
+      {
+        "line": 14,
+        "text": "        hard_redirect Card::Env.previous_location"
+      },
+      {
+        "line": 15,
+        "text": "      when nil"
+      },
+      {
+        "line": 16,
+        "text": "        implicit_mark"
+      },
+      {
+        "line": 17,
+        "text": "      else"
+      },
+      {
+        "line": 18,
+        "text": "        explicit_mark mark"
+      },
+      {
+        "line": 19,
+        "text": "      end"
+      },
+      {
+        "line": 20,
+        "text": "    end"
+      },
+      {
+        "line": 21,
+        "text": ""
+      },
+      {
+        "line": 22,
+        "text": "    def explicit_mark mark"
+      },
+      {
+        "line": 23,
+        "text": "      # we should find the place where we produce these bad urls"
+      },
+      {
+        "line": 24,
+        "text": "      # mark.valid_encoding? ? mark : mark.force_encoding(\"ISO-8859-1\").encode(\"UTF-8\")"
+      },
+      {
+        "line": 25,
+        "text": "      mark"
+      },
+      {
+        "line": 26,
+        "text": "    end"
+      }
+    ]
+  }
+}

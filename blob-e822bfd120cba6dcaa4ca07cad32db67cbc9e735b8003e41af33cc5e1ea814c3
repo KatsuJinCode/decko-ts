@@ -1,0 +1,97 @@
+import { expect, it } from "vitest";
+import type { AttachmentStore, AttachmentStoreInput } from "../../../src/card/attachments/attachment-store.js";
+import { AssetRecoveryCustodyRequiredError, assetBytesSha256, reconcileAssetRecoveries, type AssetRecoveryReference } from "../../../src/card/actions/save-outcome.js";
+
+async function fixture() {
+  const encode = (text: string) => new TextEncoder().encode(text);
+  const files = new Map<string, Uint8Array>([["1/2.css", encode("replacement")], ["1/2.css.recovery", encode("previous")]]);
+  const key = (input: Pick<AttachmentStoreInput, "cardId" | "actionId" | "ext">) => `${input.cardId}/${input.actionId}${input.ext}`;
+  let failRestore = false;
+  const store: AttachmentStore = {
+    read: async (cardId, actionId, ext) => files.get(key({ cardId, actionId, ext }))?.slice(),
+    store: async (input) => {
+      if (failRestore) throw new Error("injected restoration failure");
+      files.set(key(input), input.bytes.slice());
+      return { identifier: key(input), size: input.bytes.length };
+    },
+    restoreIfUnchanged: async (input, expected) => {
+      // No await between comparison and replacement: this synthetic store's
+      // writers run on one JavaScript thread, so this is one atomic operation.
+      const current = files.get(key(input));
+      if (current === undefined || current.length !== expected.length || current.some((byte, index) => byte !== expected[index])) return false;
+      if (failRestore) throw new Error("injected restoration failure");
+      files.set(key(input), input.bytes.slice());
+      return true;
+    },
+    discard: async (input) => { files.delete(key(input)); },
+  };
+  const recovery: AssetRecoveryReference = { target: { cardId: 1, actionId: 2, ext: ".css" },
+    backup: { cardId: 1, actionId: 2, ext: ".css.recovery", area: "files" },
+    originalSha256: await assetBytesSha256(encode("previous")), replacementSha256: await assetBytesSha256(encode("replacement")) };
+  return { files, store, recovery, failRestore: () => { failRestore = true; } };
+}
+
+it("refuses to restore or remove recovery copies while the database outcome is unknown", async () => {
+  const f = await fixture();
+  await expect(reconcileAssetRecoveries(f.store, [f.recovery], "unknown" as never)).rejects.toThrow("confirmed database outcome");
+  expect(f.files.size).toBe(2);
+  expect(new TextDecoder().decode(f.files.get("1/2.css"))).toBe("replacement");
+});
+
+it.each(["committed", "rolled-back"] as const)("reconciles a confirmed %s outcome without repeating the save", async (outcome) => {
+  const f = await fixture();
+  await reconcileAssetRecoveries(f.store, [f.recovery], outcome);
+  expect(new TextDecoder().decode(f.files.get("1/2.css"))).toBe(outcome === "committed" ? "replacement" : "previous");
+  expect(f.files.size).toBe(1);
+});
+
+it("retains the prior copy if restoration fails", async () => {
+  const f = await fixture();
+  f.failRestore();
+  await expect(reconcileAssetRecoveries(f.store, [f.recovery], "rolled-back")).rejects.toThrow("restoration failure");
+  expect(new TextDecoder().decode(f.files.get("1/2.css.recovery"))).toBe("previous");
+  expect(f.files.size).toBe(2);
+});
+
+it("refuses to overwrite another save's later asset while retaining the recovery copy", async () => {
+  const f = await fixture();
+  f.files.set("1/2.css", new TextEncoder().encode("a later save"));
+  await expect(reconcileAssetRecoveries(f.store, [f.recovery], "rolled-back")).rejects.toThrow("Asset changed");
+  expect(new TextDecoder().decode(f.files.get("1/2.css"))).toBe("a later save");
+  expect(f.files.has("1/2.css.recovery")).toBe(true);
+});
+
+it("refuses automatic restoration when storage has no conditional-write capability", async () => {
+  const f = await fixture();
+  f.store.restoreIfUnchanged = undefined;
+  await expect(reconcileAssetRecoveries(f.store, [f.recovery], "rolled-back")).rejects.toBeInstanceOf(AssetRecoveryCustodyRequiredError);
+  expect(new TextDecoder().decode(f.files.get("1/2.css"))).toBe("replacement");
+  expect(f.files.has("1/2.css.recovery")).toBe(true);
+});
+
+it("rejects a later write at the conditional replacement itself", async () => {
+  const f = await fixture();
+  const conditional = f.store.restoreIfUnchanged!;
+  f.store.restoreIfUnchanged = async (input, expected) => {
+    await f.store.store({ ...input, bytes: new TextEncoder().encode("later store") });
+    return conditional(input, expected);
+  };
+  await expect(reconcileAssetRecoveries(f.store, [f.recovery], "rolled-back")).rejects.toThrow("conditional restoration");
+  expect(new TextDecoder().decode(f.files.get("1/2.css"))).toBe("later store");
+  expect(f.files.has("1/2.css.recovery")).toBe(true);
+});
+
+it("keeps the expected comparison bytes independent of a borrowed read buffer", async () => {
+  const f = await fixture();
+  f.store.read = async (cardId, actionId, ext) => f.files.get(`${cardId}/${actionId}${ext}`);
+  const conditional = f.store.restoreIfUnchanged!;
+  f.store.restoreIfUnchanged = async (input, expected) => {
+    // Same-length mutation of the storage-owned buffer after the helper's
+    // hash check must not also mutate its expected bytes for the write.
+    f.files.get("1/2.css")!.set(new TextEncoder().encode("later value"));
+    return conditional(input, expected);
+  };
+  await expect(reconcileAssetRecoveries(f.store, [f.recovery], "rolled-back")).rejects.toThrow("conditional restoration");
+  expect(new TextDecoder().decode(f.files.get("1/2.css"))).toBe("later value");
+  expect(f.files.has("1/2.css.recovery")).toBe(true);
+});

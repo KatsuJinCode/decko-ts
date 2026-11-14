@@ -1,0 +1,28 @@
+{
+  "what": "Equivalence re-run of the accepted 245089373 measurement with the oxc loader, to prove the replacement transform reproduces the esbuild result.",
+  "sourceCommit": "2450893739d4bfaa78323e8c74ae84380e40f055",
+  "mode": "source-only-in-memory-test-transforms",
+  "distributionBuilt": false,
+  "transform": "oxc via rolldown/utils transformSync, lang ts, target es2022, ES modules",
+  "dependencyRoot": "C:\\localProjects\\decko-ts-combined-release-e80a0ee9",
+  "packageLockSha256": "96a3efb62e81fdb24516d8106316e92e44cdde583d63399ca0b6e1e54731ae69",
+  "node": "v24.22.1",
+  "executedSourceFiles": 328,
+  "sourceDiffAfter": "",
+  "custodyReceipt": "source-custody-check.json: every executed project-source file compared with its Git blob at the head.",
+  "bodyDigests": {
+    "algorithm": "sha256-lines: sha256 over \"name + sha256_hex + newline\" in ascending name order",
+    "ruby": {
+      "files": 1439,
+      "bytes": 26733036,
+      "treeSha256": "5c26b8d80a642c6304483dae14cca9f2594646f79ccf7c20f85f571b3225f3e3"
+    },
+    "localBunny": {
+      "files": 1439,
+      "bytes": 26733036,
+      "treeSha256": "89c254a8d45a3534450f2ba0c9891e902df13bc453a13fd9d34a32e60589de8a"
+    }
+  },
+  "recipe": "recipe/run-local-source.mjs with recipe/source-loader-oxc.mjs and recipe/verify-source-custody.mjs. No install, no build, no hosted request.",
+  "conduct": "No hosted request, no install, no prune or rebuild, nothing inside a shared node_modules changed, no PR, no merge, no reviewer requested, no new issue, no contact with Julian."
+}

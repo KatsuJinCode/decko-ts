@@ -1,0 +1,114 @@
+// smell-run-all-parity.test.ts - the row smell-run-all.
+//
+// WHAT THIS IS. The row's own instrument is the whole-suite runner
+// (reference-harness/browser/run-all.mjs): it builds the engine, links the
+// mods' public files into the oracle app, runs every journey in
+// reference-harness/browser/journeys/synthetic-v1.json against stock Ruby
+// Decko and against the port, compares the two journey by journey, and writes
+// the report and the summary.
+//
+// The row was BLOCKED because the first step failed on this machine: the
+// machine's `bundle` resolved into Ruby 3.4's bundler, which refuses the
+// oracle app's Gemfile.lock. This lane ran the instrument with the machine's
+// pinned Ruby 3.3 bin first on PATH, which is the runtime the repository
+// pins (docs/parity-method.md).
+//
+// The capture under fixtures/captured/smell-row-r4-2026-10-24/ is the
+// instrument's own report, copied verbatim from that run.
+//
+// WHAT IT ASSERTS:
+//
+//   - the instrument's evidence is VALID: the comparator did not refuse its
+//     own captures, so the grade is a statement about this tree and not about
+//     a stale capture.
+//
+//   - both legs completed every journey: 51 of 51 on Ruby and 51 of 51 on the
+//     port, with no journey ungraded.
+//
+//   - the suite's own verdict is a FAIL: 36 of 51 graded journeys pass, and
+//     every failure is attributed to ONE mechanism, the notification mail's
+//     unfollow link.
+//
+//   - the port's own source still emits the follow record's route as the
+//     accepted repair, so the row cannot stay open on a stale mechanism.
+//
+// The row's VERDICT is a separate matter from this file's checks: the row's
+// BLOCKED condition is cleared, the suite runs end to end, and the row stays
+// open because the suite's own verdict is a fail, and the roster owns that
+// state.
+
+import { describe, expect, it } from "vitest";
+
+import { singleCapture } from "./smell-row-r4-captures.js";
+import {createActionsTestStorage} from "../card/actions/actions-test-storage.js";
+import {followMailViews} from "../../src/card/notify/follow-mail-views.js";
+import {configureStrictParity,strictParityFlagsFromEnv} from "../../src/card/parity/strict-parity-flags.js";
+
+type Report = {
+  verdict: string;
+  evidenceValid: boolean;
+  productionAcceptance: boolean;
+  journeys: { pass: number; graded: number; total: number };
+  kinds: Record<string, { pass: number; total: number }>;
+  perJourney: { id: string; status: string; failed?: string[] }[];
+  causes: { cause: string; count: number; where: string[] }[];
+  failures: { journey: string; kind: string; label: string; pass: boolean }[];
+};
+
+const report = singleCapture<Report>("run-all-report");
+
+describe("smell-run-all: the suite runs end to end and its verdict is a fail", () => {
+  it("the comparator accepted its own evidence, so the grade is about this tree", () => {
+    expect(report.evidenceValid).toBe(true);
+    expect(report.productionAcceptance).toBe(false);
+    expect(report.verdict).toBe("fail");
+  });
+
+  it("both legs completed every journey and nothing was left ungraded", () => {
+    expect(report.journeys.total).toBe(51);
+    expect(report.journeys.graded).toBe(51);
+    expect(report.kinds.completion).toEqual({ pass: 51, total: 51 });
+    expect(report.kinds.editor).toEqual({ pass: 13, total: 13 });
+  });
+
+  it("the suite's own grade is 36 of 51, and every failure is the mail", () => {
+    expect(report.journeys.pass).toBe(36);
+    const failing = report.perJourney.filter((journey) => journey.status !== "pass");
+    expect(failing.length).toBe(15);
+    for (const journey of failing) {
+      expect(journey.failed, journey.id).toContain("mail:mail");
+    }
+    // Everything that is not the mail agrees between the two legs.
+    expect(report.kinds.fields).toEqual({ pass: 89, total: 89 });
+    expect(report.kinds.rows).toEqual({ pass: 50, total: 51 });
+    expect(report.kinds.address).toEqual({ pass: 88, total: 89 });
+  });
+
+  it("the one journey that differs beyond the mail is the mail unfollow link itself", () => {
+    const beyondMail = report.perJourney.filter(
+      (journey) => journey.status !== "pass" && (journey.failed ?? []).length > 1,
+    );
+    expect(beyondMail.map((journey) => journey.id)).toEqual(["unfollow-from-mail"]);
+    const addressCause = report.causes.find((cause) => cause.cause.startsWith("address:"));
+    expect(addressCause).toBeDefined();
+    expect(addressCause!.cause).toContain("/update/Mira_Member+*follow");
+    expect(addressCause!.cause).toContain("card[subcards]");
+    expect(addressCause!.cause).toContain("/*all+Mira_Member+*follow");
+  });
+
+  it("current mail selects the dashboard URL and preserves the strict-mode reference difference", async () => {
+    const storage=await createActionsTestStorage();
+    const input={origin:'https://deck.example.test',actId:1,actCardId:1,actorId:1,
+      followerName:'Mira Member',followedSetName:'*all',followOption:'*always',canReadCard:async()=>true};
+    try {
+      configureStrictParity(strictParityFlagsFromEnv({}));
+      const current=await followMailViews(storage.engine,input);
+      const url=new URL(current.text['_|unfollow_url']!);
+      expect(url.pathname).toBe('/update/Mira_Member+*follow');
+      expect(url.searchParams.get('success[redirect]')).toBe('soft');
+      configureStrictParity(strictParityFlagsFromEnv({DECKO_STRICT_PARITY_MAIL_UNFOLLOW_REFUSAL:'on'}));
+      const strict=await followMailViews(storage.engine,input);
+      expect(current.text['_|unfollow_url']).toBe(strict.text['_|unfollow_url']+'&success%5Bredirect%5D=soft');
+    }finally{configureStrictParity(undefined);storage.close();}
+  });
+});

@@ -1,0 +1,27 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+await import('../../support/typescript-source-loader.mjs');
+const {createRenderTestStorage,seedCard}=await import('../render/render-test-storage.js');
+const {ModLoader}=await import('../../../src/card/mod-loader.js');
+const {defaultDeckSources}=await import('../../../src/card/mod-loader/default-mod-deck.js');
+const reference=JSON.parse(fs.readFileSync(new URL('./fixtures/permission-one-line-native.json',import.meta.url),'utf8'));
+test('permission one_line_content keeps its explicit link view on the actual current registered engine',async t=>{
+ const storage=await createRenderTestStorage();let loader;
+ try{
+  const readRuleId=(await storage.fetcher.fetchByName('*all+*read'))?.id;
+  const readSettingId=(await storage.fetcher.fetchByName('*read'))?.id;assert.equal(typeof readSettingId,'number');
+  for(const row of [{id:2,name:'RichText',codename:'basic'},{id:5,name:'Pointer',codename:'pointer'},{id:1201,name:'Permission Item Alpha',dbContent:'alpha'},{id:1202,name:'Permission Item Beta',dbContent:'beta'},{id:1203,name:'Permission Probe'},{id:1206,name:'Permission Probe+*read',leftId:1203,rightId:readSettingId,typeId:5,dbContent:'Permission Item Alpha\nPermission Item Beta'}])await seedCard(storage,{...row,readRuleId});
+  assert.ok(await storage.fetcher.fetchByName('Permission Probe+*read'),'side-backed rule must be fetchable before rendering');
+  loader=new ModLoader(defaultDeckSources(),{});loader.load();storage.engine.modLoader=loader;
+  for(const row of reference.rows)await t.test(row.kind,async()=>{
+   const opts=row.kind==='absent'?{}:{items:row.kind==='name'?{view:'name'}:row.kind==='nil'?null:false};
+   const body=await storage.engine.render('Permission Probe+*read','one_line_content',{format:'html',viewOpts:opts});
+   const nativeNests=row.calls.filter(call=>call.operation==='nest');
+   assert.deepEqual(nativeNests.map(call=>call.options.view),['link','link']);
+   assert.equal((body.match(/pointer-item item-link/g)||[]).length,2);
+   assert.doesNotMatch(body,/pointer-item item-(?:bar|name)/);
+   assert.match(body,/href="\/Permission_Item_Alpha"/);assert.match(body,/href="\/Permission_Item_Beta"/);
+  });
+ }finally{loader?.reset();storage.close();}
+});

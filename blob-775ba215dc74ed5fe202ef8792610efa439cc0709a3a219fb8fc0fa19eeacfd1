@@ -1,0 +1,16 @@
+// Test-only native owner. Parent allocates/cleans the directory after exit.
+import {createClient} from '@libsql/client';
+const client=createClient({url:'file:'+process.argv[2]}),result=rs=>({rows:rs.rows.map(row=>Object.fromEntries(rs.columns.map((column,index)=>[column,row[index]]))),rowsAffected:rs.rowsAffected,lastInsertRowId:rs.lastInsertRowid});
+let closing=false;
+process.on('message',async message=>{
+  const{id,operation}=message;let response;
+  try{
+    if(operation==='query')response={id,value:result(await client.execute({sql:message.sql,args:message.params}))};
+    else if(operation==='batch')response={id,value:(await client.batch(message.statements.map(s=>({sql:s.sql,args:s.params})),'write')).map(result)};
+    else if(operation==='close'){closing=true;client.close();response={id,value:null};}
+    else throw Error('Unknown libsql test operation: '+operation);
+  }catch(error){response={id,error:{message:error.message,stack:error.stack,code:error.code}};if(operation==='close'){closing=true;process.exitCode=1;}}
+  process.send(response,()=>{if(closing&&process.connected)process.disconnect();});
+});
+process.once('disconnect',()=>{if(!closing)client.close();});
+process.send({ready:true});

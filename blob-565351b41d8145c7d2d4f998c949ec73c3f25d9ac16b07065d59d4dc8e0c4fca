@@ -1,0 +1,361 @@
+{
+  "row": "reg-treewalk-c2-auth-proxy-rb-6-29-48-59",
+  "rubyFiles": 1,
+  "rubySources": [
+    "card-1.110.0/lib/card/auth/proxy.rb",
+    "lib/card/auth/proxy.rb",
+    "proxy.rb"
+  ],
+  "defCount": 6,
+  "counts": {
+    "PORTED-INLINE": 4,
+    "NAMED-COLLAPSE": 2
+  },
+  "probeCount": 12,
+  "gapReason": {
+    "def": "with",
+    "reason": "The port carries four of the row's six defs by citation (as and as_bot collapse into \"pass a different actor object\", and as_id and as_card are the port's own actor resolution) and its own source names the two save/restore defs as collapses. `with` (proxy.rb:48-59) and `temporarily` (proxy.rb:63-76) both save and restore a process-global current_id around the block, and the port has no process-global to save: the actor is an explicit parameter, so a block that runs as another actor is written as a call with a different actor object. The port states this in its own words (src/card/auth/actor.ts:7), and the rig measures the def as NAMED-COLLAPSE against that statement rather than against a guess. The pinned bytes were executed to confirm the two methods' shapes: `with` needs its argument and resolves it through Card.id, and `temporarily` reads the current_id it saves.",
+    "note": true
+  },
+  "probes": [
+    {
+      "probe": "as with no arguments",
+      "method": "as",
+      "rubyFile": "card-1.110.0/lib/card/auth/proxy.rb",
+      "rubyStartLine": 6,
+      "rubyEndLine": 24,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/auth/proxy.rb:6:in 'as'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "as with one argument",
+      "method": "as",
+      "rubyFile": "card-1.110.0/lib/card/auth/proxy.rb",
+      "rubyStartLine": 6,
+      "rubyEndLine": 24,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'id' for class Card",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/auth/proxy.rb:10:in 'as'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "as_bot with no arguments",
+      "method": "as_bot",
+      "rubyFile": "card-1.110.0/lib/card/auth/proxy.rb",
+      "rubyStartLine": 27,
+      "rubyEndLine": 29,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant Card::DeckoBotID",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/auth/proxy.rb:28:in 'as_bot'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "as_bot with one argument",
+      "method": "as_bot",
+      "rubyFile": "card-1.110.0/lib/card/auth/proxy.rb",
+      "rubyStartLine": 27,
+      "rubyEndLine": 29,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/auth/proxy.rb:27:in 'as_bot'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "as_id with no arguments",
+      "method": "as_id",
+      "rubyFile": "card-1.110.0/lib/card/auth/proxy.rb",
+      "rubyStartLine": 33,
+      "rubyEndLine": 35,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "current_id",
+          "args": []
+        }
+      ],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "as_id with one argument",
+      "method": "as_id",
+      "rubyFile": "card-1.110.0/lib/card/auth/proxy.rb",
+      "rubyStartLine": 33,
+      "rubyEndLine": 35,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/auth/proxy.rb:33:in 'as_id'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "as_card with no arguments",
+      "method": "as_card",
+      "rubyFile": "card-1.110.0/lib/card/auth/proxy.rb",
+      "rubyStartLine": 39,
+      "rubyEndLine": 43,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "current_id",
+          "args": []
+        },
+        {
+          "call": "current_id",
+          "args": []
+        }
+      ],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "as_card with one argument",
+      "method": "as_card",
+      "rubyFile": "card-1.110.0/lib/card/auth/proxy.rb",
+      "rubyStartLine": 39,
+      "rubyEndLine": 43,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/auth/proxy.rb:39:in 'as_card'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "with with no arguments",
+      "method": "with",
+      "rubyFile": "card-1.110.0/lib/card/auth/proxy.rb",
+      "rubyStartLine": 48,
+      "rubyEndLine": 59,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/auth/proxy.rb:48:in 'with'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "with with one argument",
+      "method": "with",
+      "rubyFile": "card-1.110.0/lib/card/auth/proxy.rb",
+      "rubyStartLine": 48,
+      "rubyEndLine": 59,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'id' for class Card",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/auth/proxy.rb:50:in 'with'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "temporarily with no arguments",
+      "method": "temporarily",
+      "rubyFile": "card-1.110.0/lib/card/auth/proxy.rb",
+      "rubyStartLine": 63,
+      "rubyEndLine": 76,
+      "outcome": "raised",
+      "raised": "LocalJumpError",
+      "raisedMessage": "no block given (yield)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/auth/proxy.rb:69:in 'temporarily'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": [
+        {
+          "call": "current_id",
+          "args": []
+        },
+        {
+          "call": "current_id",
+          "args": []
+        }
+      ]
+    },
+    {
+      "probe": "temporarily with one argument",
+      "method": "temporarily",
+      "rubyFile": "card-1.110.0/lib/card/auth/proxy.rb",
+      "rubyStartLine": 63,
+      "rubyEndLine": 76,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/auth/proxy.rb:63:in 'temporarily'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    }
+  ],
+  "defs": [
+    {
+      "name": "as",
+      "file": "card-1.110.0/lib/card/auth/proxy.rb",
+      "line": 6,
+      "disposition": "PORTED-INLINE",
+      "portBinding": "card/mod-loader/mods/card-mod-follow.ts:138",
+      "portBindingCited": null,
+      "inlineSite": "card/auth/actor.ts:10",
+      "visibility": "public",
+      "collapse": "card/auth/actor.ts:7 (// // Engine-context mapping: the TS engine has no process-global Auth singleton // — the actions layer takes an explicit actor parameter — so `as`/`as_bot` // (proxy.rb:5-24) collapse into \"pass a different actor object\")",
+      "headerCitation": "card/auth/actor.ts:10 (proxy.rb#as)",
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "as_bot",
+      "file": "card-1.110.0/lib/card/auth/proxy.rb",
+      "line": 27,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/actions/card-action-engine.ts:5425",
+      "visibility": "public",
+      "collapse": "card/auth/actor.ts:7 (// // Engine-context mapping: the TS engine has no process-global Auth singleton // — the actions layer takes an explicit actor parameter — so `as`/`as_bot` // (proxy.rb:5-24) collapse into \"pass a different actor object\")",
+      "headerCitation": "card/actions/card-action-engine.ts:5425 (auth/proxy.rb)",
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/auth/current.rb:93",
+        "card-1.110.0/lib/card/auth/permissions.rb:20",
+        "card-1.110.0/lib/card/auth/setup.rb:40",
+        "card-1.110.0/lib/card/auth/setup.rb:51",
+        "card-1.110.0/lib/card/name/all/descendants.rb:36"
+      ],
+      "pinnedCallCount": 191
+    },
+    {
+      "name": "as_id",
+      "file": "card-1.110.0/lib/card/auth/proxy.rb",
+      "line": 33,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/actions/card-action-engine.ts:5425",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/actions/card-action-engine.ts:5425 (auth/proxy.rb)",
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/auth/permissions.rb:8"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "as_card",
+      "file": "card-1.110.0/lib/card/auth/proxy.rb",
+      "line": 39,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/actions/card-action-engine.ts:494",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/actions/card-action-engine.ts:5425 (auth/proxy.rb)",
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/auth/proxy.rb:8",
+        "card-1.110.0/lib/card/auth/proxy.rb:40",
+        "card-1.110.0/lib/card/auth/proxy.rb:67"
+      ],
+      "pinnedCallCount": 3
+    },
+    {
+      "name": "with",
+      "file": "card-1.110.0/lib/card/auth/proxy.rb",
+      "line": 48,
+      "disposition": "NAMED-COLLAPSE",
+      "portBinding": "card/mod-loader/mods/card-mod-search.ts:611",
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": "card/auth/actor.ts:7 (The Proxy module's block-scoped actor switch (proxy.rb:48-59 // with) has no counterpart for the same reason: it saves and restores a // process-global current_id around the block, and the port's counterpart // is a call that takes the actor its caller passes)",
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "temporarily",
+      "file": "card-1.110.0/lib/card/auth/proxy.rb",
+      "line": 63,
+      "disposition": "NAMED-COLLAPSE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "private",
+      "collapse": "card/auth/actor.ts:7 (The Proxy module's save/restore machinery // (proxy.rb:63-76 temporarily) has no counterpart: nothing global is // mutated)",
+      "headerCitation": null,
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/auth/proxy.rb:53"
+      ],
+      "pinnedCallCount": 1
+    }
+  ]
+}

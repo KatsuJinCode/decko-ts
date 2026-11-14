@@ -1,0 +1,68 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.1 [39m[90mC:/localProjects/decko-ts-lane-a1-mods-validation-2026-10-06[39m
+
+[90mstdout[2m | tests/card/render/junction-depth-closure.test.ts[2m > [22m[2mdepth-3+ junction inclusion closure (deploy-notes finding 2 fix)[2m > [22m[2mrenders a depth-3 junction inclusion chain, covered by the per-key closure rounds
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"chain_c1+chain_c2+chain_c3","nestName":"chain_c1+chain_c2+chain_c3"}
+
+[90mstdout[2m | tests/card/render/junction-depth-closure.test.ts[2m > [22m[2mdepth-3+ junction inclusion closure (deploy-notes finding 2 fix)[2m > [22m[2mrenders a depth-4 junction inclusion chain, covered by the per-key closure rounds
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"chain_c1+chain_c2+chain_c3+chain_c4","nestName":"chain_c1+chain_c2+chain_c3+chain_c4"}
+
+[90mstdout[2m | tests/card/render/junction-depth-closure.test.ts[2m > [22m[2mdepth-3+ junction inclusion closure (deploy-notes finding 2 fix)[2m > [22m[2mresolves a depth-3 junction through the recursive side-id fallback when the SQL key transform misses
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"chain_c1+Oracle Basics+chain_c3","nestName":"chain_c1+Oracle Basics+chain_c3"}
+
+[90mstdout[2m | tests/card/render/junction-depth-closure.test.ts[2m > [22m[2mdepth-3+ junction inclusion closure (deploy-notes finding 2 fix)[2m > [22m[2mkeeps a depth-2 junction render at the constant query shape (no regression)
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"chain_c1+chain_c2","nestName":"chain_c1+chain_c2"}
+
+ [31m❯[39m tests/card/render/junction-depth-closure.test.ts [2m([22m[2m4 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[32m 44[2mms[22m[39m
+   [31m❯[39m depth-3+ junction inclusion closure (deploy-notes finding 2 fix) [2m(4)[22m
+[31m     [31m×[31m renders a depth-3 junction inclusion chain, covered by the per-key closure rounds[39m[32m 25[2mms[22m[39m
+     [32m✓[39m renders a depth-4 junction inclusion chain, covered by the per-key closure rounds[32m 8[2mms[22m[39m
+     [32m✓[39m resolves a depth-3 junction through the recursive side-id fallback when the SQL key transform misses[32m 5[2mms[22m[39m
+[31m     [31m×[31m keeps a depth-2 junction render at the constant query shape (no regression)[39m[32m 5[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 2 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m tests/card/render/junction-depth-closure.test.ts[2m > [22mdepth-3+ junction inclusion closure (deploy-notes finding 2 fix)[2m > [22mrenders a depth-3 junction inclusion chain, covered by the per-key closure rounds
+[31m[1mAssertionError[22m: expected 7 to be 4 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 4[39m
+[31m+ 7[39m
+
+[36m [2m❯[22m tests/card/render/junction-depth-closure.test.ts:[2m124:35[22m[39m
+    [90m122|[39m       // Freshness lane 2026-10-05: +1 statement (the deck_data_version
+    [90m123|[39m       // stamp read folded into the cold batch), +0 round trips.
+    [90m124|[39m       expect(snapshot.roundTrips).toBe(4);
+    [90m   |[39m                                   [31m^[39m
+    [90m125|[39m       expect(snapshot.statements).toBe(16); // HEAD 15 + 1 freshness s…
+    [90m126|[39m     } finally {
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/card/render/junction-depth-closure.test.ts[2m > [22mdepth-3+ junction inclusion closure (deploy-notes finding 2 fix)[2m > [22mkeeps a depth-2 junction render at the constant query shape (no regression)
+[31m[1mAssertionError[22m: expected 6 to be 3 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 3[39m
+[31m+ 6[39m
+
+[36m [2m❯[22m tests/card/render/junction-depth-closure.test.ts:[2m218:35[22m[39m
+    [90m216|[39m       // lineage-reconciliation lane): +1 statement (the deck_data_ver…
+    [90m217|[39m       // stamp read folded LAST into the cold batch), +0 round trips.
+    [90m218|[39m       expect(snapshot.roundTrips).toBe(3);
+    [90m   |[39m                                   [31m^[39m
+    [90m219|[39m       expect(snapshot.statements).toBe(15);
+    [90m220|[39m     } finally {
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m2 passed[39m[22m[90m (4)[39m
+[2m   Start at [22m 23:57:34
+[2m   Duration [22m 977ms[2m (transform 80%, import 15%, tests 5%)[22m
+

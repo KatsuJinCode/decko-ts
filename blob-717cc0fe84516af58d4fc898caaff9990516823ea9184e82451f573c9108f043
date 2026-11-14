@@ -1,0 +1,154 @@
+# mx-B-071: the content preset in the /new URL fills the editor and is stored on the card
+
+The roster row `mx-B-071-cover-b-create-duplicate-name-` (surface "cover-b.
+create: duplicate name, URL presets (C8, C10)") reads "C10 content preset
+in the /new URL fills the editor and is stored on the card", verdict PASS,
+bucket DONE. The registry's ledger entry for the row
+(C:/localProjects/brandonDojoTech/docs/registry/instrument-coverage-matrix.json,
+action ACT-071, check_ids ["B-071"], capability C10) records the
+live-acceptance-lane entry as unmeasured ("added to source after the last
+live run") and the native whole-harness entry as pass (the native
+whole-harness run at source 50717cca, bundle 527687e5, 129 of 154
+passed). This receipt is the family's own adjudication of the row at this
+tip, where the whole exercise's named check for it exists and is graded.
+
+## What the row is
+
+A person opens the new-card form with a content preset carried in the
+URL (`/new/RichText?card[name]=...&card[content]=...`). The editor holds
+that content before anything is submitted, the create is accepted, and the
+card that is created carries the preset.
+
+## The instrument
+
+The cover-b module's own check (tools/edge-signed-in-exercise/checks-cover-b.mjs:273-289):
+the check opens the /new URL with the name and the content marker in the
+query (:276), waits for the editor (:278), waits until the ACTIVE editor
+holds the marker, because TinyMCE fills the preset asynchronously
+(:279-281), reads the editor's content (:282), submits (:283), visits the
+new card (:285) and records PASS only when the editor was active AND the
+editor held the marker AND the card's page answered 200 AND that page
+carries the marker (:286-288).
+
+The check runs inside the whole exercise with no extra wiring: the module
+is one of the `checks-*.mjs` files the loader picks up
+(tools/edge-signed-in-exercise/lib/check-modules.mjs:36-37) and declares
+its capability ids, C10 among them
+(tools/edge-signed-in-exercise/checks-cover-b.mjs:1384-1387), with one
+runner-contract entry that runs the module's body (:1398-1403).
+
+THE RUNNER'S OWN C10 CHECK GRADES THE SAME ROW A SECOND WAY
+(tools/edge-signed-in-exercise.mjs:1126-1149): the same /new URL with the
+preset (:1128), the editor's prefilled content read out of the page
+(:1131-1135), the create write awaited on the request ledger (:1138-1145),
+the stored row read back out of the owned database (:1146), and PASS only
+when the write answered under 400, the editor held the marker, the stored
+row carries it and the card's own page carries it (:1148-1149).
+
+## The oracle
+
+RUBY'S OWN NEW-CARD ROUTE READS THE REQUEST'S CARD PARAMS. The card a
+request works on is built from the request's own card hash:
+`uri_fetch_opts` is `Env.hash(params[:card])` with the type taken from
+`params[:type]` for the /new/:type shortcut and the name from the mark
+(card-1.110.0/lib/card/fetch/card_class.rb:128-133, the fetch itself at
+:118-126), and the new-card view renders that card's form
+(card-mod-edit-0.20.0/set/all/new.rb:4-6 `view :new, perms: :create,
+unknown: true, cache: :never` -> `framed_create_form new_form_opts` ->
+:43-49 `create_form` -> `card_form :create`). The submitted card is then
+saved by the create action, `handle { card.save! }`
+(decko-0.20.0/lib/card_controller/rest.rb:6-8), so the preset the URL
+carried is what the card stores.
+
+THE PORT READS THE SAME QUERY AND BUILDS THE SAME NEW CARD. The port's
+own comment says it plainly: "card[name] / card[content] in the query
+preset the form, as Ruby's new view reads them off params"
+(deploy/bunny-worker-src/bunny-edge-engine-request.ts:625-626), and the
+code reads `card[name]` and `card[content]` out of the query (:633-634)
+and hands them to the new-card page, which renders the form with the
+new card's options `{ typeId, typePreset, content }` (:1086). The
+options shape is the port's own: src/card/fetch.ts:94-110 carries
+`content` (:106) and `name` (:109), and src/card/history/render-seam.ts:88-93
+names the Ruby line the port mirrors ("Ruby's controller: Card.uri_fetch
+builds the card with `new: card_params`, the type from params[:type] or
+card[type], card_class.rb:104-133"). The unknown card's page renders the
+create form for it (src/card/render/page.ts:319-336).
+
+THE PRIOR LIVE MEASUREMENT OF THIS ROW IS THE REGISTRY'S OWN RECEIPT. The
+roster's evidence for the row names
+C:/localProjects/brandonDojoTech/.runtime/edge-signed-in/live-session13-2026-10-19/receipts/check-12-ACT-071-c10-new-url-content-preset.json
+(a live creator session of 2026-10-19T06:49:04Z): the /new/RichText URL
+with `card[name]` and `card[content]` prefills the name, the ACTIVE
+TinyMCE editor holds "<p>C10 preset marker 019T0700</p>" before submit,
+the create write answers 200, and a fresh read of the new card carries
+the marker. That receipt is a prior measurement by another lane; this
+lane ran no live request.
+
+## What is oracle-matched and what is not, stated plainly
+
+Oracle-matched: the request's own card hash presets the new card's form
+(Ruby card_class.rb:128-133 with the new view, card-mod-edit
+set/all/new.rb:4-6; the port bunny-edge-engine-request.ts:625-634 and
+:1086), the editor holds the preset BEFORE the submit
+(:279-282), the create is accepted and stores it (Ruby rest.rb:6-8; the
+run's own stored-row read at edge-signed-in-exercise.mjs:1146), and the
+card's page carries the preset afterwards.
+
+NOT oracle-matched, and stated rather than glossed over: the check reads
+the editor's content and the created card's page, not Ruby's own
+rendered form bytes, so the claim is the preset's PRESENCE in the editor
+and on the card rather than a byte comparison with Ruby's form; the
+capability ledger's COMMITTED C10 row still carries the status
+not_covered and the finding text "URL presets ignored: the new-card form
+hardcodes an empty name and content", and the run's coverage binding
+moves that row to covered with the check verified while carrying the same
+finding string along, so this receipt claims the run's measured status
+and names the stale string rather than repeating it as a current finding;
+the marker is the harness's own fixture text; and no live request was
+made by this lane.
+
+## The measurement at this tip
+
+    node tools/edge-signed-in-exercise.mjs \
+      --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 \
+      --out .runtime/signed-in-exercise-round13-20261026/rows-r1/report.md
+
+    source acd0cd4cb24d3627981fa383619f5fea94731066, started
+    2026-10-26T06:31:53.510Z, completed 2026-10-26T06:59:33.454Z,
+    the source files clean
+    bundle 3dc9c9baebe05b9aa04935592cbb636de90cfc712da367c8008176f544678748
+    (the expected and the executed sha256), deck
+    6aebb6546a0620f3c61efad28cd01023e104d47ffd583272ce18036038f73b78
+    verdict: PASS
+
+The named check in this run:
+
+    C10 content preset in the /new URL fills the editor and is stored on the card
+        {"editor":{"present":true,"active":true},
+         "prefilled":"<p>Harness preset marker</p>",
+         "afterStatus":200,"stored":true}
+
+The runner's own C10 check in the same run:
+
+    card content preset in the /new URL is submitted and stored
+        {"status":200,"prefilledEditor":"<p>Harness preset</p>",
+         "marker":"Harness preset","storedMarker":true,"afterStatus":200}
+
+The run's capability coverage records capability C10 as covered with its
+check verified, and the run as a whole graded 251 of 253 checks passed.
+The two failures are E10 "a plain-input card can be edited and saved (the
+new content shows on the card)" (the write answered no status inside that
+attempt's window, while the card's own page answered 200 and showed the
+new content) and the page-time budget row "no signed-in page exceeded 3 s
+of server time" (three pages over the 3000 ms budget, each carrying a
+contention charge of 2745, 1582 and 912 ms of measured machine contention
+against 221, 1251 and 967 ms of the engine's own database CPU time).
+Neither failure is this row.
+
+## What this receipt does NOT claim
+
+- The row's port side is what the instrument grades, and it is green.
+  This receipt does not claim anything about the live deployment: no
+  live request was made by the lane, and nothing deploys.
+- The row's DONE condition in the roster is not changed by this
+  receipt; this receipt adds the family's own evidence for the row.

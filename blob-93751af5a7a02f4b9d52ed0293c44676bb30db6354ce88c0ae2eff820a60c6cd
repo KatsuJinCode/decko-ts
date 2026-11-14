@@ -1,0 +1,144 @@
+import { afterEach, describe, expect, it } from "vitest";
+import { ModLoader } from "../../../src/card/mod-loader.js";
+import type { ModSetModuleFile } from "../../../src/card/mod-loader/mod-manifest.js";
+import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
+import { CardActionError } from "../../../src/card/actions/types.js";
+import { addValidationErrors } from "../../../src/card/mod-loader/mod-validation-errors.js";
+import { createActionsTestStorage, seedStandardDeck, seedCard, CARDTYPE_ID } from "../actions/actions-test-storage.js";
+import { RenderEngine } from "../../../src/card/render.js";
+
+type IncludeFile = ModSetModuleFile;
+const cleanup: Array<() => void> = [];
+afterEach(() => { while (cleanup.length) cleanup.pop()!(); });
+
+async function fixture(inclusion: readonly { setPath: string; only?: readonly string[] }[] = [{ setPath: "abstract/a_guard" }],
+  customFiles?: (calls: string[]) => readonly IncludeFile[]) {
+  const storage = await createActionsTestStorage();
+  await seedStandardDeck(storage);
+  await seedCard(storage, { id: 600, name: "Other type", codename: "other_type", typeId: CARDTYPE_ID });
+  const calls: string[] = [];
+  const files: readonly IncludeFile[] = customFiles?.(calls) ?? [
+    { setPath: "abstract/a_guard", events: [{ event: "included_guard", at: "validate", on: ["save"], fn: card => {
+      calls.push(card.name);
+      if (card.dbContent === "bad") addValidationErrors(card.name, "content", ["blocked by inherited validator"]);
+    } }] },
+    { setPath: "type/basic", includeSets: inclusion },
+  ];
+  const loader = new ModLoader([{ manifest: { name: "card_includes", setModules: files } }], {});
+  cleanup.push(() => { loader.reset(); storage.close(); });
+  loader.load();
+  const engine = new CardActionEngine(storage.engine, {
+    actor: { id: 1, name: "Joe User" }, ipAddress: "192.0.2.7",
+    modEvents: { registry: loader.eventRegistry(), moduleOrder: loader.eventModuleOrder() },
+  });
+  return { storage, loader, engine, calls };
+}
+
+describe("issue 77: included card events through complete saves", () => {
+  it("refuses a bad create through the included validator and leaves no rows or history", async () => {
+    const { storage, engine, calls } = await fixture();
+    const before = await Promise.all([storage.count("cards"), storage.count("card_acts"), storage.count("card_actions")]);
+    const result = await engine.createCard({ name: "Bad Included Card", typeCode: "basic", content: "bad" }).catch(error => error);
+    expect(result).toBeInstanceOf(CardActionError);
+    expect(result.errorsByAttribute).toEqual({ content: "blocked by inherited validator" });
+    expect(calls).toEqual(["Bad Included Card"]);
+    expect(await Promise.all([storage.count("cards"), storage.count("card_acts"), storage.count("card_actions")])).toEqual(before);
+  });
+  it("runs the included validator and finishes an allowed create", async () => {
+    const { storage, engine, calls } = await fixture();
+    const saved = await engine.createCard({ name: "Good Included Card", typeCode: "basic", content: "good" });
+    expect((await storage.engine.fetchById(saved.cardId))?.dbContent).toBe("good");
+    expect(await storage.count("card_actions")).toBeGreaterThan(0);
+    expect(calls).toEqual(["Good Included Card"]);
+  });
+  it("does not attach an abstract event to a different type", async () => {
+    const { engine, calls } = await fixture();
+    await engine.createCard({ name: "Other Card", typeCode: "other_type", content: "bad" });
+    expect(calls).toEqual([]);
+  });
+  it("keeps card event inclusion when only excludes every format", async () => {
+    const { engine } = await fixture([{ setPath: "abstract/a_guard", only: [] }]);
+    await expect(engine.createCard({ name: "No Format Card", typeCode: "basic", content: "bad" }))
+      .rejects.toMatchObject({ errorsByAttribute: { content: "blocked by inherited validator" } });
+  });
+  it("refuses an included bad update and preserves its old card and history", async () => {
+    const { storage, engine, calls } = await fixture();
+    const saved = await engine.createCard({ name: "Included Update", typeCode: "basic", content: "good" });
+    calls.length = 0;
+    const before = await Promise.all([storage.count("cards"), storage.count("card_acts"), storage.count("card_actions")]);
+    await expect(engine.updateCard({ cardId: saved.cardId, content: "bad" }))
+      .rejects.toMatchObject({ errorsByAttribute: { content: "blocked by inherited validator" } });
+    expect((await storage.engine.fetchById(saved.cardId))?.dbContent).toBe("good");
+    expect(calls).toEqual(["Included Update"]);
+    expect(await Promise.all([storage.count("cards"), storage.count("card_acts"), storage.count("card_actions")])).toEqual(before);
+  });
+  it("runs a transitive nested bucket's events during a complete save", async () => {
+    const { engine, calls } = await fixture(undefined, calls => [
+      { setPath: "abstract/a_base/events", events: [{ event: "nested_guard", at: "validate", on: ["save"], fn: () => { calls.push("nested"); } }] },
+      { setPath: "abstract/b_middle", includeSets: [{ setPath: "abstract/a_base" }] },
+      { setPath: "type/basic", includeSets: [{ setPath: "abstract/b_middle" }] },
+    ]);
+    await engine.createCard({ name: "Nested Included", typeCode: "basic", content: "good" });
+    expect(calls).toEqual(["nested"]);
+  });
+  for (const local of [false, true]) it(`resolves ${local ? "local" : "later included"} overrides before running the complete save`, async () => {
+    const { engine, calls } = await fixture(undefined, calls => [
+      { setPath: "abstract/a_first", events: [{ event: "same_event", at: "validate", on: ["save"], fn: () => { calls.push("first"); } }] },
+      { setPath: "abstract/b_last", events: [{ event: "same_event", at: "validate", on: ["save"], fn: () => { calls.push("last"); } }] },
+      { setPath: "type/basic", includeSets: [{ setPath: "abstract/a_first" }, { setPath: "abstract/b_last" }],
+        ...(local ? { events: [{ event: "same_event", at: "validate", on: ["save"], fn: () => { calls.push("local"); } }] as const } : {}) },
+    ]);
+    await engine.createCard({ name: "Overridden Included", typeCode: "basic", content: "good" });
+    expect(calls).toEqual([local ? "local" : "last"]);
+  });
+  it("forwards formats without inventing card ancestors for a format-only provider", async () => {
+    const { storage, loader, engine } = await fixture(undefined, () => [
+      { setPath: "abstract/a_format", formats: { html: { views: [{ view: "included_body", config: { perms: "none" }, viewFn: () => "FORMAT" }] } } },
+      { setPath: "type/basic", includeSets: [{ setPath: "abstract/a_format" }] },
+    ]);
+    await engine.createCard({ name: "Format Included", typeCode: "basic", content: "good" });
+    const render = new RenderEngine(storage.engine);
+    render.modLoader = loader;
+    expect(await render.render("Format Included", "included_body")).toBe("FORMAT");
+    expect(loader.eventModuleOrder().includes).toBeUndefined();
+  });
+  for (const original of [false, true]) it(`uses ${original ? "retained original" : "assigned"} inclusion membership when the type changes`, async () => {
+    const { storage, engine, calls } = await fixture(undefined, calls => [
+      { setPath: "abstract/a_guard", events: [{ event: "type_guard", at: "validate", on: ["update"],
+        ...(original ? { changing: ["type"] } : { changed: ["type"] }), fn: card => {
+          calls.push(card.name);
+          if (card.dbContent === "bad") addValidationErrors(card.name, "content", ["blocked by inherited validator"]);
+        } }] },
+      { setPath: "type/basic", includeSets: [{ setPath: "abstract/a_guard" }] },
+    ]);
+    const saved = await engine.createCard({ name: "Changing Included", typeCode: "basic", content: "good" });
+    if (original) {
+      await expect(engine.updateCard({ cardId: saved.cardId, typeCode: "other_type", content: "bad" }))
+        .rejects.toMatchObject({ errorsByAttribute: { content: "blocked by inherited validator" } });
+      expect((await storage.engine.fetchById(saved.cardId))?.typeId).toBe(2);
+      expect(calls).toEqual(["Changing Included"]);
+    } else {
+      await engine.updateCard({ cardId: saved.cardId, typeCode: "other_type", content: "bad" });
+      expect((await storage.engine.fetchById(saved.cardId))?.typeId).toBe(600);
+      expect(calls).toEqual([]);
+    }
+  });
+  it("does not retroactively attach an empty target when a later mod adds its methods", async () => {
+    const { storage, loader, calls } = await fixture(undefined, () => [
+      { setPath: "type/a_empty" },
+      { setPath: "type/basic", includeSets: [{ setPath: "type/a_empty" }] },
+    ]);
+    loader.add({ manifest: { name: "late_card_methods", setModules: [
+      { setPath: "type/a_empty", events: [{ event: "late_guard", at: "validate", on: ["save"], fn: card => {
+        calls.push(card.name); addValidationErrors(card.name, "content", ["unexpected late attachment"]);
+      } }] },
+    ] } });
+    loader.resolveOrder({ gemMods: ["card_includes", "late_card_methods"] });
+    loader.load();
+    const fresh = new CardActionEngine(storage.engine, { actor: { id: 1, name: "Joe User" }, ipAddress: "192.0.2.7",
+      modEvents: { registry: loader.eventRegistry(), moduleOrder: loader.eventModuleOrder() } });
+    const saved = await fresh.createCard({ name: "Empty Target Card", typeCode: "basic", content: "bad" });
+    expect((await storage.engine.fetchById(saved.cardId))?.dbContent).toBe("bad");
+    expect(calls).toEqual([]);
+  });
+});

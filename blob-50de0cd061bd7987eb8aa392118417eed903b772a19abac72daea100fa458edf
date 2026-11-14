@@ -1,0 +1,90 @@
+import { after, test } from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+
+const root = mkdtempSync(join(tmpdir(), 'treewalk-citations-'));
+after(() => rmSync(root, { recursive: true, force: true }));
+const gems = join(root, 'gems');
+function put(path, text) {
+  mkdirSync(join(path, '..'), { recursive: true });
+  writeFileSync(path, text);
+}
+const all = 'card-1.110.0/lib/card/name/all.rb';
+const cardClass = 'card-1.110.0/lib/card/name/card_class.rb';
+for (const file of [all, cardClass, 'card-1.110.0/lib/card/rule/all.rb',
+  'card-1.110.0/lib/card/director/card_class.rb',
+  'card-mod-test-0.20.0/lib/shared.rb', 'decko-0.20.0/lib/shared.rb',
+  'card-1.110.0/lib/unique.rb', 'thirdparty-1.0/lib/unique.rb']) {
+  put(join(gems, file), 'def update_superleft\n  nil\nend\n');
+}
+process.env.DECKO_RUBY_GEMSET = gems;
+const { rowRubySources, rowFileSet, matchesRubySource } = await import('../../tools/treewalk-family-ruby-file-set.mjs');
+
+test('bare aliases require uniqueness across deck files, including other gems', () => {
+  const item = { sourceParent: `${all} + card_class.rb` };
+  const { sources, files } = rowRubySources(item);
+  assert.equal(files.length, 2);
+  for (const leaf of ['all.rb', 'card_class.rb']) assert.ok(!sources.includes(leaf));
+  assert.ok(!rowRubySources({ sourceParent: 'decko-0.20.0/lib/shared.rb' }).sources.includes('shared.rb'));
+  assert.deepEqual(rowFileSet(item).sources, sources);
+});
+
+test('a deck-unique leaf remains available even if third-party gems share it', () => {
+  const { sources } = rowRubySources({ sourceParent: 'card-1.110.0/lib/unique.rb' });
+  assert.ok(sources.includes('unique.rb'));
+  assert.ok(matchesRubySource('unique.rb', sources));
+});
+
+test('qualified citations identify the row path; ambiguous bare citations cannot match by suffix', () => {
+  const { sources } = rowRubySources({ sourceParent: all });
+  for (const citation of [all, 'lib/card/name/all.rb', 'name/all.rb']) {
+    assert.ok(matchesRubySource(citation, sources), citation);
+  }
+  for (const citation of ['all.rb', 'lib/card/rule/all.rb', 'card-1.110.0/lib/card/rule/all.rb']) {
+    assert.ok(!matchesRubySource(citation, sources), citation);
+  }
+});
+
+const rig = fileURLToPath(new URL('../../tools/treewalk-family-row-disposition.mjs', import.meta.url));
+for (const [label, source, citation, expected, mode = 'binding'] of [
+  ['wrong all path', all, 'lib/card/rule/all.rb', 'GAP'],
+  ['wrong card_class path', cardClass, 'lib/card/director/card_class.rb', 'GAP'],
+  ['ambiguous leaf', all, 'all.rb', 'GAP'],
+  ['correct gem path', all, all, 'PORTED'],
+  ['correct path without gem', all, 'lib/card/name/all.rb', 'PORTED'],
+  ['correct short path', all, 'name/all.rb', 'PORTED'],
+  ['unique leaf', 'card-1.110.0/lib/unique.rb', 'unique.rb', 'PORTED'],
+  ['wrong inline source', all, 'lib/card/rule/all.rb', 'GAP', 'inline'],
+  ['correct inline source', all, 'lib/card/name/all.rb', 'PORTED-INLINE', 'inline'],
+  ['wrong map source', all, 'lib/card/rule/all.rb', 'GAP', 'map'],
+  ['correct map source', all, 'lib/card/name/all.rb', 'PORTED-INLINE', 'map'],
+  ['correct full map source', all, all, 'PORTED-INLINE', 'map'],
+]) {
+  test(`disposition command: ${label}`, () => {
+    const dir = join(root, label.replaceAll(' ', '-'));
+    const port = join(dir, 'src');
+    const body = mode === 'map' ? '//   :1-3 update_superleft\n'
+      : mode === 'inline' ? '// update_superleft is implemented below\nexport function rename() { return null; }\n'
+        : 'export function update_superleft() { return null; }\n';
+    put(join(port, 'claim.ts'), `// Port of ${citation}\n${body}`);
+    const roster = join(dir, 'roster.json');
+    put(roster, JSON.stringify({ items: [{ id: 'citation-row', family: 'register-treewalk', sourceParent: source }] }));
+    const run = spawnSync(process.execPath, [rig, 'citation-row', '--json'], {
+      encoding: 'utf8',
+      env: { ...process.env, DECKO_RUBY_GEMSET: gems, DECKO_TS_PORT_SRC: port,
+        DECKO_COMPLETENESS_ROSTER: roster, DECKO_TREEWALK_DISPOSITION_OUT: '', DECKO_TREEWALK_FAMILY: 'register-treewalk' },
+    });
+    assert.equal(run.status, 0, run.stderr);
+    const [row] = JSON.parse(run.stdout);
+    assert.equal(row.defCount, 1);
+    assert.equal(row.defs[0].disposition, expected);
+    if (expected === 'GAP') {
+      assert.equal(row.defs[0].portBindingCited, null);
+      assert.equal(row.defs[0].headerCitation, null);
+    }
+  });
+}

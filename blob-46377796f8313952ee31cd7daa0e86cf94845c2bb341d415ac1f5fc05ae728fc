@@ -1,0 +1,53 @@
+{
+  "receipt": "owner-save-reference-names-declared",
+  "date": "2026-10-23",
+  "family": "[Family]",
+  "row": "ROW-2",
+  "branch": "port/savepath-round3-20261023",
+  "base_commit": "5a4272a4",
+  "remote": "KatsuJinCode/decko-ts (private), forward-only pushes only",
+  "lane_checkout": "C:/localProjects/decko-ts-savepath-round3-20261023 (exclusive; a linked worktree of C:/localProjects/decko-ts-restored, created through the machine's sanctioned lane copy, with node_modules shared through a junction)",
+  "population": "the reference walk's name resolutions: the deck's 17 referee names, each resolved through the Lexicon one at a time, one round trip each",
+  "lever": "the names are all known at the seam (scanReferenceChunks yields every chunk before any of them is interpreted), so they are declared once through the Lexicon's prefetchIds and the walk's own reads of them cost no round trip",
+  "disposition": "CLOSED ON PARITY",
+  "posts_before": 272,
+  "posts_after": 257,
+  "statements_before": 769,
+  "statements_after": 772,
+  "reduction": "15 POSTs (5.5%)",
+  "pinned_test": "tests/card/actions/refresh-references-out-declaration.test.ts: the walk's name resolutions ride ONE round trip, measured both ways (three posts without the declaration, one with it), and the declaration changes the NUMBER of round trips, never the ANSWERS",
+  "the_measurement": {
+    "command": "node tools/run-save-statement-ladder-to-completion.mjs --out tmp/ladder-R3-ROW2b.json",
+    "after_row_1": "272 POSTs, 769 statements",
+    "after_this_row": "257 POSTs, 772 statements",
+    "hosted_service": "NOT contacted",
+    "the_instrument": "a driver-side trace of every round trip and every memo event, plus a stack capture at the driver mapped to the engine seam (not landed: the driver and the bundler were restored to their committed blobs before the commit)"
+  },
+  "the_profile_that_named_the_population": {
+    "the_single_statement_reads_by_seam": {
+      "_DbLexicon.cacheFetch": 46,
+      "retrieveFromDb": 24,
+      "_CardActionEngine.fetchRowById": 7,
+      "fetchCardsRow": 7,
+      "typeIdByCodename": 6,
+      "findTrashedCardByLex": 5,
+      "isListCard": 4,
+      "isSearchCard": 4,
+      "walkComposedNames": 4,
+      "codenameOfId": 3
+    },
+    "the_17_names": "aikido_oak_cliff, b_whtml_header, bw_bio_source, conflict_done_well, embody_nonviolence, free_aiki_dojo, home, intellectual_property, martial_nonviolence, pacifica_graduate_institute, peace_practice, process_art, related_person, statement, the_myth_of_peace, twitterfeed, williamscraig_recommendation_20200924_u_censu",
+    "the_declaration_had_prefetched_of_them": 1
+  },
+  "gates": {
+    "actions_suite": {
+      "command": "npx vitest run tests/card/actions/ --reporter=dot",
+      "result": "41 files passed, 1 failed; 569 tests passed, 5 failed",
+      "the_five_failures": "tests/card/actions/atomic-saves.test.ts, the 'MySQL 8.4 (native)' group: no MySQL server on this machine. The same five fail on the base tree, which this lane checked by running the file with this row's change parked"
+    },
+    "typecheck": {
+      "command": "npx tsc --noEmit",
+      "note": "the same 3 pre-existing errors in tests/card/actions/write-path-races.test.ts, and no new one"
+    }
+  }
+}
