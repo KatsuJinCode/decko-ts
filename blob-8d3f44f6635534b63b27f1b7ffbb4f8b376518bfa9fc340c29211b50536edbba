@@ -1,0 +1,20 @@
+{
+  "failures": [
+    {
+      "class": "StartFollowLink",
+      "error": "NoMethodError",
+      "method": "link_opts",
+      "instance_method": true
+    },
+    {
+      "class": "StopFollowLink",
+      "error": "NoMethodError",
+      "method": "link_opts",
+      "instance_method": true
+    }
+  ],
+  "modal_mentions": [
+    "def follow_modal_link"
+  ],
+  "source_sha256": "7c133d3cf2992ada36f28e3f4991da89e18ad69ae13d9da2f22b418049639b74"
+}

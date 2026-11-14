@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import { it, afterEach, afterAll } from './node-test-api.mjs';
+let bodies = 0, cleanups = 0;
+afterEach(async () => {
+  await new Promise(resolve => setImmediate(resolve));
+  cleanups++;
+});
+it.each([1, 2, 3])('expands and awaits cleanup for row %s', async value => {
+  assert.equal(cleanups, bodies, 'the prior async afterEach must have finished');
+  assert.equal(value, bodies + 1);
+  bodies++;
+});
+afterAll(() => {
+  assert.equal(bodies, 3, 'it.each must execute every supplied row');
+  assert.equal(cleanups, 3, 'every async afterEach must have finished');
+});

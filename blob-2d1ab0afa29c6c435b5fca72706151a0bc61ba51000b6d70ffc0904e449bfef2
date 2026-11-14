@@ -1,0 +1,56 @@
+# History preparation repairs (issues 137 and 138)
+
+Base: numeric identity repair `495edc1056959e80b138da4cee62477734691478`.
+Source-identity issue 131 files remain unchanged.
+
+## Reproduced failures
+
+Imported the independent attack branch's orphan-action and page-warmup tests
+byte-for-byte. Both passing absence/bare controls held; the two attack cases
+failed before repair: `last_change_on: card 0 has no create action`, and an
+unexpected expansion link (`expected true to be false`). Full output remains
+in `.runtime/adapter123/history137-138-before.log`.
+
+## Changes
+
+Issue 137: history preparation projected every action before approved-actions
+could omit actions without cards. A NULL ID became zero in previous-value
+lookup and raised an unrelated history error. Projections now skip NULL IDs
+and IDs absent from the prepared card-info map. Raw actions and changes remain
+retained; existing readable action cards still use the original projection
+and missing-create diagnostics. The reader's permission filter is unchanged.
+
+Issue 138: the discarded page preparation rendered action summaries against
+the same mutable diff objects as the served page. Preparing a page view now
+uses a separate disposable diff memo, restored in `finally`. Served and bare
+renders retain their existing shared action memo. Whole-engine cache reset
+now clears that retained memo as its documented lifetime requires. The three
+discarded page/modal preparations use this boundary. Partial test engines
+continue to use their render stub. No changes to the diff algorithm, toggle
+ordering, fixtures, expected bytes or issue 110's rename logic.
+
+## Verification
+
+The original independent files remain unchanged against
+`review/attack-data-20261031`. Added boundary cases cover NULL and dangling
+card IDs, draft orphans, history/act/requested-action views, the preserved
+missing-create diagnostic for an existing draft-only action card, and first,
+repeated, bare and reset summary states. An initial diagnostic test used a
+non-draft update as the sole action; source inspection showed Ruby's
+`create_action` means first non-draft action, so that fixture did not describe
+a missing-create case. The corrected draft-only fixture proves that diagnostic
+without changing the production reader.
+
+Final focused run: 13 files, 101 tests passed, zero failed/skipped. Raw output:
+`.runtime/adapter123/history137-138-final-controls.log`. Includes the original
+40 history reader tests, 10 history view captures (rename-only included),
+ladder, JSON export, updater, ancestor/events, page-order/rescue and numeric-ID
+controls. `tsc --noEmit` exits zero (`history137-138-typecheck.log`). Named-file
+cross-platform scanner: six changed source/test files, zero command hits.
+Whitespace check passes.
+
+All tests use local synthetic SQLite and existing Node dependencies; transform
+caches may be used. No model, Ruby, native hosted backend or live site calls.
+The full suite and independent reattack belong to release integration; this
+report does not claim either. No servers were started. Raw evidence remains
+under registered custody; zero bytes removed.

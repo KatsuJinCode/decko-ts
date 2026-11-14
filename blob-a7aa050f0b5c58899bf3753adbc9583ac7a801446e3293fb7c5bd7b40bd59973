@@ -1,0 +1,23 @@
+import { symlinkSync, lstatSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import path from 'node:path';
+
+function windowsFileSymlink(target, link) {
+  if (process.platform !== 'win32') throw Error('WindowsFileSymlinkRequiresWindows');
+  try { symlinkSync(target, link, 'file'); }
+  catch (error) {
+    if (error.code !== 'EPERM') throw error;
+    // Ask the installed WSL path resolver; mount letters and roots are not
+    // inferred. Every failure retains the command's original error.
+    const linuxPath = value => execFileSync('wsl.exe', ['-e', 'wslpath', '-a', value], { windowsHide: true, encoding: 'utf8' }).trim();
+    execFileSync('wsl.exe', ['-e', 'ln', '-s', '--', linuxPath(target), linuxPath(link)], { windowsHide: true, encoding: 'utf8' });
+  }
+}
+
+export function createFileSymlink(target, link) {
+  if (!path.isAbsolute(target) || !path.isAbsolute(link)) throw Error('FileSymlinkNeedsAbsolutePaths');
+  if (process.platform === 'win32') windowsFileSymlink(target, link);
+  else if (process.platform === 'linux') symlinkSync(target, link, 'file');
+  else throw Error('FileSymlinkUnsupportedPlatform: ' + process.platform);
+  if (!lstatSync(link).isSymbolicLink()) throw Error('FileSymlinkNotCreated: ' + link);
+}

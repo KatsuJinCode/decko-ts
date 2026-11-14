@@ -1,0 +1,95 @@
+# Port scope and evidence
+
+The exact package and engine source commits are sourceCommit and engineCommit
+in HANDOVER-MANIFEST.json, which is generated at export. This document states
+what the port implements, what has been compared and what is untested; it is
+not a build or compatibility result for the exported package, which needs its
+own checks. The reference runtime is Decko 0.20.0 / card 1.110.0 on Ruby
+3.2.3 on the project's Linux VM, where the synthetic-v1 recorded Ruby outputs
+were captured on 2026-11-03; EVIDENCE.md states the reference each quoted
+result was measured against. Another version or deployment needs
+its own comparison. This is an independent TypeScript port of Decko, offered
+under GPL-3.0-or-later; see NOTICE.
+
+The implementation includes card names and inflections, row fetching, rule and
+permission lookup, CQL parsing and SQL generation, views and nesting, history,
+card saves and events, account/session handling, attachments, assets and
+hand-ported mod registrations. RUBY-MAP.md, generated at export, lists each
+TypeScript module and its Ruby citations, including uncited modules rather
+than hiding them.
+
+The compatibility contract has four independent categories: persistence,
+semantics, rendering and side effects. Passing a render comparison says nothing
+about an unexecuted save or notification. The packaged reference harness can
+measure these categories on the included synthetic deck. No current aggregate
+compatibility percentage is claimed by this package.
+
+The recorded Node/SQLite synthetic-v1 grades pass rendering 1754/1754,
+semantics 2389/2389, persistence 16/16 and side effects 19/19 against the
+Ruby 3.2.3 reference. A native MySQL 8.4.11 full grade also passes all four
+categories against a fresh stock Ruby 3.2.3 MySQL capture. The complete renamed
+synthetic-v2 comparison passes with 2557 matching render results and 24
+reproduced Ruby errors, not 24 mismatches. These measurements cover the exact
+development snapshots named in [EVIDENCE.md](EVIDENCE.md); source changes since
+the older historical measurements include behavior fixes, not just comments.
+Combining passing branches or exporting their source does not by itself grade
+the resulting package. Historical browser and database checks remain recorded
+separately in that evidence document.
+
+The complete mod-write probe remains a failing check. Its latest checkpoint
+still has persistence, side-effect and other-table mismatches, even though its
+rendering comparisons match. The remaining write defects must be repaired;
+neither source presence nor a limited correction establishes full mod-write
+compatibility or release readiness.
+
+The HANDOVER-MANIFEST.json generated at export pins the engine and packaging
+source actually included. A result for this source needs its own comparison
+with a stated checker, source, fixture and settings; a local build or a
+passing subset is not a substitute.
+
+Source present is not supported deployment evidence. SQL adapter source includes
+SQLite, libSQL HTTP, D1, MySQL and PostgreSQL; runtime-specific behavior must be
+verified independently on each selected adapter. On 2026-11-02 the runtime
+database matrix's five assertions (saves, rollback, concurrent writes,
+isolated concurrent reads and permissions) passed 5 of 5 against a
+PostgreSQL 16.15 server from the `postgres:16-alpine` container image on a
+Linux machine, with the original assertions run under `node:test` rather than
+Vitest; and 5 of 5 under Vitest against MySQL 8.4.11 on a Windows x64
+workstation; on the same workstation PGlite passed 3, with the 2
+concurrency assertions skipped because the embedded database offers only one
+session, a limit of PGlite rather than a port defect. The source tree,
+machine and test output for each are in [EVIDENCE.md](EVIDENCE.md). This
+package's local commands use Node and SQLite only. The export's file
+selection is designed to exclude hosted-provider credentials, deployment
+resource configuration and production data. Native Bun and hosted-provider
+acceptance are outside the package smoke check.
+
+The package contains TypeScript implementations and registrations for the 35
+Ruby mod gems, the card core and the TypeScript-only marketplace. The registry
+records their presence; it is not proof that every write or side effect matches
+Ruby. A third-party mod written in Ruby for upstream Decko must be ported
+to TypeScript before use, because no host this package deploys to runs Ruby.
+The source also holds an experimental loader that evaluates a mod's Ruby set
+files under Ruby compiled to WebAssembly (optional dependencies, used by no
+host); its presence does not establish arbitrary Ruby gem, native extension,
+Rails or HAML compatibility. Inspect the loader interfaces and test the
+specific mod.
+The TypeScript mod DSL supports declared synchronous format helpers, view
+permission predicates and set-scoped registration. It does not synthesize
+every Ruby trait accessor or make arbitrary Ruby method names override
+renderer internals. Each engine owns its compiled fallback view table;
+registration in another loader is not shared runtime state for that engine.
+The redistributable development suite and reference inputs are included.
+Private migration corpora and development-only tooling tests are excluded;
+four captures with unproven input origins and their three runtime readers are
+also excluded, while 29 public-source tests remain included. Unknown origin
+does not establish private origin. A missing test or fixture is not a passing test. The tests
+that need private or absent inputs, the two untested trial-database checks and
+the hosted comparison that real-data behaviour rests on (a Ruby Decko site
+used as the comparison reference, against a hosted deployment of the port on
+the Bunny (bunny.net) edge platform) are listed in
+[UNTESTED-INPUTS.md](UNTESTED-INPUTS.md).
+
+This package is not a claim that all engine work has closed. Later development
+can change the engine; the manifest pins the code actually included in this
+package.

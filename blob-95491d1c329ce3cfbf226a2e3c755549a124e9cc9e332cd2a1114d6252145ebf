@@ -1,0 +1,108 @@
+# Product and machine test separation: issue 170
+
+## Result
+
+The product no longer enumerates unrelated machine worktrees as part of
+correctness. The operational concern is covered by the existing disk steward's
+ownership-reconciliation and free-space modules, with additional isolated
+controls committed separately in private `KatsuJinCode/diskSteward` at
+`98e6abacc5ea5bf85d8e6a11117bb398cc2a540c`.
+
+The product change retires the machine test, its historical keep list and its
+historical machine failure transcript from the current tree. Their exact
+source/history remains in the committed parent
+`dd8ec464957e9324a45af7d00f60973b2beb484d`; each on-disk file was compared with
+that committed copy before removal. No unrelated worktree or folder is removed.
+
+`tools/test-gates.mjs` no longer implicitly classifies `tests/hygiene/` as
+product correctness. An unclassified test makes every gate refuse inventory
+validation; it is not silently skipped. The two-case portable scope regression
+pins this refusal and preserves classification of actual rendering, freshness,
+acceptance, deployment and tooling checks. No Vitest exclusion or skip was
+added, and no product behavior assertion was removed.
+
+## Reproduction and negative controls
+
+The unchanged original test was executed first. It failed on external machine
+state: four unrelated lane directories missing from an old keep/coordination
+list and an unavailable historical repository path. The failure did not reach
+any Decko data, request or render behavior. The original frozen release-owner
+failure receipt remains untouched.
+
+The new scope test was red before the classification change: the machine test
+was wrongly returned as `correctness`. After changing classification but before
+retiring the old file, the actual inventory CLI failed explicitly with that
+file's `no declared test gate` error. This preserved negative control verifies
+that the correction does not turn a discovered test into a silent omission.
+
+After retirement, inventory validation passes for all 1,352 discovered tests,
+including 137 using Node's test runner. A selected local execution passes 30
+tests across the new scope file, existing render-engine controls and existing
+freshness-stamp controls, with zero skips or failures. The initial typecheck
+failed TS7016 at the new test's JavaScript-module import; a subsequent successful
+shell command masked its exit, so the original passing claim was incorrect.
+Issue 174 supplies the precise module declaration and a separately checked
+native compiler-exit receipt. The two-file platform scan reports zero command landmines; whitespace checks
+pass. This is focused verification, not a full correctness/release invocation.
+
+## Effective machine owner
+
+The existing machine path is create-worktree event -> worktree sweep -> project
+directory reconciliation. Unknown directories receive protective review custody;
+links, live owners, existing custody and unknown observations retain their
+protection. The existing free-space authority is the machine's configured
+1 GiB remaining after a write. The old population and disallowed-size budgets
+are retired; neither is raised or replaced by a larger cap.
+
+The machine commit changes only two existing operational test files and its
+own report. It changes no production tool, policy, approval/deletion guard,
+settings, kill switch, trigger or schedule. Its focused reconciliation,
+free-space and preservation execution passes 33 tests and two subtests with
+zero skips/failures. Added fixtures cover the four historical names, sixteen
+owned/reviewed directories across the retired population limit, and exact
+after-write boundary readings below/at/above 1 GiB. All fixture contents remain;
+removal is zero. A separate inert in-memory no-custody replacement produces
+the expected `0 != 4` assertion failure. No live cleanup or reconciliation was
+applied. Independent reviewer acceptance remains required.
+
+A broader pre-existing no-disk-admission test separately failed two assertions
+and skipped one: fixture/error-handler strings are treated as active policy,
+and the default floor is expected to be literal zero instead of the current
+named constant. That combined invocation reported two failed, 37 passed, one
+skipped and nine subtests; it is not acceptance. System issue
+`rel-aecc4977-473c-4e89-8765-4bd80b85c94c` records this mismatch. Its protected
+policy and guard files are untouched. The focused passing result above does
+not claim that this broader operational suite is repaired.
+
+## Source and receipt custody
+
+Retired product artifacts, relative to `tests/hygiene/`:
+
+| Artifact | Parent Git blob |
+| --- | --- |
+| `machine-lane-worktree-disk-hygiene.test.ts` | `61ac1cb131d492427cd26d6bf9a1da031d7db775` |
+| `keep-worktrees.json` | `865f06751304b919f32ce8135d4d30b57f4c77fa` |
+| `machine-lane-worktree-disk-hygiene-born-red-proof.txt` | `b5d3d7e219c781d5547c18b42eccc15750c7a9d6` |
+
+Ignored raw receipts remain under `.runtime/adapter123/`:
+
+| Receipt | SHA-256 |
+| --- | --- |
+| `hygiene170-red.log` | `0bc3bd69f89f3c9f0e4a348d851d75176643ec3823c7bdcafa1afffe04d45f64` |
+| `hygiene170-classification-red.log` | `f86ee4afeb40de5896bd99254b1cb3d210b0155bb189d0d5913f7610ddbf4d62` |
+| `hygiene170-reintroduced-inventory-negative.log` | `7b0d1854f7fb21ba5b7d1757e55efdf5f05bf7e72dac498e1810897038a4ccf1` |
+| `hygiene170-operational-focused.log` | `0d489bf061ea71dbd76027fbb0359c6b1f44eb2de6953459263a8d901075c07b` |
+| `hygiene170-product-green.log` | `028d8d488bca23cfac416041971772df40b1944a44892b2348ac752cb333c568` |
+
+`hygiene170-operational-controls.log` preserves the broader failures;
+`hygiene170-custody-negative.log` preserves the expected inert negative result.
+The other inventory, typecheck, platform and fetched remote receipts share
+the same prefix. `hygiene170-machine-push-receipt.txt` confirms the exact
+machine commit and its three paths. No extra runnable copy or archive was made.
+
+Local test transformations may use the existing compilation cache. Assertions
+and Python fixtures executed locally; no model generated or graded outcomes,
+and no paid provider, install, schedule, deployment or root integration was
+used. Existing unrelated machine-repository changes were preserved. The
+independent release owner must select the product commit and review it with
+the separate machine receipt; earlier 154/156/164 packages remain distinct.

@@ -1,0 +1,172 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtempSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { stripTypeScriptTypes } from 'node:module';
+import { init, parse } from 'es-module-lexer';
+await init;
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { createHash } from 'node:crypto';
+import { gzipSync } from 'node:zlib';
+import { sourceProvenance } from '../../tools/dist/source-provenance.mjs';
+import { scan, selected, rubyReferences, deckLocalModSources, developmentProbeCitation, isDevelopmentOnlyRubyCitation } from '../../tools/handover/package.mjs';
+const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
+// Scanner inputs carry a '^' break so this source never holds a marker itself;
+// unmask() restores the exact value the scanner receives at runtime.
+const unmask=text=>text.replaceAll('^','');
+test('snapshot provenance works without Git and records modified files',()=>{
+ const root=mkdtempSync(path.join(tmpdir(),'decko-source-manifest-'));
+ try {
+  writeFileSync(path.join(root,'source.ts'),'export const value=1;');
+  writeFileSync(path.join(root,'HANDOVER-MANIFEST.json'),JSON.stringify({sourceCommit:'a'.repeat(40),files:[{path:'source.ts',sha256:sha('export const value=1;')}]}));
+  assert.equal(sourceProvenance(root).changedSnapshotFiles,0);
+  writeFileSync(path.join(root,'source.ts'),'export const value=2;');
+  assert.equal(sourceProvenance(root).changedSnapshotFiles,1);
+ }finally{rmSync(root,{recursive:true});}
+});
+test('source snapshot refuses traversal in its provenance manifest',()=>{
+ const root=mkdtempSync(path.join(tmpdir(),'decko-source-manifest-'));
+ try {
+  writeFileSync(path.join(root,'HANDOVER-MANIFEST.json'),JSON.stringify({sourceCommit:'a'.repeat(40),files:[{path:'../outside',sha256:'x'}]}));
+  assert.throws(()=>sourceProvenance(root),/unsafe snapshot manifest path/);
+ }finally{rmSync(root,{recursive:true});}
+});
+test('export surface excludes history, private state, workflow and development records',()=>{
+ for(const file of ['.git/config','.github/workflows/ci.yml','state/private.json','fixtures/test-corpus/test-corpus.sqlite3','docs/runs/internal.md'])assert.equal(selected(file),false,file);
+ assert.equal(selected('src/card/render.ts'),true);
+ assert.equal(selected('vendor/coderay-1.1.3/LICENSE'),true);
+ assert.equal(selected('reference-harness/fixtures/write-battery-v1/withheld/steps.json'),false);
+});
+test('catalogued unqualified inputs are excluded while source-backed tests remain public',()=>{
+ const catalog=JSON.parse(readFileSync(new URL('../../tools/compat-report/withheld-tests.json',import.meta.url),'utf8'));
+ for(const file of [...catalog.paths,...(catalog.capture_paths??[])])assert.equal(selected(file),false,file);
+ assert.equal(selected('tests/card/mod-loader/card-mod-account-harness-probe.test.ts'),true);
+});
+
+test('privacy tripwires inspect filenames and binary bytes without echoing content',()=>{
+ const match=scan(Buffer.from('prefix\0ghp_'+'a'.repeat(30)),'src/ok.bin');
+ assert.equal(match[0].rule,'service-token');
+ assert.ok(!JSON.stringify(match).includes('a'.repeat(30)));
+ assert.equal(scan(Buffer.from('safe'),unmask('src/bran^don-private.bin'))[0].rule,'private-identity');
+ assert.ok(scan(Buffer.from(unmask('Jul^ian'),'utf16le'),'fixture.bin').some(hit=>hit.rule==='private-identity'));
+});
+test('privacy tripwires refuse every drive-letter path, not only user and project folders',()=>{
+ const rules=(text,file='docs/x.md',encoding)=>scan(Buffer.from(text,encoding),file).map(hit=>hit.rule);
+ for(const text of ['copied from C^:/Ruby33-x64/lib/ruby/gems/3.3.0',String.raw`built in D^:\build\out`,'e^:/work/tree','see `C^:/Ruby33-x64`',String.raw`"Z^:\\share\\deck"`].map(unmask))
+  assert.ok(rules(text).includes('drive-letter-path'),text);
+ assert.ok(rules(unmask('copied from C^:/Ruby33-x64/lib'),'fixture.bin','utf16le').includes('drive-letter-path'));
+ for(const text of ['https://example.com/a','file:///tmp/x','var r=/(\\w:\\-]+)(/;','10:30 a:b','a?b:c'])
+  assert.ok(!rules(text).includes('drive-letter-path'),text);
+});
+test('the reviewed synthetic drive paths are exempt only in their own file and only from the drive-letter rule',()=>{
+ const comment=unmask(String.raw`a Windows path like C^:\dir\f.txt must survive intact`);
+ assert.deepEqual(scan(Buffer.from(comment),'src/server/multipart-form.ts'),[]);
+ assert.ok(scan(Buffer.from(comment),'src/server/other.ts').some(hit=>hit.rule==='drive-letter-path'));
+ assert.ok(scan(Buffer.from(unmask('D^:/elsewhere/x')),'src/server/multipart-form.ts').some(hit=>hit.rule==='drive-letter-path'));
+ assert.ok(scan(Buffer.from(unmask('C^:/Users/someone/x')),'src/server/multipart-form.ts').some(hit=>hit.rule==='machine-path'));
+});
+test('privacy tripwires refuse JSON-escaped drive paths, tracker ids, ruling phrases and private-deck card names',()=>{
+ const rules=(text,file='docs/x.md')=>scan(Buffer.from(text),file).map(hit=>hit.rule);
+ for(const text of [JSON.stringify({path:unmask(String.raw`C^:\work\deck`)}),unmask('{"path":"C^:\\/work/deck"}')])
+  assert.ok(rules(text).includes('drive-letter-path'),text);
+ for(const text of ['see AC^T-123','DEC^KO-45 closed','RO^W-2','F^D-279','OP^S-6'].map(unmask))assert.ok(rules(text).includes('tracker-id'),text);
+ for(const text of ['UTF-8 and SHA-256','decko-0','TINY-1234','LGPL-2.1'])assert.ok(!rules(text).includes('tracker-id'),text);
+ for(const text of ["the operator^'s decision",'the lead’s rul^ing','Release-lead deci^sion, 2026-10-15','recorded ver^batim','was explicitly over^ruled'].map(unmask))
+  assert.ok(rules(text).includes('ruling-phrase'),text);
+ for(const text of ['a lead pipe','copied as written','the decision table'])assert.ok(!rules(text).includes('ruling-phrase'),text);
+ for(const text of ['{{H^BQ logo}}','ZQ^VT+*self+*head','Martial Con^cordance Public Module','martial con^cordance','C^M 20100614','C^M20101113'].map(unmask))
+  assert.ok(rules(text).includes('private-deck-name'),text);
+ for(const text of ['HBQX','ACME 2010','CM 20 pages'])assert.ok(!rules(text).includes('private-deck-name'),text);
+ for(const text of ['TYPE-Basic^Cs','{typeName: "Basic^Cs"}','child.target === "Admin^u"','[[Admin^u|Admin]]'].map(unmask))
+  assert.ok(rules(text).includes('private-deck-name'),text);
+ for(const text of ['Basic','BasicCss','RichText','Admin','Adminus','MyAdminu'])assert.ok(!rules(text).includes('private-deck-name'),text);
+ assert.ok(scan(Buffer.from(unmask('Admin^u'),'utf16le'),'fixture.bin').some(hit=>hit.rule==='private-deck-name'&&hit.encoding==='utf16le'));
+});
+test('privacy tripwires refuse host install paths, the private host name and private-deck card ids as whole tokens',()=>{
+ const rules=(text,file='docs/x.md',encoding)=>scan(Buffer.from(text,encoding),file).map(hit=>hit.rule);
+ for(const text of ['served from /op^t/deck-demo/public','COMPILED_ASSETS_DIR ?? "/op^t/assets"'].map(unmask))assert.ok(rules(text).includes('host-path'),text);
+ assert.ok(rules(unmask('copied to /op^t/x'),'fixture.bin','utf16le').includes('host-path'));
+ for(const text of ['/options/','/optional/x','adopt/ed','opt/x'])assert.ok(!rules(text).includes('host-path'),text);
+ for(const text of ['the ju^c VM','on the JU^C  vm'].map(unmask))assert.ok(rules(text).includes('private-host'),text);
+ for(const text of ['juice VM','a jucVM token'])assert.ok(!rules(text).includes('private-host'),text);
+ for(const text of ['/files/455^14/0000000001.css','/files/~506^17/0000000002.js','card 206^16','id 227^47.','{"id": 227^49}','family {22736, 382^74}','{ typeId: 348^43, typeName: "Pointer" }'].map(unmask))
+  assert.ok(rules(text).includes('private-card-id'),text);
+ for(const text of ['145514','455140','x45514','22747a','id_22749','2274','3827','348431','134843','id_34843'])assert.ok(!rules(text).includes('private-card-id'),text);
+ assert.ok(rules(unmask('type 348^43'),'fixture.bin','utf16le').includes('private-card-id'));
+ assert.ok(scan(gzipSync(Buffer.from(unmask('/files/455^14/1.css'))),'blob.jsonl.gz').some(hit=>hit.rule==='private-card-id'&&hit.encoding==='gzip-utf8'));
+});
+test('RUBY-MAP lists upstream Ruby citations and none from deck-local mod sources',()=>{
+ const text='// set/all/class_player.rb: the view\n// set/all/transcript_tool.rb:12-14 too\n';
+ assert.ok(deckLocalModSources.has('src/card/mod-loader/mods/class-sections.ts'));
+ assert.deepEqual(rubyReferences('src/card/mod-loader/mods/class-sections.ts',text),[]);
+ assert.deepEqual(rubyReferences('src/card/render/head-views.ts','head.rb:65-70 and head.rb:65-70 and set/all/base.rb'),['head.rb:65-70','set/all/base.rb']);
+ assert.deepEqual(rubyReferences('src/card/other.ts',text),['set/all/class_player.rb','set/all/transcript_tool.rb:12-14']);
+});
+test('RUBY-MAP names development-only Ruby files generically and keeps upstream gem citations',()=>{
+ const text='tools/oracle/set-include-graph.rb and tmp/int/probe-password-input.rb and ruby-oracles/card-mod-x/views.rb:4 and r17-junction-fetch-probe.rb and set/all/base.rb:12';
+ assert.deepEqual(rubyReferences('src/card/other.ts',text),[developmentProbeCitation,'set/all/base.rb:12']);
+ assert.equal(developmentProbeCitation,'development probe (not included)');
+ assert.equal(isDevelopmentOnlyRubyCitation('card-mod-account/set/self/signin.rb:12-15'),false);
+ for(const ref of ['benchmarks/oracle-capture-forgery-posture-ruby.rb','scripts/oracle-capture-markdown-views.rb:4','tools/persistence/revert-trace.rb','tests/card/mod-loader/run-logs/probe.rb'])
+  assert.equal(isDevelopmentOnlyRubyCitation(ref),true,ref);
+ assert.equal(isDevelopmentOnlyRubyCitation('tools/migrate/serving-restoration-observer.rb'),false,'a Ruby file the export ships keeps its citation');
+ for(const ref of ['tests/server/oracle-capture-forgery-posture-ruby.rb','tests/card/mod-loader/oracle-capture-markdown-views.rb:4'])
+  assert.equal(isDevelopmentOnlyRubyCitation(ref),false,'a Ruby file shipped with the test suite keeps its citation: '+ref);
+ assert.deepEqual(rubyReferences('src/card/other.ts','tools/persistence/revert-trace.rb and set/all/csv.rb:5-8'),[developmentProbeCitation,'set/all/csv.rb:5-8']);
+});
+test('privacy tripwires decompress gzip content before scanning, and refuse gzip they cannot read',()=>{
+ const hits=scan(gzipSync(Buffer.from(unmask('a ZQ^VT card and C^:/Ruby33-x64/lib'))),'reference-harness/fixtures/x/expected/render.jsonl.gz');
+ assert.ok(hits.some(hit=>hit.rule==='private-deck-name'&&hit.encoding==='gzip-utf8'));
+ assert.ok(hits.some(hit=>hit.rule==='drive-letter-path'&&hit.encoding==='gzip-utf8'));
+ assert.ok(scan(gzipSync(Buffer.from(unmask('Jul^ian'),'utf16le')),'fixture.gz').some(hit=>hit.rule==='private-identity'&&hit.encoding==='gzip-utf16le'));
+ assert.ok(scan(gzipSync(Buffer.from(unmask('DEC^KO-7'))),'blob.bin').some(hit=>hit.rule==='tracker-id'),'gzip magic without a .gz name');
+ assert.deepEqual(scan(gzipSync(Buffer.from('nothing private')),'clean.jsonl.gz'),[]);
+ for(const [bytes,file] of [[Buffer.from('not gzip'),'broken.gz'],[Buffer.from([0x1f,0x8b,0,1,2,3]),'truncated.bin']])
+  assert.ok(scan(bytes,file).some(hit=>hit.rule==='unreadable-gzip'),file);
+});
+test('a complete gzip stream is scanned through its content, and bytes after the stream are still scanned as text',()=>{
+ const file='reference-harness/fixtures/synthetic-v1/expected/render.jsonl.gz';
+ const stream=readFileSync(fileURLToPath(new URL(`../../${file}`,import.meta.url)));
+ // Read as text, this compressed stream holds drive-letter-shaped byte runs
+ // by chance; its decompressed content holds none.
+ assert.deepEqual(scan(stream,file),[]);
+ const trailing=scan(Buffer.concat([stream,Buffer.from('\nC:/Users/someone/secret Julian\n')]),file);
+ assert.ok(trailing.some(hit=>hit.rule==='machine-path'&&hit.encoding==='utf8'),'a path appended after the stream');
+ assert.ok(trailing.some(hit=>hit.rule==='private-identity'&&hit.encoding==='utf8'),'a name appended after the stream');
+ assert.ok(scan(stream,'reference-harness/fixtures/brandon/render.jsonl.gz').some(hit=>hit.rule==='private-identity'),'the file name is still scanned');
+ const padded=scan(Buffer.concat([stream,Buffer.from('\0C:/Users/someone/secret Julian\n')]),file);
+ assert.ok(!padded.some(hit=>hit.rule==='unreadable-gzip'),'zero padding after the stream decompresses');
+ assert.ok(padded.some(hit=>hit.rule==='machine-path'&&hit.encoding==='utf8'),'a path after zero padding is scanned as raw text');
+ assert.ok(padded.some(hit=>hit.rule==='private-identity'&&hit.encoding==='utf8'),'a name after zero padding is scanned as raw text');
+ const named=Buffer.concat([stream.subarray(0,3),Buffer.from([stream[3]|0x08]),stream.subarray(4,10),Buffer.from('Julian-render.jsonl\0'),stream.subarray(10)]);
+ const namedHits=scan(named,file);
+ assert.ok(!namedHits.some(hit=>hit.rule==='unreadable-gzip'),'a header with an FNAME field still decompresses');
+ assert.ok(namedHits.some(hit=>hit.rule==='private-identity'&&hit.encoding==='utf8'),'a name in the gzip header FNAME field is scanned');
+ const stamped=Buffer.concat([stream.subarray(0,4),Buffer.from('Julian'),stream.subarray(10)]);
+ assert.ok(scan(stamped,file).some(hit=>hit.rule==='private-identity'),'text in the six fixed header bytes is scanned');
+});
+test('the export ships the build sources of its generated LibSass, edge snapshot and vendored asset artifacts',()=>{
+ for(const file of ['tools/libsass/sassc-wasm.c','tools/libsass/build-wasm.mjs','tools/libsass/sassc-stdin.c','tools/libsass/build-native.mjs','tools/libsass/native-cache.mjs','tools/vendor/build-edge-asset-source-snapshot.mjs','tools/assets/vendor-bootstrap-fonts.mjs','tools/assets/vendor-decko-coded.mjs','tools/assets/vendor-fontawesome.mjs','tools/assets/vendor-html4-entities.mjs','tools/assets/vendor-material-icons.mjs','tools/assets/vendor-mod-style-images.mjs','reference-harness/fixtures/DECK-BUNDLE-PROVENANCE.md'])
+  assert.equal(selected(file),true,file);
+});
+test('the export retains the relative import graph of its documented runtime commands',()=>{
+ const repo=fileURLToPath(new URL('../..',import.meta.url));
+ const paths=new Set(execFileSync('git',['ls-files','-z'],{cwd:repo,encoding:'utf8',windowsHide:true,maxBuffer:Infinity}).split('\0').filter(Boolean));
+ const pending=['tools/dist/build-engine.mjs','tools/vendor/import-tinymce-source.mjs','tools/oracle/typescript-source-loader.mjs','vm-staging-server.mjs','tools/handover/smoke.mjs','tools/handover/prepare-demo.mjs','tools/handover/verify-local-host.mjs','reference-harness/runner/run.mjs','reference-harness/runner/grade.mjs','reference-harness/adapters/ts/adapter.mjs','reference-harness/adapters/ts/adapter.ts','tools/migrate/import-deck.mjs','tools/migrate/migrate-generalized.mjs','tools/migrate/recover-deck.mjs','tools/migrate/prove-deck-migration.mjs'];
+ const visited=new Set(),missing=[];
+ while(pending.length){
+  const file=pending.pop();if(visited.has(file))continue;visited.add(file);
+  const original=readFileSync(path.join(repo,file),'utf8');
+  const text=file.endsWith('.ts')?stripTypeScriptTypes(original,{mode:'transform'}):original;
+  for(const specifier of parse(text)[0]){
+   if(!specifier.n?.startsWith('.'))continue;
+   let target=path.posix.normalize(path.posix.join(path.posix.dirname(file),specifier.n));
+   if(target.startsWith('dist/src/'))target=target.slice(5);
+   if(!paths.has(target)&&target.endsWith('.js')&&paths.has(target.slice(0,-3)+'.ts'))target=target.slice(0,-3)+'.ts';
+   if(!paths.has(target)||!selected(target))missing.push({file,target});else if(/\.(?:[cm]?js|ts)$/.test(target))pending.push(target);
+  }
+ }
+ assert.deepEqual(missing,[]);
+});

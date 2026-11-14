@@ -1,0 +1,94 @@
+{
+  "receipt": "owner-save-shape-registry-extended",
+  "date": "2026-10-23",
+  "family": "[Family]",
+  "branch": "port/savepath-round5-20261023",
+  "base_commit": "4c06cc25",
+  "remote": "KatsuJinCode/decko-ts (private), forward-only pushes only",
+  "lane_checkout": "C:/localProjects/decko-ts-savepath-round5-20261023 (exclusive; a linked worktree of C:/localProjects/decko-ts-release-lead, created through the machine's sanctioned lane copy, which admits it against the disk reserve and records custody, with node_modules shared through a junction)",
+  "rows": [
+    {
+      "row": "ROW-2",
+      "population": "the read shapes no declaration can answer: the type-codename read, the two codename-triple JOINs, the trashed-junction, the unary-plus junction, the trashed-key",
+      "disposition": "TWO LANDED, THREE REFUSED, ALL FIVE NAMED",
+      "posts_before": 233,
+      "posts_after": 227,
+      "statements_before": 781,
+      "statements_after": 798,
+      "in_transaction_single_statement_reads_before": 83,
+      "in_transaction_single_statement_reads_after": 72,
+      "shapes": [
+        {
+          "shape": "the codename-triple JOIN",
+          "registry_name": "CARD_CODENAME_TRIPLE_BY_ID_SQL",
+          "lever": "the reference walk reads it and the type-codename read back to back, for the same card; one batch at the walk's seam carries both, and the walk's own reads are answered from the driver's read memo",
+          "measurement": "REDUCTION: -4 POSTs (233 -> 229); the walk visits four cards and each visit's two reads were two POSTs",
+          "pinned_test": "tests/card/actions/list-card-shapes-declaration.test.ts, 3 cases: one round trip measured both ways, the same answer, and the registry's statement strings"
+        },
+        {
+          "shape": "the type-codename read",
+          "registry_name": "CARD_TYPE_CODENAME_BY_ID_SQL",
+          "lever": "the same batch",
+          "measurement": "REDUCTION: the same -4 POSTs"
+        },
+        {
+          "shape": "the trashed-junction",
+          "registry_name": "TRASHED_CARD_BY_JUNCTION_SQL",
+          "lever": "the card-block declaration's by-pair scope: the compound name the save touches resolves to its two sides, and the rename validation asks for the trashed row under that same pair",
+          "measurement": "REDUCTION: -2 POSTs (229 -> 227); three of the shape's four reads are answered from the memo, and the fourth binds the pair that involves the card the save creates"
+        },
+        {
+          "shape": "the unary-plus junction",
+          "registry_name": "CARD_ID_BY_JUNCTION_PLUS_SQL",
+          "lever": "the card-block declaration's by-pair scope",
+          "measurement": "REFUSAL, MEASURED: with the shape declared on that seam the shape's four reads were unchanged (all still on the wire) and the shape's statements went from 42 to 62; the rule walk's pairs are its own levels' findings, not the input tree's pairs. Not landed; the shape stays named."
+        },
+        {
+          "shape": "the trashed-key",
+          "registry_name": "TRASHED_CARD_BY_KEY_SQL",
+          "lever": "the card-block declaration's by-key scope",
+          "measurement": "REFUSAL, MEASURED: with the shape in the by-key run the graded save went 229 -> 230 (the run grew past the driver's 32-statement cap and split into two round trips) and the read still rode the wire, because the save writes to that card. Not landed; the shape stays named."
+        }
+      ],
+      "the_reads_that_remain": "72 in-transaction single-statement reads: 27 junction id lookups (the permission walk's own pairs), 11 live rows by id and 10 rows by id (the save's own cards), 7 live rows by key (the walk's own findings), 4 unary-plus junctions (MEASURED REFUSAL), 3 codenames by id (the save's own cards), 3 codename ids (the save's card write assigns trash, which the read's WHERE names, so the driver's invalidation rule drops the memoized answer), 2 codenames by key, 1 trashed key (MEASURED REFUSAL), 1 trashed junction (the pair involves the card the save creates), 1 name triple, 1 rules join, 1 trigger graph"
+    }
+  ],
+  "rows_closed_this_round": 1,
+  "rows_closed_with_a_lever": 1,
+  "gates": {
+    "equivalence": {
+      "command": "npx vitest run tests/card/permissions/rule-candidate-walk-equivalence-on-serving-deck.test.ts --reporter=verbose",
+      "composed_keys_checked": 19469,
+      "wrong": 0,
+      "missing": 0,
+      "invented": 0,
+      "rule_shaped_keys": 1489,
+      "rule_shaped_wrong": 0,
+      "result": "PASS"
+    },
+    "battery": {
+      "command": "npx vitest run tests/card/actions/ tests/card/permissions/ tests/card/drivers/ tests/card/fetch/ tests/card/follow/ tests/card/notify/ tests/server/ --reporter=dot",
+      "files_total": 141,
+      "files_passed": 135,
+      "files_skipped": 5,
+      "files_failed": 1,
+      "tests_total": 1568,
+      "tests_passed": 1526,
+      "tests_failed": 5,
+      "tests_skipped": 37,
+      "the_failures": "the same MySQL 8.4 set the base tree fails: tests/card/actions/atomic-saves.test.ts, 5 cases. This lane ran that file on the base tree c9882203 (5 failed, 61 passed) and on this tree (5 failed, 61 passed): the same file, the same five cases.",
+      "the_base_tree_comparison": "the base tree at c9882203: 139 files, 1560 tests, 1518 passed. This tree: 141 files (+2 new test files), 1568 tests (+8 new cases), 1526 passed (+8). No test was lost."
+    },
+    "typecheck": {
+      "command": "npx tsc --noEmit",
+      "errors": 3,
+      "pre_existing_errors": 3,
+      "new_errors": 0,
+      "where": "tests/card/actions/write-path-races.test.ts (lines 132 and 526)",
+      "result": "PASS (the same 3 pre-existing errors)"
+    }
+  },
+  "the_instrument": "tools/run-save-statement-ladder-to-completion.mjs (--attribution for the per-POST statement map), run on the local Hrana endpoint against the local copy of the serving deck.",
+  "nothing_deployed": true,
+  "the_live_edge_was_not_contacted": true
+}

@@ -1,0 +1,89 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+
+const source = fs.readFileSync(new URL('../../vm-staging-server.mjs', import.meta.url), 'utf8');
+const start = source.indexOf('let shutdownStarted = false;');
+const end = source.indexOf('\ninstallDemoShutdownReceiver(beginShutdown);', start);
+assert.ok(start >= 0 && end > start);
+const block = source.slice(start, end);
+
+function model({browse = () => {}, auth = () => {}} = {}) {
+  const calls = [], exits = [], errors = [], timers = [];
+  let drained, finish, authEntered;
+  const completed = new Promise(resolve => {finish = resolve;});
+  const authStarted = new Promise(resolve => {authEntered = resolve;});
+  const context = {console: {log() {}, error: line => errors.push(JSON.parse(line))},
+    process: {exit: code => {exits.push(code); finish();}},
+    setTimeout(callback, duration) {const timer = {callback, duration, unref() {}}; timers.push(timer); return timer;},
+    clearTimeout: timer => {timer.cleared = true;},
+    server: {close(callback) {calls.push('drain'); drained = callback;}},
+    driver: {close() {calls.push('browse'); return browse();}},
+    authDriver: {close() {calls.push('auth'); authEntered(); return auth();}}};
+  vm.createContext(context); vm.runInContext(block + '\nthis.begin = beginShutdown;', context);
+  context.begin('first IPC stop');
+  return {context, calls, exits, errors, timers, completed, authStarted, drain: error => drained(error)};
+}
+
+test('later stop failure changes final status without re-entering drain or cleanup', async () => {
+  const f = model();
+  f.context.begin('repeated harmless stop');
+  f.context.begin('stop file', Error('actual later EPERM'));
+  f.context.begin('watcher', Error('actual secondary watcher failure'));
+  assert.deepEqual(f.calls, ['drain']);
+  f.drain(); await f.completed;
+  assert.deepEqual(f.calls, ['drain', 'browse', 'auth']);
+  assert.deepEqual(f.exits, [1]);
+  assert.equal(f.errors[0].primaryError.message, 'actual later EPERM');
+  assert.deepEqual(f.errors[0].cleanupErrors.map(row => row.message), ['actual secondary watcher failure']);
+  assert.equal(f.errors[0].databaseClosed, true);
+});
+
+test('drain primary, late controls and both cleanup errors preserve actual order', async () => {
+  let rejectBrowse;
+  const pending = new Promise((_resolve, reject) => {rejectBrowse = reject;});
+  const f = model({browse: () => pending, auth() {throw Error('auth last');}});
+  f.drain(Error('drain first'));
+  f.context.begin('stop file', Error('late control second'));
+  rejectBrowse(Error('browse third')); await f.completed;
+  assert.deepEqual(f.exits, [1]);
+  assert.equal(f.errors[0].primaryError.message, 'drain first');
+  assert.deepEqual(f.errors[0].cleanupErrors.map(row => row.message), ['late control second', 'browse third', 'auth last']);
+  assert.deepEqual(f.calls, ['drain', 'browse', 'auth']);
+});
+
+test('failures during authentication cleanup remain visible before completion', async () => {
+  let release;
+  const pending = new Promise(resolve => {release = resolve;});
+  const f = model({auth: () => pending}); f.drain(); await f.authStarted;
+  f.context.begin('stop file', Error('auth-phase stop failure'));
+  assert.deepEqual(f.exits, []);
+  release(); await f.completed;
+  assert.deepEqual(f.exits, [1]);
+  assert.equal(f.errors[0].primaryError.message, 'auth-phase stop failure');
+  assert.deepEqual(f.calls, ['drain', 'browse', 'auth']);
+});
+
+test('late failure at incomplete drain stays unknown with no premature cleanup', async () => {
+  const f = model();
+  f.context.begin('stop file', Error('late incomplete failure'));
+  assert.equal(f.timers[0].duration, 5000);
+  f.timers[0].callback(); await f.completed;
+  assert.deepEqual(f.calls, ['drain']);
+  assert.deepEqual(f.exits, [1]);
+  assert.equal(f.errors[0].event, 'staging-shutdown-incomplete');
+  assert.equal(f.errors[0].primaryError.message, 'late incomplete failure');
+  assert.equal(f.errors[0].requestOutcome, 'unknown');
+  assert.equal(f.errors[0].databaseOutcome, 'unknown');
+});
+
+test('explicit caught undefined failure is distinct from an optional missing error', async () => {
+  const f = model();
+  f.context.begin('harmless repeat', undefined);
+  f.context.begin('caught undefined stop failure', undefined, true);
+  f.drain(); await f.completed;
+  assert.deepEqual(f.exits, [1]);
+  assert.equal(f.errors[0].primaryError.message, 'undefined');
+  assert.deepEqual(f.calls, ['drain', 'browse', 'auth']);
+});

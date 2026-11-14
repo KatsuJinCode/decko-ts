@@ -1,0 +1,59 @@
+import { runRubyTagProbeOnVm, runRubyNumericProbeOnVm } from "../../support/ruby-source-probe-vm.js";
+import {afterEach,beforeAll,expect,it} from 'vitest';
+import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
+import {resolve} from 'node:path';
+import {defineMod} from '../../../src/card/mod-loader/mod-dsl.js';
+import {ModLoader} from '../../../src/card/mod-loader.js';
+import {createRenderTestStorage,seedCard} from '../render/render-test-storage.js';
+import {formatTagNumber} from '../../../src/card/mod-loader/mod-tag-number.js';
+
+// Same JSON transport as the unchanged original-method probe: decimal
+// integer tokens become Ruby Integer; fractional/exponent tokens become Float.
+const numbers=[0,-0,1,-1,1.5,-1.5,0.1,0.10000000000000002,0.0001,0.00009999999999999999,
+  0.00010000000000000002,1e-5,-1e-5,1e-6,1e-7,1.234567890123456e-5,
+  1e14,1e15,Number.MAX_SAFE_INTEGER,1e20,1e21,-1e21,1.2345678901234568e21,
+  Number.MIN_VALUE,2.2250738585072014e-308,Number.MAX_VALUE,Number.EPSILON];
+const cases=numbers.map((value,index)=>({id:`numeric-${index}`,tag:'div',defaults:{class:[value],min:value},
+  options:{title:value,aria:{valuenow:value},data:{value,nested:{value,literal:'1e-7'},list:[value,'0.000001']}},content:value}));
+const prototype={id:'prototype-default-and-invocation',tag:'section',
+  defaults:JSON.parse('{"__proto__":"default","constructor":"default constructor"}'),
+  options:JSON.parse('{"__proto__":"invocation","constructor":"own constructor","toString":"own string"}'),content:'cake'};
+const requests=[...cases,prototype];
+let reference:{baseline:unknown,cases:Array<{id:string,body:string}>};
+beforeAll(()=>{
+  const native=runRubyTagProbeOnVm(JSON.stringify(requests));
+  expect(native.status,native.stderr).toBe(0);reference=JSON.parse(native.stdout);
+  const fixture=JSON.parse(readFileSync(resolve('tests/card/mod-loader/fixtures/declared-tag-wrapper-native.json'),'utf8'));delete fixture.probeSha256;
+  expect(reference.baseline).toEqual(fixture);mkdirSync(resolve('tmp'),{recursive:true});
+  writeFileSync(resolve('tmp/tag-180-181-native-edges.json'),native.stdout);
+}, 120_000);
+const cleanups:Array<()=>void>=[];
+afterEach(()=>{while(cleanups.length)cleanups.pop()!();});
+for(const request of requests)it(`matches native tag number/prototype edge ${request.id}`,async()=>{
+  const storage=await createRenderTestStorage();cleanups.push(()=>storage.close());
+  await seedCard(storage,{id:2,name:'RichText',codename:'basic'});await seedCard(storage,{id:500,name:'Number Example',typeId:2});
+  const original=JSON.stringify(request.options),before=Object.getPrototypeOf(request.options);
+  const manifest=defineMod('number_edges',({set})=>set('all/number_edges',({format})=>format('html',({wrapper,view})=>{
+    wrapper('number',request.tag,request.defaults);
+    view('number_edge',{perms:'none'},ctx=>ctx.fmt.callFormatMethod('wrap_with_number',request.content,request.options) as string);
+  })));
+  const loader=new ModLoader([{manifest}],{});cleanups.push(()=>loader.reset());loader.load();storage.engine.modLoader=loader;
+  const expected=reference.cases.find(row=>row.id===request.id);
+  expect({id:request.id,body:await storage.engine.render('Number Example','number_edge')}).toEqual(expected);
+  expect(JSON.stringify(request.options)).toBe(original);expect(Object.getPrototypeOf(request.options)).toBe(before);
+  expect(Object.getPrototypeOf({})).toBe(Object.prototype);
+});
+
+it('compares numeric conversion with installed Ruby across deterministic binary exponents and significands',()=>{
+  const buffer=new DataView(new ArrayBuffer(8)),values:number[]=[];
+  for(const exponent of [0,1,100,512,1000,1008,1009,1010,1022,1023,1024,1074,1075,1100,2046])
+    for(const significand of [0n,1n,0x5555555555555n,0xaaaaaaaaaaaaan,0xffffffffffffen,0xfffffffffffffn])
+      for(const sign of [0n,1n]){
+        buffer.setBigUint64(0,(sign<<63n)|(BigInt(exponent)<<52n)|significand);
+        values.push(buffer.getFloat64(0));
+      }
+  const native=runRubyNumericProbeOnVm('a=JSON.parse(STDIN.read);puts JSON.generate({runtime:RUBY_DESCRIPTION,digits:Float::DIG,rows:a.map{|v|{type:v.class.name,string:v.to_s}}})',JSON.stringify(values));
+  expect(native.status,native.stderr).toBe(0);const observed=JSON.parse(native.stdout);
+  writeFileSync(resolve('tmp/tag-180-181-binary-differential.json'),JSON.stringify({values,...observed},null,2));
+  expect(values.map(formatTagNumber)).toEqual(observed.rows.map((row:{string:string})=>row.string));
+}, 120_000);

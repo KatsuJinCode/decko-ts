@@ -1,0 +1,42 @@
+import assert from 'node:assert/strict';
+import { existsSync } from 'node:fs';
+import { test } from 'node:test';
+
+const root = new URL('../../', import.meta.url);
+
+const removedCaptures = [
+  'fixtures/captured/coderay/json-tinymce-corpus-53.html',
+  'fixtures/captured/coderay/css-corpus-198.html',
+  'fixtures/captured/coderay/html-layout-corpus-314.html',
+  'fixtures/captured/coderay/html-layout-shard1-2339.html',
+  'fixtures/captured/coderay/html-layout-shard1-2347.html',
+  'fixtures/captured/coderay/html-layout-shard1-2575.html',
+  'fixtures/captured/coderay/layout-type-template-default-layout.html',
+  'fixtures/captured/sass-style-pages/customized-variables-contents.json',
+  'fixtures/captured/sass-style-pages/oracle-main-slot-regions.json',
+  'fixtures/captured/promised-deliverable-workbatch-h-20261025/pd-6-edge-signed-in-a253.json',
+];
+
+test('private-deck captures and their dependent suites stay removed', () => {
+  for (const relative of [
+    ...removedCaptures,
+    'tests/card/render/bootstrap-code-file-pages.test.ts',
+    'tests/card/render/css-setting-addresses.test.ts',
+    'tests/card/mod-loader/card-mod-css-setting-address.test.ts',
+  ]) {
+    assert.equal(existsSync(new URL(relative, root)), false, relative);
+  }
+});
+
+test('synthetic Ruby captures and gem-only probes stay available', () => {
+  for (const relative of [
+    'fixtures/captured/smoke.json',
+    'fixtures/captured/layout-one-line.json',
+    'fixtures/captured/rules-views.json',
+    'fixtures/oracle-surfaces/card-mod-account.harness.jsonl',
+    'fixtures/captured/coderay/html-scanner-tag-shapes.html',
+    'fixtures/captured/coderay-known-divergence/html-scanner-script-style-body-subscanner-not-ported.html',
+  ]) {
+    assert.equal(existsSync(new URL(relative, root)), true, relative);
+  }
+});

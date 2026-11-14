@@ -1,0 +1,30 @@
+// tools/required-environment-path.mjs
+//
+// WHAT THIS IS: the one way a developer tool in this repository learns where
+// an outside file lives (a secrets file, a credentials file, a local deck
+// copy, a roster kept outside the repository). The location comes from a
+// named environment variable, and there is no default: when the variable is
+// unset the tool stops at once with an error that names the variable and
+// says what it must point at.
+//
+// WHY: a hard-coded default path ties this repository to whatever folder
+// layout one machine happened to have, and can silently read files that
+// belong to an unrelated project. Naming the variable keeps the repository
+// standing on its own; tests/tools/no-external-project-paths.test.mjs
+// refuses any tracked file that names another project's folder.
+
+/**
+ * The value of environment variable `name`, or a thrown error naming it.
+ * @param {string} name the environment variable, for example DECKO_SECRETS_FILE
+ * @param {string} meaning what the variable must point at, in plain words
+ * @returns {string}
+ */
+export function requiredEnvironmentPath(name, meaning) {
+  const value = process.env[name];
+  if (value === undefined || value.trim() === "") {
+    throw new Error(
+      `${name} is not set. Set ${name} to ${meaning}. There is no default location.`,
+    );
+  }
+  return value;
+}

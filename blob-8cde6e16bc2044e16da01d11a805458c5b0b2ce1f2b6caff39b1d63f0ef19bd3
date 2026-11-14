@@ -1,0 +1,325 @@
+{
+  "step": 1,
+  "label": "create rule host",
+  "detail": {
+    "ok": true,
+    "kind": "create",
+    "value": 3377
+  },
+  "state": {
+    "probe_card_ids": [
+      15,
+      483,
+      484,
+      485,
+      486,
+      487,
+      3377
+    ],
+    "cards": [
+      {
+        "id": 15,
+        "name": "Mod",
+        "key": "mod",
+        "codename": "mod",
+        "left_id": null,
+        "right_id": null,
+        "trash": 0,
+        "type_id": 3,
+        "db_content": "",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*all",
+        "read_rule_id": 10,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2025-07-01 17:29:25",
+        "updated_at": "2025-07-01 17:29:25"
+      },
+      {
+        "id": 483,
+        "name": "*recent settings",
+        "key": "*recent_setting",
+        "codename": "recent_settings",
+        "left_id": null,
+        "right_id": null,
+        "trash": 0,
+        "type_id": 2,
+        "db_content": "*follow\n*script\n*structure\n*layout\n*captcha\n*read\n*input type\n*create",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*self",
+        "read_rule_id": 486,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2025-07-01 17:31:42",
+        "updated_at": "2026-10-03 23:01:43.190505"
+      },
+      {
+        "id": 484,
+        "name": null,
+        "key": null,
+        "codename": null,
+        "left_id": 483,
+        "right_id": 27,
+        "trash": 0,
+        "type_id": 5,
+        "db_content": "",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*all plus",
+        "read_rule_id": 486,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2025-07-01 17:31:42",
+        "updated_at": "2025-07-01 17:31:42"
+      },
+      {
+        "id": 485,
+        "name": null,
+        "key": null,
+        "codename": null,
+        "left_id": 484,
+        "right_id": 67,
+        "trash": 0,
+        "type_id": 4,
+        "db_content": "Anyone",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*all plus",
+        "read_rule_id": 486,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2025-07-01 17:31:42",
+        "updated_at": "2025-07-01 17:31:42"
+      },
+      {
+        "id": 486,
+        "name": null,
+        "key": null,
+        "codename": null,
+        "left_id": 484,
+        "right_id": 9,
+        "trash": 0,
+        "type_id": 4,
+        "db_content": "Anyone",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*all plus",
+        "read_rule_id": 486,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2025-07-01 17:31:42",
+        "updated_at": "2025-07-01 17:31:42"
+      },
+      {
+        "id": 487,
+        "name": null,
+        "key": null,
+        "codename": null,
+        "left_id": 484,
+        "right_id": 60,
+        "trash": 0,
+        "type_id": 98,
+        "db_content": "{\"type\":\"setting\"}",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*all plus",
+        "read_rule_id": 486,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2025-07-01 17:31:42",
+        "updated_at": "2025-07-01 17:31:42"
+      },
+      {
+        "id": 3377,
+        "name": "PersistProbe Ruled",
+        "key": "persist_probe_ruled",
+        "codename": null,
+        "left_id": null,
+        "right_id": null,
+        "trash": 0,
+        "type_id": 2,
+        "db_content": "r",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*all",
+        "read_rule_id": 10,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2026-10-09 07:18:18.287887",
+        "updated_at": "2026-10-09 07:18:18.287887"
+      }
+    ],
+    "card_acts": [
+      {
+        "id": 116060,
+        "card_id": 3377,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-09 07:18:18.376270"
+      }
+    ],
+    "card_actions": [
+      {
+        "id": 17,
+        "card_id": 15,
+        "card_act_id": 105328,
+        "super_action_id": null,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 560,
+        "card_id": 483,
+        "card_act_id": 105328,
+        "super_action_id": null,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 562,
+        "card_id": 484,
+        "card_act_id": 105328,
+        "super_action_id": 561,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 563,
+        "card_id": 485,
+        "card_act_id": 105328,
+        "super_action_id": 562,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 564,
+        "card_id": 486,
+        "card_act_id": 105328,
+        "super_action_id": 562,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 565,
+        "card_id": 487,
+        "card_act_id": 105328,
+        "super_action_id": 562,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11479,
+        "card_id": 3377,
+        "card_act_id": 116060,
+        "super_action_id": null,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      }
+    ],
+    "card_changes": [],
+    "card_references": [
+      {
+        "id": 316,
+        "referer_id": 485,
+        "referee_key": "anyone",
+        "referee_id": 180,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 317,
+        "referer_id": 486,
+        "referee_key": "anyone",
+        "referee_id": 180,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 318,
+        "referer_id": 487,
+        "referee_key": "setting",
+        "referee_id": 6,
+        "ref_type": "Q",
+        "is_present": null
+      },
+      {
+        "id": 5000,
+        "referer_id": 483,
+        "referee_key": "*follow",
+        "referee_id": 455,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5001,
+        "referer_id": 483,
+        "referee_key": "*script",
+        "referee_id": 302,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5002,
+        "referer_id": 483,
+        "referee_key": "*structure",
+        "referee_id": 28,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5003,
+        "referer_id": 483,
+        "referee_key": "*layout",
+        "referee_id": 494,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5004,
+        "referer_id": 483,
+        "referee_key": "*captcha",
+        "referee_id": 514,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5005,
+        "referer_id": 483,
+        "referee_key": "*read",
+        "referee_id": 9,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5006,
+        "referer_id": 483,
+        "referee_key": "*input_type",
+        "referee_id": 149,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5007,
+        "referer_id": 483,
+        "referee_key": "*create",
+        "referee_id": 66,
+        "ref_type": "L",
+        "is_present": null
+      }
+    ],
+    "card_virtuals": []
+  },
+  "codename_ids": {
+    "salt": 221,
+    "password": 216
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "runs": {
+    "a": "the 2026-11-03 Ruby 3.2.3 VM capture, committed as reference-harness/fixtures/synthetic-v1/expected",
+    "b": "a second complete Ruby 3.2.3 capture of synthetic-v1 on the same VM, 2026-11-03"
+  },
+  "environments": {
+    "a": {
+      "engine": "decko-ruby",
+      "ruby": "3.2.3",
+      "platform": "aarch64-linux-gnu",
+      "ruby_engine": "ruby",
+      "decko": "0.20.0",
+      "card": "1.110.0"
+    },
+    "b": {
+      "engine": "decko-ruby",
+      "ruby": "3.2.3",
+      "platform": "aarch64-linux-gnu",
+      "ruby_engine": "ruby",
+      "decko": "0.20.0",
+      "card": "1.110.0"
+    }
+  },
+  "axis": {
+    "axis": "same environment",
+    "detail": "3.2.3 on aarch64-linux-gnu"
+  },
+  "kinds": {
+    "render": {
+      "items": 1752,
+      "equal_raw": 402,
+      "equal_after_N1": 1350,
+      "equal_after_N1_N3": 0,
+      "class_token_order": 0,
+      "unclassified": 0
+    },
+    "semantics": {
+      "items": 2388,
+      "equal_raw": 2388,
+      "equal_after_N1": 0,
+      "equal_after_N1_N3": 0,
+      "class_token_order": 0,
+      "unclassified": 0
+    },
+    "scenarios": {
+      "items": 16,
+      "equal_raw": 15,
+      "equal_after_N1": 1,
+      "equal_after_N1_N3": 0,
+      "class_token_order": 0,
+      "unclassified": 0
+    }
+  },
+  "class_token_order": {
+    "items": 0,
+    "tags_reordered": 0
+  },
+  "unclassified": []
+}

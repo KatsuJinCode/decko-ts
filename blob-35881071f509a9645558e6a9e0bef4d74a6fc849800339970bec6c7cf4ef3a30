@@ -1,0 +1,35 @@
+require "stringio"
+require "json"
+
+# Reuse the existing disclosed original-method backing, not its expected
+# results. Retain its full observations and source hashes as custody.
+output = StringIO.new
+previous = $stdout
+begin
+  $stdout = output
+  load File.join(__dir__, "ruby-declared-tag-wrapper-probe.rb")
+ensure
+  $stdout = previous
+end
+baseline = JSON.parse(output.string)
+def symbols(value)
+  case value
+  when Hash then value.to_h { |key, item| [key.to_sym, symbols(item)] }
+  when Array then value.map { |item| symbols(item) }
+  else value
+  end
+end
+requests = JSON.parse(STDIN.read)
+results = requests.map.with_index do |request, index|
+  name = "attack_tag_#{index}"
+  TagProbeFormat.wrapper(name, request.fetch("tag").to_sym, symbols(request.fetch("defaults", {})))
+  format = TagProbeFormat.new
+  options = symbols(request.fetch("options", {}))
+  begin
+    body = format.public_send("wrap_with_#{name}", request.fetch("content"), options)
+    {id: request.fetch("id"), body: body}
+  rescue => error
+    {id: request.fetch("id"), error: {class: error.class.name, message: error.message}}
+  end
+end
+puts JSON.pretty_generate({baseline: baseline, cases: results})

@@ -1,0 +1,104 @@
+// Stock Ruby answers the protocol. The bridge only stages the database and
+// makes its committed MySQL state visible to the runner's SQLite snapshots.
+import { spawn } from "node:child_process";
+import { once } from "node:events";
+import { createInterface } from "node:readline";
+import { fileURLToPath } from "node:url";
+import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
+import { MysqlDriver } from "../../../src/server/drivers/mysql.js";
+import { copyMysqlIntoSqlite, loadSqliteIntoMysql } from "../ts-mysql/mysql-mirror.js";
+import { mysqlForHarness } from "../ts-mysql/mysql-start.js";
+
+if (process.platform !== "linux") throw new Error("RubyMysqlPlatformError: use the Windows launcher on Windows");
+if (!process.env.HARNESS_MYSQL_PORT) throw new Error("RubyMysqlOwnershipError: an explicitly managed MySQL server is required");
+const server = await mysqlForHarness();
+const database = `ruby_harness_${process.pid}`;
+const sqlite = new LocalSqliteDriver({ path: process.env.HARNESS_DECK!, readonly: false });
+const admin = await server.connect();
+await admin.query(`CREATE DATABASE \`${database}\` CHARACTER SET utf8mb3 COLLATE utf8mb3_unicode_ci`);
+await admin.end();
+const mysql = await MysqlDriver.connect({ port: server.port, database });
+let child: ReturnType<typeof spawn> | undefined;
+let exited: Promise<unknown> | undefined;
+let stopping = false;
+let unavailableReported = false;
+let copies = 0;
+let checks = 0;
+async function writeStamp(): Promise<string | null> {
+  try {
+    const observed = await mysql.query<{ name: string; writes: number | string }>(
+      "SELECT OBJECT_NAME AS name, COUNT_WRITE AS writes FROM performance_schema.table_io_waits_summary_by_table WHERE OBJECT_SCHEMA = ? ORDER BY OBJECT_NAME",
+      [database],
+    );
+    // Staging inserted the fixture's rows. A zero/absent counter cannot
+    // establish that instrumentation is active, so retain full copying.
+    if (observed.rows.some(row => Number(row.writes) > 0)) {
+      return JSON.stringify(observed.rows.map(row => [row.name, String(row.writes)]));
+    }
+    if (!unavailableReported) process.stderr.write("MySQL write counters are inactive; copying every response\n");
+    unavailableReported = true;
+  } catch (error) {
+    if (!unavailableReported) process.stderr.write(`MySQL write counters unavailable; copying every response: ${String(error)}\n`);
+    unavailableReported = true;
+  }
+  return null;
+}
+const quit = () => {
+  if (stopping) return;
+  stopping = true;
+  child?.stdin?.end(JSON.stringify({ op: "quit" }) + "\n");
+};
+process.once("SIGTERM", quit);
+process.once("SIGINT", quit);
+try {
+  await loadSqliteIntoMysql(sqlite, mysql);
+  let previousStamp = await writeStamp();
+  const launcher = fileURLToPath(new URL("../../oracle/run-adapter-mysql-linux.sh", import.meta.url));
+  child = spawn("bash", [launcher], {
+    windowsHide: true,
+    env: { ...process.env, HARNESS_MYSQL_URL: `mysql2://root@127.0.0.1:${server.port}/${database}` },
+    stdio: ["pipe", "pipe", "inherit"],
+  });
+  exited = once(child, "close");
+  child.once("error", error => { process.stderr.write(`Ruby launch failed: ${error.message}\n`); quit(); });
+  child.stdin!.on("error", error => { if (!stopping) process.stderr.write(`Ruby input failed: ${error.message}\n`); });
+  const input = createInterface({ input: process.stdin });
+  input.on("line", line => {
+    if (line.trim() === "") return;
+    const request = JSON.parse(line);
+    if (request.op === "quit") quit();
+    else if (!stopping) child!.stdin!.write(line + "\n");
+  });
+  input.once("close", quit);
+  try {
+    for await (const line of createInterface({ input: child.stdout! })) {
+      if (line.trim() === "") continue;
+      const answer = JSON.parse(line);
+      // Copy before forwarding even an error response: failed Ruby writes
+      // may still leave changes, and the runner must observe those too.
+      const currentStamp = await writeStamp();
+      checks++;
+      if (previousStamp === null || currentStamp === null || previousStamp !== currentStamp) {
+        await copyMysqlIntoSqlite(mysql, sqlite);
+        copies++;
+      }
+      previousStamp = currentStamp;
+      process.stdout.write(JSON.stringify(answer) + "\n");
+    }
+    const [code] = await exited as [number | null];
+    if (code !== 0) throw new Error(`Ruby oracle exited with ${code}`);
+  } finally {
+    input.close();
+    quit();
+    await exited;
+  }
+} finally {
+  process.stderr.write(`HARNESS_MYSQL_SYNC ${JSON.stringify({ checks, copies, unchanged: checks - copies })}\n`);
+  quit();
+  if (exited) await exited;
+  await mysql.close();
+  sqlite.close();
+  const cleanup = await server.connect();
+  try { await cleanup.query(`DROP DATABASE \`${database}\``); }
+  finally { await cleanup.end(); }
+}

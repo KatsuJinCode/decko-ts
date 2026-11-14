@@ -1,0 +1,155 @@
+import { readFileSync } from "node:fs";
+import { runInNewContext } from "node:vm";
+import { describe, expect, it } from "vitest";
+
+// The new-card type arguments the ACTUAL host builder produces.
+//
+// The native behavior this pins (executed from the pinned card gem - see
+// .runtime/adversarial-repair/minimax-account-view/probe-native-type-error.rb,
+// ruby exit 0):
+//
+//   mod/core/set/all/type.rb:87-96 extract_type_id! + :106-112 type_id_or_error
+//     type: 'Nonexistent Type'   -> type_id=nil, errors=[[:type, "Nonexistent Type is not a known type."]]
+//     type: '' (empty string)    -> type_id=nil, errors=[[:type, " is not a known type."]]
+//     type: 'Sign up' (valid)    -> type_id=12,  errors=[]
+//
+//   lib/card/fetch/card_class.rb:128-133 uri_fetch_opts
+//     card[type]='' + path type 'PathType' -> {type: ""}   (card[:type] wins: "" is TRUTHY in Ruby)
+//     card[] absent  + path type 'PathType' -> {type: "PathType"}
+//
+//   card-mod-edit-0.20.0/set/all/new.rb:142-144 new_type_preset?
+//     `params[:type] || voo.type` - the REQUEST's type param, NOT the card
+//     hash's card[:type]. A requested type therefore presets the form (the
+//     hidden card[type_id] field) even when the name does not resolve.
+//
+// TWO native params, TWO native jobs - and the host merges them into one:
+//   params[:type]          - the request's type (the /new/:type segment or
+//                             ?type=) -> drives new_type_preset? (the form preset).
+//   params[:card][:type]   - the card hash's type
+//                             -> drives the RESOLUTION (extract_type_id!).
+// Today the host uses one merged value for both, so an unresolved type loses
+// the preset AND the raw name, and Ruby's truthy empty string is skipped
+// entirely (JS falsiness).
+//
+// The defect legs are this repo's pinned-defect convention: each one still
+// asserts the native behavior and reports as PASSING only while the defect
+// stands - it goes RED the moment the host is fixed, which is the signal to
+// unwrap it. The host now keeps the raw type and the preset, so the markers
+// below are unwrapped and the legs assert the native behavior outright.
+
+const source = readFileSync(new URL("../../vm-staging-server.mjs", import.meta.url), "utf8");
+function nativeFunction(signature: string): string {
+  const start = source.indexOf(signature);
+  expect(start, `Missing host function: ${signature}`).toBeGreaterThanOrEqual(0);
+  const end = source.indexOf("\n}", start);
+  expect(end, `Missing host function boundary: ${signature}`).toBeGreaterThan(start);
+  return source.slice(start, end + 2);
+}
+
+const builder = nativeFunction("async function newCardRenderParams(");
+
+/** Run the actual host builder; only `known` names resolve. */
+async function build({
+  query = "",
+  routeType,
+  known = [],
+}: {
+  query?: string;
+  routeType?: string;
+  known?: string[];
+}): Promise<{ newCard: Record<string, unknown>; fetched: string[] }> {
+  const fetched: string[] = [];
+  const { newCard } = await runInNewContext(
+    `${builder}; newCardRenderParams(undefined, query, routeType)`,
+    {
+      query: new URLSearchParams(query),
+      routeType,
+      fetcher: {
+        async fetchByName(name: string) {
+          fetched.push(name);
+          return known.includes(name) ? { id: 12 } : undefined;
+        },
+      },
+    },
+  );
+  return { newCard, fetched };
+}
+
+describe("the actual new-card argument builder", () => {
+  it("keeps the raw type name and the request's preset for an UNKNOWN request type", async () => {
+    // Native: params[:type] is present, so the form is preset, and the card
+    // carries the type error (type.rb:106-112).
+    const { newCard } = await build({ query: "type=No+Such+Type" });
+    expect(newCard.typeId).toBeUndefined();
+    expect(newCard.typePreset).toBe(true);
+    expect(newCard.typeName).toBe("No Such Type");
+  });
+
+  it("keeps the raw type name and does NOT preset for an UNKNOWN card-hash type", async () => {
+    // Native: the resolution fails the same way, but params[:type] is absent,
+    // so the form is not preset - it keeps the type dropdown.
+    const { newCard } = await build({ query: "card[type]=No+Such+Type" });
+    expect(newCard.typeId).toBeUndefined();
+    expect(newCard.typePreset).toBe(false);
+    expect(newCard.typeName).toBe("No Such Type");
+  });
+
+  it("keeps an EMPTY card-hash type (Ruby's truthy empty string)", async () => {
+    // Ruby: "" is truthy, so card[type]="" takes the type branch and errors
+    // with an empty val (" is not a known type."); params[:type] stays absent,
+    // so the form is not preset.
+    const { newCard } = await build({ query: "card[type]=" });
+    expect(newCard.typeId).toBeUndefined();
+    expect(newCard.typePreset).toBe(false);
+    expect(newCard.typeName).toBe("");
+  });
+
+  it("keeps an EMPTY request type, which is present and therefore presets the form", async () => {
+    const { newCard } = await build({ query: "type=" });
+    expect(newCard.typePreset).toBe(true);
+    expect(newCard.typeName).toBe("");
+  });
+
+  it("keeps the raw type name of a RESOLVABLE request type", async () => {
+    const { newCard } = await build({ query: "type=Sign+up", known: ["Sign up"] });
+    expect(newCard.typeId).toBe(12);
+    expect(newCard.typePreset).toBe(true);
+    expect(newCard.typeName).toBe("Sign up");
+  });
+
+  it("does NOT preset the form for a RESOLVABLE card-hash type", async () => {
+    // Native: params[:type] is absent, so the form keeps the type dropdown
+    // even though the card's type resolved.
+    const { newCard } = await build({ query: "card[type]=Sign+up", known: ["Sign up"] });
+    expect(newCard.typeId).toBe(12);
+    expect(newCard.typePreset).toBe(false);
+    expect(newCard.typeName).toBe("Sign up");
+  });
+
+  it("keeps the raw type name and the preset for an UNKNOWN /new/:type route type", async () => {
+    // The route segment IS params[:type] in Rails, so an unknown route type
+    // presets the form exactly like an unknown query type does.
+    const { newCard } = await build({ routeType: "No Such Type" });
+    expect(newCard.typeId).toBeUndefined();
+    expect(newCard.typePreset).toBe(true);
+    expect(newCard.typeName).toBe("No Such Type");
+  });
+
+  it("resolves a valid typed signup's type id", async () => {
+    // The positive control that already holds: the resolved type id is the
+    // signup card.
+    const { newCard, fetched } = await build({ query: "type=Sign+up", known: ["Sign up"] });
+    expect(newCard.typeId).toBe(12);
+    expect(fetched).toEqual(["Sign up"]);
+  });
+
+  it("keeps the native precedence: card[type] first, then the route type, then the query type", async () => {
+    // The precedence the host already implements (uri_fetch_opts:128-133).
+    const cardType = await build({ query: "card[type]=Card+Type&type=Query+Type", routeType: "Path Type" });
+    expect(cardType.fetched).toEqual(["Card Type"]);
+    const routeType = await build({ query: "type=Query+Type", routeType: "Path Type" });
+    expect(routeType.fetched).toEqual(["Path Type"]);
+    const queryType = await build({ query: "type=Query+Type" });
+    expect(queryType.fetched).toEqual(["Query Type"]);
+  });
+});

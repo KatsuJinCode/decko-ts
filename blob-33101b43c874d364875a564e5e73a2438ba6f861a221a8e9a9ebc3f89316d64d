@@ -1,0 +1,68 @@
+import assert from 'node:assert/strict';
+import {EventEmitter} from 'node:events';
+import path from 'node:path';
+import test from 'node:test';
+import {loadCandidate} from './test-gate-fixture.mjs';
+
+async function gate(initial, filesystemOverrides={}) {
+ const root=path.resolve('.'), env={...initial}, observed=[], logs=[];
+ const tree=new Map([[root,['tests','tools']],[path.join(root,'tests'),['card']],[path.join(root,'tests/card'),['temporary-env.test.ts']],[path.join(root,'tools'),['temporary-env.test.mjs']]]);
+ let allocation=0;
+ const candidate=await loadCandidate({
+  process:{execPath:process.execPath,pid:257,argv:['node','inert-test-entry.mjs','run','full'],env,exit(code){throw Error('unexpected gate exit:'+code);}},
+  readdirSync(directory){directory=path.resolve(directory);if(!tree.has(directory))throw Object.assign(Error('missing directory'),{code:'ENOENT'});return tree.get(directory).map(name=>({name,isDirectory:()=>tree.has(path.join(directory,name))}));},
+  existsSync:()=>false,
+  mkdirSync(){},mkdtempSync(prefix){return prefix+(++allocation);},
+  realpathSync:p=>path.resolve(p),lstatSync:()=>({isDirectory:()=>true,isSymbolicLink:()=>false}),
+  writeFileSync(){},unlinkSync(){},
+  resolvePythonExecutable:()=>process.execPath,
+  spawn(_exe,_args,options){observed.push({runner:'vitest',env:{...env},hidden:options.windowsHide});const child=new EventEmitter();queueMicrotask(()=>child.emit('close',0,null));return child;},
+  async runNodeTests(){observed.push({runner:'node',env:{...env}});return{pass:true,filesExecuted:1};},
+  console:{log(){},error(line){logs.push(line);}},...filesystemOverrides,
+ });
+ return{candidate,env,observed,logs,root,allocated:()=>allocation};
+}
+
+test('both gate runners inherit one fresh checkout-local temporary root instead of ambient directories',async()=>{
+ const outside=path.resolve('..','external-test-temp');
+ const f=await gate({TEMP:outside,TMP:outside+'-tmp',TMPDIR:outside+'-unix',DECKO_TEST_TEMP_ROOT:outside+'-scratch',KEEP_GATE_VALUE:'preserved'});
+ await f.candidate.command();
+ assert.equal(f.observed.length,2);
+ for(const child of f.observed){
+  const temp=child.env.TEMP;
+  assert(temp&&temp!==outside,'gate must replace inherited TEMP before either runner starts');
+  assert.equal(child.env.TMP,temp);assert.equal(child.env.TMPDIR,temp);assert.equal(child.env.DECKO_TEST_TEMP_ROOT,temp);
+  const relative=path.relative(f.root,temp);
+  assert(relative&&!relative.startsWith('..')&&!path.isAbsolute(relative),'temporary state stays under the checkout');
+  assert.equal(child.env.KEEP_GATE_VALUE,'preserved');
+ }
+ assert.equal(f.observed[0].env.TEMP,f.observed[1].env.TEMP);
+ assert.equal(f.observed[0].hidden,true);
+ assert.equal(f.allocated(),1);
+ assert(f.logs.some(line=>line.includes('"preflight":"temporary-state"')),'operator can see the selected temporary root');
+});
+
+test('gate preparation allocates a new temporary directory for every run without ambient variables',async()=>{
+ const f=await gate({});
+ await f.candidate.command();await f.candidate.command();
+ assert.equal(f.allocated(),2);
+ assert(f.observed[0].env.TEMP);
+ assert.notEqual(f.observed[0].env.TEMP,f.observed[2].env.TEMP);
+ assert.equal(f.observed[0].env.TEMP,f.observed[1].env.TEMP);
+ assert.equal(f.observed[2].env.TEMP,f.observed[3].env.TEMP);
+});
+
+test('a temporary directory creation error stops both runners with its original error',async()=>{
+ const failure=Object.assign(Error('temporary directory access refused'),{code:'EACCES'});
+ const f=await gate({}, {mkdirSync(){throw failure;}});
+ await assert.rejects(f.candidate.command(),error=>error===failure);
+ assert.deepEqual(f.observed,[]);
+ assert.equal(f.allocated(),0);
+});
+
+test('a redirected runtime directory is refused before allocation or either runner',async()=>{
+ const f=await gate({}, {lstatSync:()=>({isDirectory:()=>true,isSymbolicLink:()=>true})});
+ await assert.rejects(f.candidate.command(),/temporary directory is redirected/);
+ assert.deepEqual(f.observed,[]);
+ assert.equal(f.allocated(),0);
+});

@@ -1,0 +1,222 @@
+// Actual production classes and HTTP request handlers, fresh SQLite RAM data.
+// The TypeScript source loader caches modules, never test outcomes.
+import "../../support/typescript-source-loader.mjs";
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { registerHooks, stripTypeScriptTypes } from "node:module";
+import { DatabaseSync } from "node:sqlite";
+import { createHash } from "node:crypto";
+import { fileURLToPath } from "node:url";
+
+const { SessionStore } = await import("../../../src/card/auth/session-store.ts");
+const { SigninThrottle, signinSecurityPolicyFromEnv, configureSigninSecurity } =
+  await import("../../../src/card/auth/signin-security.ts");
+const { configurePasswordHashing } = await import("../../../src/card/auth/password-hash.ts");
+const { FetchEngine } = await import("../../../src/card/fetch.ts");
+const { DeckoName } = await import("../../../src/card/name.ts");
+const { handleWriteRequest, handleAuthOnlyRequest } = await import("../../../src/server/write-routes.ts");
+const { actorFromToken } = await import("../../../src/card/actions/engine-for-session.ts");
+
+const root = new URL("../../../", import.meta.url);
+const policy = signinSecurityPolicyFromEnv({});
+const EMAIL = "synthetic-review@example.invalid";
+const PASSWORD = "Synthetic-only-password-42";
+const HOLDER = 900;
+const ACCOUNT = 906;
+const STATUS = 910;
+const timestamp = "2026-01-01 00:00:00";
+
+function fixture() {
+  const db = new DatabaseSync(":memory:");
+  db.exec(readFileSync(new URL("db/schema.sqlite.sql", root), "utf8"));
+  db.exec(readFileSync(new URL("db/migrations/001-auth-sessions.sql", root), "utf8"));
+  const execute = (sql, params = []) => {
+    const stmt = db.prepare(sql);
+    if (stmt.columns().length) return { rows: stmt.all(...params), rowsAffected: 0 };
+    const result = stmt.run(...params);
+    return { rows: [], rowsAffected: Number(result.changes), lastInsertRowId: Number(result.lastInsertRowid) };
+  };
+  const connection = () => ({
+    query: async (sql, params) => execute(sql, params),
+    batch: async statements => statements.map(s => execute(s.sql, s.params)),
+    transaction: async work => {
+      db.exec("BEGIN IMMEDIATE");
+      try { const result = await work(); db.exec("COMMIT"); return result; }
+      catch (error) { db.exec("ROLLBACK"); throw error; }
+    },
+    transactionGuarantee: {
+      mechanism: "native", atomicOnFailure: true, crashRecovery: "database",
+      readersIsolated: true, serializedWriters: "database", atomicBatch: true, idsReusedAfterRollback: true,
+    },
+  });
+  function seed(id, name, code = null, left = null, right = null, content = null, type = 2) {
+    db.prepare("INSERT INTO cards (id,name,key,codename,left_id,right_id,db_content,trash,type_id,creator_id,updater_id,created_at,updated_at) VALUES(?,?,?,?,?,?,?,0,?,1,1,?,?)")
+      .run(id, left === null ? name : null, left === null ? DeckoName.parse(name).key : null,
+        code, left, right, content, type, timestamp, timestamp);
+  }
+  seed(2, "Basic", "basic", null, null, null, 3);
+  seed(3, "Cardtype", "cardtype", null, null, null, 3);
+  seed(HOLDER, "Review User");
+  for (const [id, code] of [[901, "account"], [902, "email"], [903, "password"], [904, "salt"], [905, "status"]]) seed(id, `*${code}`, code);
+  seed(ACCOUNT, "", null, HOLDER, 901);
+  seed(907, "", null, ACCOUNT, 902, EMAIL);
+  seed(908, "", null, ACCOUNT, 903, createHash("sha1").update(`salt--${PASSWORD}--`).digest("hex"));
+  seed(909, "", null, ACCOUNT, 904, "salt");
+  seed(STATUS, "", null, ACCOUNT, 905, "active");
+  const driver = connection();
+  return { db, driver, connection, seed, fetcher: new FetchEngine(driver), close: () => db.close() };
+}
+
+function request(pathname, fields = {}, token) {
+  return {
+    method: "POST", pathname, host: "review.example.invalid", scheme: "https",
+    headers: { origin: "https://review.example.invalid", "content-type": "application/x-www-form-urlencoded",
+      accept: "application/json", ...(token ? { cookie: `decko_ts_session=${token}` } : {}) },
+    body: new URLSearchParams(fields).toString(),
+  };
+}
+function signinRequest(password = PASSWORD) {
+  return request("/update/*signin.json", {
+    "card[subcards][+*email][content]": EMAIL,
+    "card[subcards][+*password][content]": password,
+  });
+}
+
+function allowSyntheticCreates(f) {
+  f.seed(7, "*all", "all", null, null, null, 300);
+  f.seed(8, "*default", "default", null, null, null, 3);
+  f.seed(9, "", null, 7, 8);
+  f.seed(300, "Set", "set");
+  f.seed(301, "*create", "create");
+  f.seed(304, "Anyone", "anyone");
+  f.seed(305, "", null, 7, 301, "[[Anyone]]", 300);
+  f.db.prepare("INSERT INTO card_references (referer_id,referee_id,referee_key,ref_type) VALUES(305,304,'anyone','L')").run();
+}
+
+for (const deleted of [[HOLDER], [ACCOUNT, STATUS], [HOLDER, ACCOUNT, STATUS]]) {
+  test(`deleted session state ${deleted.join(",")} is rejected in lookup and the HTTP write handler`, async () => {
+    const f = fixture();
+    configureSigninSecurity(policy);
+    try {
+      const sessions = new SessionStore({ driver: f.driver });
+      const { token } = await sessions.createSession(HOLDER);
+      assert.equal((await actorFromToken(f.driver, token))?.id, HOLDER);
+      allowSyntheticCreates(f);
+      const allowed = await handleWriteRequest(f, request("/card/create", { "card[name]": "Live session write", "card[content]": "accepted" }, token));
+      assert.equal(allowed?.status, 200, allowed?.body);
+      assert.equal(f.db.prepare("SELECT actor_id FROM card_acts ORDER BY id DESC LIMIT 1").get().actor_id, HOLDER);
+      f.db.prepare(`UPDATE cards SET trash=1 WHERE id IN (${deleted.map(() => "?").join(",")})`).run(...deleted);
+      assert.equal(await sessions.lookupSession(token), null);
+      assert.equal(await actorFromToken(f.driver, token), null);
+      const response = await handleWriteRequest(f, request("/card/create", { "card[name]": "Must not persist", "card[content]": "refused" }, token));
+      assert.equal(response?.status, 403, response?.body);
+      assert.equal(f.db.prepare("SELECT COUNT(*) AS n FROM cards WHERE name='Must not persist'").get().n, 0);
+    } finally { f.close(); configureSigninSecurity(undefined); }
+  });
+}
+
+test("a live account and an explicitly accountless holder still resolve", async () => {
+  const f = fixture();
+  try {
+    f.seed(950, "Accountless Holder");
+    const sessions = new SessionStore({ driver: f.driver });
+    for (const id of [HOLDER, 950]) {
+      const { token } = await sessions.createSession(id);
+      assert.equal((await sessions.lookupSession(token))?.id, id);
+    }
+    const noRevocation = new SessionStore({ driver: f.driver, revocation: false });
+    const { token } = await noRevocation.createSession(HOLDER);
+    f.db.prepare("UPDATE cards SET trash=1 WHERE id=?").run(ACCOUNT);
+    assert.equal(await noRevocation.lookupSession(token), null, "deleted account validity is not an optional password/status policy");
+  } finally { f.close(); }
+});
+
+async function concurrentCount(Throttle, initialFailures = 1) {
+  const f = fixture();
+  let ms = Date.parse("2026-10-27T12:00:00Z");
+  const now = () => new Date(ms);
+  const scopes = { account: "account:shared", address: "address:synthetic" };
+  const first = new Throttle(f.driver, policy, now);
+  const second = new Throttle(f.connection(), policy, now);
+  try {
+    for (let i = 0; i < initialFailures; i++) await first.recordFailure(scopes);
+    await Promise.all(Array.from({ length: 5 - initialFailures }, (_, i) => (i % 2 ? first : second).recordFailure(scopes)));
+    const row = f.db.prepare("SELECT * FROM auth_signin_throttle WHERE scope=?").get(scopes.account);
+    return { row, locked: await first.lockedUntil(scopes) };
+  } finally { f.close(); }
+}
+
+test("concurrent failures across two driver objects reach the threshold from an existing and absent counter", async () => {
+  for (const initial of [1, 0]) {
+    const result = await concurrentCount(SigninThrottle, initial);
+    assert.equal(result.row.failures, 5);
+    assert.equal(result.locked, "2026-10-27 12:15:00");
+  }
+});
+
+test("negative control: the immutable reviewed counter loses concurrent failures", async () => {
+  const baseline = "b72d9cfe18651908d4816d08125f7cbedbfc39f8";
+  const source = execFileSync("git", ["show", `${baseline}:src/card/auth/signin-security.ts`], { cwd: fileURLToPath(root), encoding: "utf8", windowsHide: true });
+  const url = "baseline-throttle:/signin-security.ts";
+  const hooks = registerHooks({
+    resolve(specifier, context, next) {
+      if (specifier === url) return { url, shortCircuit: true };
+      if (context.parentURL === url && specifier.startsWith(".")) {
+        return { url: new URL(specifier.replace(/\.js$/, ".ts"), new URL("src/card/auth/signin-security.ts", root)).href, shortCircuit: true };
+      }
+      return next(specifier, context);
+    },
+    load(id, context, next) {
+      if (id === url) return { format: "module", source: stripTypeScriptTypes(source, { mode: "transform" }), shortCircuit: true };
+      return next(id, context);
+    },
+  });
+  try {
+    const { SigninThrottle: BaselineThrottle } = await import(url);
+    const result = await concurrentCount(BaselineThrottle);
+    assert.equal(result.row.failures, 2);
+    assert.equal(result.locked, undefined);
+  } finally { hooks.deregister(); }
+});
+
+test("concurrent wrong-password HTTP requests lock the account; the correct password remains refused until expiry", async () => {
+  const f = fixture();
+  let ms = Date.now();
+  f.now = () => new Date(ms);
+  configureSigninSecurity(policy);
+  configurePasswordHashing({ mode: "legacy-sha1", iterations: 600000 });
+  try {
+    const send = () => handleAuthOnlyRequest(f, signinRequest(`${PASSWORD}-wrong`));
+    assert.equal((await send())?.status, 422);
+    const responses = await Promise.all(Array.from({ length: 4 }, send));
+    for (const response of responses) assert.equal(response?.status, 422, response?.body);
+    const locked = await handleAuthOnlyRequest(f, signinRequest());
+    assert.equal(locked?.status, 422);
+    assert.match(locked.body, /Too many failed sign-in attempts/);
+    assert.equal(f.db.prepare("SELECT COUNT(*) AS n FROM auth_sessions").get().n, 0);
+    ms += 901000;
+    const unlocked = await handleAuthOnlyRequest(f, signinRequest());
+    assert.equal(unlocked?.status, 303, unlocked?.body);
+    assert.ok(unlocked.headers["Set-Cookie"]);
+  } finally { f.close(); configureSigninSecurity(undefined); configurePasswordHashing(undefined); }
+});
+
+test("expired windows reset and a concurrent in-flight failure does not shorten the existing lock", async () => {
+  const f = fixture();
+  let ms = Date.parse("2026-10-27T12:00:00Z");
+  const t = new SigninThrottle(f.driver, { ...policy, maxAccountFailures: 1 }, () => new Date(ms));
+  const scopes = { account: "account:one" };
+  try {
+    await t.recordFailure(scopes);
+    assert.equal(await t.lockedUntil(scopes), "2026-10-27 12:15:00");
+    ms += 1000;
+    await t.recordFailure(scopes);
+    assert.equal(await t.lockedUntil(scopes), "2026-10-27 12:15:00");
+    ms += 901000;
+    await t.recordFailure(scopes);
+    assert.equal(f.db.prepare("SELECT failures FROM auth_signin_throttle").get().failures, 1);
+    assert.equal(await t.lockedUntil(scopes), "2026-10-27 12:30:02");
+  } finally { f.close(); }
+});

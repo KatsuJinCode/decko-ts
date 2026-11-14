@@ -1,0 +1,6 @@
+{
+  "name": "ts-production",
+  "description": "Current Node host, production password and asset refresh defaults. Distinct from Ruby row-parity profile; PBKDF2 upgrade row deltas remain visible.",
+  "command": ["node", "ts-server.mjs", "--production"],
+  "ready": "/__harness/ready"
+}

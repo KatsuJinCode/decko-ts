@@ -1,0 +1,25 @@
+# Boot the installed stock application with every writable path in this run.
+require "bundler/setup"
+require "fileutils"
+require "logger"
+root = ENV.fetch("PUBLIC_ORACLE_WORK")
+app = ENV.fetch("PUBLIC_ORACLE_APP")
+require File.join(app, "config/application")
+application = Rails.application
+application.config.paths["log"] = File.join(root, "rails.log")
+application.config.paths["tmp"] = File.join(root, "tmp")
+application.config.paths["public"] = File.join(root, "public")
+application.config.logger = Logger.new(File.join(root, "rails.log"))
+application.initialize!
+Cardio.paths["files"] = File.join(root, "files")
+Cardio.paths["public"] = File.join(root, "public")
+Cardio.paths["tmp"] = File.join(root, "tmp")
+Cardio.config.file_buckets = {}
+Cardio.config.file_default_storage = :local
+Cardio.config.asset_refresh = :never
+ActionMailer::Base.delivery_method = :test
+ActionMailer::Base.perform_deliveries = false
+Card::Auth.instance_variable_set(:@needs_setup, false)
+script = ARGV.shift
+load script
+ActiveRecord::Base.connection.execute("PRAGMA wal_checkpoint(TRUNCATE)")

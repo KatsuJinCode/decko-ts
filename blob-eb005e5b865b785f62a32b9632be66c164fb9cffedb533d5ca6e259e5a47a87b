@@ -1,0 +1,95 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { createHash } from 'node:crypto';
+
+const ordinaryParts = value => typeof value === 'string' && value.length > 0 &&
+  !value.includes('\\') && !value.includes(':') && !value.includes('\0') &&
+  value.split('/').every(part => part !== '' && part !== '.' && part !== '..');
+const pinnedDirectory = value => ordinaryParts(value) &&
+  /^card-mod-[a-z_]+-\d+\.\d+\.\d+\/assets\/(script|style)(\/[^/]+)*$/.test(value);
+
+function recordedLocation(recorded) {
+  if (typeof recorded !== 'string') throw Error('recorded-asset-path-invalid');
+  const normalized = recorded.replaceAll('\\', '/');
+  if (normalized.split('/').some(part => part === '.' || part === '..')) throw Error('recorded-asset-path-invalid');
+  const marker = normalized.lastIndexOf('/gems/');
+  if (marker < 0 || (!path.posix.isAbsolute(normalized) && !path.win32.isAbsolute(normalized))) throw Error('recorded-asset-path-invalid');
+  const relative = normalized.slice(marker + 6);
+  if (!pinnedDirectory(relative)) throw Error('recorded-asset-path-invalid');
+  return { relative, originalRoot: normalized.slice(0, marker + 5) };
+}
+
+function validateProfile(profile) {
+  if (profile?.schema !== 'decko-recorded-asset-sources/1' || !Array.isArray(profile.directories) ||
+      !profile.directories.length || !Array.isArray(profile.files) || !profile.files.length) throw Error('asset-source-profile-invalid');
+  const directories = new Set();
+  for (const directory of profile.directories) {
+    if (!pinnedDirectory(directory) || directories.has(directory)) throw Error('asset-source-profile-invalid');
+    directories.add(directory);
+  }
+  const files = new Map();
+  for (const row of profile.files) {
+    if (!row || !ordinaryParts(row.path) || !profile.directories.some(dir => row.path.startsWith(dir + '/')) ||
+        files.has(row.path) || !Number.isSafeInteger(row.bytes) || row.bytes < 0 || !/^[a-f0-9]{64}$/.test(row.sha256)) throw Error('asset-source-profile-invalid');
+    files.set(row.path, row);
+  }
+  return { directories, files };
+}
+
+function directoryWithoutLinks(directory) {
+  const absolute = path.resolve(directory);
+  const parsed = path.parse(absolute);
+  let current = parsed.root;
+  for (const part of absolute.slice(parsed.root.length).split(path.sep).filter(Boolean)) {
+    current = path.join(current, part);
+    const stat = fs.lstatSync(current);
+    if (stat.isSymbolicLink() || !stat.isDirectory()) throw Error('asset-source-directory-not-ordinary: ' + current);
+  }
+}
+
+/** Admit original or explicitly relocated gem sources by complete file membership
+ * and pinned bytes. An explicit selection never falls back to another tree. */
+export function qualifyRecordedAssetRoots(recordedPaths, gemHome, profile) {
+  const pins = validateProfile(profile);
+  if (!Array.isArray(recordedPaths) || !recordedPaths.length) throw Error('recorded-asset-path-invalid');
+  const locations = recordedPaths.map(recordedLocation);
+  const selected = new Set(locations.map(row => row.relative));
+  if (selected.size !== pins.directories.size || [...selected].some(dir => !pins.directories.has(dir))) throw Error('asset-source-directory-not-pinned');
+  let root;
+  if (gemHome === undefined) {
+    // Preserve the original unavailable-prerequisite gate. No substitute source
+    // is inferred when the caller has not selected one.
+    if (!recordedPaths.every(file => fs.existsSync(file))) return [...recordedPaths];
+    if (new Set(locations.map(row => row.originalRoot)).size !== 1) throw Error('recorded-asset-path-invalid');
+    root = path.resolve(locations[0].originalRoot);
+  } else {
+    if (typeof gemHome !== 'string' || gemHome !== gemHome.trim() || !path.isAbsolute(gemHome)) throw Error('reference-gem-home-invalid');
+    const home = path.resolve(gemHome);
+    root = path.basename(home) === 'gems' ? home : path.join(home, 'gems');
+  }
+  const actual = new Map();
+  const walk = directory => {
+    directoryWithoutLinks(directory);
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const full = path.join(directory, entry.name);
+      if (entry.isSymbolicLink()) throw Error('asset-source-entry-not-ordinary: ' + full);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.isFile()) actual.set(path.relative(root, full).replaceAll('\\', '/'), full);
+      else throw Error('asset-source-entry-not-ordinary: ' + full);
+    }
+  };
+  try {
+    directoryWithoutLinks(root);
+    for (const directory of selected) walk(path.join(root, ...directory.split('/')));
+    if (actual.size !== pins.files.size || [...actual.keys()].some(file => !pins.files.has(file))) throw Error('asset-source-membership-mismatch');
+    for (const [name, file] of actual) {
+      const bytes = fs.readFileSync(file);
+      const expected = pins.files.get(name);
+      if (bytes.length !== expected.bytes || createHash('sha256').update(bytes).digest('hex') !== expected.sha256) throw Error('asset-source-bytes-mismatch: ' + name);
+    }
+  } catch (cause) {
+    if (cause.code) throw new Error('asset-source-unavailable: ' + root, { cause });
+    throw cause;
+  }
+  return locations.map(row => path.join(root, ...row.relative.split('/')));
+}

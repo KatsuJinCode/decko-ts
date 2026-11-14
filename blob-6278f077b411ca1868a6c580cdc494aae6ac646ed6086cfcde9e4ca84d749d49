@@ -1,0 +1,34 @@
+// RED-first pins (search-nest posture switch):
+// - the posture lives behind ONE config seam;
+// - the DEFAULT is "write-time" (the chosen default for
+//   this read-mostly deck; this pin
+//   documents the chosen default, it does not foreclose the other posture);
+// - BOTH postures are exercised: write-time execution stores the result
+//   rows as data; live posture defers to render-time execution;
+// - the stored rows equal what the live CQL execution returns (result-set
+//   identity between the postures).
+//
+// Uses the shared deck database copy when present; the posture-shape pins run on a
+// synthetic fixture deck regardless.
+//
+// DECKO-818 mechanical separation: the write-time execution pin that needs
+// the shared deck mirror moved to search-nest-posture.corpus.test.ts (the
+// existing on-demand corpus gate); the two posture-seam pins below are
+// unchanged.
+
+import { describe, expect, it } from "vitest";
+import {
+  DEFAULT_SEARCH_NEST_POSTURE,
+  type SearchNestPosture,
+} from "../../../src/card/one-trip/search-nest-store.js";
+
+describe("search-nest posture seam", () => {
+  it("defaults to write-time execution (the design default)", () => {
+    expect(DEFAULT_SEARCH_NEST_POSTURE).toBe("write-time");
+  });
+
+  it("accepts both postures as typed values", () => {
+    const postures: SearchNestPosture[] = ["write-time", "live"];
+    expect(postures).toHaveLength(2);
+  });
+});

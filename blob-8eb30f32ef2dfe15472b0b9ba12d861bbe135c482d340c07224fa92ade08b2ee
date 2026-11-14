@@ -1,0 +1,6 @@
+{
+  "name": "bunny-local",
+  "description": "Actual Bunny engine request handler on Node over a local Hrana/SQLite test server. This exercises the host routes, not the deployed Bunny runtime or storage service.",
+  "command": ["node", "bunny-local-server.mjs"],
+  "ready": "/__harness/ready"
+}

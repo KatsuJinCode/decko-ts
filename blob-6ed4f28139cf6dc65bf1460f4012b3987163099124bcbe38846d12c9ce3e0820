@@ -1,0 +1,78 @@
+{
+  "sourceRevision": "25bc601d0",
+  "purpose": "Minimal historical inventory assertions; not fresh runtime or release evidence",
+  "receipts": [
+    {
+      "id": "reg-mods-1",
+      "source": "docs/runs/register-rows-roster-batch-2026-10-25/reg-mods-1/RECEIPT.md",
+      "sourceSha256": "1d909eb575127c0a159f2f23ca1a7fb27cb36b720d8ecb34033fe4295fbb14e9",
+      "target": "reg-mods-1/RECEIPT.md",
+      "excerptSha256": "ee1fcb8a6874ce65e8284ef28d62f8398639cca7a58e23b1655b4f29cdfd33a5",
+      "sourceBytes": 5550,
+      "excerptBytes": 30
+    },
+    {
+      "id": "reg-mods-12",
+      "source": "docs/runs/register-rows-roster-batch-2026-10-25/reg-mods-12/RECEIPT.md",
+      "sourceSha256": "040be4db6bc9a5bcb09defe115c32eaca0e2f5b77222a34d1fb631fc134c202a",
+      "target": "reg-mods-12/RECEIPT.md",
+      "excerptSha256": "578fdf7ac48d5835f8a52750ff326005f6e1fd72ddb03f9a46f6b4d1bf87be87",
+      "sourceBytes": 4782,
+      "excerptBytes": 31
+    },
+    {
+      "id": "reg-mods-17",
+      "source": "docs/runs/register-rows-roster-batch-2026-10-25/reg-mods-17/RECEIPT.md",
+      "sourceSha256": "f94e97ee8ecf05b5347683fe63a01f60c86f2ffefb3463214dd9c929e97d3913",
+      "target": "reg-mods-17/RECEIPT.md",
+      "excerptSha256": "3c4821655d28dbc381a6526d2fef453aa2aa5a5f7c041f0b75e783bca462f313",
+      "sourceBytes": 3131,
+      "excerptBytes": 31
+    },
+    {
+      "id": "reg-mods-22",
+      "source": "docs/runs/register-rows-roster-batch-2026-10-25/reg-mods-22/RECEIPT.md",
+      "sourceSha256": "6c072861785650626e1c4ee804947891c64d053307ad6cb88092ec93058fc303",
+      "target": "reg-mods-22/RECEIPT.md",
+      "excerptSha256": "0e6dbb1dc478b76e2d63efbce312050d586a84d16f03cdb74a4b514821c2013d",
+      "sourceBytes": 12566,
+      "excerptBytes": 176
+    },
+    {
+      "id": "reg-mods-23",
+      "source": "docs/runs/register-rows-roster-batch-2026-10-25/reg-mods-23/RECEIPT.md",
+      "sourceSha256": "f31b659382d5134d39b28a71580de3e8edb96b192d3d5aed7da88a1def1be07e",
+      "target": "reg-mods-23/RECEIPT.md",
+      "excerptSha256": "ed5b86562e23d4d026eac9736886cfc28140fc69e8a5f8d6176d9996c468dda1",
+      "sourceBytes": 4977,
+      "excerptBytes": 31
+    },
+    {
+      "id": "reg-mods-28",
+      "source": "docs/runs/register-rows-roster-batch-2026-10-25/reg-mods-28/RECEIPT.md",
+      "sourceSha256": "d4c5d3720c708731cd0b26df4ab7e2b737c369c1b4b6d208b66a1625bc38b23d",
+      "target": "reg-mods-28/RECEIPT.md",
+      "excerptSha256": "36bc7b4fb03bd894c96f1bd86c161418857104d895e0d7580d29e610a03f8902",
+      "sourceBytes": 4210,
+      "excerptBytes": 31
+    },
+    {
+      "id": "reg-mods-29",
+      "source": "docs/runs/register-rows-roster-batch-2026-10-25/reg-mods-29/RECEIPT.md",
+      "sourceSha256": "25c279612ed601ffb73800e7ee3eb34554aeb0b453be5008f1060b6ac3856cb5",
+      "target": "reg-mods-29/RECEIPT.md",
+      "excerptSha256": "150684b382355b47b7f64159e01a607a3113af397f6a97a06b946fb0b273f176",
+      "sourceBytes": 5466,
+      "excerptBytes": 31
+    },
+    {
+      "id": "reg-mods-33",
+      "source": "docs/runs/register-rows-roster-batch-2026-10-25/reg-mods-33/RECEIPT.md",
+      "sourceSha256": "529c131909180be263e328d1708ed18e1714e1029423a1e11acdd3a4eaf13a5d",
+      "target": "reg-mods-33/RECEIPT.md",
+      "excerptSha256": "0e789d997b5c8eb4f4686ebd1bc595b169c959d1e2c4994a7a6c6fc30ebdce0f",
+      "sourceBytes": 6032,
+      "excerptBytes": 31
+    }
+  ]
+}

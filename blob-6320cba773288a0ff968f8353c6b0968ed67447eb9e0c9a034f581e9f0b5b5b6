@@ -1,0 +1,20 @@
+import assert from 'node:assert/strict';
+import { expect } from './node-test-api.mjs';
+let controls = 0;
+async function pair(name, passes, fails) {
+  await passes(); controls++;
+  await assert.rejects(async () => { await fails(); }, undefined, `${name} negative control must fail`); controls++;
+}
+await pair('toBe', () => expect(1).toBe(1), () => expect(1).toBe(2));
+await pair('toEqual', () => expect({ x: [1] }).toEqual({ x: [1] }), () => expect({ x: [1] }).toEqual({ x: [2] }));
+await pair('toHaveLength', () => expect([1]).toHaveLength(1), () => expect([1]).toHaveLength(2));
+await pair('toBeGreaterThan', () => expect(2).toBeGreaterThan(1), () => expect(1).toBeGreaterThan(1));
+await pair('toBeGreaterThanOrEqual', () => expect(1).toBeGreaterThanOrEqual(1), () => expect(0).toBeGreaterThanOrEqual(1));
+await pair('not.toBe', () => expect(1).not.toBe(2), () => expect(1).not.toBe(1));
+await pair('rejects regex', () => expect(Promise.reject(Error('needle'))).rejects.toThrow(/needle/), () => expect(Promise.reject(Error('other'))).rejects.toThrow(/needle/));
+await pair('rejects type', () => expect(Promise.reject(TypeError('x'))).rejects.toBeInstanceOf(TypeError), () => expect(Promise.reject(Error('x'))).rejects.toBeInstanceOf(TypeError));
+await pair('rejects message substring', () => expect(Promise.reject(Error('prefix needle suffix'))).rejects.toThrow('needle'), () => expect(Promise.reject(Error('other'))).rejects.toThrow('needle'));
+await pair('rejects without argument', () => expect(Promise.reject(Error('anything'))).rejects.toThrow(), () => expect(Promise.resolve('not rejected')).rejects.toThrow());
+await pair('string matcher rejects fulfilled promise', () => expect(Promise.reject(Error('needle'))).rejects.toThrow('needle'), () => expect(Promise.resolve('needle')).rejects.toThrow('needle'));
+assert.equal(controls, 22);
+console.log(JSON.stringify({ controls, baselinePairedControls: 18, recoverySpecificControls: 4, positive: 11, negative: 11, pass: true }));

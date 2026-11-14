@@ -1,0 +1,35 @@
+// The manifest view-name reader the compat report and the porting harness
+// share (tools/compat-report/manifest-view-names.mjs): both manifest
+// spellings count, and calls that are not registrations do not.
+
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { manifestViewNames, manifestRegistersView } from "../../../tools/compat-report/manifest-view-names.mjs";
+
+function manifestSource(modFile: string): string {
+  return readFileSync(fileURLToPath(new URL(`../../../src/card/mod-loader/mods/${modFile}`, import.meta.url)), "utf8");
+}
+
+describe("manifestViewNames", () => {
+  it("reads the hand-written manifest object spelling", () => {
+    const src = `views: [{ view: "core", viewFn: a }, { view: "bar", viewFn: b }, {view:"core", viewFn: c}]`;
+    expect(manifestViewNames(src)).toEqual(["core", "bar"]);
+  });
+
+  it("reads the mod DSL spelling, with and without options", () => {
+    const src = `format("html", ({ view }) => {\n  view("debug", { perms: "always_ok?" }, debugView);\n  view( "views_by_name", fn);\n});`;
+    expect(manifestViewNames(src)).toEqual(["debug", "views_by_name"]);
+  });
+
+  it("does not count method calls or longer identifiers that end in view(", () => {
+    const src = `ctx.voo.view("title"); fmt.renderView("title"); subview("x"); $view("y"); preview("z");`;
+    expect(manifestViewNames(src)).toEqual([]);
+  });
+
+  it("finds the views the DSL-written manifests register", () => {
+    expect(manifestViewNames(manifestSource("card-mod-monkey.ts"))).toEqual(["debug", "views_by_format", "views_by_name"]);
+    expect(manifestRegistersView(manifestSource("card-mod-help.ts"), "popover")).toBe(true);
+    expect(manifestRegistersView(manifestSource("card-mod-markdown.ts"), "core")).toBe(true);
+  });
+});

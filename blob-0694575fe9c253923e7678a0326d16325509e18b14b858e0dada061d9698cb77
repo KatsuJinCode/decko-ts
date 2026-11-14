@@ -1,0 +1,21 @@
+export const PGLITE_MATRIX_LABEL = "PostgreSQL (PGlite WASM, one session)";
+const INDEPENDENT_SESSION_CASES = new Set([
+  "concurrent writes: two saves on two handles both commit, each with its own history",
+  "concurrent reads: a reader is never served a save's uncommitted rows",
+]);
+
+const reportedBackends = new Map<string, { readonly secondHandle: string }>();
+
+export function recordMatrixBackendCapability(label: string, backend: { readonly secondHandle: string }): void {
+  reportedBackends.set(label, backend);
+}
+
+/** Only these two pinned matrix cases have the approved capability disposition.
+ * Read the live backend object before each skip; missing or changed evidence
+ * must fail rather than silently retain an inapplicable classification. */
+export function assertCapabilityInapplicable(where: string, testName: string | undefined): boolean {
+  if (where !== `the ${PGLITE_MATRIX_LABEL} matrix cell` || !INDEPENDENT_SESSION_CASES.has(testName ?? "")) return false;
+  const reported = reportedBackends.get(PGLITE_MATRIX_LABEL)?.secondHandle;
+  if (reported !== "same-session") throw new Error(`PGliteCapabilityDispositionChanged: expected same-session, reported ${String(reported)}; run the independent-session cases`);
+  return true;
+}

@@ -1,0 +1,136 @@
+{
+  "contract": "A deck with no user account yet shows the setup form, and the first account created through it becomes an administrator.",
+  "facts": {
+    "check_setup_abort": "abort :failure unless Auth.needs_setup?",
+    "check_setup_event": "event :check_setup, before: :check_permissions, on: :create, trigger: :required do",
+    "needs_setup_cache_marker": "Card.cache.read(NEEDS_SETUP)",
+    "needs_setup_if_no_accounts": "user_account_count.zero?",
+    "needs_setup_method": "def needs_setup?",
+    "roles_for_first_user": "basket[:roles_for_first_user] = %i[help_desk shark administrator]",
+    "setup_button": "submit_button text: \"Set up\", disable_with: \"Setting up\"",
+    "setup_first_user_event": "event :setup_first_user, :finalize, on: :create, when: :setup? do",
+    "setup_first_user_roles": "basket[:roles_for_first_user].map(&:cardname).each do |role|",
+    "setup_hidden_success": "success: { redirect: true, mark: path(mark: \"\") }",
+    "setup_hidden_trigger": "trigger: %w[check_setup]",
+    "setup_title": "voo.title = \"Your deck is ready to go!\" # LOCALIZE",
+    "setup_view": "view :setup, unknown: true, perms: :needs_setup?, cache: :never do",
+    "signin_after_setup_body": "Auth.signin id",
+    "signin_after_setup_event": "event :signin_after_setup, :integrate, on: :create, when: :setup? do",
+    "user_account_count_method": "def user_account_count",
+    "user_account_count_query": "Card.count_by_cql cql",
+    "user_account_cql": "{ right: :account, creator_id: [\"ne\", Card::DeckoBotID] }"
+  },
+  "gem_home": "/RUBY_ORACLE_GEMS/ruby/3.4.0/gems",
+  "oracle": {
+    "check_setup_event": {
+      "file_sha256": "00f552ddfc9041001d6c3a2e1dbbe581f4d3fdde529d40afb7b5c9f6d799c20c",
+      "first_line": 50,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 57,
+      "marker": "event :check_setup, before: :check_permissions, on: :create, trigger: :required do",
+      "marker_line": 50,
+      "path": "set/type/user.rb",
+      "source": "event :check_setup, before: :check_permissions, on: :create, trigger: :required do\n  abort :failure unless Auth.needs_setup?\n  Auth.as_bot\n  @setup_approved = true\n  # we need bot authority to set the initial administrator roles\n  # this is granted and inspected here as a separate event for\n  # flexibility and security when configuring initial setups\nend"
+    },
+    "needs_setup": {
+      "file_sha256": "ad0ddc2b9afb5b348266d9801c2afce76400cae1fa8b92670b421696871f2055",
+      "first_line": 9,
+      "gem": "card-1.110.0",
+      "last_line": 15,
+      "marker": "def needs_setup?",
+      "marker_line": 9,
+      "path": "lib/card/auth/setup.rb",
+      "source": "      def needs_setup?\n        if @needs_setup == false || Card.cache.read(NEEDS_SETUP)&.to_s == \"false\"\n          @needs_setup = false\n        else\n          needs_setup_if_no_accounts\n        end\n      end"
+    },
+    "needs_setup_if_no_accounts": {
+      "file_sha256": "ad0ddc2b9afb5b348266d9801c2afce76400cae1fa8b92670b421696871f2055",
+      "first_line": 33,
+      "gem": "card-1.110.0",
+      "last_line": 36,
+      "marker": "def needs_setup_if_no_accounts",
+      "marker_line": 33,
+      "path": "lib/card/auth/setup.rb",
+      "source": "      def needs_setup_if_no_accounts\n        user_account_count.zero?.tap do |need|\n          Card.cache.write NEEDS_SETUP, false unless need\n        end"
+    },
+    "roles_for_first_user": {
+      "file_sha256": "00f552ddfc9041001d6c3a2e1dbbe581f4d3fdde529d40afb7b5c9f6d799c20c",
+      "first_line": 3,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 3,
+      "marker": "basket[:roles_for_first_user]",
+      "marker_line": 3,
+      "path": "set/type/user.rb",
+      "source": "basket[:roles_for_first_user] = %i[help_desk shark administrator]"
+    },
+    "setup_button": {
+      "file_sha256": "00f552ddfc9041001d6c3a2e1dbbe581f4d3fdde529d40afb7b5c9f6d799c20c",
+      "first_line": 35,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 37,
+      "marker": "def setup_button",
+      "marker_line": 35,
+      "path": "set/type/user.rb",
+      "source": "  def setup_button\n    submit_button text: \"Set up\", disable_with: \"Setting up\"\n  end"
+    },
+    "setup_first_user_event": {
+      "file_sha256": "00f552ddfc9041001d6c3a2e1dbbe581f4d3fdde529d40afb7b5c9f6d799c20c",
+      "first_line": 59,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 64,
+      "marker": "event :setup_first_user, :finalize, on: :create, when: :setup? do",
+      "marker_line": 59,
+      "path": "set/type/user.rb",
+      "source": "event :setup_first_user, :finalize, on: :create, when: :setup? do\n  subcard %i[signup_alert_email to].cardname, content: name\n  basket[:roles_for_first_user].map(&:cardname).each do |role|\n    subcard [role, :members].cardname, content: name\n  end\nend"
+    },
+    "setup_hidden_fields": {
+      "file_sha256": "00f552ddfc9041001d6c3a2e1dbbe581f4d3fdde529d40afb7b5c9f6d799c20c",
+      "first_line": 39,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 46,
+      "marker": "def setup_hidden_fields",
+      "marker_line": 39,
+      "path": "set/type/user.rb",
+      "source": "  def setup_hidden_fields\n    hidden_tags(\n      card: {\n        type_id: Card.default_accounted_type_id,\n        trigger: %w[check_setup]\n      },\n      success: { redirect: true, mark: path(mark: \"\") }\n    )"
+    },
+    "setup_view": {
+      "file_sha256": "00f552ddfc9041001d6c3a2e1dbbe581f4d3fdde529d40afb7b5c9f6d799c20c",
+      "first_line": 9,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 18,
+      "marker": "view :setup, unknown: true, perms: :needs_setup?, cache: :never do",
+      "marker_line": 10,
+      "path": "set/type/user.rb",
+      "source": "\n  view :setup, unknown: true, perms: :needs_setup?, cache: :never do\n    with_nest_mode :edit do\n      voo.title = \"Your deck is ready to go!\" # LOCALIZE\n      voo.show! :help\n      voo.hide! :menu\n      voo.help = haml :setup_help\n      Auth.as_bot { setup_form }\n    end\n  end"
+    },
+    "signin_after_setup_event": {
+      "file_sha256": "00f552ddfc9041001d6c3a2e1dbbe581f4d3fdde529d40afb7b5c9f6d799c20c",
+      "first_line": 66,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 68,
+      "marker": "event :signin_after_setup, :integrate, on: :create, when: :setup? do",
+      "marker_line": 66,
+      "path": "set/type/user.rb",
+      "source": "event :signin_after_setup, :integrate, on: :create, when: :setup? do\n  Auth.signin id\nend"
+    },
+    "user_account_count": {
+      "file_sha256": "ad0ddc2b9afb5b348266d9801c2afce76400cae1fa8b92670b421696871f2055",
+      "first_line": 48,
+      "gem": "card-1.110.0",
+      "last_line": 53,
+      "marker": "def user_account_count",
+      "marker_line": 48,
+      "path": "lib/card/auth/setup.rb",
+      "source": "      def user_account_count\n        cql = user_account_cql\n        cql[:not] = { id: [\"in\"].concat(@hidden_accounts) } if @hidden_accounts.present?\n        as_bot { Card.count_by_cql cql }\n      end\n    end"
+    },
+    "user_account_cql": {
+      "file_sha256": "ad0ddc2b9afb5b348266d9801c2afce76400cae1fa8b92670b421696871f2055",
+      "first_line": 43,
+      "gem": "card-1.110.0",
+      "last_line": 46,
+      "marker": "def user_account_cql",
+      "marker_line": 43,
+      "path": "lib/card/auth/setup.rb",
+      "source": "      def user_account_cql\n        # every deck starts with two accounts: DeckoBot and Anonymous\n        { right: :account, creator_id: [\"ne\", Card::DeckoBotID] }\n      end"
+    }
+  }
+}
