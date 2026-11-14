@@ -1,0 +1,8 @@
+// Source identity reads belong to the checkout named by the caller. Inherited
+// Git overrides must not redirect them to another repository, index or object
+// namespace. This is a child-only environment; process.env is unchanged.
+export function sourceGitEnvironment(inherited = process.env) {
+  const env = Object.fromEntries(Object.entries(inherited).filter(([key]) => !key.toUpperCase().startsWith("GIT_")));
+  env.GIT_OPTIONAL_LOCKS = "0";
+  return env;
+}

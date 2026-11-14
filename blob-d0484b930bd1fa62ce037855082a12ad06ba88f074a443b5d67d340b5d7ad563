@@ -1,0 +1,56 @@
+import {describe,expect,it} from 'vitest';
+import {LocalSqliteDriver} from '../../../src/server/drivers/local-sqlite.js';
+import {PostgresDriver} from '../../../src/server/drivers/postgres.js';
+import type {CardsRow} from '../../../src/server/schema.js';
+import type {SQLDatabaseDriver} from '../../../src/server/driver.js';
+import {DbLexicon} from '../../../src/card/fetch/lexicon.js';
+import {CardCache} from '../../../src/card/fetch/cache.js';
+import {DeckoName} from '../../../src/card/name.js';
+import {readCompositionBatch,rowsMatchingPointIdentity} from '../../../src/card/render/wave-read-statements.js';
+import { freshPglite } from "../../support/fresh-pglite.js";
+
+async function pointAccepted(driver:SQLDatabaseDriver,rows:CardsRow[]){
+ const composer=new DbLexicon(driver,new CardCache());
+ for(const row of rows)composer.noteIdToLexRow(row);
+ const names=await composer.names(rows.map(row=>row.id));
+ const reader=new DbLexicon(driver,new CardCache());
+ await reader.prefetchIds([...names.values()].filter(n=>n!==undefined));
+ const result:number[]=[];
+ for(const row of rows){const name=names.get(row.id);if(name!==undefined&&await reader.id(name)===row.id)result.push(row.id);}
+ return result;
+}
+
+describe('independent composition evidence differential',()=>{
+ for(const provider of ['sqlite','pglite'] as const){
+  it(`matches independent point reads over partial graph batches and fresh mutations on ${provider}`,async()=>{
+   const driver=provider==='sqlite'?new LocalSqliteDriver({path:':memory:'}):new PostgresDriver({client:await freshPglite()});
+   try{
+    await driver.query('CREATE TABLE cards(id INTEGER PRIMARY KEY,name TEXT,"key" TEXT UNIQUE,left_id INTEGER,right_id INTEGER,trash INTEGER NOT NULL DEFAULT 0)',[]);
+    const names=['Root','Field','Tail','DRIFT','+Relative','Two Words','Äther','A+B','_user'];
+    for(const [i,name] of names.entries())await driver.query('INSERT INTO cards VALUES(?,?,?,?,?,0)',[i+1,name,i===3?'DRIFT':DeckoName.parse(name).key,null,null]);
+    // Each pair has two possible IDs; descendants deliberately favor the
+    // higher parent by their final ID. Some sides are missing or malformed.
+    const pairs=[[1,2],[1,2],[11,3],[10,3],[3,10],[3,11],[4,2],[5,2],[6,7],[8,2],[9,3],[999,2],[10,999],[10,12],[11,13]];
+    for(const [i,[left,right]] of pairs.entries())await driver.query('INSERT INTO cards VALUES(?,NULL,NULL,?,?,0)',[10+i,left,right]);
+    const compare=async()=>{
+     const statements=[{sql:'SELECT * FROM cards WHERE id BETWEEN ? AND ? ORDER BY id DESC',params:[11,24]},
+      {sql:'SELECT * FROM cards WHERE id IN (10,12,14)',params:[]}];
+     const batches=await readCompositionBatch(driver,statements);
+     for(const batch of batches){
+      const rows=batch.rows as CardsRow[];
+      const expected=await pointAccepted(driver,rows);
+      expect((await rowsMatchingPointIdentity(driver,rows)).map(r=>r.id)).toEqual(expected);
+      // Cloning strips private evidence and forces the independent fallback.
+      expect((await rowsMatchingPointIdentity(driver,rows.map(r=>({...r})))).map(r=>r.id)).toEqual(expected);
+      expect(rows.every(r=>Object.keys(r).every(k=>!k.startsWith('identity_')))).toBe(true);
+     }
+    };
+    await compare();
+    await driver.query('UPDATE cards SET trash=1 WHERE id=10',[]);await compare();
+    await driver.query('UPDATE cards SET trash=0 WHERE id=10',[]);await compare();
+    await driver.query('UPDATE cards SET name=?,"key"=? WHERE id=2',['Renamed','renamed']);await compare();
+    await driver.query('UPDATE cards SET trash=1 WHERE id=1',[]);await compare();
+   }finally{await driver.close();}
+  });
+ }
+});

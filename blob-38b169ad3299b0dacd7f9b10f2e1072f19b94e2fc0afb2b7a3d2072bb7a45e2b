@@ -1,0 +1,585 @@
+{
+  "source": "tools/oracle/skin-stylesheet-probe.rb against the Ruby oracle deck after the side-effects scenarios (card 1.110.0, sassc 2.4.0 / LibSass 3.6.4)",
+  "parts": {
+    "bootstrap_functions": {
+      "sha256": "6e02d4efb4de20064188472dbb7245c4e737c43892d54f57c1f0deb2e8c11f3b",
+      "length": 10621
+    },
+    "bootstrap_core": {
+      "sha256": "483567cd8256ff458eb338a8dec5de004b030cad12677ef838169db55258e0a0",
+      "length": 239039
+    },
+    "style_mods_joined": {
+      "sha256": "366de0f96cdd92ac01520ffeff6c3ccf679f42992146e0208efb3e044ae168c9",
+      "length": 221050
+    }
+  },
+  "mod_style_cards": [
+    {
+      "name": "mod: format+*style",
+      "items": [
+        {
+          "name": "mod: format+*style+group: local",
+          "type": "local_style_folder_group",
+          "files": 6
+        }
+      ]
+    },
+    {
+      "name": "mod: list+*style",
+      "items": [
+        {
+          "name": "mod: list+*style+group: local",
+          "type": "local_style_folder_group",
+          "files": 1
+        }
+      ]
+    },
+    {
+      "name": "mod: permissions+*style",
+      "items": [
+        {
+          "name": "mod: permissions+*style+group: local",
+          "type": "local_style_folder_group",
+          "files": 1
+        }
+      ]
+    },
+    {
+      "name": "mod: help+*style",
+      "items": [
+        {
+          "name": "mod: help+*style+group: local",
+          "type": "local_style_folder_group",
+          "files": 1
+        }
+      ]
+    },
+    {
+      "name": "mod: search+*style",
+      "items": [
+        {
+          "name": "mod: search+*style+group: local",
+          "type": "local_style_folder_group",
+          "files": 1
+        }
+      ]
+    },
+    {
+      "name": "mod: rules+*style",
+      "items": [
+        {
+          "name": "mod: rules+*style+group: local",
+          "type": "local_style_folder_group",
+          "files": 1
+        }
+      ]
+    },
+    {
+      "name": "mod: edit+*style",
+      "items": [
+        {
+          "name": "mod: edit+*style+group: local",
+          "type": "local_style_folder_group",
+          "files": 2
+        }
+      ]
+    },
+    {
+      "name": "mod: account+*style",
+      "items": [
+        {
+          "name": "mod: account+*style+group: local",
+          "type": "local_style_folder_group",
+          "files": 1
+        }
+      ]
+    },
+    {
+      "name": "mod: history+*style",
+      "items": [
+        {
+          "name": "mod: history+*style+group: local",
+          "type": "local_style_folder_group",
+          "files": 1
+        }
+      ]
+    },
+    {
+      "name": "mod: carrierwave+*style",
+      "items": [
+        {
+          "name": "mod: carrierwave+*style+group: local",
+          "type": "local_style_folder_group",
+          "files": 1
+        }
+      ]
+    },
+    {
+      "name": "mod: api key+*style",
+      "items": [
+        {
+          "name": "mod: api key+*style+group: local",
+          "type": "local_style_folder_group",
+          "files": 1
+        }
+      ]
+    },
+    {
+      "name": "mod: style+*style",
+      "items": [
+        {
+          "name": "mod: style+*style+group: local",
+          "type": "local_style_folder_group",
+          "files": 2
+        }
+      ]
+    },
+    {
+      "name": "mod: bar and box+*style",
+      "items": [
+        {
+          "name": "mod: bar and box+*style+group: local",
+          "type": "local_style_folder_group",
+          "files": 3
+        }
+      ]
+    },
+    {
+      "name": "mod: bootstrap+*style",
+      "items": [
+        {
+          "name": "mod: bootstrap+*style+group: bootstrap_decko",
+          "type": "local_style_manifest_group",
+          "files": 1
+        },
+        {
+          "name": "mod: bootstrap+*style+group: libraries",
+          "type": "local_style_manifest_group",
+          "files": 3
+        },
+        {
+          "name": "mod: bootstrap+*style+group: select2",
+          "type": "local_style_manifest_group",
+          "files": 10
+        }
+      ]
+    },
+    {
+      "name": "mod: comment+*style",
+      "items": [
+        {
+          "name": "mod: comment+*style+group: local",
+          "type": "local_style_folder_group",
+          "files": 1
+        }
+      ]
+    },
+    {
+      "name": "mod: follow+*style",
+      "items": [
+        {
+          "name": "mod: follow+*style+group: local",
+          "type": "local_style_folder_group",
+          "files": 1
+        }
+      ]
+    },
+    {
+      "name": "mod: layout+*style",
+      "items": [
+        {
+          "name": "mod: layout+*style+group: local",
+          "type": "local_style_folder_group",
+          "files": 3
+        }
+      ]
+    },
+    {
+      "name": "mod: tinymce editor+*style",
+      "items": [
+        {
+          "name": "mod: tinymce editor+*style+group: local",
+          "type": "local_style_folder_group",
+          "files": 1
+        }
+      ]
+    }
+  ],
+  "skins": [
+    {
+      "name": "cerulean skin",
+      "codename": "cerulean_skin",
+      "theme": "cerulean",
+      "parent": null,
+      "colors": "",
+      "variables": "",
+      "stylesheets": null,
+      "content": {
+        "sha256": "aaa0f42b9e54eecdc54db5b24279ded7aa6e356e15a2ba6b605828a04d7eed7d",
+        "length": 473074
+      },
+      "compressed": {
+        "sha256": "ff501fc3e176abb76aa8dc05cdf6cf2ec5d2a46a2678d016fd506f6522ffaa26",
+        "length": 367727
+      }
+    },
+    {
+      "name": "cosmo skin",
+      "codename": "cosmo_skin",
+      "theme": "cosmo",
+      "parent": null,
+      "colors": "",
+      "variables": "",
+      "stylesheets": null,
+      "content": {
+        "sha256": "9779daf9d241dda8281edfe99af43238271f7d4403edc28215ab36eb6a88e37b",
+        "length": 472822
+      },
+      "compressed": {
+        "sha256": "43bc9f8f683be47d7049c41e018dcde3cd421aa05b87d469f41a49f8bb87489a",
+        "length": 355529
+      }
+    },
+    {
+      "name": "cyborg skin",
+      "codename": "cyborg_skin",
+      "theme": "cyborg",
+      "parent": null,
+      "colors": "",
+      "variables": "",
+      "stylesheets": null,
+      "content": {
+        "sha256": "00f60759815e6180d5ea74ca234c821bf9fe5d99da088807b2dc87ee9d58a20c",
+        "length": 478144
+      },
+      "compressed": {
+        "sha256": "d66f2cf22b0117c9bbdff788fe6c18e8583feb34c0b41411b5b8149e105dd733",
+        "length": 366003
+      }
+    },
+    {
+      "name": "darkly skin",
+      "codename": "darkly_skin",
+      "theme": "darkly",
+      "parent": null,
+      "colors": "$primary: #654321;",
+      "variables": "",
+      "stylesheets": null,
+      "content": {
+        "sha256": "044aa104ef6194437258d46b5734fcec969c4cd363222b0f2e4b2c3b90a5946e",
+        "length": 477329
+      },
+      "compressed": {
+        "sha256": "1462b63fa22e6e9f7efab9f4f71eb49b251482ffe11c9b9a504a7e64ce0a8c45",
+        "length": 365830
+      }
+    },
+    {
+      "name": "flatly skin",
+      "codename": "flatly_skin",
+      "theme": "flatly",
+      "parent": null,
+      "colors": "",
+      "variables": "",
+      "stylesheets": null,
+      "content": {
+        "sha256": "758a605b1149ca22db7b1453b05d55d33faf9cdaaf26cd7135ce446684f69bbe",
+        "length": 475742
+      },
+      "compressed": {
+        "sha256": "b6a893b2b6cfcacd3e9df227bdefa7c295121e7c1817c1cc6c2b9f4e02bcc9ad",
+        "length": 366487
+      }
+    },
+    {
+      "name": "journal skin",
+      "codename": "journal_skin",
+      "theme": "journal",
+      "parent": null,
+      "colors": "",
+      "variables": "",
+      "stylesheets": null,
+      "content": {
+        "sha256": "db47bc9b4f5bf304e180f582ecf4f392b18d56add05f6af19b32a079eee270b9",
+        "length": 473221
+      },
+      "compressed": {
+        "sha256": "fd7d3cf08143d615f517843adc4d2d1ec3cfaf1a5157ec6394801d4bf958527a",
+        "length": 365280
+      }
+    },
+    {
+      "name": "lumen skin",
+      "codename": "lumen_skin",
+      "theme": "lumen",
+      "parent": null,
+      "colors": "",
+      "variables": "",
+      "stylesheets": null,
+      "content": {
+        "sha256": "49648f38fec1a0522bf4242c9c3e99ed2913feae9a4ae3840cee97525b401bed",
+        "length": 478468
+      },
+      "compressed": {
+        "sha256": "efba5bd00ba0b672cc6b088945a13fb26c2eef584d9312010b5244a7700e3fc9",
+        "length": 370887
+      }
+    },
+    {
+      "name": "sandstone skin",
+      "codename": "sandstone_skin",
+      "theme": "sandstone",
+      "parent": null,
+      "colors": "",
+      "variables": "",
+      "stylesheets": null,
+      "content": {
+        "sha256": "811311ce237a8088f96d0229bdc5fe54167c8808f991aaa377fd47a84a57a0ae",
+        "length": 478426
+      },
+      "compressed": {
+        "sha256": "078ecce2c7c4cd3d037ef37abc40ce35c8e282f3a318952ef44a6958ea50ad8c",
+        "length": 367526
+      }
+    },
+    {
+      "name": "simplex skin",
+      "codename": "simplex_skin",
+      "theme": "simplex",
+      "parent": null,
+      "colors": "",
+      "variables": "",
+      "stylesheets": null,
+      "content": {
+        "sha256": "737e74c95014645e40f57ec0b938fa36ea242baa6f7d7259d949bbd1031d11b7",
+        "length": 475624
+      },
+      "compressed": {
+        "sha256": "9f4aff074bcb163798ccacbd748c9847862f169a69156f524b65a361011120df",
+        "length": 366501
+      }
+    },
+    {
+      "name": "slate skin",
+      "codename": "slate_skin",
+      "theme": "slate",
+      "parent": null,
+      "colors": "",
+      "variables": "",
+      "stylesheets": null,
+      "content": {
+        "sha256": "325490fc8effd46e798aaa807de8af3ef3aa68937a64527dc6eb9f25c22f7ec6",
+        "length": 482541
+      },
+      "compressed": {
+        "sha256": "78d34adbc470d801912f7701c3c554321bf899bd12f0069e3461434d66a5c225",
+        "length": 371972
+      }
+    },
+    {
+      "name": "spacelab skin",
+      "codename": "spacelab_skin",
+      "theme": "spacelab",
+      "parent": null,
+      "colors": "",
+      "variables": "",
+      "stylesheets": null,
+      "content": {
+        "sha256": "fa5ce926749943443c7d0d938df9d3c6081832cd5033b45b2bd08d1ccc38faa1",
+        "length": 473848
+      },
+      "compressed": {
+        "sha256": "19c618e2629f71d30818cccee9faf26cb192bbaeba556ee4845e84f98dfea3e7",
+        "length": 368536
+      }
+    },
+    {
+      "name": "superhero skin",
+      "codename": "superhero_skin",
+      "theme": "superhero",
+      "parent": null,
+      "colors": "",
+      "variables": "",
+      "stylesheets": null,
+      "content": {
+        "sha256": "6a38daa93ecb93280571f5c652fc32fb4cf2e38031f73a5044b185f60df624e2",
+        "length": 478265
+      },
+      "compressed": {
+        "sha256": "c5926ea411b39e0526cc80c4f75d67a23d3e38b74fd388ae905b72b9c9707696",
+        "length": 366368
+      }
+    },
+    {
+      "name": "united skin",
+      "codename": "united_skin",
+      "theme": "united",
+      "parent": null,
+      "colors": "",
+      "variables": "",
+      "stylesheets": null,
+      "content": {
+        "sha256": "ce6e96d202aae70a1df582f9675c155c270e4dfcce7fbcffdc316e160e654301",
+        "length": 472403
+      },
+      "compressed": {
+        "sha256": "efaf4a5f8c9382946f3b99d684c22afe3167190ef4730d1d38a995b8eb28db61",
+        "length": 365130
+      }
+    },
+    {
+      "name": "yeti skin",
+      "codename": "yeti_skin",
+      "theme": "yeti",
+      "parent": null,
+      "colors": "$primary: #123456;",
+      "variables": "",
+      "stylesheets": null,
+      "content": {
+        "sha256": "2039cb5daa5d4a471eb74bb248fcdd490a9ef3abcaa8a9f2758ac5228fc51299",
+        "length": 480095
+      },
+      "compressed": {
+        "sha256": "9837ba295af0daac9300ea0cc2b84048b083c5914c1d1924bc5ed88c4bad74ac",
+        "length": 369608
+      }
+    },
+    {
+      "name": "litera skin",
+      "codename": "litera_skin",
+      "theme": "litera",
+      "parent": null,
+      "colors": "",
+      "variables": "",
+      "stylesheets": null,
+      "content": {
+        "sha256": "da478816264cd91b8b088d3e29acd0944a423657ce418d23d3ce0485b1a81d92",
+        "length": 474861
+      },
+      "compressed": {
+        "sha256": "87f69eae1f0ec672f71c97474aaa4f6b4e4441e33fde6ab65823e58b8377111c",
+        "length": 369155
+      }
+    },
+    {
+      "name": "lux skin",
+      "codename": "lux_skin",
+      "theme": "lux",
+      "parent": null,
+      "colors": "",
+      "variables": "",
+      "stylesheets": null,
+      "content": {
+        "sha256": "b69566041d780c535b2cbc57d8ecbc80ba8528c03bc5fe40e804ce6fdd5f1933",
+        "length": 475987
+      },
+      "compressed": {
+        "sha256": "0270bb89b92e848ed04a3ddd9983297cd9ee8cf0aeca608dc1c5f894c57588f6",
+        "length": 356678
+      }
+    },
+    {
+      "name": "materia skin",
+      "codename": "materia_skin",
+      "theme": "materia",
+      "parent": null,
+      "colors": "",
+      "variables": "",
+      "stylesheets": null,
+      "content": {
+        "sha256": "cd1a85a89aa167d5339b2a46ad6234aacb6db11a960615269b4828c9f794fa87",
+        "length": 485898
+      },
+      "compressed": {
+        "sha256": "e72efd2ec867179c0066b6752b1bc76833ab90800efd94f9c20c6ab8b9a36373",
+        "length": 390753
+      }
+    },
+    {
+      "name": "minty skin",
+      "codename": "minty_skin",
+      "theme": "minty",
+      "parent": null,
+      "colors": "",
+      "variables": "",
+      "stylesheets": null,
+      "content": {
+        "sha256": "516a72a86bb6a36c1af36e778eecbb5b87ce4ae433ee801fee3a1b773d43e88a",
+        "length": 475508
+      },
+      "compressed": {
+        "sha256": "6644c7f8b4b359f3de439561bf75e521e3d23b782e4fa0bd326fb23d41eb0416",
+        "length": 366853
+      }
+    },
+    {
+      "name": "pulse skin",
+      "codename": "pulse_skin",
+      "theme": "pulse",
+      "parent": null,
+      "colors": "",
+      "variables": "",
+      "stylesheets": null,
+      "content": {
+        "sha256": "76c34aeb7e0e0d59f70da357fd29fb7444e0f6c643ff18b4f8b57c4cc34996a7",
+        "length": 475184
+      },
+      "compressed": {
+        "sha256": "f6d84c774be7b89dd2b4ebb7f54153350c335ede07f6d563d37f38123abfb320",
+        "length": 356713
+      }
+    },
+    {
+      "name": "solar skin",
+      "codename": "solar_skin",
+      "theme": "solar",
+      "parent": null,
+      "colors": "",
+      "variables": "",
+      "stylesheets": null,
+      "content": {
+        "sha256": "e662aa585249f552fe7f1a046522c1afd78afc77160a67c2ee8a6e74fb4bfb33",
+        "length": 478033
+      },
+      "compressed": {
+        "sha256": "16e1a78dec0fdf707845e8ba92414c2abba7817d7b352a358670d9ecf1463223",
+        "length": 366562
+      }
+    },
+    {
+      "name": "sketchy skin",
+      "codename": "sketchy_skin",
+      "theme": "sketchy",
+      "parent": null,
+      "colors": "",
+      "variables": "",
+      "stylesheets": null,
+      "content": {
+        "sha256": "29b8960fce48a47068f689ff6e69213dca34ecded82b0f89b397d5f374e5a25f",
+        "length": 482753
+      },
+      "compressed": {
+        "sha256": "8a7266d5859cb84db15be16f0ed0e2ca08063da3ca8aadfa36569deee6655486",
+        "length": 370088
+      }
+    },
+    {
+      "name": "Parity Skin",
+      "codename": "",
+      "theme": "",
+      "parent": null,
+      "colors": "",
+      "variables": "",
+      "stylesheets": null,
+      "content": {
+        "sha256": "54a4a256f6c51ed9506832d580b80713426ea789bc9c316d705cf7714f6735f2",
+        "length": 470717
+      },
+      "compressed": {
+        "sha256": "9cb969663f4747d7431c177ba2b05e8d736c9575de8ac326a1134e8ce37cb669",
+        "length": 365147
+      }
+    }
+  ]
+}

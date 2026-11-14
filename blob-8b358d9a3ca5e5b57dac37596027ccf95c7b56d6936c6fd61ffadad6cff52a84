@@ -1,0 +1,53 @@
+{
+  "entries": [
+    {
+      "check": "private-markers",
+      "file": "reference-harness/fixtures/synthetic-v1/expected-lanes/mysql/MANIFEST.json",
+      "line": 50,
+      "text": "\"what\": \"Cardio.config.raise_all_rendering_errors = false and Rails.env reporting production while a render runs: a nested view error renders inline without debug detail, as on a served production deck\"",
+      "reason": "Oracle contract text embedded in this expected-output manifest; contract_sha256 binds it to the reference-harness/oracle/contract.json the expected outputs were captured under, so rewording it would make the capture record disagree with its own hash. Production here is the Rails production environment any served Decko deck runs in, not a named or private deck."
+    },
+    {
+      "check": "private-markers",
+      "file": "reference-harness/fixtures/synthetic-v1/expected/MANIFEST.json",
+      "line": 50,
+      "text": "\"what\": \"Cardio.config.raise_all_rendering_errors = false and Rails.env reporting production while a render runs: a nested view error renders inline without debug detail, as on a served production deck\"",
+      "reason": "Oracle contract text embedded in this expected-output manifest; contract_sha256 binds it to the reference-harness/oracle/contract.json the expected outputs were captured under, so rewording it would make the capture record disagree with its own hash. Production here is the Rails production environment any served Decko deck runs in, not a named or private deck."
+    },
+    {
+      "check": "private-markers",
+      "file": "reference-harness/oracle/contract.json",
+      "line": 42,
+      "text": "\"what\": \"Cardio.config.raise_all_rendering_errors = false and Rails.env reporting production while a render runs: a nested view error renders inline without debug detail, as on a served production deck\"",
+      "reason": "This exact stock-oracle contract sentence describes the Rails production environment for any served deck, not private data. Ship its original bytes because recorded expected manifests bind this file's hash; the same sentence is already allowed in those captured manifests."
+    },
+    {
+      "check": "private-markers",
+      "file": "reference-harness/fixtures/synthetic-v2-mod-probes/expected/MANIFEST.json",
+      "line": 50,
+      "text": "\"what\": \"Cardio.config.raise_all_rendering_errors = false and Rails.env reporting production while a render runs: a nested view error renders inline without debug detail, as on a served production deck\"",
+      "reason": "Exact public stock-oracle contract sentence, preserved with the capture-bound contract hash. Production describes the Rails environment, not private data; the same sentence is allowed in the base reference manifests and original contract."
+    },
+    {
+      "check": "private-markers",
+      "file": "reference-harness/fixtures/synthetic-v2/expected/MANIFEST.json",
+      "line": 50,
+      "text": "\"what\": \"Cardio.config.raise_all_rendering_errors = false and Rails.env reporting production while a render runs: a nested view error renders inline without debug detail, as on a served production deck\"",
+      "reason": "Exact public stock-oracle contract sentence, preserved with the capture-bound contract hash. Production describes the Rails environment, not private data; the same sentence is allowed in the base reference manifests and original contract."
+    },
+    {
+      "check": "private-markers",
+      "file": "reference-harness/fixtures/synthetic-v3-mod-probes-ruby33/expected-historical-ruby34/MANIFEST.json",
+      "line": 50,
+      "text": "\"what\": \"Cardio.config.raise_all_rendering_errors = false and Rails.env reporting production while a render runs: a nested view error renders inline without debug detail, as on a served production deck\"",
+      "reason": "Exact public stock-oracle contract sentence, preserved with the capture-bound contract hash. Production describes the Rails environment, not private data; the same sentence is allowed in the base reference manifests and original contract."
+    },
+    {
+      "check": "private-markers",
+      "file": "reference-harness/fixtures/synthetic-v3-mod-probes-ruby33/expected-ruby32-render/MANIFEST.json",
+      "line": 50,
+      "text": "\"what\": \"Cardio.config.raise_all_rendering_errors = false and Rails.env reporting production while a render runs: a nested view error renders inline without debug detail, as on a served production deck\"",
+      "reason": "Exact public stock-oracle contract sentence, preserved with the capture-bound contract hash. Production describes the Rails environment, not private data; the same sentence is allowed in the base reference manifests and original contract."
+    }
+  ]
+}

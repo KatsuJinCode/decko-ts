@@ -1,0 +1,187 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import {scratchDir, scratchRoot, removeScratchDir} from './support/scratch-dir.mjs';
+import {applyConfiguredPublicPageShell, pinPublicPageShellFooterVersion, readPublicPageShellConfig} from '../configured-public-page-shell.mjs';
+
+const config = {version: 1, header: '<header>Current public navigation</header>', footer: '<footer>Current public credits</footer>',
+  headers: {'x-frame-options': 'ALLOWALL', 'strict-transport-security': 'max-age=31536000; includeSubDomains'}};
+const source = {status: 403, headers: {'Content-Type': 'text/html; charset=utf-8', 'Set-Cookie': 'fixture=unchanged'},
+  body: '<html><header>Old navigation</header><article id="main">Page-specific <b>content</b></article><footer>Old credits</footer></html>'};
+const opts = {config, method: 'GET', signedIn: false};
+
+test('configured regions retain content, status, cookies and input ownership', () => {
+  const changed = applyConfiguredPublicPageShell(source, opts);
+  assert.ok(changed.body.includes(config.header));
+  assert.ok(changed.body.includes(config.footer));
+  assert.ok(changed.body.includes('<article id="main">Page-specific <b>content</b></article>'));
+  assert.equal(changed.status, 403);
+  assert.equal(changed.headers['Set-Cookie'], 'fixture=unchanged');
+  assert.equal(changed.headers['x-frame-options'], 'ALLOWALL');
+  assert.equal(source.body.includes('Current'), false);
+});
+
+test('unset, signed-in, other-method and binary responses retain their original object', () => {
+  for (const altered of [{signedIn: true}, {method: 'POST'}, {method: 'HEAD'}, {config: null}]) {
+    assert.equal(applyConfiguredPublicPageShell(source, {...opts, ...altered}), source);
+  }
+  const binary = {status: 200, headers: {'content-type': 'image/png'}, body: Buffer.from([1, 2, 3])};
+  assert.equal(applyConfiguredPublicPageShell(binary, opts), binary);
+});
+
+test('quoted fake closing tags remain inside the actual opening tag', () => {
+  const body = '<html><body><header data-note="example> </header> tail">Old header</header><article>Protected</article><footer>Old footer</footer></body></html>';
+  assert.equal(applyConfiguredPublicPageShell({...source, body}, opts).body,
+    `<html><body>${config.header}<article>Protected</article>${config.footer}</body></html>`);
+});
+
+test('inactive examples and main content never become layout regions', () => {
+  for (const body of [
+    '<html><article id="main">No shared layout here</article></html>',
+    '<script>const example="<header>Literal</header>";</script><article><header>Article heading</header><pre><footer>Example</footer></pre></article>',
+    '<template><header>Example</header><footer>Example</footer></template><main><header>Main heading</header></main>',
+    '<div role="main"><header>Protected heading</header><footer>Protected credits</footer></div>',
+  ]) assert.equal(applyConfiguredPublicPageShell({...source, body}, opts).body, body);
+});
+
+test('raw text examples cannot consume either outer layout region', () => {
+  const header = '<header>Old</header>', footer = '<footer>Old</footer>';
+  for (const tag of ['script', 'style', 'title', 'pre', 'textarea', 'xmp', 'template', 'iframe', 'noembed', 'noframes', 'noscript']) {
+    const example = `<${tag}>${header}${footer}</${tag}>`;
+    assert.equal(applyConfiguredPublicPageShell({...source, body: example + header + '<main>Body</main>' + footer}, opts).body,
+      example + config.header + '<main>Body</main>' + config.footer, tag);
+  }
+  for (const tag of ['iframe', 'noembed', 'noframes', 'noscript']) {
+    const example = `<${tag}></article><script>unterminated literal ${header}${footer}</${tag}>`;
+    assert.equal(applyConfiguredPublicPageShell({...source, body: example + header + footer}, opts).body,
+      example + config.header + config.footer, tag);
+    const unclosed = `<${tag}>${header}${footer}`;
+    assert.equal(applyConfiguredPublicPageShell({...source, body: unclosed}, opts).body, unclosed);
+  }
+  const plaintext = `<plaintext>${header}</plaintext>${header}${footer}`;
+  assert.equal(applyConfiguredPublicPageShell({...source, body: plaintext}, opts).body, plaintext);
+});
+
+test('decoded main role tokens and foreign content are protected', () => {
+  const header = '<header>Protected</header>', footer = '<footer>Protected</footer>';
+  for (const role of ['main', 'm&#97;in', 'main region', ' main\tregion ', 'region main']) {
+    const protectedRegion = `<div role="${role}">${header}${footer}</div>`;
+    assert.equal(applyConfiguredPublicPageShell({...source, body: protectedRegion + header + footer}, opts).body,
+      protectedRegion + config.header + config.footer, role);
+  }
+  for (const tag of ['svg', 'math']) {
+    const foreign = `<${tag}>${header}${footer}</${tag}>`;
+    assert.equal(applyConfiguredPublicPageShell({...source, body: foreign + header + footer}, opts).body,
+      foreign + config.header + config.footer, tag);
+  }
+});
+
+test('explicit closing delimiters include legal whitespace and never borrow an implied close', () => {
+  for (const close of ['</header>', '</HeAdEr  >', '</header\t>', '</header\r\n>']) {
+    const body = `<HEADER title="x> </header> y">Old${close}<main>Body</main><FOOTER>Old</FOOTER\t>`;
+    assert.equal(applyConfiguredPublicPageShell({...source, body}, opts).body,
+      config.header + '<main>Body</main>' + config.footer, close);
+  }
+  for (const body of ['<header>Old<main>Body</main><footer>Old</footer>', '<header>Old<header>Nested</header>', '<header>Old</header']) {
+    assert.equal(applyConfiguredPublicPageShell({...source, body}, opts).body, body);
+  }
+});
+
+test('HTML is admitted by its exact media type and never by a parameter substring', () => {
+  for (const type of ['application/json; note=text/html', 'application/xhtml+xml', 'text/html-example', 'text/plain']) {
+    const response = {...source, headers: {'content-type': type}};
+    assert.equal(applyConfiguredPublicPageShell(response, opts), response);
+  }
+  assert.ok(applyConfiguredPublicPageShell({...source, headers: {'content-type': 'Text/HTML ; charset=utf-8'}}, opts).body.includes(config.header));
+});
+
+test('a preceding whitespace closing delimiter remains outside the replaced opening token', () => {
+  for (const prior of ['<div>X</div  >', '<div>X</div\t>', '<div>X</div\r\n>']) {
+    const body = prior + '<header>Old</header><footer>Old</footer>';
+    assert.equal(applyConfiguredPublicPageShell({...source, body}, opts).body, prior + config.header + config.footer);
+  }
+});
+
+test('self-closing foreign raw-name elements do not mask later HTML layout', () => {
+  for (const scope of ['svg', 'math']) for (const tag of ['iframe', 'noembed', 'noframes', 'noscript', 'plaintext']) {
+    const foreign = `<${scope}><${tag}/></${scope}>`;
+    const body = foreign + '<header>Old</header><footer>Old</footer>';
+    assert.equal(applyConfiguredPublicPageShell({...source, body}, opts).body, foreign + config.header + config.footer);
+  }
+});
+
+test('HTML integration children inside SVG and MathML retain literal raw text without swallowing outer layout', () => {
+  const tail = '<header>Old</header><main>Body</main><footer>Old</footer>';
+  const expected = config.header + '<main>Body</main>' + config.footer;
+  for (const container of ['foreignObject', 'desc', 'title']) for (const tag of ['iframe', 'noembed', 'noscript']) {
+    const prefix = `<svg><${container}><${tag}><script>literal</${tag}></${container}></svg>`;
+    assert.equal(applyConfiguredPublicPageShell({...source, body: prefix + tail}, opts).body, prefix + expected, container + tag);
+  }
+  for (const container of ['mi', 'mo', 'mn', 'ms', 'mtext', 'annotation-xml encoding="text/html"', 'annotation-xml encoding="APPLICATION/XHTML+XML"']) {
+    const name = container.split(' ')[0];
+    const prefix = `<math><${container}><iframe><script>literal</iframe></${name}></math>`;
+    assert.equal(applyConfiguredPublicPageShell({...source, body: prefix + tail}, opts).body, prefix + expected, container);
+  }
+  for (const tag of ['mglyph', 'malignmark']) {
+    const prefix = `<math><mtext><${tag}><iframe/></${tag}></mtext></math>`;
+    assert.equal(applyConfiguredPublicPageShell({...source, body: prefix + tail}, opts).body, prefix + expected, tag);
+  }
+  for (const container of ['mi', 'mo', 'mn', 'ms', 'mtext']) for (const exception of ['mglyph', 'malignmark']) {
+    const prefix = `<math><${container}><${exception}/><iframe><script>literal</iframe></${container}></math>`;
+    assert.equal(applyConfiguredPublicPageShell({...source, body: prefix + tail}, opts).body, prefix + expected, container + exception);
+  }
+  for (const exception of ['mglyph', 'malignmark']) for (const value of ['one/', 'https://example.test/']) {
+    const prefix = `<math><mtext><${exception} data-x=${value}><iframe/></${exception}></mtext></math>`;
+    assert.equal(applyConfiguredPublicPageShell({...source, body: prefix + tail}, opts).body, prefix + expected, exception + value);
+  }
+  const svgAttribute = '<svg><foreignObject><math><mtext><mglyph data-x=one/><iframe/></mglyph></mtext></math></foreignObject></svg>';
+  assert.equal(applyConfiguredPublicPageShell({...source, body: svgAttribute + tail}, opts).body, svgAttribute + expected);
+});
+
+test('deep layout wrappers use iterative traversal and transformed byte length stays accurate', () => {
+  const prefix = '<div>'.repeat(6000), suffix = '</div>'.repeat(6000);
+  const body = prefix + '<header>Old</header><footer>Old</footer>' + suffix;
+  assert.equal(applyConfiguredPublicPageShell({...source, body}, opts).body, prefix + config.header + config.footer + suffix);
+  const unicode = {...config, header: '<header>Current café navigation</header>'};
+  const changed = applyConfiguredPublicPageShell({...source, headers: {...source.headers, 'Content-Length': '1'}}, {...opts, config: unicode});
+  assert.equal(changed.headers['Content-Length'], String(Buffer.byteLength(changed.body)));
+  const overridden = applyConfiguredPublicPageShell(source, {...opts, config: {...unicode, headers: {'content-length': '2'}}});
+  assert.equal(overridden.headers['content-length'], String(Buffer.byteLength(overridden.body)));
+});
+
+test('both replacements use original ranges without rewriting inserted header content', () => {
+  const nested = {...config, header: '<header>Navigation<footer>Navigation note</footer></header>'};
+  const changed = applyConfiguredPublicPageShell(source, {...opts, config: nested});
+  assert.ok(changed.body.includes(nested.header));
+  assert.ok(changed.body.endsWith(config.footer + '</html>'));
+  assert.equal(changed.body.match(/Current public credits/g).length, 1);
+});
+
+test('only the explicit footer version changes and invalid values refuse', () => {
+  const credits = {...config, footer: '<footer><a href="https://example.test/credits">Decko v1.2.3</a><p>Other content 1.2.3</p></footer>'};
+  assert.equal(pinPublicPageShellFooterVersion(credits, '0.19.1').footer,
+    '<footer><a href="https://example.test/credits">Decko v0.19.1</a><p>Other content 1.2.3</p></footer>');
+  assert.ok(credits.footer.includes('Decko v1.2.3'));
+  for (const pin of [undefined, '']) assert.equal(pinPublicPageShellFooterVersion(credits, pin), credits);
+  for (const pin of ['<script>bad()</script>', {}, '0.19.1\n', ' 0.19.1']) assert.throws(() => pinPublicPageShellFooterVersion(credits, pin), /InvalidPublicPageShellFooterVersion/);
+});
+
+test('actual file loading validates config and HTTP header values before use', () => {
+  assert.equal(readPublicPageShellConfig(undefined), null);
+  const directory = scratchDir('public-shell-config-test-');
+  const file = path.join(directory, 'shell.json');
+  try {
+    fs.writeFileSync(file, JSON.stringify(config));
+    assert.deepEqual(readPublicPageShellConfig(file), config);
+    for (const invalid of [null, [], {...config, version: 2}, {...config, header: 'plain text'},
+      {...config, headers: {'x-test\n': 'bad'}}, {...config, headers: {'x-test': 'bad\r\nvalue'}}]) {
+      fs.writeFileSync(file, JSON.stringify(invalid));
+      assert.throws(() => readPublicPageShellConfig(file));
+    }
+  } finally {
+    assert.equal(path.dirname(directory), scratchRoot());
+    assert.ok(path.basename(directory).startsWith('public-shell-config-test-'));
+    removeScratchDir(directory);
+  }
+});

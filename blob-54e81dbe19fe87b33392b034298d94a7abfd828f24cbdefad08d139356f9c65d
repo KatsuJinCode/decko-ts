@@ -1,0 +1,97 @@
+# Runs installed, pinned Ruby methods over synthetic card/task/wrapper backing.
+# Usage: ruby this-file.rb DIRECTORY_CONTAINING_GEMS
+require "json"
+require "set"
+require "digest"
+gems = File.expand_path(ARGV.fetch(0))
+support = File.join(gems, "activesupport-7.2.4/lib")
+$LOAD_PATH.unshift support
+require "active_support/core_ext/array/wrap"
+require "active_support/core_ext/object/inclusion"
+class Card
+  class View; end
+  class Format; end
+end
+permission_source = File.join(gems, "card-1.110.0/lib/card/view/permission.rb")
+format_source = File.join(gems, "card-1.110.0/lib/card/format/error.rb")
+html_source = File.join(gems, "card-mod-format-0.20.0/set/all/html/error.rb")
+load permission_source
+load format_source
+html_methods = Module.new do
+  def self.format(_name, &block) = module_eval(&block)
+  def self.view(*) = nil # Registering view bodies is outside this method probe.
+end
+html_methods.module_eval(File.read(html_source), html_source)
+
+class ProbeCard
+  attr_reader :checks
+  def initialize(is_new: false)
+    @is_new, @checks = is_new, []
+  end
+  def known? = true
+  def new_card? = @is_new
+  def ok?(task)
+    @checks << task
+    task == :read
+  end
+end
+class ProbeFormat
+  include Card::Format::Error
+  attr_reader :card, :denied_task
+  def initialize(card, settings)
+    @card, @settings = card, settings
+  end
+  def view_setting(name, _view) = @settings[name]
+  def focal? = false
+  def can_configure? = false
+  def declared_custom_ok? = @settings.fetch(:predicate_value)
+  def wrap_with(tag, **attributes)
+    "<#{tag} class=\"#{attributes.fetch(:class)}\">#{yield}</#{tag}>"
+  end
+end
+ProbeFormat.include html_methods
+class ProbeView
+  include Card::View::Permission
+  attr_reader :card, :format, :requested_view, :normalized_options
+  def initialize(card, settings, skip: false)
+    @card, @format = card, ProbeFormat.new(card, settings)
+    @requested_view = :protected_probe
+    @normalized_options = {skip_perms: skip}
+  end
+  def unknown = nil
+end
+cases = [
+  {id: "read-default", settings: {}},
+  {id: "update-denied", settings: {perms: :update}},
+  {id: "none-skips", settings: {perms: :none}},
+  {id: "denial-blank", settings: {perms: :update, denial: :blank}},
+  {id: "read-then-update", settings: {perms: [:read, :update]}},
+  {id: "empty-permission-array", settings: {perms: []}},
+  {id: "new-update-checks-create-retains-update-label", settings: {perms: :update}, is_new: true},
+  {id: "configured-predicate-denied", settings: {perms: :can_configure?}},
+  {id: "missing-predicate-raises", settings: {perms: :missing_probe_predicate?}},
+  {id: "explicit-render-skip", settings: {perms: :update}, skip: true}
+]
+cases += [false, nil, 0, "", [], {}, true].each_with_index.map do |value, index|
+  {id: "declared-custom-truth-#{index}", settings: {perms: :declared_custom_ok?, predicate_value: value}}
+end
+results = cases.map do |scenario|
+  card = ProbeCard.new(is_new: scenario[:is_new] == true)
+  view = ProbeView.new(card, scenario[:settings], skip: scenario[:skip] == true)
+  begin
+    altered = view.send(:altered_view)
+    body = altered == :denial ? view.format.send(:quiet_denial) : nil
+    {id: scenario[:id], settings: scenario[:settings], substituted_view: altered,
+     denied_task: view.format.denied_task, denial_body: body,
+     checks: card.checks, body_would_run: altered.nil?}
+  rescue StandardError => error
+    {id: scenario[:id], settings: scenario[:settings], checks: card.checks,
+     error: {class: error.class.name, message: error.message}, body_would_run: false}
+  end
+end
+sources = [permission_source, format_source, html_source,
+           File.join(support, "active_support/core_ext/array/wrap.rb"),
+           File.join(support, "active_support/core_ext/object/inclusion.rb")]
+puts JSON.pretty_generate({scope: "Actual pinned Ruby permission/format-error/HTML quiet-denial methods over synthetic card/task/wrapper backing; no Rails/database/HTTP or complete mod registration",
+                          runtime: RUBY_DESCRIPTION,
+                          sources: sources.to_h { |file| [file, Digest::SHA256.file(file).hexdigest] }, cases: results})

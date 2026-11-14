@@ -1,0 +1,97 @@
+import { mkdirSync, readdirSync, writeFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { runRubyOracleOnVm } from "../../tools/platform/ruby-oracle-vm.mjs";
+import Database from "better-sqlite3";
+import { scratchDir, removeScratchDir } from "./scratch-dir.mjs";
+import { oracleGemSourceDirectory } from "./oracle-gem-source-directory.mjs";
+
+const root = fileURLToPath(new URL("../..", import.meta.url));
+const bootstrap = path.join(root, "tests/support/ruby-source-probe-vm.rb");
+
+// Enumerate only the two requested pure Ruby libraries. Never scan the gem
+// installation as a whole or transfer platform-specific native extensions.
+function rubyLibrary(directory: string): string[] {
+  return readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
+    if (entry.isSymbolicLink()) throw Error("RubySourceProbeLinkedSource: " + entry.name);
+    const file = path.join(directory, entry.name);
+    return entry.isDirectory() ? rubyLibrary(file) : entry.isFile() ? [file] : [];
+  });
+}
+
+function retain(result: ReturnType<typeof runRubyOracleOnVm>) {
+  const directory = path.join(root, "tmp/ruby-vm-observations");
+  mkdirSync(directory, { recursive: true });
+  const destination = path.join(directory, result.provenance.requestSha256 + ".json");
+  writeFileSync(destination, JSON.stringify(result, null, 2) + "\n");
+  return result;
+}
+
+export function runRubyTagProbeOnVm(input: string) {
+  const gems: string | undefined = oracleGemSourceDirectory();
+  if (!gems) throw Error("RubySourceProbePinnedGemSourcesUnavailable");
+  const probe = path.join(root, "tests/card/mod-loader/ruby-adversarial-tag-values-probe.rb");
+  const files = [bootstrap, probe, path.join(root, "tests/card/mod-loader/ruby-declared-tag-wrapper-probe.rb"),
+    ...rubyLibrary(path.join(gems, "actionview-7.2.4/lib")),
+    ...rubyLibrary(path.join(gems, "activesupport-7.2.4/lib")),
+    ...["set/format/abstract_format/wrapper.rb", "format/wrapper.rb", "set/format.rb", "format/content.rb", "view/options/voo_api.rb"]
+      .map(file => path.join(gems, "card-1.110.0/lib/card", file)),
+    path.join(gems, "card-mod-format-0.20.0/set/all/html/wrap.rb")];
+  return retain(runRubyOracleOnVm([bootstrap, gems, probe], { files, roots: [root, path.dirname(gems)], input }));
+}
+
+export function runRubyNumericProbeOnVm(source: string, input: string) {
+  return retain(runRubyOracleOnVm([bootstrap, "-", "-e", source], { files: [bootstrap], roots: [root], input }));
+}
+
+// The backup API includes committed WAL bytes. Close the backup reader before
+// transport reads the private snapshot; the caller's live fixture stays local.
+async function runRubyDatabaseProbeOnVm(database: string, request: string, probe: string) {
+  const gems: string | undefined = oracleGemSourceDirectory();
+  if (!gems) throw Error("RubySourceProbePinnedGemSourcesUnavailable");
+  const directory = scratchDir("ruby-rule-vm-snapshot-");
+  const snapshot = path.join(directory, "deck.sqlite3");
+  const source = new Database(database, { readonly: true });
+  try {
+    await (source as unknown as { backup(destination: string): Promise<void> }).backup(snapshot);
+  } finally { source.close(); }
+  const files = [bootstrap, probe, snapshot,
+    ...["core_ext/class/attribute.rb", "core_ext/module/redefine_method.rb"]
+      .map(file => path.join(gems, "activesupport-7.2.4/lib/active_support", file)),
+    ...["rule.rb", "rule/cache.rb", "rule/preference_cache.rb", "rule/all.rb"]
+      .map(file => path.join(gems, "card-1.110.0/lib/card", file)),
+    path.join(gems, "card-mod-recaptcha-0.20.0/set/all/recaptcha.rb")];
+  // The scratch root may be outside this checkout, so give the transport its
+  // own explicit root instead of allowing an unbound local database path.
+  try {
+    return retain(runRubyOracleOnVm([bootstrap, gems, probe, snapshot, request],
+      { files, roots: [root, path.dirname(gems), directory] }));
+  } finally { removeScratchDir(directory); }
+}
+
+export function runRubyRuleProbeOnVm(database: string, request: string) {
+  return runRubyDatabaseProbeOnVm(database, request, path.join(root, "tests/card/rules/original-rule-storage-probe.rb"));
+}
+
+export function runRubyValidationFixtureProbeOnVm(database: string, declaredSettingId: number) {
+  return runRubyDatabaseProbeOnVm(database, String(declaredSettingId), path.join(root, "tests/support/local-validation-rule-reference.rb"));
+}
+
+// VACUUM INTO produces each caller-owned closed snapshot before this call.
+// Execute every original Ruby comparison in its own process, using one source
+// transfer and SSH connection for the fixture's full set of control arms.
+export function runRubyValidationFixtureBatchOnVm(databases: string[], declaredSettingId: number) {
+  const gems = oracleGemSourceDirectory();
+  if (!gems) throw Error("RubySourceProbePinnedGemSourcesUnavailable");
+  const probe = path.join(root, "tests/support/local-validation-rule-reference.rb");
+  const files = [bootstrap, probe, ...databases,
+    ...["core_ext/class/attribute.rb", "core_ext/module/redefine_method.rb"]
+      .map(file => path.join(gems, "activesupport-7.2.4/lib/active_support", file)),
+    ...["rule/cache.rb", "rule.rb", "rule/all.rb"].map(file => path.join(gems, "card-1.110.0/lib/card", file)),
+    path.join(gems, "card-mod-recaptcha-0.20.0/set/all/recaptcha.rb")];
+  const result = retain(runRubyOracleOnVm([bootstrap, gems, "--batch", probe, String(declaredSettingId), ...databases],
+    { files, roots: [root, path.dirname(gems), ...new Set(databases.map(file => path.dirname(file)))] }));
+  const comparisons = JSON.parse(result.stdout) as Array<{ status: number; stdout: string; stderr: string }>;
+  if (comparisons.length !== databases.length) throw Error("RubySourceProbeBatchCountMismatch");
+  return comparisons;
+}

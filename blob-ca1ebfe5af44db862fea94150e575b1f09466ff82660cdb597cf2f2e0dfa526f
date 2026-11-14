@@ -1,0 +1,113 @@
+{
+  "row": "no-deletion-if-used",
+  "event": "no_deletion_if_used",
+  "pinned_file": "card-mod-style-0.20.0/set/type/skin.rb",
+  "pinned_declaration": "event :no_deletion_if_used, :validate, on: :delete do",
+  "pinned_declaration_line": 13,
+  "pinned_body": "  if Card[:all, :style].item_keys.include? key\n    errors.add :delete, t(:style_delete_error_skin_used)\n  end",
+  "pinned_body_lines": [
+    {
+      "line": 14,
+      "text": "  if Card[:all, :style].item_keys.include? key"
+    },
+    {
+      "line": 15,
+      "text": "    errors.add :delete, t(:style_delete_error_skin_used)"
+    },
+    {
+      "line": 16,
+      "text": "  end"
+    }
+  ],
+  "executed": true,
+  "notes": [],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a delete of a skin the style rule still uses: the body refuses the delete",
+      "supplied_answers": {
+        "attributes": [
+          "key"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "Card.[]",
+          "arguments": [
+            "all",
+            "style"
+          ],
+          "under": ""
+        },
+        {
+          "call": "key",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "t",
+          "arguments": [
+            "style_delete_error_skin_used"
+          ],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [
+        {
+          "attribute": "delete",
+          "message": "MISSING-LOCALE-TOKEN:style_delete_error_skin_used"
+        }
+      ],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    },
+    {
+      "scenario": "a delete of a skin the style rule does not use: the body adds no error",
+      "supplied_answers": {
+        "attributes": [
+          "key"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "Card.[]",
+          "arguments": [
+            "all",
+            "style"
+          ],
+          "under": ""
+        },
+        {
+          "call": "key",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    }
+  ]
+}

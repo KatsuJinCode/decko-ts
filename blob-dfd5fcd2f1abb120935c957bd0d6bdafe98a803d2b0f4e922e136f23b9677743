@@ -1,0 +1,28 @@
+---
+- :name: PodConflict Other
+  :content: other
+- :name: PodConflict Plain
+  :content: plain
+  :conflict: :defer
+- :name: PodConflict Plain
+  :content: deferred, so not saved
+  :conflict: :defer
+- :name: Oracle Recipe Card
+  :content: overridden although edited by another account
+  :conflict: :override
+- :name: Oracle Recipe Card
+  :content: not saved, edited by another account
+- :codename: pod_probe_one
+  :name: PodConflict Plain
+  :content: the pristine card with the name takes the codename
+- :codename: pod_probe_two
+  :name: PodConflict Plain
+  :content: a new card under an alternative name
+  :conflict: :defer
+- :codename: pod_probe_two
+  :name: PodConflict Other
+  :content: the codename card takes the name, the other card moves aside
+  :conflict: :override
+- :codename: pod_probe_one
+  :name: PodConflict Other
+  :content: the codename card keeps its own name

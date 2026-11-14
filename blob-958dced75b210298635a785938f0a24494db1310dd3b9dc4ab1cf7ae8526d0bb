@@ -1,0 +1,260 @@
+import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { mkdirSync, readFileSync, writeFileSync, lstatSync, readdirSync, realpathSync, rmdirSync, unlinkSync } from 'node:fs';
+import path from 'node:path';
+import { unlinkDirectoryLink } from './platform/unlink-directory-link.mjs';
+
+const digest = bytes => createHash('sha256').update(bytes).digest('hex');
+const dependentRoots = ['tests/card/', 'tests/server/', 'tests/deploy/', 'tests/acceptance/', 'reference-harness/browser/'];
+
+export function projectTestPrerequisites(files, gate) {
+  return gate === 'full' || files.some(file => dependentRoots.some(root => file.startsWith(root)))
+    ? ['miniflare-metadata', 'oracle-mod-public', 'browser-host-build'] : [];
+}
+
+export function requireOwnedRuntime(root) {
+  const runtime = path.join(root, 'node_modules');
+  const stat = lstatSync(runtime);
+  if (!stat.isDirectory() || stat.isSymbolicLink() || path.relative(runtime, realpathSync(runtime)) !== '') {
+    throw Error('Runtime node_modules must be an ordinary owned directory; shared or redirected runtime refused: ' + runtime);
+  }
+  return runtime;
+}
+
+export async function prepareMiniflareMetadata({ root, directory, observeTiming = () => {} }, { fetchMetadata = fetch } = {}) {
+  const runtime = requireOwnedRuntime(root);
+  const cache = path.join(runtime, '.mf');
+  let stat;
+  try { stat = lstatSync(cache); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+  if (stat && (!stat.isDirectory() || stat.isSymbolicLink() || path.relative(cache, realpathSync(cache)) !== '')) throw Error('Redirected Miniflare cache refused');
+  const file = path.join(cache, 'cf.json');
+  try {
+    const entry = lstatSync(file);
+    if (!entry.isFile() || entry.isSymbolicLink() || entry.nlink !== 1) throw Error('Miniflare metadata cache is not an owned regular file');
+  } catch (error) { if (error.code !== 'ENOENT') throw error; }
+  const url = 'https://workers.cloudflare.com/cf.json';
+  const started = performance.now();
+  let response, bytes;
+  try {
+    response = await fetchMetadata(url, { redirect: 'error', credentials: 'omit', cache: 'no-store', headers: { 'accept-encoding': 'identity' } });
+    bytes = Buffer.from(await response.arrayBuffer());
+  } finally { observeTiming({ name: 'miniflare-metadata-fetch', kind: 'leaf', wallMs: performance.now() - started }); }
+  const responseWriting = performance.now();
+  writeFileSync(path.join(directory, 'cf-fetch-response.body'), bytes);
+  observeTiming({ name: 'miniflare-metadata-response-writing', kind: 'leaf', wallMs: performance.now() - responseWriting });
+  if (!response.ok) throw Error('Required fresh Miniflare metadata fetch failed: HTTP ' + response.status);
+  const data = JSON.parse(bytes.toString('utf8'));
+  if (data === null || Array.isArray(data) || typeof data !== 'object') throw Error('Fresh Miniflare metadata is not a JSON object');
+  const writing = performance.now();
+  requireOwnedRuntime(root);
+  let currentCache;
+  try { currentCache = lstatSync(cache); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+  if (currentCache && (!currentCache.isDirectory() || currentCache.isSymbolicLink() || path.relative(cache, realpathSync(cache)) !== '')) throw Error('Miniflare cache changed during fetch');
+  try {
+    const entry = lstatSync(file);
+    if (!entry.isFile() || entry.isSymbolicLink() || entry.nlink !== 1) throw Error('Miniflare metadata cache ownership changed during fetch');
+  } catch (error) { if (error.code !== 'ENOENT') throw error; }
+  if (!currentCache) mkdirSync(cache);
+  try {
+    const previous = readFileSync(file);
+    writeFileSync(path.join(directory, 'previous-cf.json'), previous);
+    unlinkSync(file);
+  } catch (error) { if (error.code !== 'ENOENT') throw error; }
+  writeFileSync(file, bytes, { flag: 'wx' });
+  if (!readFileSync(file).equals(bytes)) throw Error('Miniflare metadata readback mismatch');
+  observeTiming({ name: 'miniflare-metadata-cache-writing', kind: 'leaf', wallMs: performance.now() - writing });
+  return { url, file, status: response.status, requests: 1, bytes: bytes.length, sha256: digest(bytes), previousCacheUsed: false };
+}
+
+export function writeGateInventory({ root, directory, gate, folders, selected, excluded, runner, classify }) {
+  const inventory = { gate, folders, selected: selected.map(file => ({ file, gate: classify(file),
+    runner: runner(root, file), sha256: digest(readFileSync(path.join(root, file))) })), excluded };
+  const bytes = JSON.stringify(inventory, null, 2) + '\n';
+  const file = path.join(directory, 'selected-inventory.json');
+  writeFileSync(file, bytes);
+  return { file, sha256: digest(bytes), selectedFiles: selected.length, excludedFiles: excluded.length };
+}
+
+function executePrerequisite({ root, args, env }) {
+  return new Promise(resolve => {
+    const stdout = [], stderr = [];
+    let failure = null, failed = false;
+    const child = spawn(process.execPath, args, { cwd: root, env,
+      windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    child.stdout.on('data', bytes => { stdout.push(bytes); process.stdout.write(bytes); });
+    child.stderr.on('data', bytes => { stderr.push(bytes); process.stderr.write(bytes); });
+    child.once('error', error => { failed = true; failure = { name: error?.name, message: error?.message ?? String(error), code: error?.code, stack: error?.stack }; });
+    child.once('close', (status, signal) => resolve({ status, signal, error: failed ? failure : null,
+      stdout: Buffer.concat(stdout), stderr: Buffer.concat(stderr) }));
+  });
+}
+
+// No project preparation is needed for an isolated source-only tool test. A
+// product/browser selection must finish both real prerequisites before launch.
+export function prepareGateInputs(options, dependencies = {}) {
+  const stages = projectTestPrerequisites(options.files, options.gate);
+  if (!stages.length) return;
+  return prepare(options, stages, dependencies);
+}
+
+export function assertFreshBrowserBuild(build, source) {
+  if (build.config !== 'tsconfig.browser-hosts.json' || !/^[a-f0-9]{64}$/.test(build.distSha256)
+    || !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(source.sourceCommit) || !/^[a-f0-9]{64}$/.test(source.sourceDiffSha256)
+    || build.sourceCommit !== source.sourceCommit || build.sourceDiffSha256 !== source.sourceDiffSha256
+    || build.sourceSnapshotSha256 !== source.sourceSnapshotSha256) {
+    throw Error('Browser-host build receipt does not match the current source; stale or foreign build refused');
+  }
+}
+
+function cleanupProvider(prepared) {
+  if (!prepared?.provider) return;
+  const directory = prepared.provider;
+  let stat;
+  try { stat = lstatSync(directory); } catch (error) { if (error.code === 'ENOENT') return; throw error; }
+  if (!stat.isDirectory() || stat.isSymbolicLink() || path.relative(directory, realpathSync(directory)) !== '') {
+    throw Error('Mod provider cleanup root changed: ' + directory);
+  }
+  const manifestFile = path.join(directory, 'mod-provider-manifest.json');
+  const manifest = JSON.parse(readFileSync(manifestFile, 'utf8'));
+  if (manifest.format !== 'decko-test-mod-provider/1' || manifest.publicDir !== directory
+    || manifest.gemsDir !== prepared.gemsDir
+    || JSON.stringify(manifest.mods.map(mod => mod.name)) !== JSON.stringify(['ace_editor', 'bootstrap', 'style', 'tinymce_editor'])) {
+    throw Error('Mod provider cleanup ownership changed');
+  }
+  const modRoot = path.join(directory, 'mod');
+  let links = [], container;
+  try { container = lstatSync(modRoot); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+  if (container) {
+    if (!container.isDirectory() || container.isSymbolicLink()) throw Error('Mod link container changed');
+    links = readdirSync(modRoot).map(name => {
+      const owned = manifest.mods.find(mod => mod.name === name);
+      if (!owned || !/^[0-9A-Za-z.+_-]+$/.test(owned.version) || owned.target !== path.join(manifest.gemsDir, `card-mod-${owned.name}-${owned.version}`, 'public')) throw Error('Unknown mod provider cleanup entry: ' + name);
+      const file = path.join(modRoot, name);
+      if (!lstatSync(file).isSymbolicLink() || path.relative(realpathSync(file), realpathSync(owned.target)) !== '') throw Error('Mod link target changed');
+      return { file, target: owned.target };
+    });
+  }
+  if (readdirSync(directory).some(name => !['mod', 'mod-provider-manifest.json'].includes(name))) throw Error('Unknown public provider files retained');
+  for (const link of links) unlinkDirectoryLink(link.file, link.target);
+  try { rmdirSync(modRoot); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+  unlinkSync(manifestFile);
+  rmdirSync(directory);
+}
+
+export function cleanupGateInputs(prepared) {
+  try { return cleanupProvider(prepared); }
+  finally { prepared?.restoreEnvironment?.(); }
+}
+
+async function prepare({ root, files, directory, env = process.env, observeTiming = () => {} }, stages, {
+  execute = executePrerequisite,
+  resolveGemSource = async environment => (await import('../tests/support/oracle-gem-source-directory.mjs')).oracleGemSourceDirectory(environment),
+  observeSource = async checkout => (await import('./dist/source-provenance.mjs')).sourceProvenance(checkout),
+  fetchMetadata = fetch,
+  log = message => console.error(message),
+} = {}) {
+  const output = path.join(directory, 'project-preflight');
+  mkdirSync(output, { recursive: true });
+  const receipts = [];
+  const prepared = { file: path.join(output, 'receipt.json'), stages: receipts, provider: path.join(output, 'mod-public') };
+  const inherited = ['DECKO_MOD_PUBLIC_DIR']
+    .map(name => [name, Object.hasOwn(env, name), env[name]]);
+  prepared.restoreEnvironment = () => { for (const [name, present, value] of inherited) { if (present) env[name] = value; else delete env[name]; } };
+  const save = () => writeFileSync(path.join(output, 'receipt.json'), JSON.stringify({ files, stages: receipts }, null, 2) + '\n');
+  try {
+    requireOwnedRuntime(root);
+    const gems = await resolveGemSource(env);
+    if (!gems) throw Error('Required pinned oracle gem source is unavailable; select DECKO_ORACLE_GEM_DIR');
+    prepared.gemsDir = path.resolve(gems);
+  } catch (error) {
+    receipts.push({ stage: 'required-input-admission', failure: { name: error.name, message: error.message, stack: error.stack } });
+    save(); throw error;
+  }
+  for (const stage of stages) {
+    const receipt = { stage, executable: process.execPath, args: null, status: null, signal: null, error: null };
+    receipts.push(receipt);
+    try {
+      if (stage === 'miniflare-metadata') {
+        receipt.metadata = await prepareMiniflareMetadata({ root, directory: output, observeTiming }, { fetchMetadata });
+        receipt.status = 0; save(); continue;
+      } else if (stage === 'oracle-mod-public') {
+        receipt.args = [path.join(root, 'tools/setup-oracle-mod-public.mjs'), '--gem-dir', prepared.gemsDir, '--public-dir', prepared.provider];
+      } else {
+        receipt.source = await observeSource(root);
+        const previous = path.join(root, '.runtime/browser-build.json');
+        try {
+          if (!lstatSync(previous).isFile() || lstatSync(previous).isSymbolicLink()) throw Error('Browser build receipt is not an owned regular file');
+          writeFileSync(path.join(output, 'previous-browser-build.json'), readFileSync(previous));
+          unlinkSync(previous);
+        } catch (error) { if (error.code !== 'ENOENT') throw error; }
+        receipt.args = [path.join(root, 'tools/dist/build-engine.mjs'), '--browser-hosts'];
+      }
+      log(JSON.stringify({ preflight: stage, executable: receipt.executable, args: receipt.args }));
+      const started = performance.now();
+      let result;
+      try { result = await execute({ root, args: receipt.args, env }); }
+      finally { receipt.wallMs = performance.now() - started; observeTiming({ name: stage, kind: 'leaf', wallMs: receipt.wallMs }); }
+      Object.assign(receipt, { status: result.status, signal: result.signal, error: result.error });
+      for (const stream of ['stdout', 'stderr']) {
+        const bytes = Buffer.isBuffer(result[stream]) ? result[stream] : Buffer.from(result[stream] ?? '');
+        const file = path.join(output, stage + '.' + stream + '.log');
+        writeFileSync(file, bytes);
+        receipt[stream] = { file, bytes: bytes.length, sha256: digest(bytes) };
+      }
+      if (result.error || result.status !== 0 || result.signal) {
+        throw Error(`Required ${stage} failed (exit ${result.status}, signal ${result.signal}): ${result.error?.message ?? result.stderr?.toString() ?? ''}`);
+      }
+      if (stage === 'oracle-mod-public') {
+        const bytes = readFileSync(path.join(prepared.provider, 'mod-provider-manifest.json'));
+        const provider = JSON.parse(bytes);
+        if (provider.publicDir !== prepared.provider || !provider.complete || !provider.files.length) throw Error('Fresh mod provider has no complete source/readback manifest');
+        const file = path.join(output, 'mod-provider-manifest.json');
+        writeFileSync(file, bytes);
+        receipt.provider = { file, sha256: digest(bytes), files: provider.files.length, bytes: provider.files.reduce((sum, file) => sum + file.bytes, 0) };
+        env.DECKO_MOD_PUBLIC_DIR = prepared.provider;
+      } else {
+        const file = path.join(root, '.runtime/browser-build.json');
+        const bytes = readFileSync(file);
+        const build = JSON.parse(bytes);
+        assertFreshBrowserBuild(build, receipt.source);
+        assertFreshBrowserBuild(build, await observeSource(root));
+        // Retain the actual build's bytes, not a reconstructed success flag.
+        const retained = path.join(output, 'browser-build.json');
+        writeFileSync(retained, bytes);
+        receipt.build = { file: retained, sha256: digest(bytes), ...build };
+      }
+      save();
+    } catch (error) {
+      receipt.failure = { name: error.name, message: error.message, stack: error.stack };
+      save();
+      log(JSON.stringify({ preflight: stage, failed: true, receipt: path.join(output, 'receipt.json'), error: error.message }));
+      try { cleanupGateInputs(prepared); }
+      catch (cleanupError) { throw new AggregateError([error, cleanupError], 'Project preparation failed and provider cleanup failed', { cause: error }); }
+      throw error;
+    }
+  }
+  return prepared;
+}
+
+export function createGateTimingRecorder() {
+  const phases = [];
+  const record = entry => { if (!Number.isFinite(entry.wallMs) || entry.wallMs < 0) throw Error('Invalid measured gate duration'); phases.push(entry); };
+  const start = (name, kind = 'leaf', overlapGroup = null) => {
+    const before = performance.now();
+    return () => record({ name, kind, overlapGroup, wallMs: performance.now() - before });
+  };
+  return { phases, record, start };
+}
+
+export function writeGateResult({ directory, result, timing }) {
+  const stop = timing.start('gate-result-report-writing');
+  const file = path.join(directory, 'gate-result.json');
+  writeFileSync(file, JSON.stringify(result, null, 2) + '\n');
+  stop();
+  const timings = { clock: 'performance.now monotonic milliseconds', phases: timing.phases,
+    overlap: 'Runner phases overlap; container phases include their named children. Durations are independently measured, never obtained by subtracting totals.',
+    threeSlowestPhases: [...timing.phases].filter(phase => phase.kind !== 'container').sort((a, b) => b.wallMs - a.wallMs).slice(0, 3),
+    metadata: 'This timing metadata write is outside its own measurement; report-writing measures the primary gate-result file.' };
+  writeFileSync(path.join(directory, 'gate-timings.json'), JSON.stringify(timings, null, 2) + '\n');
+  return { file, timings: path.join(directory, 'gate-timings.json'), threeSlowestPhases: timings.threeSlowestPhases };
+}

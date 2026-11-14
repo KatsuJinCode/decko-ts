@@ -1,0 +1,48 @@
+import {expect,it} from 'vitest';
+import {defineMod} from '../../../src/card/mod-loader/mod-dsl.js';
+import {ModLoader} from '../../../src/card/mod-loader.js';
+import {createRenderTestStorage,seedCard} from '../render/render-test-storage.js';
+
+it('a body-only reopening retains inherited unknown-wrapper refusal',async()=>{
+  const storage=await createRenderTestStorage();
+  const base=defineMod('wrapper_review_base',({set})=>set('all/wrapper_review',({format})=>{
+    format('html',({wrapper,view})=>{
+      wrapper('cream',(_ctx,interior)=>`cream_${interior}`);
+      view('inherited_unknown',{perms:'none',wrap:'missing'},()=> 'base');
+    });
+  }));
+  const child=defineMod('wrapper_review_child',({set})=>set('type/basic',({format})=>{
+    format('html',({view})=>view('inherited_unknown',()=> 'child'));
+  }));
+  const loader=new ModLoader([{manifest:base},{manifest:child}],{});
+  try{
+    await seedCard(storage,{id:2,name:'RichText',codename:'basic'});
+    await seedCard(storage,{id:3,name:'Phrase',codename:'phrase'});
+    await seedCard(storage,{id:500,name:'Wrapper Review',typeId:2});
+    await seedCard(storage,{id:501,name:'Base Review',typeId:3});
+    loader.resolveOrder({gemMods:['wrapper_review_base','wrapper_review_child']});loader.load();storage.engine.modLoader=loader;
+    await expect(storage.engine.render('Base Review','inherited_unknown')).rejects.toThrow('unknown wrapper: missing');
+    expect(loader.viewSettingForCard('ALL TYPE-basic','inherited_unknown','wrap','html')).toBe('missing');
+    await expect(storage.engine.render('Wrapper Review','inherited_unknown')).rejects.toThrow('unknown wrapper: missing');
+  }finally{loader.reset();storage.close();}
+});
+
+it('a body-only reopening still uses a valid inherited wrapper',async()=>{
+  const storage=await createRenderTestStorage();
+  const base=defineMod('wrapper_review_valid',({set})=>set('all/wrapper_review',({format})=>{
+    format('html',({wrapper,view})=>{
+      wrapper('cream',(_ctx,interior)=>`cream_${interior}`);
+      view('inherited_valid',{perms:'none',wrap:'cream'},()=> 'base');
+    });
+  }));
+  const child=defineMod('wrapper_review_child',({set})=>set('type/basic',({format})=>{
+    format('html',({view})=>view('inherited_valid',()=> 'child'));
+  }));
+  const loader=new ModLoader([{manifest:base},{manifest:child}],{});
+  try{
+    await seedCard(storage,{id:2,name:'RichText',codename:'basic'});
+    await seedCard(storage,{id:500,name:'Wrapper Review',typeId:2});
+    loader.resolveOrder({gemMods:['wrapper_review_valid','wrapper_review_child']});loader.load();storage.engine.modLoader=loader;
+    expect(await storage.engine.render('Wrapper Review','inherited_valid')).toBe('cream_child');
+  }finally{loader.reset();storage.close();}
+});

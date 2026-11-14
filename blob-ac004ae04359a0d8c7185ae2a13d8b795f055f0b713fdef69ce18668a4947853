@@ -1,0 +1,107 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+await import('../../support/typescript-source-loader.mjs');
+const {createRenderTestStorage,seedCard}=await import('../render/render-test-storage.js');
+const {defineMod}=await import('../../../src/card/mod-loader/mod-dsl.js');
+const {ModLoader}=await import('../../../src/card/mod-loader.js');
+const {defaultDeckSources}=await import('../../../src/card/mod-loader/default-mod-deck.js');
+const {Voo,RenderFormat}=await import('../../../src/card/render/format.js');
+const {default:cardModSession}=await import('../../../src/card/mod-loader/mods/card-mod-session.js');
+
+// Native CRuby 3.4.11 observations of unchanged card-1.110.0 before/format/
+// before_view and card-mod-session-0.20.0 set/type/session.rb:59-63.
+// The source capture and native receipt live in docs/runs/issue220-before-core.
+// This checks the callback seam through the actual TS engine, not Rails or
+// complete Session pointer output.
+test('shipped Session before-core agrees with original native callback observations',async()=>{
+ const storage=await createRenderTestStorage();let loader;
+ try{
+  await seedCard(storage,{id:2,name:'RichText',codename:'basic'});
+  await seedCard(storage,{id:3,name:'Session',codename:'session'});
+  await seedCard(storage,{id:500,name:'Session Probe',typeId:3});
+  await seedCard(storage,{id:501,name:'Outside Probe',typeId:2});
+  const observer=defineMod('before_observer',({set})=>set('all/before_observer',({format})=>{
+   for(const name of ['html','text'])format(name,({view})=>{
+    for(const v of ['core','probe_no_hook'])view(v,{perms:'none',cache:'never'},({voo})=>JSON.stringify(voo.liveItems??voo.opts.items));
+   });
+  }));
+  loader=new ModLoader([...defaultDeckSources(),{manifest:observer}],{});loader.load();storage.engine.modLoader=loader;
+  for(const [card,format,view,input,expected] of [
+   ['Session Probe','html','core',{view:'content',size:'medium'},{view:'name',size:'medium'}],
+   ['Outside Probe','html','core',{view:'content'},{view:'content'}],
+   ['Session Probe','text','core',{view:'content'},{view:'content'}],
+   ['Session Probe','html','probe_no_hook',{view:'content'},{view:'content'}],
+   ['Session Probe','html','core',{view:'name'},{view:'name'}],
+   ['Session Probe','html','core',undefined,{view:'name'}],
+   ['Session Probe','html','core',null,{view:'name'}],
+   ['Session Probe','html','core',false,{view:'name'}],
+  ]){
+   const answer=await storage.engine.render(card,view,{format,viewOpts:input===undefined?{}:{items:structuredClone(input)}});
+   assert.deepEqual(JSON.parse(answer),expected,`${card}/${format}/${view}/${JSON.stringify(input)}`);
+  }
+ }finally{loader?.reset();storage.close();}
+});
+
+test('live items stay out of owning normalized slots and reach child views',()=>{
+ const parent=new Voo(undefined,'core',{});
+ assert.deepEqual(parent.items,{});
+ parent.items.view='name';
+ assert.equal(Object.hasOwn(parent.opts,'items'),false);
+ const child=new Voo(parent,'card_list',{});
+ assert.deepEqual(child.items,{view:'name'});
+ assert.equal(child.items,parent.items);
+ const supplied={view:'content'};
+ const explicit=new Voo(undefined,'core',{items:supplied});
+ explicit.items.view='name';
+ assert.equal(explicit.opts.items,supplied);
+ assert.equal(supplied.view,'name');
+});
+
+test('before declaration uses format methods and base-format shorthand',()=>{
+ const fn=()=>undefined;
+ const manifest=defineMod('before_declaration',({set})=>set('all/before_declaration',({before,format})=>{
+  before('core',fn);format('html',({before})=>before('content',fn));
+ }));
+ const formats=manifest.setModules[0].formats;
+ assert.deepEqual(formats.base.methods,[{name:'_before_core',fn}]);
+ assert.deepEqual(formats.html.methods,[{name:'_before_content',fn}]);
+});
+
+test('malformed Session items retain the observed native Ruby error classes',()=>{
+ const hook=cardModSession.setModules.find(set=>set.setPath==='type/session')?.formats?.html?.methods?.find(method=>method.name==='_before_core');
+ assert.ok(hook,'shipped callback must be declared');
+ for(const [items,rubyClass] of [[1,'NoMethodError'],['text','TypeError'],[[],'TypeError'],[true,'NoMethodError']]){
+  const voo=new Voo(undefined,'core',{items});
+  assert.throws(()=>hook.fn({voo}),error=>error.rubyClass===rubyClass);
+ }
+});
+
+test('declared hook overrides the stock hook and absent declarations preserve it',()=>{
+ const voo=new Voo(undefined,'content',{});
+ const receiver={card:{},formatName:'html',voo,engine:{resolveFormatMethod:()=>undefined},callFormatMethod:RenderFormat.prototype.callFormatMethod};
+ RenderFormat.prototype.runBeforeHook.call(receiver,'content',voo);
+ assert.equal(voo.classUps.get('card-slot'),'d0-card-content');
+ voo.classUps.clear();
+ const calls=[];
+ receiver.engine.resolveFormatMethod=(_card,name)=>name==='_before_content'?()=>calls.push(name):undefined;
+ RenderFormat.prototype.runBeforeHook.call(receiver,'content',voo);
+ assert.deepEqual(calls,['_before_content']);
+ assert.equal(voo.classUps.size,0);
+});
+
+test('reopening before replaces the earlier method on the real set/format chain',async()=>{
+ const storage=await createRenderTestStorage();let loader;
+ try{
+  await seedCard(storage,{id:2,name:'RichText',codename:'basic'});
+  await seedCard(storage,{id:500,name:'Hook Probe',typeId:2});
+  const manifest=defineMod('before_reopen',({set})=>set('all/before_reopen',({format})=>{
+   format('html',({before})=>before('probe',({voo})=>{voo.opts.value='first';}));
+   format('html',({before,view})=>{
+    before('probe',({voo})=>{voo.opts.value='last';});
+    view('probe',{perms:'none',cache:'never'},({voo})=>String(voo.opts.value));
+   });
+  }));
+  loader=new ModLoader([{manifest}],{});loader.load();storage.engine.modLoader=loader;
+  assert.equal(await storage.engine.render('Hook Probe','probe'),'last');
+ }finally{loader?.reset();storage.close();}
+});

@@ -1,0 +1,83 @@
+{
+  "results_format": 2,
+  "runner_execution_id": "fca3704e-bdd7-4511-9e0d-08f47cd1bfe0",
+  "fixture": "synthetic-v3-mod-probes-ruby33",
+  "runs": {
+    "render": {
+      "started": "2026-11-03T17:45:01.994Z",
+      "finished": "2026-11-03T17:46:52.004Z",
+      "complete": true,
+      "selection": null,
+      "ops_total": 556,
+      "ops_run": 556,
+      "adapter": "decko-ruby",
+      "lane": null,
+      "adapter_checkout": {
+        "commit": "b703c503b81dbcc46c214a4ec61d07be89000829",
+        "dirty": true
+      },
+      "engine": {
+        "ready": true,
+        "protocol": 1,
+        "engine": "decko-ruby",
+        "version": {
+          "decko": "0.20.0",
+          "card": "1.110.0",
+          "ruby": "3.2.3",
+          "ruby_platform": "aarch64-linux-gnu",
+          "ruby_engine": "ruby"
+        }
+      },
+      "fixture_digest": "834c0d84c08f6a1b4e16278a90d0769261f26a8bcaa2b34a9f19807076b3c706",
+      "fixture_problems": [],
+      "ms_per_op": 185,
+      "session_writes": {
+        "cards": {
+          "inserted": [],
+          "updated": [
+            {
+              "id": 307,
+              "changes": {
+                "updater_id": [
+                  952,
+                  611
+                ]
+              }
+            }
+          ],
+          "deleted": []
+        }
+      }
+    },
+    "semantics": {
+      "started": "2026-11-03T17:46:52.030Z",
+      "finished": "2026-11-03T17:47:02.819Z",
+      "complete": true,
+      "selection": null,
+      "ops_total": 0,
+      "ops_run": 0,
+      "adapter": "decko-ruby",
+      "lane": null,
+      "adapter_checkout": {
+        "commit": "b703c503b81dbcc46c214a4ec61d07be89000829",
+        "dirty": true
+      },
+      "engine": {
+        "ready": true,
+        "protocol": 1,
+        "engine": "decko-ruby",
+        "version": {
+          "decko": "0.20.0",
+          "card": "1.110.0",
+          "ruby": "3.2.3",
+          "ruby_platform": "aarch64-linux-gnu",
+          "ruby_engine": "ruby"
+        }
+      },
+      "fixture_digest": "834c0d84c08f6a1b4e16278a90d0769261f26a8bcaa2b34a9f19807076b3c706",
+      "fixture_problems": [],
+      "ms_per_op": 0,
+      "session_writes": {}
+    }
+  }
+}

@@ -1,0 +1,161 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import http from 'node:http';
+import {spawn, execFileSync} from 'node:child_process';
+import {EventEmitter} from 'node:events';
+import {fileURLToPath, pathToFileURL} from 'node:url';
+import Database from 'better-sqlite3';
+import {scratchDir, removeScratchDir} from '../support/scratch-dir.mjs';
+import {requireFreshnessBuild, runFreshnessCaseWithCleanup, observeFreshnessHost, requireFreshnessHostClosed} from './staging-request-freshness-lifecycle.mjs';
+import {treeDigest} from '../../reference-harness/browser/lib/journey-provenance.mjs';
+import {sourceGitEnvironment} from '../../reference-harness/runner/source-git-environment.mjs';
+
+const root = fileURLToPath(new URL('../..', import.meta.url));
+
+test('a child error cannot authorize scratch removal before actual host closure', async () => {
+  const child = Object.assign(new EventEmitter(), {exitCode: null, signalCode: null});
+  const observation = observeFreshnessHost(child);
+  const primary = new Error('owned child process error');
+  child.emit('error', primary);
+  await observation.finished;
+  const directory = scratchDir('freshness-unknown-host-');
+  try {
+    assert.throws(() => requireFreshnessHostClosed(child, observation), /unknown custody is retained/);
+    assert.equal(fs.existsSync(directory), true);
+    assert.equal(observation.error, primary);
+    child.exitCode = 0;
+    assert.throws(() => requireFreshnessHostClosed(child, observation), /close must be observed/);
+    child.emit('close', 0, null);
+    requireFreshnessHostClosed(child, observation);
+    removeScratchDir(directory);
+    assert.equal(fs.existsSync(directory), false);
+  } finally { removeScratchDir(directory); }
+});
+
+test('a genuine old receipt and matching distribution are refused for changed committed source', () => {
+  const directory = scratchDir('freshness-stale-build-');
+  try {
+    const realReceipt = fs.readFileSync(path.join(root, '.runtime/browser-build.json'));
+    const receipt = JSON.parse(realReceipt);
+    fs.mkdirSync(path.join(directory, '.runtime'));
+    fs.writeFileSync(path.join(directory, '.runtime/browser-build.json'), realReceipt);
+    fs.cpSync(path.join(root, 'dist'), path.join(directory, 'dist'), {recursive: true});
+    assert.equal(treeDigest(path.join(directory, 'dist')), receipt.distSha256, 'The old distribution really matches its unmodified real build receipt');
+    const git = args => execFileSync('git', ['-C', directory, ...args], {env: sourceGitEnvironment(), windowsHide: true, stdio: 'pipe'});
+    git(['init']);
+    fs.writeFileSync(path.join(directory, 'owned-source.txt'), 'different committed source');
+    git(['add', '--', 'owned-source.txt']);
+    git(['commit', '-m', 'Create isolated changed-source build admission control', '--', 'owned-source.txt']);
+    assert.throws(() => requireFreshnessBuild(directory), /must match the current source commit/);
+  } finally { removeScratchDir(directory); }
+});
+
+test('all three actual freshness cases refuse an absent build receipt before allocating host scratch', async () => {
+  const directory = scratchDir('freshness-build-prerequisite-');
+  try {
+    const preload = path.join(directory, 'absent-build-receipt.mjs');
+    const receipt = path.join(root, '.runtime/browser-build.json');
+    const missing = path.join(directory, 'actually-absent-build.json');
+    // This negative control presents a genuinely absent file to the reader.
+    // It never writes a receipt or allows the old harness to start a host.
+    fs.writeFileSync(preload, `import fs from 'node:fs';
+import path from 'node:path';
+import {syncBuiltinESMExports} from 'node:module';
+const read = fs.readFileSync;
+fs.readFileSync = function(file, ...args) {
+  return read(path.resolve(String(file)) === ${JSON.stringify(receipt)} ? ${JSON.stringify(missing)} : file, ...args);
+};
+const make = fs.mkdtempSync;
+fs.mkdtempSync = function(prefix, ...args) {
+  if (String(prefix).includes('staging-request-freshness-')) throw Error('Host scratch allocation preceded the mandatory build prerequisite');
+  return make(prefix, ...args);
+};
+syncBuiltinESMExports();
+`);
+    const environment = {...process.env};
+    delete environment.NODE_TEST_CONTEXT;
+    const child = spawn(process.execPath, ['--import', pathToFileURL(preload).href, '--test', '--test-reporter=tap', path.join(root, 'tests/deploy/staging-request-freshness.test.mjs')], {
+      cwd: root, env: environment, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    let output = '';
+    child.stdout.on('data', bytes => { output += bytes; });
+    child.stderr.on('data', bytes => { output += bytes; });
+    const exit = await new Promise((resolve, reject) => { child.once('error', reject); child.once('close', code => resolve(code)); });
+    assert.notEqual(exit, 0, output);
+    assert.match(output, /# tests 3/);
+    assert.match(output, /# fail 3/);
+    assert.match(output, /# skipped 0/);
+    assert.equal((output.match(/error: 'Staging freshness requires the real engine build receipt before host startup:/g) ?? []).length, 3, output);
+    assert.doesNotMatch(output, /Host scratch allocation preceded/);
+    console.log(JSON.stringify({control: 'actual three cases with missing receipt', exit, output}));
+  } finally { removeScratchDir(directory); }
+});
+
+test('primary assertion and missing diagnostic errors survive while real database, HTTP host and scratch close', async () => {
+  const directory = scratchDir('freshness-finalizer-');
+  const database = new Database(path.join(directory, 'owned.sqlite3'));
+  const host = http.createServer((_request, response) => response.end('synthetic cleanup control'));
+  await new Promise((resolve, reject) => { host.once('error', reject); host.listen(0, '127.0.0.1', resolve); });
+  let primary, diagnostic, failure;
+  const completed = [];
+  try {
+    try {
+      await runFreshnessCaseWithCleanup(async () => {
+        try { assert.equal(database.prepare('SELECT 1 AS value').get().value, 2, 'owned primary assertion'); }
+        catch (error) { primary = error; throw error; }
+      }, [
+        ['database close', () => { database.close(); completed.push('database'); }],
+        ['host close', async () => { await new Promise((resolve, reject) => host.close(error => error ? reject(error) : resolve())); completed.push('host'); }],
+        ['diagnostics', () => { try { fs.readFileSync(path.join(directory, 'absent-diagnostic.json')); } catch (error) { diagnostic = error; throw error; } }],
+        ['scratch removal', () => { removeScratchDir(directory); completed.push('scratch'); }],
+      ]);
+    } catch (error) { failure = error; }
+    assert.ok(failure instanceof AggregateError);
+    assert.equal(failure.cause, primary);
+    assert.equal(failure.primaryError, primary);
+    assert.deepEqual(failure.errors, [primary, diagnostic]);
+    assert.deepEqual(failure.cleanupErrors, [{stage: 'diagnostics', error: diagnostic}]);
+    assert.equal(diagnostic.code, 'ENOENT');
+    assert.deepEqual(completed, ['database', 'host', 'scratch']);
+    assert.equal(database.open, false);
+    assert.equal(host.listening, false);
+    assert.equal(fs.existsSync(directory), false);
+  } finally {
+    if (database.open) database.close();
+    if (host.listening) await new Promise((resolve, reject) => host.close(error => error ? reject(error) : resolve()));
+    removeScratchDir(directory);
+  }
+});
+
+test('a diagnostic-only failure fails the case and cannot prevent later cleanup stages', async () => {
+  const directory = scratchDir('freshness-diagnostic-');
+  let diagnostic;
+  try {
+    await assert.rejects(runFreshnessCaseWithCleanup(async () => {}, [
+      ['diagnostics', () => { try { requireFreshnessBuild(directory); } catch (error) { diagnostic = error; throw error; } }],
+      ['scratch removal', () => removeScratchDir(directory)],
+    ]), error => error instanceof AggregateError && error.primaryError === undefined && error.errors[0] === diagnostic && error.cleanupErrors[0].stage === 'diagnostics');
+    assert.equal(diagnostic.cause.code, 'ENOENT');
+    assert.equal(fs.existsSync(directory), false);
+  } finally { removeScratchDir(directory); }
+});
+
+test('a failed cleanup stage retains its error and still attempts every later stage', async () => {
+  const closed = new Error('owned database close failure');
+  const diagnostic = new Error('owned diagnostic failure');
+  const attempted = [];
+  await assert.rejects(runFreshnessCaseWithCleanup(async () => {}, [
+    ['database close', () => { attempted.push('database'); throw closed; }],
+    ['host close', () => attempted.push('host')],
+    ['diagnostics', () => { attempted.push('diagnostics'); throw diagnostic; }],
+    ['scratch removal', () => attempted.push('scratch')],
+  ]), error => error instanceof AggregateError && error.errors[0] === closed && error.errors[1] === diagnostic);
+  assert.deepEqual(attempted, ['database', 'host', 'diagnostics', 'scratch']);
+});
+
+test('successful cleanup preserves the original primary error object', async () => {
+  const primary = new Error('owned primary failure');
+  await assert.rejects(runFreshnessCaseWithCleanup(async () => { throw primary; }, []), error => error === primary);
+});

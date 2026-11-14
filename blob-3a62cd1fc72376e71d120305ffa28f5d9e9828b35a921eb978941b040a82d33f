@@ -1,0 +1,28 @@
+# Actor-bound API-key view capture evidence
+
+Issue 63 identifies the API-key capture as historical bytes without observed
+actor provenance. The owning producer is
+`tests/card/mod-loader/oracle-capture-api-key-views.rb`. Its `as_bot` seed block
+does not establish the actor of later renders: pinned `Auth::Proxy#as` restores
+the proxy while initializing the current actor only if it was nil. Do not
+retroactively label the existing capture as a bot capture.
+
+Future acceptance requires the actual current and effective actor at every
+render, their before/after stability, the observed bot identity and permission
+verdicts, exact producer and authentication-source hashes, runtime versions,
+and the database/target identity used for those observations. A validator must
+compare these with explicit external expectations and reject missing,
+malformed or mismatched evidence. Metadata completeness alone does not prove
+the runtime, whole database snapshot, fixture provenance or full parity.
+
+The producer must preserve existing capture bytes, refuse an existing output
+destination, retain raw pre-seed authentication initialization state, and use
+an explicit actor scope for new renders. It may clean up only probe cards it
+created itself; it must not trash pre-existing probes. Rendering or cleanup
+errors remain failures rather than successful expected-output strings.
+
+The old capture remains available for explicitly named historical byte-shape
+diagnostics. Those diagnostics cannot count as actor-qualified parity. Source
+and synthetic validator tests do not authorize a live reference run or clear
+issue 63. Fresh reference/provider execution requires its existing qualified
+runtime, isolation and artifact-binding conditions.

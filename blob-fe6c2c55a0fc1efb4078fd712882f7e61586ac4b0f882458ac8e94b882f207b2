@@ -1,0 +1,45 @@
+import {afterEach,beforeEach,expect,it} from 'vitest';
+import {createRenderTestStorage,seedCard,type RenderTestStorage} from '../render/render-test-storage.js';
+import {findRule} from '../../../src/card/rules/lookup.js';
+
+let target:RenderTestStorage,foreign:RenderTestStorage;
+beforeEach(async()=>{
+  target=await createRenderTestStorage({bootstrapReadRules:false});target.fetcher.installNameEnvironment();
+  for(const row of [
+    {id:1,name:'Set',codename:'set'},{id:2,name:'Setting',codename:'setting'},
+    {id:3,name:'*all',codename:'all',typeId:1},{id:4,name:'Assistance',codename:'help',typeId:2},
+    {id:5,leftId:3,rightId:4,dbContent:'general'},
+    {id:8,name:'*type plus right',codename:'type_plus_right',typeId:1},
+    {id:9,name:'Role',codename:'role'},{id:10,name:'Field'},
+    {id:11,leftId:9,rightId:10},{id:12,leftId:11,rightId:8,typeId:1},
+    {id:13,leftId:12,rightId:4,dbContent:'compound-specific'},
+  ])await seedCard(target,row);
+  foreign=await createRenderTestStorage({bootstrapReadRules:false});
+});
+afterEach(()=>{foreign?.close();target?.close();});
+const card={name:'Member+Field',isNew:true,leftTypeName:'Role'};
+
+it('keeps receiving compound-pattern names when another engine warms an aliased pattern',async()=>{
+  expect((await findRule(target.fetcher,card,'Assistance'))?.rule.id).toBe(13);
+  await seedCard(foreign,{id:80,name:'*Foreign Compound Pattern',codename:'type_plus_right'});
+  await foreign.fetcher.codenames.ensureLoaded();await foreign.fetcher.lexicon.name(80);
+  foreign.fetcher.installNameEnvironment();
+  // Foreign aliases must not change an answer in the unchanged target DB.
+  expect((await findRule(target.fetcher,card,'Assistance'))?.rule.id).toBe(13);
+});
+
+it('keeps receiving all-pattern names when another engine uses a distinct alias',async()=>{
+  expect((await findRule(target.fetcher,{name:'Example',isNew:true},'Assistance'))?.rule.id).toBe(5);
+  await seedCard(foreign,{id:81,name:'*Foreign All Pattern',codename:'all'});
+  await foreign.fetcher.codenames.ensureLoaded();await foreign.fetcher.lexicon.name(81);
+  foreign.fetcher.installNameEnvironment();
+  expect((await findRule(target.fetcher,{name:'Example',isNew:true},'Assistance'))?.rule.id).toBe(5);
+});
+
+it('resolves receiving renamed compound patterns with an unrelated engine installed',async()=>{
+  await target.counting.query('UPDATE cards SET name=?,key=? WHERE id=?',['*Local Compound Pattern','*local_compound_pattern',8]);
+  target.fetcher.resetCaches();await target.fetcher.codenames.ensureLoaded();await target.fetcher.lexicon.name(8);
+  expect((await findRule(target.fetcher,card,'Assistance'))?.rule.id).toBe(13);
+  foreign.fetcher.installNameEnvironment();
+  expect((await findRule(target.fetcher,card,'Assistance'))?.rule.id).toBe(13);
+});

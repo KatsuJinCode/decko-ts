@@ -1,0 +1,111 @@
+import { execFileSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+const root = fileURLToPath(new URL('../..', import.meta.url));
+export const exportIdentity = Object.freeze({ name: 'Decko TypeScript export', email: 'noreply@example.invalid' });
+export class ReleaseExportRefusal extends Error {}
+const objectId = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
+const refuse = message => { throw new ReleaseExportRefusal(message); };
+const git = (cwd, args, env = process.env) => execFileSync('git', args, { cwd, env, encoding: 'utf8', windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 256 * 1024 * 1024 });
+const samePath = (a, b) => { const left = path.resolve(a), right = path.resolve(b); return process.platform === 'win32' ? left.toLowerCase() === right.toLowerCase() : left === right; };
+function configValue(repo, key) {
+  try { return git(repo, ['config', '--get', key]).trim(); }
+  catch (error) { if (error?.status === 1) return ''; throw error; }
+}
+export function operatorIdentity(repo) { return { name: configValue(repo, 'user.name'), email: configValue(repo, 'user.email') }; }
+export function exportCommitEnvironment(base = process.env) {
+  return { ...base, GIT_AUTHOR_NAME: exportIdentity.name, GIT_AUTHOR_EMAIL: exportIdentity.email, GIT_COMMITTER_NAME: exportIdentity.name, GIT_COMMITTER_EMAIL: exportIdentity.email };
+}
+function objectType(repo, id) {
+  try { return git(repo, ['cat-file', '-t', id]).trim(); } catch { return ''; }
+}
+export function resolveSourceCommit(repo, source) {
+  if (!objectId.test(source ?? '')) refuse('source commit must be an exact full commit id: ' + source);
+  const type = objectType(repo, source);
+  if (type !== 'commit') refuse('source commit is not a commit in ' + repo + ': ' + source + (type ? ' is a ' + type : ' is missing'));
+  return source;
+}
+export function resolveExportTree(repo, tree) {
+  if (objectId.test(tree ?? '')) {
+    const type = objectType(repo, tree);
+    if (type !== 'tree') refuse('export tree is not a tree in the local object store: ' + tree + (type ? ' is a ' + type : ' is missing'));
+    return tree;
+  }
+  const source = path.resolve(tree ?? '');
+  if (!tree || !existsSync(source)) refuse('export tree is neither a tree id nor an existing path: ' + tree);
+  let top = '';
+  try { top = git(source, ['rev-parse', '--show-toplevel']).trim(); } catch { refuse('export path is not a git repository: ' + source); }
+  if (!samePath(top, source)) refuse('export path is not the top of a git repository: ' + source);
+  if (git(source, ['status', '--porcelain', '--untracked-files=all']).trim() !== '') refuse('export repository has uncommitted or untracked files: ' + source);
+  git(repo, ['fetch', '--no-tags', '--quiet', source, 'HEAD']);
+  return git(repo, ['rev-parse', '--verify', 'FETCH_HEAD^{tree}']).trim();
+}
+export function releaseMain(repo, remote) {
+  const listing = git(repo, ['ls-remote', '--heads', remote, 'refs/heads/main']).trim();
+  if (!listing) refuse('release repository has no main branch: ' + remote);
+  const advertised = listing.split(/\s+/)[0];
+  git(repo, ['fetch', '--no-tags', '--quiet', remote, 'refs/heads/main']);
+  const base = git(repo, ['rev-parse', '--verify', 'FETCH_HEAD^{commit}']).trim();
+  if (base !== advertised) refuse('release main moved while it was fetched: advertised ' + advertised + ', fetched ' + base);
+  return base;
+}
+export function releaseMessage(source) { return 'Release export of source commit ' + source; }
+export function createReleaseCommit({ repo, tree, parent, source }) {
+  return git(repo, ['commit-tree', tree, '-p', parent, '-m', releaseMessage(source)], exportCommitEnvironment()).trim();
+}
+export function verifyReleaseCommit({ repo, commit, base, tree, operator }) {
+  if (!objectId.test(commit ?? '') || objectType(repo, commit) !== 'commit') refuse('release commit is missing: ' + commit);
+  const outgoing = git(repo, ['rev-list', base + '..' + commit]).split('\n').filter(Boolean);
+  if (outgoing.length !== 1 || outgoing[0] !== commit) refuse('release push must carry exactly one new commit on top of main; found ' + outgoing.length);
+  const fields = git(repo, ['log', '-1', '--format=%an%x00%ae%x00%cn%x00%ce', commit]).replace(/\r?\n$/, '').split('\0');
+  const expected = [exportIdentity.name, exportIdentity.email, exportIdentity.name, exportIdentity.email];
+  const labels = ['author name', 'author email', 'committer name', 'committer email'];
+  const wrong = labels.filter((label, index) => fields.length !== 4 || fields[index] !== expected[index]);
+  if (wrong.length) refuse('release commit identity is not the export identity (' + wrong.join(', ') + '): ' + fields.join(' / '));
+  const parents = git(repo, ['rev-list', '--parents', '-n', '1', commit]).trim().split(/\s+/).slice(1);
+  if (parents.length !== 1 || parents[0] !== base) refuse('release commit parent is not release main: ' + parents.join(' '));
+  if (git(repo, ['rev-parse', '--verify', commit + '^{tree}']).trim() !== tree) refuse('release commit tree is not the export tree');
+  const needles = [operator?.name, operator?.email].filter(Boolean).map(value => value.toLowerCase());
+  const messages = git(repo, ['log', '-z', '--format=%B', base + '..' + commit]).split('\0');
+  for (const needle of needles) if (messages.some(message => message.toLowerCase().includes(needle))) refuse('a release commit message contains the operator identity from git config');
+  const files = git(repo, ['ls-tree', '-r', '-z', '--name-only', tree]).split('\0').filter(Boolean);
+  for (const needle of needles) {
+    const hit = files.find(file => file.toLowerCase().includes(needle));
+    if (hit !== undefined) refuse('the export tree file list contains the operator identity from git config: ' + hit);
+  }
+  return { commit, fields, operatorNeedles: needles.length, files: files.length };
+}
+export function pushReleaseExport({ repo = root, source, tree, remote, createCommit = createReleaseCommit }) {
+  if (!remote) refuse('release remote is required');
+  const operator = operatorIdentity(repo);
+  const sourceCommit = resolveSourceCommit(repo, source);
+  const exportTree = resolveExportTree(repo, tree);
+  const base = releaseMain(repo, remote);
+  const commit = createCommit({ repo, tree: exportTree, parent: base, source: sourceCommit });
+  const verified = verifyReleaseCommit({ repo, commit, base, tree: exportTree, operator });
+  git(repo, ['push', '--quiet', remote, commit + ':refs/heads/main']);
+  const landed = git(repo, ['ls-remote', '--heads', remote, 'refs/heads/main']).trim().split(/\s+/)[0];
+  if (landed !== commit) refuse('release main after push is ' + landed + ', expected ' + commit);
+  return {
+    status: 'pushed', remote, sourceCommit, tree: exportTree, parent: base, commit, identity: exportIdentity,
+    operatorIdentityChecked: { name: operator.name !== '', email: operator.email !== '' }, files: verified.files,
+  };
+}
+function argument(name) { const index = process.argv.indexOf(name); return index < 0 ? undefined : process.argv[index + 1]; }
+function main() {
+  const source = argument('--source'), tree = argument('--tree'), remote = argument('--remote');
+  const repo = path.resolve(argument('--repo') ?? root);
+  if (!source || !tree || !remote) {
+    console.error('usage: node tools/handover/push-release-export.mjs --source <full commit id> --tree <tree id | export repository path> --remote <release repository> [--repo <local repository>]');
+    process.exitCode = 2;
+    return;
+  }
+  try { console.log(JSON.stringify(pushReleaseExport({ repo, source, tree, remote }), null, 2)); }
+  catch (error) {
+    const refused = error instanceof ReleaseExportRefusal;
+    console.error(JSON.stringify({ status: refused ? 'refused' : 'failed', reason: refused ? error.message : String(error?.stderr || error?.message || error).trim() }, null, 2));
+    process.exitCode = 1;
+  }
+}
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();

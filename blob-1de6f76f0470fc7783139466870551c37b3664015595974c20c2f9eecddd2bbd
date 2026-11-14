@@ -1,0 +1,109 @@
+// Finds the native command-line tools the test gate's child processes call, before
+// the gate starts any test: PowerShell (the process-tree kill machinery) and the
+// C and C++ compilers (the LibSass builds). A tool already on the gate's PATH is
+// used as it is. A tool that is not is searched for in the one location this
+// machine already installs it, and only that directory is appended to the child
+// PATH for this gate run. Nothing is installed, and no machine setting or
+// persistent PATH entry is written.
+//
+// Search order for each tool:
+//   1. The directories already on PATH, unchanged and first.
+//   2. Windows only: the PowerShell directory under SystemRoot, and the WinLibs
+//      MinGW-w64 package that winget installs under LOCALAPPDATA\Microsoft\WinGet\Packages.
+//   3. Linux: no fallback. A missing compiler is reported by name.
+// A platform without search rules throws NativeCommandPlatformError.
+
+import { join, delimiter } from "node:path";
+
+export const WINGET_WINLIBS_PACKAGE_PREFIX = "BrechtSanders.WinLibs";
+
+/**
+ * Reads an environment variable by name. Windows names are case-insensitive
+ * (Path, PATH and path are one variable), but a copied environment object keeps
+ * the spelling it was copied with, so the Windows lookup matches case-insensitively.
+ */
+export function environmentValue(env, name, platform) {
+  if (platform !== "win32") return env[name];
+  const key = Object.keys(env).find(candidate => candidate.toUpperCase() === name.toUpperCase());
+  return key === undefined ? undefined : env[key];
+}
+
+export class NativeCommandPlatformError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "NativeCommandPlatformError";
+  }
+}
+
+/** The commands the gate must be able to call on this platform. */
+export function requiredNativeCommands(platform) {
+  if (platform === "win32") return ["powershell", "gcc", "g++"];
+  if (platform === "linux") return ["gcc", "g++"];
+  throw new NativeCommandPlatformError(`No required native commands are declared for platform: ${platform}`);
+}
+
+/**
+ * Directories outside PATH where an installed copy of a tool may exist, for this platform.
+ * `listDirectory` is injected (readdirSync in the gate) so the search is testable.
+ * A listing that fails is recorded in `problems`, not thrown.
+ */
+export function nativeCommandFallbackDirectories({ env = {}, platform, listDirectory }) {
+  if (platform === "linux") return { directories: [], problems: [] };
+  if (platform !== "win32") throw new NativeCommandPlatformError(`No native command search rules for platform: ${platform}`);
+  const directories = [];
+  const problems = [];
+  const systemRoot = environmentValue(env, "SystemRoot", platform);
+  const localAppData = environmentValue(env, "LOCALAPPDATA", platform);
+  if (systemRoot) directories.push(join(systemRoot, "System32", "WindowsPowerShell", "v1.0"));
+  else problems.push("SystemRoot is not set, so the PowerShell directory cannot be located");
+  if (localAppData) {
+    const packages = join(localAppData, "Microsoft", "WinGet", "Packages");
+    let entries = [];
+    try {
+      entries = listDirectory(packages);
+    } catch (error) {
+      problems.push(`cannot list ${packages}: ${error.code ?? error.message}`);
+    }
+    for (const name of entries.filter(entry => entry.startsWith(WINGET_WINLIBS_PACKAGE_PREFIX)).sort()) {
+      directories.push(join(packages, name, "mingw64", "bin"));
+    }
+  } else {
+    problems.push("LOCALAPPDATA is not set, so the WinGet package directory cannot be located");
+  }
+  return { directories, problems };
+}
+
+/**
+ * Returns { resolved, added, missing, childPath, problems }.
+ * `resolved` maps each required command to { file, source: "PATH" | "fallback" }.
+ * `added` lists the fallback directories to append to the child PATH, in order.
+ * `missing` names each required command that neither PATH nor a fallback holds.
+ * `exists` is an injected file-existence check.
+ */
+export function resolveNativeCommands({ env = {}, platform = process.platform, exists, listDirectory }) {
+  const pathDirectories = (environmentValue(env, "PATH", platform) ?? "").split(delimiter).filter(Boolean);
+  const suffix = platform === "win32" ? ".exe" : "";
+  const fallback = nativeCommandFallbackDirectories({ env, platform, listDirectory });
+  const resolved = {};
+  const added = [];
+  const missing = [];
+  for (const command of requiredNativeCommands(platform)) {
+    const name = command + suffix;
+    const onPath = pathDirectories.map(dir => join(dir, name)).find(file => exists(file));
+    if (onPath) {
+      resolved[command] = { file: onPath, source: "PATH" };
+      continue;
+    }
+    const directory = fallback.directories.find(dir => exists(join(dir, name)));
+    if (directory) {
+      resolved[command] = { file: join(directory, name), source: "fallback" };
+      if (!added.includes(directory)) added.push(directory);
+      continue;
+    }
+    missing.push(command);
+  }
+  return {
+    resolved, added, missing, problems: fallback.problems,
+    childPath: [...pathDirectories, ...added].join(delimiter),
+  };
+}

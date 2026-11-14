@@ -1,0 +1,18 @@
+{
+  "format": "decko-staging-source-selection/1",
+  "sourceCommit": "ae65941dc5813ebe6d42a54cb3dbd6160301658b",
+  "sourceAcceptance": "component-reviewed",
+  "targetActivationAccepted": false,
+  "files": {
+    "vm-staging-server.mjs": {"byteLength": 278882, "sha256": "0bb44a54bdd8e1c1964d6576f09a4eaaf897030f5174ab60bf017759ed683dde"},
+    "configured-public-page-shell.mjs": {"byteLength": 8732, "sha256": "c499a0fefd699916ba90cd6e5613cd3d31cc78e4b5009e86eb7665e8d7e30915"},
+    "package.json": {"byteLength": 4098, "sha256": "bd3ac5c2fa6e1c6c81a8989bb6fcd48eb7f798dbf1c1351931dfe0a3133f1c09"},
+    "package-lock.json": {"byteLength": 133093, "sha256": "96a3efb62e81fdb24516d8106316e92e44cdde583d63399ca0b6e1e54731ae69"}
+  },
+  "distributions": [{
+    "config": "tsconfig.browser-hosts.json",
+    "distSha256": "0c325b846e3c6c740a80f478bce2539eec0c66d6fdcaf4831359139a25f30f8f",
+    "runtimeAssets": {"files": 52, "bytes": 6787336, "manifestSha256": "97bc7b6aff84844ca3dfccf73b38b59a431714253c4e7ce44f106486bcf2533b"}
+  }],
+  "scope": "Exact locally exercised Node distribution and four source/package files. Installed dependency/ABI, target configuration, data/body parity and activation remain separate. This is not whole-port acceptance."
+}

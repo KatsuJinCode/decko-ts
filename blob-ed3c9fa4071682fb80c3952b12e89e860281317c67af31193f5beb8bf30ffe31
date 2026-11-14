@@ -1,0 +1,1125 @@
+{
+  "schema": "decko-ruby-symbol-inspection/1",
+  "reference": "DEC102",
+  "source": "require \"json\";keys=JSON.parse(STDIN.read);puts JSON.generate({runtime:RUBY_DESCRIPTION,rows:keys.map{|key|{key:key,symbol:key.to_sym.inspect,hash:{key.to_sym=>nil}.inspect}}})",
+  "input": "[\"`\",\"$-é\",\"$-😀\",\"$-あ\",\"$-!\",\"$-?\",\"$--\",\"$-0\",\"$-9\",\"$-_\",\"$-A\",\"$012\",\"$00\",\"$0foo\",\"$a!\",\"$a?\",\"$a=\",\"@a!\",\"@a?\",\"@a=\",\"@@a!\",\"@@a?\",\"@@a=\",\"foo==\",\"foo?!\",\"foo!?\",\"a::b\",\"::a\",\"a::\",\"a:b\",\"...\",\"..\",\".\",\":\",\";\",\",\",\"\\\\\",\"\\\"\",\"'\",\"&&\",\"||\",\"=>\",\"**@\",\"+@@\",\"~@\",\"!@\",\"é=\",\"😀=\",\"é!\",\"é?\",\"\",\" \",\" \",\" \",\"\\u0000\",\"\\u0001\",\"\\u0002\",\"\\u0003\",\"\\u0004\",\"\\u0005\",\"\\u0006\",\"\\u0007\",\"\\b\",\"\\t\",\"\\n\",\"\\u000b\",\"\\f\",\"\\r\",\"\\u000e\",\"\\u000f\",\"\\u0010\",\"\\u0011\",\"\\u0012\",\"\\u0013\",\"\\u0014\",\"\\u0015\",\"\\u0016\",\"\\u0017\",\"\\u0018\",\"\\u0019\",\"\\u001a\",\"\\u001b\",\"\\u001c\",\"\\u001d\",\"\\u001e\",\"\\u001f\",\" \",\"!\",\"#\",\"$\",\"%\",\"&\",\"(\",\")\",\"*\",\"+\",\"-\",\"/\",\"0\",\"1\",\"2\",\"3\",\"4\",\"5\",\"6\",\"7\",\"8\",\"9\",\"<\",\"=\",\">\",\"?\",\"@\",\"A\",\"B\",\"C\",\"D\",\"E\",\"F\",\"G\",\"H\",\"I\",\"J\",\"K\",\"L\",\"M\",\"N\",\"O\",\"P\",\"Q\",\"R\",\"S\",\"T\",\"U\",\"V\",\"W\",\"X\",\"Y\",\"Z\",\"[\",\"]\",\"^\",\"_\",\"a\",\"b\",\"c\",\"d\",\"e\",\"f\",\"g\",\"h\",\"i\",\"j\",\"k\",\"l\",\"m\",\"n\",\"o\",\"p\",\"q\",\"r\",\"s\",\"t\",\"u\",\"v\",\"w\",\"x\",\"y\",\"z\",\"{\",\"|\",\"}\",\"~\",\"\",\"é\",\"😀\",\"foo\",\"foo!\",\"foo?\",\"foo=\",\"a-b\",\"a b\",\"@x\",\"@X\",\"@_\",\"@0\",\"@1\",\"@é\",\"@😀\",\"@foo\",\"@foo!\",\"@foo?\",\"@foo=\",\"@a-b\",\"@a b\",\"@@x\",\"@@X\",\"@@_\",\"@@0\",\"@@1\",\"@@é\",\"@@😀\",\"@@foo\",\"@@foo!\",\"@@foo?\",\"@@foo=\",\"@@a-b\",\"@@a b\",\"$x\",\"$X\",\"$_\",\"$0\",\"$1\",\"$é\",\"$😀\",\"$foo\",\"$foo!\",\"$foo?\",\"$foo=\",\"$a-b\",\"$a b\"]",
+  "provenance": {
+    "target": "ubuntu@170.9.231.182",
+    "runtime": "ruby 3.2.3 (2024-01-18 revision 52bb2ac0a6) [aarch64-linux-gnu]",
+    "sourceFiles": 0,
+    "requestSha256": "0428f7fcdad9e13c198f4b024445ffeab5cc5d27749f9fdb7810d0a0ca150991",
+    "stdinSha256": "1936dfb4bd31700cc432ec6d6c74e3209e85814fc3d4a07f03a754e456f5810b",
+    "status": 0,
+    "sources": []
+  },
+  "observations": {
+    "runtime": "ruby 3.2.3 (2024-01-18 revision 52bb2ac0a6) [aarch64-linux-gnu]",
+    "rows": [
+      {
+        "key": "`",
+        "symbol": ":`",
+        "hash": "{:`=>nil}"
+      },
+      {
+        "key": "$-é",
+        "symbol": ":$-é",
+        "hash": "{:$-é=>nil}"
+      },
+      {
+        "key": "$-😀",
+        "symbol": ":$-😀",
+        "hash": "{:$-😀=>nil}"
+      },
+      {
+        "key": "$-あ",
+        "symbol": ":$-あ",
+        "hash": "{:$-あ=>nil}"
+      },
+      {
+        "key": "$-!",
+        "symbol": ":\"$-!\"",
+        "hash": "{:\"$-!\"=>nil}"
+      },
+      {
+        "key": "$-?",
+        "symbol": ":\"$-?\"",
+        "hash": "{:\"$-?\"=>nil}"
+      },
+      {
+        "key": "$--",
+        "symbol": ":\"$--\"",
+        "hash": "{:\"$--\"=>nil}"
+      },
+      {
+        "key": "$-0",
+        "symbol": ":$-0",
+        "hash": "{:$-0=>nil}"
+      },
+      {
+        "key": "$-9",
+        "symbol": ":$-9",
+        "hash": "{:$-9=>nil}"
+      },
+      {
+        "key": "$-_",
+        "symbol": ":$-_",
+        "hash": "{:$-_=>nil}"
+      },
+      {
+        "key": "$-A",
+        "symbol": ":$-A",
+        "hash": "{:$-A=>nil}"
+      },
+      {
+        "key": "$012",
+        "symbol": ":\"$012\"",
+        "hash": "{:\"$012\"=>nil}"
+      },
+      {
+        "key": "$00",
+        "symbol": ":\"$00\"",
+        "hash": "{:\"$00\"=>nil}"
+      },
+      {
+        "key": "$0foo",
+        "symbol": ":\"$0foo\"",
+        "hash": "{:\"$0foo\"=>nil}"
+      },
+      {
+        "key": "$a!",
+        "symbol": ":\"$a!\"",
+        "hash": "{:\"$a!\"=>nil}"
+      },
+      {
+        "key": "$a?",
+        "symbol": ":\"$a?\"",
+        "hash": "{:\"$a?\"=>nil}"
+      },
+      {
+        "key": "$a=",
+        "symbol": ":\"$a=\"",
+        "hash": "{:\"$a=\"=>nil}"
+      },
+      {
+        "key": "@a!",
+        "symbol": ":\"@a!\"",
+        "hash": "{:\"@a!\"=>nil}"
+      },
+      {
+        "key": "@a?",
+        "symbol": ":\"@a?\"",
+        "hash": "{:\"@a?\"=>nil}"
+      },
+      {
+        "key": "@a=",
+        "symbol": ":\"@a=\"",
+        "hash": "{:\"@a=\"=>nil}"
+      },
+      {
+        "key": "@@a!",
+        "symbol": ":\"@@a!\"",
+        "hash": "{:\"@@a!\"=>nil}"
+      },
+      {
+        "key": "@@a?",
+        "symbol": ":\"@@a?\"",
+        "hash": "{:\"@@a?\"=>nil}"
+      },
+      {
+        "key": "@@a=",
+        "symbol": ":\"@@a=\"",
+        "hash": "{:\"@@a=\"=>nil}"
+      },
+      {
+        "key": "foo==",
+        "symbol": ":\"foo==\"",
+        "hash": "{:\"foo==\"=>nil}"
+      },
+      {
+        "key": "foo?!",
+        "symbol": ":\"foo?!\"",
+        "hash": "{:\"foo?!\"=>nil}"
+      },
+      {
+        "key": "foo!?",
+        "symbol": ":\"foo!?\"",
+        "hash": "{:\"foo!?\"=>nil}"
+      },
+      {
+        "key": "a::b",
+        "symbol": ":\"a::b\"",
+        "hash": "{:\"a::b\"=>nil}"
+      },
+      {
+        "key": "::a",
+        "symbol": ":\"::a\"",
+        "hash": "{:\"::a\"=>nil}"
+      },
+      {
+        "key": "a::",
+        "symbol": ":\"a::\"",
+        "hash": "{:\"a::\"=>nil}"
+      },
+      {
+        "key": "a:b",
+        "symbol": ":\"a:b\"",
+        "hash": "{:\"a:b\"=>nil}"
+      },
+      {
+        "key": "...",
+        "symbol": ":\"...\"",
+        "hash": "{:\"...\"=>nil}"
+      },
+      {
+        "key": "..",
+        "symbol": ":\"..\"",
+        "hash": "{:\"..\"=>nil}"
+      },
+      {
+        "key": ".",
+        "symbol": ":\".\"",
+        "hash": "{:\".\"=>nil}"
+      },
+      {
+        "key": ":",
+        "symbol": ":\":\"",
+        "hash": "{:\":\"=>nil}"
+      },
+      {
+        "key": ";",
+        "symbol": ":\";\"",
+        "hash": "{:\";\"=>nil}"
+      },
+      {
+        "key": ",",
+        "symbol": ":\",\"",
+        "hash": "{:\",\"=>nil}"
+      },
+      {
+        "key": "\\",
+        "symbol": ":\"\\\\\"",
+        "hash": "{:\"\\\\\"=>nil}"
+      },
+      {
+        "key": "\"",
+        "symbol": ":\"\\\"\"",
+        "hash": "{:\"\\\"\"=>nil}"
+      },
+      {
+        "key": "'",
+        "symbol": ":\"'\"",
+        "hash": "{:\"'\"=>nil}"
+      },
+      {
+        "key": "&&",
+        "symbol": ":\"&&\"",
+        "hash": "{:\"&&\"=>nil}"
+      },
+      {
+        "key": "||",
+        "symbol": ":\"||\"",
+        "hash": "{:\"||\"=>nil}"
+      },
+      {
+        "key": "=>",
+        "symbol": ":\"=>\"",
+        "hash": "{:\"=>\"=>nil}"
+      },
+      {
+        "key": "**@",
+        "symbol": ":\"**@\"",
+        "hash": "{:\"**@\"=>nil}"
+      },
+      {
+        "key": "+@@",
+        "symbol": ":\"+@@\"",
+        "hash": "{:\"+@@\"=>nil}"
+      },
+      {
+        "key": "~@",
+        "symbol": ":\"~@\"",
+        "hash": "{:\"~@\"=>nil}"
+      },
+      {
+        "key": "!@",
+        "symbol": ":\"!@\"",
+        "hash": "{:\"!@\"=>nil}"
+      },
+      {
+        "key": "é=",
+        "symbol": ":é=",
+        "hash": "{:é==>nil}"
+      },
+      {
+        "key": "😀=",
+        "symbol": ":😀=",
+        "hash": "{:😀==>nil}"
+      },
+      {
+        "key": "é!",
+        "symbol": ":é!",
+        "hash": "{:é!=>nil}"
+      },
+      {
+        "key": "é?",
+        "symbol": ":é?",
+        "hash": "{:é?=>nil}"
+      },
+      {
+        "key": "",
+        "symbol": ":",
+        "hash": "{:=>nil}"
+      },
+      {
+        "key": " ",
+        "symbol": ": ",
+        "hash": "{: =>nil}"
+      },
+      {
+        "key": " ",
+        "symbol": ":\"\\u2028\"",
+        "hash": "{:\"\\u2028\"=>nil}"
+      },
+      {
+        "key": " ",
+        "symbol": ":\"\\u2029\"",
+        "hash": "{:\"\\u2029\"=>nil}"
+      },
+      {
+        "key": "\u0000",
+        "symbol": ":\"\\x00\"",
+        "hash": "{:\"\\x00\"=>nil}"
+      },
+      {
+        "key": "\u0001",
+        "symbol": ":\"\\x01\"",
+        "hash": "{:\"\\x01\"=>nil}"
+      },
+      {
+        "key": "\u0002",
+        "symbol": ":\"\\x02\"",
+        "hash": "{:\"\\x02\"=>nil}"
+      },
+      {
+        "key": "\u0003",
+        "symbol": ":\"\\x03\"",
+        "hash": "{:\"\\x03\"=>nil}"
+      },
+      {
+        "key": "\u0004",
+        "symbol": ":\"\\x04\"",
+        "hash": "{:\"\\x04\"=>nil}"
+      },
+      {
+        "key": "\u0005",
+        "symbol": ":\"\\x05\"",
+        "hash": "{:\"\\x05\"=>nil}"
+      },
+      {
+        "key": "\u0006",
+        "symbol": ":\"\\x06\"",
+        "hash": "{:\"\\x06\"=>nil}"
+      },
+      {
+        "key": "\u0007",
+        "symbol": ":\"\\a\"",
+        "hash": "{:\"\\a\"=>nil}"
+      },
+      {
+        "key": "\b",
+        "symbol": ":\"\\b\"",
+        "hash": "{:\"\\b\"=>nil}"
+      },
+      {
+        "key": "\t",
+        "symbol": ":\"\\t\"",
+        "hash": "{:\"\\t\"=>nil}"
+      },
+      {
+        "key": "\n",
+        "symbol": ":\"\\n\"",
+        "hash": "{:\"\\n\"=>nil}"
+      },
+      {
+        "key": "\u000b",
+        "symbol": ":\"\\v\"",
+        "hash": "{:\"\\v\"=>nil}"
+      },
+      {
+        "key": "\f",
+        "symbol": ":\"\\f\"",
+        "hash": "{:\"\\f\"=>nil}"
+      },
+      {
+        "key": "\r",
+        "symbol": ":\"\\r\"",
+        "hash": "{:\"\\r\"=>nil}"
+      },
+      {
+        "key": "\u000e",
+        "symbol": ":\"\\x0E\"",
+        "hash": "{:\"\\x0E\"=>nil}"
+      },
+      {
+        "key": "\u000f",
+        "symbol": ":\"\\x0F\"",
+        "hash": "{:\"\\x0F\"=>nil}"
+      },
+      {
+        "key": "\u0010",
+        "symbol": ":\"\\x10\"",
+        "hash": "{:\"\\x10\"=>nil}"
+      },
+      {
+        "key": "\u0011",
+        "symbol": ":\"\\x11\"",
+        "hash": "{:\"\\x11\"=>nil}"
+      },
+      {
+        "key": "\u0012",
+        "symbol": ":\"\\x12\"",
+        "hash": "{:\"\\x12\"=>nil}"
+      },
+      {
+        "key": "\u0013",
+        "symbol": ":\"\\x13\"",
+        "hash": "{:\"\\x13\"=>nil}"
+      },
+      {
+        "key": "\u0014",
+        "symbol": ":\"\\x14\"",
+        "hash": "{:\"\\x14\"=>nil}"
+      },
+      {
+        "key": "\u0015",
+        "symbol": ":\"\\x15\"",
+        "hash": "{:\"\\x15\"=>nil}"
+      },
+      {
+        "key": "\u0016",
+        "symbol": ":\"\\x16\"",
+        "hash": "{:\"\\x16\"=>nil}"
+      },
+      {
+        "key": "\u0017",
+        "symbol": ":\"\\x17\"",
+        "hash": "{:\"\\x17\"=>nil}"
+      },
+      {
+        "key": "\u0018",
+        "symbol": ":\"\\x18\"",
+        "hash": "{:\"\\x18\"=>nil}"
+      },
+      {
+        "key": "\u0019",
+        "symbol": ":\"\\x19\"",
+        "hash": "{:\"\\x19\"=>nil}"
+      },
+      {
+        "key": "\u001a",
+        "symbol": ":\"\\x1A\"",
+        "hash": "{:\"\\x1A\"=>nil}"
+      },
+      {
+        "key": "\u001b",
+        "symbol": ":\"\\e\"",
+        "hash": "{:\"\\e\"=>nil}"
+      },
+      {
+        "key": "\u001c",
+        "symbol": ":\"\\x1C\"",
+        "hash": "{:\"\\x1C\"=>nil}"
+      },
+      {
+        "key": "\u001d",
+        "symbol": ":\"\\x1D\"",
+        "hash": "{:\"\\x1D\"=>nil}"
+      },
+      {
+        "key": "\u001e",
+        "symbol": ":\"\\x1E\"",
+        "hash": "{:\"\\x1E\"=>nil}"
+      },
+      {
+        "key": "\u001f",
+        "symbol": ":\"\\x1F\"",
+        "hash": "{:\"\\x1F\"=>nil}"
+      },
+      {
+        "key": " ",
+        "symbol": ":\" \"",
+        "hash": "{:\" \"=>nil}"
+      },
+      {
+        "key": "!",
+        "symbol": ":!",
+        "hash": "{:!=>nil}"
+      },
+      {
+        "key": "#",
+        "symbol": ":\"#\"",
+        "hash": "{:\"#\"=>nil}"
+      },
+      {
+        "key": "$",
+        "symbol": ":\"$\"",
+        "hash": "{:\"$\"=>nil}"
+      },
+      {
+        "key": "%",
+        "symbol": ":%",
+        "hash": "{:%=>nil}"
+      },
+      {
+        "key": "&",
+        "symbol": ":&",
+        "hash": "{:&=>nil}"
+      },
+      {
+        "key": "(",
+        "symbol": ":\"(\"",
+        "hash": "{:\"(\"=>nil}"
+      },
+      {
+        "key": ")",
+        "symbol": ":\")\"",
+        "hash": "{:\")\"=>nil}"
+      },
+      {
+        "key": "*",
+        "symbol": ":*",
+        "hash": "{:*=>nil}"
+      },
+      {
+        "key": "+",
+        "symbol": ":+",
+        "hash": "{:+=>nil}"
+      },
+      {
+        "key": "-",
+        "symbol": ":-",
+        "hash": "{:-=>nil}"
+      },
+      {
+        "key": "/",
+        "symbol": ":/",
+        "hash": "{:/=>nil}"
+      },
+      {
+        "key": "0",
+        "symbol": ":\"0\"",
+        "hash": "{:\"0\"=>nil}"
+      },
+      {
+        "key": "1",
+        "symbol": ":\"1\"",
+        "hash": "{:\"1\"=>nil}"
+      },
+      {
+        "key": "2",
+        "symbol": ":\"2\"",
+        "hash": "{:\"2\"=>nil}"
+      },
+      {
+        "key": "3",
+        "symbol": ":\"3\"",
+        "hash": "{:\"3\"=>nil}"
+      },
+      {
+        "key": "4",
+        "symbol": ":\"4\"",
+        "hash": "{:\"4\"=>nil}"
+      },
+      {
+        "key": "5",
+        "symbol": ":\"5\"",
+        "hash": "{:\"5\"=>nil}"
+      },
+      {
+        "key": "6",
+        "symbol": ":\"6\"",
+        "hash": "{:\"6\"=>nil}"
+      },
+      {
+        "key": "7",
+        "symbol": ":\"7\"",
+        "hash": "{:\"7\"=>nil}"
+      },
+      {
+        "key": "8",
+        "symbol": ":\"8\"",
+        "hash": "{:\"8\"=>nil}"
+      },
+      {
+        "key": "9",
+        "symbol": ":\"9\"",
+        "hash": "{:\"9\"=>nil}"
+      },
+      {
+        "key": "<",
+        "symbol": ":<",
+        "hash": "{:<=>nil}"
+      },
+      {
+        "key": "=",
+        "symbol": ":\"=\"",
+        "hash": "{:\"=\"=>nil}"
+      },
+      {
+        "key": ">",
+        "symbol": ":>",
+        "hash": "{:>=>nil}"
+      },
+      {
+        "key": "?",
+        "symbol": ":\"?\"",
+        "hash": "{:\"?\"=>nil}"
+      },
+      {
+        "key": "@",
+        "symbol": ":\"@\"",
+        "hash": "{:\"@\"=>nil}"
+      },
+      {
+        "key": "A",
+        "symbol": ":A",
+        "hash": "{:A=>nil}"
+      },
+      {
+        "key": "B",
+        "symbol": ":B",
+        "hash": "{:B=>nil}"
+      },
+      {
+        "key": "C",
+        "symbol": ":C",
+        "hash": "{:C=>nil}"
+      },
+      {
+        "key": "D",
+        "symbol": ":D",
+        "hash": "{:D=>nil}"
+      },
+      {
+        "key": "E",
+        "symbol": ":E",
+        "hash": "{:E=>nil}"
+      },
+      {
+        "key": "F",
+        "symbol": ":F",
+        "hash": "{:F=>nil}"
+      },
+      {
+        "key": "G",
+        "symbol": ":G",
+        "hash": "{:G=>nil}"
+      },
+      {
+        "key": "H",
+        "symbol": ":H",
+        "hash": "{:H=>nil}"
+      },
+      {
+        "key": "I",
+        "symbol": ":I",
+        "hash": "{:I=>nil}"
+      },
+      {
+        "key": "J",
+        "symbol": ":J",
+        "hash": "{:J=>nil}"
+      },
+      {
+        "key": "K",
+        "symbol": ":K",
+        "hash": "{:K=>nil}"
+      },
+      {
+        "key": "L",
+        "symbol": ":L",
+        "hash": "{:L=>nil}"
+      },
+      {
+        "key": "M",
+        "symbol": ":M",
+        "hash": "{:M=>nil}"
+      },
+      {
+        "key": "N",
+        "symbol": ":N",
+        "hash": "{:N=>nil}"
+      },
+      {
+        "key": "O",
+        "symbol": ":O",
+        "hash": "{:O=>nil}"
+      },
+      {
+        "key": "P",
+        "symbol": ":P",
+        "hash": "{:P=>nil}"
+      },
+      {
+        "key": "Q",
+        "symbol": ":Q",
+        "hash": "{:Q=>nil}"
+      },
+      {
+        "key": "R",
+        "symbol": ":R",
+        "hash": "{:R=>nil}"
+      },
+      {
+        "key": "S",
+        "symbol": ":S",
+        "hash": "{:S=>nil}"
+      },
+      {
+        "key": "T",
+        "symbol": ":T",
+        "hash": "{:T=>nil}"
+      },
+      {
+        "key": "U",
+        "symbol": ":U",
+        "hash": "{:U=>nil}"
+      },
+      {
+        "key": "V",
+        "symbol": ":V",
+        "hash": "{:V=>nil}"
+      },
+      {
+        "key": "W",
+        "symbol": ":W",
+        "hash": "{:W=>nil}"
+      },
+      {
+        "key": "X",
+        "symbol": ":X",
+        "hash": "{:X=>nil}"
+      },
+      {
+        "key": "Y",
+        "symbol": ":Y",
+        "hash": "{:Y=>nil}"
+      },
+      {
+        "key": "Z",
+        "symbol": ":Z",
+        "hash": "{:Z=>nil}"
+      },
+      {
+        "key": "[",
+        "symbol": ":\"[\"",
+        "hash": "{:\"[\"=>nil}"
+      },
+      {
+        "key": "]",
+        "symbol": ":\"]\"",
+        "hash": "{:\"]\"=>nil}"
+      },
+      {
+        "key": "^",
+        "symbol": ":^",
+        "hash": "{:^=>nil}"
+      },
+      {
+        "key": "_",
+        "symbol": ":_",
+        "hash": "{:_=>nil}"
+      },
+      {
+        "key": "a",
+        "symbol": ":a",
+        "hash": "{:a=>nil}"
+      },
+      {
+        "key": "b",
+        "symbol": ":b",
+        "hash": "{:b=>nil}"
+      },
+      {
+        "key": "c",
+        "symbol": ":c",
+        "hash": "{:c=>nil}"
+      },
+      {
+        "key": "d",
+        "symbol": ":d",
+        "hash": "{:d=>nil}"
+      },
+      {
+        "key": "e",
+        "symbol": ":e",
+        "hash": "{:e=>nil}"
+      },
+      {
+        "key": "f",
+        "symbol": ":f",
+        "hash": "{:f=>nil}"
+      },
+      {
+        "key": "g",
+        "symbol": ":g",
+        "hash": "{:g=>nil}"
+      },
+      {
+        "key": "h",
+        "symbol": ":h",
+        "hash": "{:h=>nil}"
+      },
+      {
+        "key": "i",
+        "symbol": ":i",
+        "hash": "{:i=>nil}"
+      },
+      {
+        "key": "j",
+        "symbol": ":j",
+        "hash": "{:j=>nil}"
+      },
+      {
+        "key": "k",
+        "symbol": ":k",
+        "hash": "{:k=>nil}"
+      },
+      {
+        "key": "l",
+        "symbol": ":l",
+        "hash": "{:l=>nil}"
+      },
+      {
+        "key": "m",
+        "symbol": ":m",
+        "hash": "{:m=>nil}"
+      },
+      {
+        "key": "n",
+        "symbol": ":n",
+        "hash": "{:n=>nil}"
+      },
+      {
+        "key": "o",
+        "symbol": ":o",
+        "hash": "{:o=>nil}"
+      },
+      {
+        "key": "p",
+        "symbol": ":p",
+        "hash": "{:p=>nil}"
+      },
+      {
+        "key": "q",
+        "symbol": ":q",
+        "hash": "{:q=>nil}"
+      },
+      {
+        "key": "r",
+        "symbol": ":r",
+        "hash": "{:r=>nil}"
+      },
+      {
+        "key": "s",
+        "symbol": ":s",
+        "hash": "{:s=>nil}"
+      },
+      {
+        "key": "t",
+        "symbol": ":t",
+        "hash": "{:t=>nil}"
+      },
+      {
+        "key": "u",
+        "symbol": ":u",
+        "hash": "{:u=>nil}"
+      },
+      {
+        "key": "v",
+        "symbol": ":v",
+        "hash": "{:v=>nil}"
+      },
+      {
+        "key": "w",
+        "symbol": ":w",
+        "hash": "{:w=>nil}"
+      },
+      {
+        "key": "x",
+        "symbol": ":x",
+        "hash": "{:x=>nil}"
+      },
+      {
+        "key": "y",
+        "symbol": ":y",
+        "hash": "{:y=>nil}"
+      },
+      {
+        "key": "z",
+        "symbol": ":z",
+        "hash": "{:z=>nil}"
+      },
+      {
+        "key": "{",
+        "symbol": ":\"{\"",
+        "hash": "{:\"{\"=>nil}"
+      },
+      {
+        "key": "|",
+        "symbol": ":|",
+        "hash": "{:|=>nil}"
+      },
+      {
+        "key": "}",
+        "symbol": ":\"}\"",
+        "hash": "{:\"}\"=>nil}"
+      },
+      {
+        "key": "~",
+        "symbol": ":~",
+        "hash": "{:~=>nil}"
+      },
+      {
+        "key": "",
+        "symbol": ":\"\\x7F\"",
+        "hash": "{:\"\\x7F\"=>nil}"
+      },
+      {
+        "key": "é",
+        "symbol": ":é",
+        "hash": "{:é=>nil}"
+      },
+      {
+        "key": "😀",
+        "symbol": ":😀",
+        "hash": "{:😀=>nil}"
+      },
+      {
+        "key": "foo",
+        "symbol": ":foo",
+        "hash": "{:foo=>nil}"
+      },
+      {
+        "key": "foo!",
+        "symbol": ":foo!",
+        "hash": "{:foo!=>nil}"
+      },
+      {
+        "key": "foo?",
+        "symbol": ":foo?",
+        "hash": "{:foo?=>nil}"
+      },
+      {
+        "key": "foo=",
+        "symbol": ":foo=",
+        "hash": "{:foo==>nil}"
+      },
+      {
+        "key": "a-b",
+        "symbol": ":\"a-b\"",
+        "hash": "{:\"a-b\"=>nil}"
+      },
+      {
+        "key": "a b",
+        "symbol": ":\"a b\"",
+        "hash": "{:\"a b\"=>nil}"
+      },
+      {
+        "key": "@x",
+        "symbol": ":@x",
+        "hash": "{:@x=>nil}"
+      },
+      {
+        "key": "@X",
+        "symbol": ":@X",
+        "hash": "{:@X=>nil}"
+      },
+      {
+        "key": "@_",
+        "symbol": ":@_",
+        "hash": "{:@_=>nil}"
+      },
+      {
+        "key": "@0",
+        "symbol": ":\"@0\"",
+        "hash": "{:\"@0\"=>nil}"
+      },
+      {
+        "key": "@1",
+        "symbol": ":\"@1\"",
+        "hash": "{:\"@1\"=>nil}"
+      },
+      {
+        "key": "@é",
+        "symbol": ":@é",
+        "hash": "{:@é=>nil}"
+      },
+      {
+        "key": "@😀",
+        "symbol": ":@😀",
+        "hash": "{:@😀=>nil}"
+      },
+      {
+        "key": "@foo",
+        "symbol": ":@foo",
+        "hash": "{:@foo=>nil}"
+      },
+      {
+        "key": "@foo!",
+        "symbol": ":\"@foo!\"",
+        "hash": "{:\"@foo!\"=>nil}"
+      },
+      {
+        "key": "@foo?",
+        "symbol": ":\"@foo?\"",
+        "hash": "{:\"@foo?\"=>nil}"
+      },
+      {
+        "key": "@foo=",
+        "symbol": ":\"@foo=\"",
+        "hash": "{:\"@foo=\"=>nil}"
+      },
+      {
+        "key": "@a-b",
+        "symbol": ":\"@a-b\"",
+        "hash": "{:\"@a-b\"=>nil}"
+      },
+      {
+        "key": "@a b",
+        "symbol": ":\"@a b\"",
+        "hash": "{:\"@a b\"=>nil}"
+      },
+      {
+        "key": "@@x",
+        "symbol": ":@@x",
+        "hash": "{:@@x=>nil}"
+      },
+      {
+        "key": "@@X",
+        "symbol": ":@@X",
+        "hash": "{:@@X=>nil}"
+      },
+      {
+        "key": "@@_",
+        "symbol": ":@@_",
+        "hash": "{:@@_=>nil}"
+      },
+      {
+        "key": "@@0",
+        "symbol": ":\"@@0\"",
+        "hash": "{:\"@@0\"=>nil}"
+      },
+      {
+        "key": "@@1",
+        "symbol": ":\"@@1\"",
+        "hash": "{:\"@@1\"=>nil}"
+      },
+      {
+        "key": "@@é",
+        "symbol": ":@@é",
+        "hash": "{:@@é=>nil}"
+      },
+      {
+        "key": "@@😀",
+        "symbol": ":@@😀",
+        "hash": "{:@@😀=>nil}"
+      },
+      {
+        "key": "@@foo",
+        "symbol": ":@@foo",
+        "hash": "{:@@foo=>nil}"
+      },
+      {
+        "key": "@@foo!",
+        "symbol": ":\"@@foo!\"",
+        "hash": "{:\"@@foo!\"=>nil}"
+      },
+      {
+        "key": "@@foo?",
+        "symbol": ":\"@@foo?\"",
+        "hash": "{:\"@@foo?\"=>nil}"
+      },
+      {
+        "key": "@@foo=",
+        "symbol": ":\"@@foo=\"",
+        "hash": "{:\"@@foo=\"=>nil}"
+      },
+      {
+        "key": "@@a-b",
+        "symbol": ":\"@@a-b\"",
+        "hash": "{:\"@@a-b\"=>nil}"
+      },
+      {
+        "key": "@@a b",
+        "symbol": ":\"@@a b\"",
+        "hash": "{:\"@@a b\"=>nil}"
+      },
+      {
+        "key": "$x",
+        "symbol": ":$x",
+        "hash": "{:$x=>nil}"
+      },
+      {
+        "key": "$X",
+        "symbol": ":$X",
+        "hash": "{:$X=>nil}"
+      },
+      {
+        "key": "$_",
+        "symbol": ":$_",
+        "hash": "{:$_=>nil}"
+      },
+      {
+        "key": "$0",
+        "symbol": ":$0",
+        "hash": "{:$0=>nil}"
+      },
+      {
+        "key": "$1",
+        "symbol": ":$1",
+        "hash": "{:$1=>nil}"
+      },
+      {
+        "key": "$é",
+        "symbol": ":$é",
+        "hash": "{:$é=>nil}"
+      },
+      {
+        "key": "$😀",
+        "symbol": ":$😀",
+        "hash": "{:$😀=>nil}"
+      },
+      {
+        "key": "$foo",
+        "symbol": ":$foo",
+        "hash": "{:$foo=>nil}"
+      },
+      {
+        "key": "$foo!",
+        "symbol": ":\"$foo!\"",
+        "hash": "{:\"$foo!\"=>nil}"
+      },
+      {
+        "key": "$foo?",
+        "symbol": ":\"$foo?\"",
+        "hash": "{:\"$foo?\"=>nil}"
+      },
+      {
+        "key": "$foo=",
+        "symbol": ":\"$foo=\"",
+        "hash": "{:\"$foo=\"=>nil}"
+      },
+      {
+        "key": "$a-b",
+        "symbol": ":\"$a-b\"",
+        "hash": "{:\"$a-b\"=>nil}"
+      },
+      {
+        "key": "$a b",
+        "symbol": ":\"$a b\"",
+        "hash": "{:\"$a b\"=>nil}"
+      }
+    ]
+  }
+}

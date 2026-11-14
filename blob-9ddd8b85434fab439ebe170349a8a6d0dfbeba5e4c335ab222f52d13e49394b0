@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Stock Ruby Decko on an explicit, frozen Linux MySQL bundle.
+set -euo pipefail
+ORACLE_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+: "${ORACLE_LINUX_BUNDLE:?set the directory containing the frozen Linux app bundle}"
+: "${HARNESS_MYSQL_URL:?the MySQL bridge must provide its session database URL}"
+: "${ORACLE_RUBY:?set the approved Ruby executable}"
+: "${ORACLE_BUNDLER:?set the existing Bundler executable}"
+export RAILS_ENV=development
+export DATABASE_URL="$HARNESS_MYSQL_URL"
+export DECKO_FILES_DIR="${HARNESS_FILES:?}"
+export DECKO_CACHE_DIR="${HARNESS_WORK:?}/cache"
+export HARNESS_BIG_STACK="${HARNESS_BIG_STACK:-0}"
+export RUBY_THREAD_VM_STACK_SIZE="${RUBY_THREAD_VM_STACK_SIZE:-67108864}"
+export RUBY_THREAD_MACHINE_STACK_SIZE="${RUBY_THREAD_MACHINE_STACK_SIZE:-268435456}"
+export BUNDLE_GEMFILE="$ORACLE_LINUX_BUNDLE/app/Gemfile"
+export BUNDLE_FROZEN=true
+export BUNDLE_IGNORE_CONFIG=1
+export BUNDLE_PATH__SYSTEM=true
+mkdir -p "$DECKO_CACHE_DIR"
+cd "$ORACLE_LINUX_BUNDLE/app"
+exec "$ORACLE_RUBY" "$ORACLE_BUNDLER" exec "$ORACLE_RUBY" -e 'load Gem.bin_path("decko", "decko")' -- runner "$ORACLE_SRC/adapter.rb"

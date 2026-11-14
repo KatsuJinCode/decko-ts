@@ -1,0 +1,82 @@
+import {afterEach, beforeEach, describe, expect, it} from "vitest";
+import {CodenameNotFoundError} from "../../../src/card/name/errors.js";
+import {allRenderingErrorsRaise, setRaiseAllRenderingErrors} from "../../../src/card/render/format.js";
+import {renderPageBytes} from "../../../src/card/render/page.js";
+import {createRenderTestStorage, seedCard, type RenderTestStorage} from "./render-test-storage.js";
+
+// Ruby format/error.rb: loud_error? is focal? || raise_all_rendering_errors.
+// A stock Ruby 3.2.3 page raises on the invalid date and missing email codename
+// below; a bare email core and a nested date retain their quiet error spans.
+const prior = allRenderingErrorsRaise();
+let storage: RenderTestStorage;
+
+beforeEach(async () => {
+  storage = await createRenderTestStorage();
+  await seedCard(storage, {id: 2, name: "Basic", codename: "basic", typeId: 2});
+  await seedCard(storage, {id: 3, name: "Date", codename: "date", typeId: 2});
+  await seedCard(storage, {id: 20, name: "Broken date", typeId: 3, dbContent: "1981-10"});
+  await seedCard(storage, {id: 21, name: "Nested date", typeId: 2, dbContent: "before {{Broken date|core}} after"});
+  await seedCard(storage, {id: 40, name: "Email template", codename: "email_template", typeId: 2});
+  await seedCard(storage, {id: 41, name: "Template", typeId: 40});
+  const tags = ["to", "from", "cc", "bcc", "attach", "subject", "text_message", "html_message"];
+  for (const [index, codename] of tags.entries()) {
+    await seedCard(storage, {id: 100 + index, name: `*${codename.replaceAll("_", " ")}`, codename, typeId: 2});
+  }
+  for (const [index, codename] of ["header", "sidebar", "footer"].entries()) {
+    await seedCard(storage, {id: 200 + index, name: `*${codename}`, codename, typeId: 2});
+  }
+  await storage.fetcher.codenames.ensureLoaded();
+  storage.fetcher.installNameEnvironment();
+  storage.engine.modLoader = undefined;
+  setRaiseAllRenderingErrors(false);
+});
+
+afterEach(() => {
+  storage?.close();
+  setRaiseAllRenderingErrors(prior);
+});
+
+describe("page main-view error scope", () => {
+  it("rethrows a focal date error in production", async () => {
+    await expect(renderPageBytes(storage.engine, "Broken date")).rejects.toMatchObject({name: "Date::Error", message: "invalid date"});
+  });
+
+  it("rethrows the missing test-context codename from the email-template main view", async () => {
+    const result = renderPageBytes(storage.engine, "Template");
+    await expect(result).rejects.toBeInstanceOf(CodenameNotFoundError);
+    await expect(result).rejects.toThrow("unknown codename: test_context");
+  });
+
+  it("keeps the nested date error quiet inside a valid page", async () => {
+    const page = await renderPageBytes(storage.engine, "Nested date");
+    expect(page).toContain('class="render-error alert alert-danger"');
+    expect(page).toContain("before ");
+    expect(page).toContain(" after");
+  });
+
+  it("keeps a nonfocal bare email-core error quiet in production", async () => {
+    expect(await storage.engine.render("Template", "core", {focalRoot: false})).toContain('class="render-error alert alert-danger"');
+  });
+
+  it("keeps an early Date validation error quiet in a nonfocal bare core", async () => {
+    expect(await storage.engine.render("Broken date", "core", {focalRoot: false})).toBe(
+      '<span class="render-error alert alert-danger">Error rendering: Broken date (core view)</span>',
+    );
+  });
+
+  it("rethrows the same early Date validation error for an explicit focal core", async () => {
+    await expect(storage.engine.render("Broken date", "core", {focalRoot: true}))
+      .rejects.toMatchObject({name: "Date::Error", message: "invalid date"});
+  });
+
+  it("rethrows early Date validation when the global loud posture is enabled", async () => {
+    setRaiseAllRenderingErrors(true);
+    await expect(storage.engine.render("Broken date", "core", {focalRoot: false}))
+      .rejects.toMatchObject({name: "Date::Error", message: "invalid date"});
+  });
+
+  it("still rethrows the same nonfocal error when all rendering errors raise", async () => {
+    setRaiseAllRenderingErrors(true);
+    await expect(storage.engine.render("Template", "core", {focalRoot: false})).rejects.toMatchObject({name: "CodenameNotFoundError", message: "unknown codename: test_context"});
+  });
+});

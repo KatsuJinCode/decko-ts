@@ -1,0 +1,23 @@
+import { expect, it } from "vitest";
+import { assertCapabilityInapplicable, PGLITE_MATRIX_LABEL, recordMatrixBackendCapability } from "../../support/matrix-capability-disposition.js";
+
+const where = `the ${PGLITE_MATRIX_LABEL} matrix cell`;
+const cases = [
+  "concurrent writes: two saves on two handles both commit, each with its own history",
+  "concurrent reads: a reader is never served a save's uncommitted rows",
+];
+
+it("requires the backend's current capability for each approved PGlite skip", () => {
+  const backend = { secondHandle: "same-session" };
+  recordMatrixBackendCapability(PGLITE_MATRIX_LABEL, backend);
+  for (const name of cases) expect(assertCapabilityInapplicable(where, name)).toBe(true);
+  for (const capability of ["independent", "none", "unknown"]) {
+    backend.secondHandle = capability;
+    for (const name of cases) expect(() => assertCapabilityInapplicable(where, name)).toThrow("PGliteCapabilityDispositionChanged");
+  }
+});
+
+it("does not relabel another backend or an unrelated PGlite case", () => {
+  expect(assertCapabilityInapplicable("the MySQL 8.4 (native) matrix cell", cases[0])).toBe(false);
+  expect(assertCapabilityInapplicable(where, "rollback: a failure in a later stage of a save leaves every table as it was")).toBe(false);
+});

@@ -1,0 +1,113 @@
+# Checker and request-status checkpoint
+
+This advances the active full-port assignment. It establishes no whole-port
+percentage, new site grade, native runtime/backend acceptance or deployment.
+The low-confidence planning range in `port-completion-forecast-2026-10-30.md`
+has not become a measured forecast.
+
+## Saved engine packages
+
+- Release checker repair: `7c24b1dfa4f5b5c17b4e942b8dfbddd96a06872c`.
+  Full report, raw regression TAP, original classifier counterexamples,
+  actual default-CLI refusal and exact hashes are retained in
+  `release-battery-evidence-2026-10-30.*`. The final focused invocation passed
+  56 local regression assertions, failed/cancelled/skipped/todo zero. It did
+  not run the full battery. Private issue91 comments 6532932933 and
+  6533114025 were read back exactly; the issue remains open.
+- Current-source edit/board policy isolation:
+  `b4f31236c6e88549741d85b477dbf68d850650c0`. Report and complete local JSON
+  evidence: `crud-view-status-isolation-2026-10-30.*`. The focused suite passed
+  13 tests and typechecking passed; no product permission policy changed.
+  Private issue90 comment6533113546 was read back exactly. Actual deployed
+  bundle/viewer/rule attribution remains pending.
+
+The engine private remote identity and forward-only outgoing ranges were
+checked; remote tips were read back equal after each push. The release
+candidate remains separately pinned at
+`b72d9cfe18651908d4816d08125f7cbedbfc39f8` by `git ls-remote`.
+Neither source package qualifies that candidate or any installed copy.
+
+## Independent work ownership
+
+Four new real MiniMax assignments have native prompt-submit receipts. These
+are delivery observations, not a claim that four tasks have completed:
+
+| Owner | Grouped assignment | Native receipt |
+| --- | --- | --- |
+| MiniMax Code in engine integration, Relay1212 | Independent adversarial release-checker review | 20:36:22 UTC |
+| MiniMax Code in engine integration, Relay1213 | Independent mod/view ancestry, helper and permission precedence review | 20:40:12 UTC |
+| MiniMax Code in engine integration, Relay1214 | Source-grounded four-category/runtime/provider and migration acceptance inventory | 20:40:24 UTC |
+| MiniMax Code in consumer correction checkout, Relay1215 | Reference-runner kernel containment source proposal and safe local controls | 20:51:18 UTC |
+
+The engine integration is `C:/localProjects/decko-ts-port-integration`; the
+consumer correction checkout is
+`<another checkout>`.
+No subagent was spawned by the port lead. The consumer lead's separate Haiku
+subagents are not included in these delivery counts.
+
+Reviewer1212 subsequently sent an actual receipt independently confirming the
+frozen commit, source hashes, installed versions and dependency reads. Its
+final verdict remains pending. Its frozen subject is `7c24b1dfa`; the later
+issue90 test/documentation-only commit does not change that subject. The
+pinning update is delivered to its native queue, not yet claimed received.
+
+The consumer lead reports that its readiness and end-to-end assignments moved
+from errored MiniMax1198/1205 to Haiku subagents. The loader repair is also
+owned by its Haiku subagent. Those are controller-reported assignments; exact
+repair commits and execution evidence remain pending. Do not revive or replay
+the stopped/error MiniMax1189,1108,1199 assignments.
+
+## Consumer checker rejection
+
+The consumer lead relayed its independent Claude Haiku review of SVG checker
+`9b63efebdc9774e09d500574dffb9fc9d42b8a31`: rejected. Earlier holes are
+reported fixed, but escaped CSS property names and style-scan termination
+remain counterexamples. Two comment/CDATA cases were source/spec reasoning,
+not browser observations. Preserve that qualification.
+
+Its corrective owner is on `grader-css-guard-20261030`, with exact commit and
+raw evidence still pending. The port lead has not forked that repair and
+accepts no regrade from the rejected checker. The independent rejection is
+controller-relayed here; it has not yet been independently replayed by this
+checkpoint.
+
+Several distinct real handoffs to the consumer lead were accepted by its
+interface but lacked prompt-submit receipts. They are not treated as received
+or replayed. The existing receipt-telemetry issue remains applicable. No
+alternate messaging path or test traffic was used.
+
+## Remaining dependencies and resource custody
+
+The reference launcher still produces no kernel containment binding. The
+retirement proposal therefore refuses; all six HIGH findings remain open.
+MiniMax1215 is restricted to source and safe local controls, with no native
+cgroup/VM/database operation. The previously blocked removal test remains
+unrun; no approval or deletion gate was changed.
+
+The native kernel document used for source planning was re-read from its
+previous gateway-retrieved cache and its SHA-256 matched the recorded primary
+source. A subsequent gateway search returned an explicitly ungrounded provider
+summary; that summary is not used as verification. The primary source explains
+child cgroup inheritance, migration permissions and asynchronous freeze.
+Freeze alone is not lifetime containment. No new kernel/software installation
+or native control operation was performed.
+
+`bun --version` was not resolvable in the local shell. The two examined C:
+candidate locations did not contain its executable; this is not a machine-wide
+absence claim. A bare DiskSteward lookup resolved relative to the checkout and
+provides no global installation evidence. The acceptance-inventory owner was
+given these exact limits. No Bun download or install was attempted, and Node
+results do not establish Bun acceptance.
+
+The checker commit adds/replaces 148,313 tracked bytes, replacing 22,588 prior
+tracked bytes. These are logical whole-file sizes, not disk allocation or net
+Git object growth. Each checker fixture was removed and absence asserted after
+its child exited; scratch byte totals were not measured. The route checks used
+RAM databases closed in `finally`. Registered ignored diagnostic logs and
+reviewer evidence remain retained. No worktree, browser, deployment, original
+database access, public publication or production write was created here.
+
+Next: incorporate concrete independent findings and the acceptance inventory,
+review the consumer's frozen CSS/loader packages, and correct verified engine
+or runner failures. The assignment and all unverified acceptance surfaces remain
+active.

@@ -1,0 +1,70 @@
+{
+  "scope": "Local release-checker regression package; not complete port acceptance",
+  "runtime": "v24.22.1",
+  "vitest": "5.0.1",
+  "sourceBase": "0b393d84ae1bdb14b1d5ee8d6e22a8cf64f86b8b",
+  "sourceHashes": [
+    {
+      "file": "scripts/release-check.mjs",
+      "sha256": "c1d16122c16b655c42cb48f349ebe6dbb29bd0c427e8660162e02f12c6f5eef7"
+    },
+    {
+      "file": "scripts/release-check-evidence.mjs",
+      "sha256": "a1da88026d70671102bd863baef64cac4e345ecd5e615127ce113d33ca47cc14"
+    },
+    {
+      "file": "tests/tools/release-check-evidence.test.mjs",
+      "sha256": "aaff0b79236e9c15870f42cf03bb71d81684bb4ffb3eeef2fb98644c2758df45"
+    },
+    {
+      "file": "tests/tools/release-check-runner.test.mjs",
+      "sha256": "c9f33fee1582c1b5c29e2c4fe5b8c25a9eaadc22f32e20d9dca1df657f1fadfa"
+    },
+    {
+      "file": "vitest.config.ts",
+      "sha256": "846fbb4825151d711a0ceec0edbc2bac327e443780bdc1c049223c6067d77e52"
+    },
+    {
+      "file": "docs/decisions/0015-release-battery-evidence.md",
+      "sha256": "90dc424483e806f3e8dbc0bd3f859e6df7815c9f8781f73e53a6732277fe4da8"
+    }
+  ],
+  "checks": {
+    "nodeTests": {
+      "passed": 56,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0,
+      "raw": "docs/reports/release-battery-evidence-2026-10-30.node-tests.tap",
+      "sha256": "531421afa071cef9006834b5cc91d08c105328f3a2a43b4a14b51069c45a80c8"
+    },
+    "typecheck": {
+      "exit": 0,
+      "stdoutBytes": 0,
+      "stderrBytes": 0
+    },
+    "platformScan": {
+      "files": 4,
+      "raw": "# Cross-platform command landmine scan: C:/localProjects/decko-ts-port-integration\n# Scope: explicit source files (4)\n# Scanned .js/.mjs/.cjs/.ts (skipped: node_modules, .git, .venv, venv, __pycache__, .archive)\n# 0 raw platform-specific command hits: 0 GUARDED (explicit platform gate nearby), 0 UNGUARDED (landmines)\n\n\n# Verdict: CLEAN — no unguarded platform-specific commands found\n"
+    },
+    "actualDefaultCLI": {
+      "exit": 3,
+      "stdout": "source: PASS Source inventory and merge-marker check completed\napi-key-capture: INCOMPLETE Actor-bound API-key capture and independent expectation file are required\nScope: Local test battery and capture preflight only; full runtime/backend, four-category and migration acceptance remain separate\nLocal battery NOT complete.\nEvidence: C:\\localProjects\\decko-ts-port-integration\\.runtime\\release91-default-20261030-final\\summary.json\n",
+      "stderr": "",
+      "summary": "docs/reports/release-battery-evidence-2026-10-30.admission.json"
+    }
+  },
+  "execution": {
+    "local": true,
+    "cache": "No result cache or retry wrapper; child runners use installed packages and ordinary Vite transform behavior",
+    "retry": "Earlier fixture failures were diagnosed and corrected; this final focused invocation ran once",
+    "model": "No model call in tests or grading; implementation and synthetic cases authored by Codex"
+  },
+  "acceptance": {
+    "fullBattery": "Not run: fresh actor-bound capture and independent expectation file unavailable",
+    "independentReview": "Pending",
+    "nativeRuby": "Not run",
+    "edge": "Not run"
+  }
+}

@@ -1,0 +1,88 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import { hostname, tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { randomUUID } from 'node:crypto';
+
+const root = fileURLToPath(new URL('../..', import.meta.url));
+const configUrl = new URL('../../vitest.config.ts', import.meta.url).href;
+const helperUrl = new URL('../support/test-run-scratch.mjs', import.meta.url).href;
+function child(source, env = {}) {
+  const result = spawnSync(process.execPath, ['--input-type=module', '-e', source], {
+    cwd: root, env: { ...process.env, DECKO_KEEP_SCRATCH: '0', ...env },
+    windowsHide: true, encoding: 'utf8',
+  });
+  assert.equal(result.error, undefined);
+  assert.equal(result.signal, null);
+  assert.equal(result.status, 0, result.stderr);
+  return result;
+}
+
+test('actual default config preserves a pre-existing purge-eligible scratch folder', () => {
+  const fixture = mkdtempSync(join(tmpdir(), 'decko-startup-regression-'));
+  try {
+    const prior = join(fixture, 'prior-run');
+    mkdirSync(prior);
+    const owner = spawnSync(process.execPath, ['-e', ''], { windowsHide: true });
+    assert.equal(owner.status, 0);
+    assert.throws(() => process.kill(owner.pid, 0), error => error.code === 'ESRCH');
+    const entry = lstatSync(prior, { bigint: true });
+    const identity = { dev: String(entry.dev), ino: String(entry.ino), birthtimeNs: String(entry.birthtimeNs) };
+    const custody = { version: 1, allocation: 'scratchDir', pid: owner.pid, processToken: randomUUID(), identity, retained: false };
+    writeFileSync(join(prior, 'decko-scratch-ownership.json'), JSON.stringify({ tool: 'decko test scratch', repo: realpathSync(root), machine: hostname(), custody }));
+    writeFileSync(join(prior, 'decko-scratch-cleanup-request.json'), JSON.stringify({ version: 1, disposition: 'remove', pid: owner.pid, processToken: custody.processToken, identity }));
+    writeFileSync(join(prior, 'sentinel.txt'), 'synthetic-v1: preserve prior run');
+    const old = (Date.now() - 3 * 60 * 60 * 1000) / 1000;
+    for (const name of ['decko-scratch-ownership.json', 'decko-scratch-cleanup-request.json', 'sentinel.txt']) utimesSync(join(prior, name), old, old);
+    utimesSync(prior, old, old);
+    // Only the framework's declarative config wrapper is inert. All real
+    // startup imports and filesystem effects execute unchanged.
+    const result = child(`
+      import { registerHooks } from 'node:module';
+      import { existsSync } from 'node:fs';
+      registerHooks({ resolve(name, context, next) {
+        if (name === 'vitest/config') return {url:'data:text/javascript,export const defineConfig = value => value;',shortCircuit:true};
+        if (name === './tests/support/purge-stale-vitest-temp') return next(name + '.ts', context);
+        return next(name, context);
+      }});
+      const configuration = (await import(${JSON.stringify(configUrl)})).default;
+      const directory = configuration.test.env?.DECKO_TEST_TEMP_ROOT;
+      console.log(JSON.stringify({directory, allocated: directory ? existsSync(directory) : false}));
+    `, { DECKO_TEST_TEMP_ROOT: fixture });
+    assert.equal(existsSync(prior), true, 'configuration loading deleted a pre-existing scratch directory');
+    assert.equal(readFileSync(join(prior, 'sentinel.txt'), 'utf8'), 'synthetic-v1: preserve prior run');
+    const observed = JSON.parse(result.stdout.trim());
+    assert.equal(observed.allocated, true);
+    assert.equal(dirname(observed.directory), realpathSync(tmpdir()));
+    assert.notEqual(observed.directory, fixture);
+    assert.equal(existsSync(observed.directory), false, 'empty own run root should settle on exit');
+  } finally { rmSync(fixture, { recursive: true, force: true }); }
+});
+
+test('a run root with an unregistered leftover is retained, with a visible warning', () => {
+  const result = child(`
+    import { createTestRunScratch } from ${JSON.stringify(helperUrl)};
+    import { writeFileSync } from 'node:fs';
+    const directory = createTestRunScratch();
+    writeFileSync(directory + '/sentinel.txt', 'synthetic-v1');
+    console.log(directory);
+  `);
+  const directory = result.stdout.trim();
+  try {
+    assert.equal(readFileSync(join(directory, 'sentinel.txt'), 'utf8'), 'synthetic-v1');
+    assert.match(result.stderr, /retained nonempty directory/);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+test('run allocation ignores a pre-existing inherited root and produces fresh roots', () => {
+  const result = child(`
+    import { createTestRunScratch } from ${JSON.stringify(helperUrl)};
+    console.log(JSON.stringify([createTestRunScratch(), createTestRunScratch()]));
+  `, { DECKO_TEST_TEMP_ROOT: root });
+  const directories = JSON.parse(result.stdout.trim());
+  assert.notEqual(directories[0], directories[1]);
+  assert.ok(directories.every(directory => dirname(directory) === realpathSync(tmpdir()) && !existsSync(directory)));
+});

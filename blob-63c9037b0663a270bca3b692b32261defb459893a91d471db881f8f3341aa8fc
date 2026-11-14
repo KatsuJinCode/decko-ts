@@ -1,0 +1,37 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {execFileSync} from 'node:child_process';
+import {writeFileSync} from 'node:fs';
+import {join} from 'node:path';
+import {committedSourceObjects, inspectSource, observeRevision} from '../../scripts/release-check.mjs';
+import {sourceGitEnvironment} from '../../reference-harness/runner/source-git-environment.mjs';
+import {scratchDir, removeScratchDir} from '../support/scratch-dir.mjs';
+
+for(const format of ['sha1','sha256'])test(`exact source identity matches real ${format} Git blobs for binary, Unicode and empty files`,()=>{
+  const root=scratchDir('committed-source-objects-');
+  const git=args=>execFileSync('git',['-C',root,...args],{encoding:'utf8',windowsHide:true,env:sourceGitEnvironment()}).trim();
+  try{
+    git(['init','--object-format='+format]);
+    const files=['binary.dat','Unicode name.txt','empty.txt'];
+    writeFileSync(join(root,files[0]),Buffer.from([0,255,13,10,128]));
+    writeFileSync(join(root,files[1]),'Exact Unicode 🙂\r\nsecond line\n');
+    writeFileSync(join(root,files[2]),'');
+    git(['-c','core.autocrlf=false','add','--',...files]);
+    git(['commit','-m','Save owned source identity fixture','--',...files]);
+    const objects=committedSourceObjects(root,observeRevision(root).commit);
+    assert.equal(objects.size,files.length);
+    const result=inspectSource(root,files,{committedObjects:objects});
+    assert.equal(result.manifest.length,files.length);
+    assert.ok([...objects.values()].every(oid=>oid.length===(format==='sha1'?40:64)));
+    writeFileSync(join(root,files[0]),Buffer.from([0,254,13,10,128]));
+    assert.throws(()=>inspectSource(root,files,{committedObjects:objects}),/Source bytes differ from committed revision/);
+  }finally{removeScratchDir(root);}
+});
+
+test('an uncommitted source path cannot be presented as a committed blob',()=>{
+  const root=scratchDir('uncommitted-source-object-');
+  try{
+    writeFileSync(join(root,'not-committed.txt'),'owned uncommitted source');
+    assert.throws(()=>inspectSource(root,['not-committed.txt'],{committedObjects:new Map()}),/not in the committed tree/);
+  }finally{removeScratchDir(root);}
+});

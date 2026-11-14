@@ -1,0 +1,80 @@
+import assert from 'node:assert/strict';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import type { SQLDatabaseDriver } from '../../src/server/driver.js';
+import { LocalSqliteDriver } from '../../src/server/drivers/local-sqlite.js';
+import { FetchEngine } from '../../src/card/fetch.js';
+import { ruleContentForCard } from '../../src/card/actions/rule-content-walk.js';
+import { scratchDir } from './scratch-dir.mjs';
+import { runRubyValidationFixtureBatchOnVm } from './ruby-source-probe-vm.js';
+
+export const LOCAL_VALIDATION_SETTING_TYPE_ID = 1002;
+let inspectionSerial = 0;
+
+// Synthetic local validation only. Snapshot the actual seeded database;
+// compare its original predicate and current helper, never a live verifier.
+export async function inspectLocalValidationFixture(driver: SQLDatabaseDriver, label: string, hasRule: boolean): Promise<void> {
+  const output = process.env.DECKO_VALIDATION_FIXTURE_OUTPUT
+    ? resolve(process.env.DECKO_VALIDATION_FIXTURE_OUTPUT)
+    : scratchDir('validation-rule-observations-');
+  mkdirSync(output, { recursive: true }); mkdirSync(resolve('tmp'), { recursive: true });
+  const dir = mkdtempSync(resolve('tmp/validation-rule-native-'));
+  const database = resolve(dir, 'fixture.sqlite3');
+  let snapshot: LocalSqliteDriver | undefined;
+  const observations: unknown[] = [];
+  const comparisons: Array<{ arm: string; expectedOn: boolean; actual: unknown; database: string }> = [];
+  try {
+    await driver.query(`VACUUM INTO '${database.replace(/'/g, "''")}'`, []);
+    snapshot = new LocalSqliteDriver({ path: database });
+    const rows = (await snapshot.query('SELECT id,name,codename,type_id,left_id,right_id,db_content FROM cards WHERE codename IN (?,?,?,?) OR right_id IN (SELECT id FROM cards WHERE codename=?) ORDER BY id',
+      ['all', 'set', 'setting', 'captcha', 'captcha'])).rows;
+    const fetcher = new FetchEngine(snapshot);
+    const all = await fetcher.codenames.id('all'), set = await fetcher.codenames.id('set'), tag = await fetcher.codenames.id('captcha');
+    assert.ok(all && set && tag, 'Fixture must expose all/set/captcha codenames');
+    const originalAll = (await snapshot.query<{ type_id: number }>('SELECT type_id FROM cards WHERE id=?', [all])).rows[0]!.type_id;
+    const originalTag = (await snapshot.query<{ type_id: number }>('SELECT type_id FROM cards WHERE id=?', [tag])).rows[0]!.type_id;
+    const unqualified = process.env.DECKO_VALIDATION_FIXTURE_PHASE === 'before';
+    async function compare(arm: string, expectedOn: boolean) {
+      fetcher.resetCaches();
+      const actual = await ruleContentForCard(fetcher, { name: 'Synthetic local validation subject', isNew: true }, 'captcha');
+      const armDatabase = resolve(dir, `arm-${comparisons.length}.sqlite3`);
+      await snapshot!.query(`VACUUM INTO '${armDatabase.replace(/'/g, "''")}'`, []);
+      comparisons.push({ arm, expectedOn, actual: actual ?? null, database: armDatabase });
+    }
+    function checkComparison(comparison: (typeof comparisons)[number], reference: { status: number; stdout: string; stderr: string }) {
+      const { arm, expectedOn, actual } = comparison;
+      assert.equal(reference.status, 0, reference.stderr);
+      const native = JSON.parse(reference.stdout);
+      const pins: Record<string, string> = {
+        'card-1.110.0/lib/card/rule.rb': 'cf4abacfda1503083d372642071c29743abd0abcd796485752e2e438cabcd7ec',
+        'card-1.110.0/lib/card/rule/cache.rb': '17a240a32aed7c2ea07c69df21bfb78190a4cd501583171f2b23403de1f7736d',
+        'card-1.110.0/lib/card/rule/all.rb': 'ebfa3e7538ee22937c941e8ec0b07cb3ccc4e04e1debefb5fa67dd3051d40b49',
+        'card-mod-recaptcha-0.20.0/set/all/recaptcha.rb': 'bad7bfc37977a5bdd91d043c0d582bedb48af58fa1e039bb4de071f7324e98b8',
+      };
+      for (const [file, hash] of Object.entries(native.sources)) assert.equal(hash,
+        pins[file.slice(file.lastIndexOf('/gems/') + '/gems/'.length)], file);
+      observations.push({ arm, native, actual: actual ?? null });
+      assert.equal(native.enabled, expectedOn); assert.equal(native.value, expectedOn ? '1' : null);
+      assert.equal(actual ?? null, native.value);
+    }
+    await compare('actual-seeded-fixture', hasRule && !unqualified);
+    if (!unqualified) {
+      assert.equal(await fetcher.codenames.id('setting'), LOCAL_VALIDATION_SETTING_TYPE_ID);
+      assert.equal(originalTag, LOCAL_VALIDATION_SETTING_TYPE_ID);
+      await snapshot.query('UPDATE cards SET type_id=? WHERE id=?', [LOCAL_VALIDATION_SETTING_TYPE_ID, all]);
+      await compare('wrong-Set-control', false);
+      await snapshot.query('UPDATE cards SET type_id=? WHERE id=?', [originalAll, all]);
+      await snapshot.query('UPDATE cards SET type_id=? WHERE id=?', [set, tag]);
+      await compare('wrong-Setting-control-original-tag-type', false);
+      await snapshot.query('UPDATE cards SET type_id=? WHERE id=?', [originalTag, tag]);
+      await compare('typed-restored-control', hasRule);
+    }
+    const references = runRubyValidationFixtureBatchOnVm(comparisons.map(comparison => comparison.database), LOCAL_VALIDATION_SETTING_TYPE_ID);
+    comparisons.forEach((comparison, index) => checkComparison(comparison, references[index]!));
+    writeFileSync(resolve(output, `${label}-${process.pid}-${inspectionSerial++}.json`), JSON.stringify({ label, hasRule, phase: unqualified ? 'before' : 'after',
+      adapter: 'SettingID is the declared fixture class id; before repair its registry row is absent. SQL/predicate execute unchanged; snapshot mutations never touch the original fixture.',
+      actualStoredRows: rows, observations }, null, 2) + '\n');
+  } finally {
+    snapshot?.close(); rmSync(dir, { recursive: true });
+  }
+}

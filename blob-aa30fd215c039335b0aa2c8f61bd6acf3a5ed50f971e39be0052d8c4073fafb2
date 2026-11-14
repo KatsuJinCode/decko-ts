@@ -1,0 +1,31 @@
+{
+  "ruby": "ruby 3.4.11 (2026-09-23 revision 592f1ffdb3) +PRISM [x64-mingw-ucrt]",
+  "active_support": "7.2.4",
+  "sources": {
+    "cardname-1.110.0/lib/cardname.rb": "67a84cf2cfdede50632587419f60dea8311735245052cda87d8dac4efc979c19",
+    "cardname-1.110.0/lib/cardname/variants.rb": "ac4382afada81c3ec13cb09b374d3dba51418f91b1e3c2c46465437e0e5b7aaf",
+    "cardname-1.110.0/spec/lib/cardname_spec.rb": "993e1b9122dd97eeb1445371a214e3a1586b907bf760c70c226c7a6186c6d60f"
+  },
+  "rows": [
+    {
+      "enabled": false,
+      "input": "matthias",
+      "key": "matthias"
+    },
+    {
+      "enabled": false,
+      "input": "ilias",
+      "key": "ilias"
+    },
+    {
+      "enabled": true,
+      "input": "matthias",
+      "key": "matthium"
+    },
+    {
+      "enabled": true,
+      "input": "ilias",
+      "key": "ilium"
+    }
+  ]
+}

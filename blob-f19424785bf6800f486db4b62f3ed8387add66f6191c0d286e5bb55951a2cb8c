@@ -1,0 +1,404 @@
+# Defining mods with `defineMod`
+
+A Ruby Decko mod is a directory of set modules: `set/type/basic.rb`,
+`set/all/help.rb`, `set/self/help.rb`, each written in the set-module DSL
+(`format :html do`, `view :core do`, `event :x, :store do`). decko-ts mods are
+written in the same shape with `defineMod`
+(`src/card/mod-loader/mod-dsl.ts`). It compiles to the `DeckoModManifest` the
+mod loader already consumes, so a mod written with it loads, registers and
+renders exactly as a hand-written manifest does.
+
+`card-mod-help`, `card-mod-markdown`, `card-mod-session` and
+`card-mod-ace_editor` are written with it; read
+`src/card/mod-loader/mods/card-mod-help.ts` beside the gem's `set/` tree to see
+the correspondence on a real mod.
+
+## The shape
+
+```ts
+import { defineMod } from "../mod-dsl.js";
+
+export default defineMod("card-mod-example", { group: "gem" }, ({ set }) => {
+  set("type/basic", ({ view, format, event, setting, accessor }) => {
+    view("core", (ctx) => ctx.fmt.processContent(ctx.fmt.renderRaw()));
+    format("html", ({ view }) => {
+      view("bar", { cache: "never", wrap: "slot" }, (ctx) => "...");
+    });
+    event("my_event", "integrate", { on: "update", when: "my_predicate?" }, (card) => {
+      /* ... */
+    });
+  });
+});
+```
+
+`defineMod(gemName, options?, body)` returns the manifest. The gem name is
+normalized the way `Cardio::Mod.normalize_name` does it: `card-mod-example`
+becomes the mod `example`, and the manifest keeps `card-mod-example` as its
+gem name. A name without the `card-mod-` prefix is a deck-local mod.
+`options.group` is the `Cardio::Mod::Dirs` group (`gem-card`, `gem-defaults`,
+`gem`, `custom`).
+
+## Ruby to TypeScript
+
+| Ruby (card 1.110.0)                              | `defineMod`                                              |
+|--------------------------------------------------|----------------------------------------------------------|
+| `set/type/basic.rb`                              | `set("type/basic", (s) => ...)`                           |
+| `format :html do ... end`                        | `format("html", ({ view }) => ...)`                       |
+| `format :json, :csv do ... end`                  | `format(["json", "csv"], ...)`                            |
+| `format do ... end`, or `view` at set level      | `format(({ view }) => ...)`, or `view(...)` (base format) |
+| `view :bar, cache: :never, wrap: :slot do ... end` | `view("bar", { cache: "never", wrap: "slot" }, fn)`     |
+| `view :bar, template: :haml`                     | `view("bar", { template: "haml" }, fn)` (see below)       |
+| `def custom_ok? ... end` inside a format block | `method("custom_ok?", fn)` inside that format block      |
+| `before :core do ... end` (format or set level) | `before("core", fn)` (see "Before-view callbacks")       |
+| `wrapper(:cream) { ... }` inside a format block | `wrapper("cream", (ctx, interior, opts) => ...)` |
+| `wrapper :cream, :div, class: "creamy"` | `wrapper("cream", "div", {class: "creamy"})` |
+| `event :x, :store, on: :update do ... end`       | `event("x", "store", { on: "update" }, fn)`               |
+| `event :x, after: :y, when: :z? do ... end`      | `event("x", { after: "y", when: "z?" }, fn)`              |
+| `event :x, :validate, changed: :name`            | `event("x", "validate", { changed: "name" }, fn)`         |
+| `setting_opts group: :editing, position: 1`      | `setting({ group: "editing", position: 1 })`              |
+| `card_accessor :email, type: :phrase`            | `accessor("email", { type: "phrase" })`                   |
+| `card_reader :status` / `card_writer :salt`      | `reader("status")` / `writer("salt")`                     |
+| `assign_type :phrase`                            | `assignType("phrase")`                                    |
+| `def content ... end` (set-module override)      | `content(fn)`                                             |
+| `basket[:tasks][:x] = {...}`                     | `basketTask({...})`                                       |
+| `basket[:warnings] << :x`                        | `basketWarning("x")`                                      |
+| `set_pattern/tab.rb`                             | `setPattern("tab", spec, { index })` (mod level)          |
+| boot-time rule warm (`Rule::Cache`)              | `prepareEngine(async (host) => ...)` (mod level)          |
+
+Symbols are written as strings. Every call appends one entry to the
+manifest in the order it is made, which is the order Ruby reads the file in;
+the loader then walks mods, set patterns and set files in
+`Cardio::Mod::Dirs` order, so the order of `set()` calls within a mod does
+not change load order. Calling `set()` twice with the same path reopens the
+same set file, as reopening a Ruby module does.
+
+### Views
+
+A view body is a `ViewFn`: `(ctx) => string | number | null`, where `ctx.fmt`
+is the format (Ruby's `self` in a view block) and `ctx.voo` its view options.
+The view options are Ruby's view settings: `unknown`, `perms`, `cache`,
+`wrap`, `denial`, and `template`.
+
+`template: "haml"` records that the Ruby view renders from a HAML template
+beside its set file. The engine has no HAML interpreter, so a template view
+still supplies its body as a function: the port of the template. The option
+is kept so the port can be checked against the template it transcribes.
+
+### Before-view callbacks
+
+`before(view, fn)`, inside a format block or at set level (base format),
+is Ruby's `before :view do ... end`: it declares the format method
+`_before_<view>`. Before a view renders, the format looks that method up
+through the card's set and format chain and calls it, as Ruby's
+`before_view` does; the requested view's hook also runs when an unknown
+card renders a substituted view. The callback receives the view context, so
+it can change `ctx.voo` before the body runs. `card-mod-session` uses it for
+its `before :core`.
+
+### Format helper methods
+
+Each render engine owns a copy of the compiled fallback views. Bind the
+intended `ModLoader` to `engine.modLoader` for set-scoped dispatch. A tool
+that deliberately exercises flat registration passes `engine.views` as the
+loader constructor's second argument before loading it. Loading or resetting
+another deck never updates that engine's flat table.
+
+Inside a format block, `method(name, fn)` declares a synchronous helper
+without adding a view. Its manifest entry is `formats[format].methods`,
+separate from `views`. A later declaration reopens that method in its set
+and format; the normal set/format lookup applies, including inherited base
+methods. A view or another helper calls it as
+`ctx.fmt.callFormatMethod("name", ...args)`.
+
+```ts
+format("html", ({method, view}) => {
+  method("custom_ok?", (ctx) => ctx.fmt.card.name.s === "Allowed Example");
+  view("custom_controls", {perms: "custom_ok?", denial: "blank"}, () => "...");
+});
+```
+
+Permission predicates receive the active view context. False, null and
+undefined deny; zero, empty strings, arrays and objects are truthy as in
+Ruby. They are evaluated on each gate, including a repeated render. Native
+async declarations are rejected during load. A mistyped helper returning
+a promise is refused synchronously, and an eventual rejection is reported
+without becoming an unhandled process rejection. Helpers do not receive an
+implicit asynchronous preparation stage.
+
+This call surface covers declared helpers and permission predicates. It
+does not make arbitrary Ruby method names override TypeScript renderer
+internals. Undeclared format helpers raise `NoMethodError`; their diagnostic
+messages describe the TypeScript declaration gap rather than a Ruby receiver.
+The broader Ruby method/DSL contract remains under comparison.
+
+### Declared custom wrappers
+
+Function wrappers generate scoped `_wrapper_<name>` and `wrap_with_<name>`
+format methods. A view's `wrap` setting selects them; the loader wraps the
+resolved view and its super chain once, using the current card/format's
+independent setting lookup. Wrapper options are shallow copies, as in the
+native invocation method.
+
+```ts
+format("html", ({wrapper, view}) => {
+  wrapper("cream", (_ctx, interior) => `cream_${interior}_cream`);
+  view("cream_cake", {wrap: "cream"}, () => "cake");
+});
+```
+
+A wrapper can call declared format helpers through `ctx.fmt.callFormatMethod`.
+Call the generated wrapper explicitly with
+`ctx.fmt.callFormatMethod("wrap_with_cream", "cake", options)`.
+Multiple names nest from right to left; a hash supplies options per name.
+An ordered list can mix names and `[name, options]` tuples, for example
+`wrap: ["cherry", ["choc", {class: "white"}]]`. Generated methods also accept
+a synchronous content callback in place of the content argument.
+Body-only overrides keep inherited wrap settings, and `wrap: {}` clears them.
+Reopening the private wrapper method changes subsequent calls without replacing
+the view body. Declared wrapper methods remain private to their owning loader.
+
+Existing translated mods keep their explicit built-in wrapping. A newly
+wrapper-declaring mod refuses an unknown wrapper with `ArgumentError`; legacy
+unresolved metadata is not reclassified as native wrapper support.
+
+Tag declarations use `wrapper("cream", "div", {class: "creamy"})`. With a
+nonblank default class, invocation classes precede default classes and duplicates
+are removed by Decko's class merge. Without one, ActionView-style class-array
+filtering removes false/blank entries and retains duplicate names. Default
+attributes are overridden shallowly, and caller options remain unchanged. JSON
+data escapes HTML-sensitive characters and both Unicode line separators before
+attribute escaping; scalar-string data retains ordinary attribute escaping.
+Interior markup is preserved; attribute values are escaped. The portable object,
+ARIA and class shapes and their representation limits follow below.
+
+### Portable tag attribute values
+
+Tag declarations accept `ModTagOptions`, exported from `mod-manifest.ts`.
+Its recursive `ModTagValue` contains strings, finite numbers, booleans, null,
+readonly arrays and plain JSON objects. Function-wrapper options retain their
+separate application-defined surface.
+
+```ts
+import type { ModTagOptions } from "../mod-manifest.js";
+
+const defaults: ModTagOptions = {
+  title: { section: "notes" },
+  class: { active: true, disabled: false },
+  aria: { describedby: ["summary", { details: true }] },
+};
+wrapper("notes", "section", defaults);
+```
+
+Ordinary object attributes join their key/value entries in insertion order.
+Nested arrays/objects use the pinned Ruby inspection spelling; null ordinary
+entry values preserve an empty joined position. Object keys follow the existing
+JSON-to-Ruby Symbol-key adapter. This does not represent arbitrary Ruby hash
+key classes or standalone Symbol values.
+
+Class objects and compound ARIA arrays/objects use ActionView token selection:
+false/null values omit conditional keys, while zero, empty strings, arrays and
+objects are truthy for those keys. Scalar blank tokens are omitted, nested arrays
+are traversed, and an empty ARIA token result emits no attribute. Order and
+duplicates follow the original helper. With a nonblank default class, Decko's
+separate class merge stringifies objects and removes equal duplicate values;
+it does not apply conditional-key selection to those merged objects.
+
+Defaults are overridden shallowly. Ordinary arrays join flattened values;
+JSON data keeps its existing JSON.stringify representation and numeric/HTML escaping. Caller
+options remain unchanged. Existing numeric transport limits still apply:
+JavaScript numbers do not encode Ruby Integer/Float identity or arbitrary precision.
+
+Outside the existing data serializer, custom classes (including Date, Map, Regexp and SafeBuffer equivalents),
+functions, symbol values/keys, bigint, undefined attribute values, non-finite
+numbers, sparse arrays, cycles and accessor-bearing nested objects are refused
+with `UnsupportedModTagAttributeError`. Invalid UTF-16 strings and unassigned
+Unicode characters requiring Ruby inspection also refuse. Portable arrays must
+have every own index and no extra named, noncanonical or symbol keys; an extra
+property cannot mask a missing index.
+
+The `data` object keeps the earlier per-entry JSON serializer contract rather
+than ordinary attribute validation. JSON.stringify alone invokes `toJSON`, with
+its original receiver/key, omission rules and errors. No validation pass calls
+it, even for overridden defaults. Nested custom serializers and Date inputs
+therefore retain their existing JavaScript JSON behavior; this does not claim
+native Ruby custom-class parity. Sparse arrays inside JSON data retain JSON's
+null-hole behavior. Ordinary/class/ARIA arrays still require dense indices.
+
+The tag overload infers this context for concrete inline declarations.
+`ModTagDataAttributes` names the existing serializer's unknown-input contract,
+and `ModTagOptions<{data: ModTagDataAttributes}>` annotates typed data defaults.
+Legacy dynamic readonly records retain their prior call surface and runtime
+validation; concrete ordinary attributes retain portable value checks.
+
+Layout declarations, wrapper-method super and full Rails/mod registration
+remain separate unsupported scope.
+
+### Events
+
+`event(name, stage?, options?, body?)` takes the stage positionally, as Ruby
+does. The stages are Ruby's director stages (`initialize`,
+`prepare_to_validate`, `validate`, `prepare_to_store`, `store`, `finalize`,
+`integrate`, `after_integrate`, ...). Options:
+
+- `on`: `"create"`, `"update"`, `"delete"` or `"save"`, or a list of them.
+- `before` / `after`: the name of another event at the same stage. As in
+  Ruby, an event placed relative to another takes that event's stage, so
+  it is declared without one.
+- `when`: the name of a predicate, such as `"codename?"`. Ruby also accepts a
+  proc; native TypeScript mods supply a function, such as
+  `when: card => card.name.startsWith("Public ")`. A function receives exactly
+  the current card and its result is awaited. False, null and undefined skip
+  the event; zero, an empty string and empty containers remain truthy, as in
+  Ruby. Condition errors propagate. Names resolve at fire time against the
+  deck's predicate table (`defaultDeckEventPredicates` in `default-mod-deck.ts`);
+  only own declared table entries participate. A name that nothing declares
+  raises when the event is considered; JavaScript prototype methods do not
+  supply undeclared conditions.
+- `changed` / `changing`: the card fields whose change gates the event.
+- `skip: "allowed"`, `trigger: "required"`, `priority`.
+- `engineOwned: true`: the event's behaviour is implemented in the engine's
+  own save path; the declaration records Ruby's event list with an empty
+  body, and passing a body is an error.
+
+The body receives the acting card (Ruby's `self`), the engine host, and the
+event context. An event declared without a body is recorded with an empty
+one; say at the call site why, as the ported mods do.
+
+### Accessors
+
+`accessor`, `reader` and `writer` record Ruby's trait declarations on the
+set file. The loader collects them in load order with the set path and mod
+name (`ModLoader.cardAccessorDeclarations()`). Resolving a trait to its
+`+name` child card is the caller's job: the declarations do not yet generate
+`<name>_card` methods the way Ruby's `card_accessor` does.
+
+## Worked example: a word-count mod
+
+A deck wants every card to offer a `word_count` view, and wants a note when
+a Basic card's content grows past a limit. In Ruby this would be a mod
+`card-mod-word_count` with two set files:
+
+```ruby
+# set/all/word_count.rb
+format :html do
+  view :word_count, cache: :never do
+    count = card.content.split.size
+    %(<span class="word-count">#{count} words</span>)
+  end
+end
+
+# set/type/basic.rb
+event :note_long_content, :integrate, on: :save, changed: :db_content,
+                                      when: :long_content? do
+  Rails.logger.info "#{name} is over the word limit"
+end
+```
+
+The TypeScript mod:
+
+```ts
+// card-mod-word_count.ts, a new file in src/card/mod-loader/mods/
+import { defineMod } from "../mod-dsl.js";
+import type { ModEventCard } from "../mod-manifest.js";
+
+export const WORD_LIMIT = 1000;
+
+const wordCount = (text: string): number => text.split(/\s+/).filter(Boolean).length;
+
+/** The `when: :long_content?` predicate. */
+export const wordCountModEventPredicates = {
+  "long_content?": (card: ModEventCard): boolean => wordCount(card.dbContent ?? "") > WORD_LIMIT,
+} as const;
+
+export default defineMod("card-mod-word_count", { group: "custom" }, ({ set }) => {
+  // set/all/word_count.rb
+  set("all/word_count", ({ format }) => {
+    format("html", ({ view }) => {
+      view("word_count", { cache: "never" }, (ctx) => {
+        const count = wordCount(ctx.fmt.renderRaw());
+        return `<span class="word-count">${count} words</span>`;
+      });
+    });
+  });
+
+  // set/type/basic.rb
+  set("type/basic", ({ event }) => {
+    event(
+      "note_long_content",
+      "integrate",
+      { on: "save", changed: "db_content", when: "long_content?" },
+      (card) => {
+        console.info(`${card.name} is over the word limit`);
+      },
+    );
+  });
+});
+```
+
+What each part becomes:
+
+1. `set("all/word_count", ...)` is the set module `All::WordCount`; the view
+   is registered for every card's HTML format with `cache: "never"`.
+2. `set("type/basic", ...)` is `Type::Basic`; the event is recorded at the
+   `integrate` stage for creates and updates that change the content, and
+   runs only when `long_content?` answers true.
+3. The predicate table is the port of the `long_content?` card method. Add it
+   to `defaultDeckEventPredicates` in `default-mod-deck.ts` so the deck's
+   event runtime can resolve the name.
+
+To load the mod, give it to a `ModLoader` with the rest of the deck. A
+deck-local mod goes in a deck mod directory, after the gem mods:
+
+```ts
+// a deck file beside card-mod-word_count.ts in src/card/mod-loader/mods/
+import { ModLoader } from "../../mod-loader.js";
+import { defaultDeckSources, portedBundleOrder } from "../default-mod-deck.js";
+import cardModWordCount from "./card-mod-word_count.js";
+
+const loader = new ModLoader([...defaultDeckSources(), { manifest: cardModWordCount }]);
+loader.resolveOrder({
+  gemMods: portedBundleOrder(),
+  deckModDirs: [{ listing: ["word_count"] }],
+});
+loader.load();
+```
+
+A gem mod is listed in `MANIFESTS` and `ORACLE_BUNDLE_ORDER` in
+`default-mod-deck.ts` instead, at its position in the bundle.
+
+### Set modules bind through codenames
+
+Ruby keys a set module by the anchor's CODENAME, not its name
+(Pattern::Base#module_key over anchor_codenames; the port is
+`anchoredModuleCandidates` in `src/card/render/set-keys-to-modules.ts`,
+which also ports the consequence: an anchor whose card exists WITHOUT a
+codename builds NO module key, so the set module never applies). A card
+created through the write path carries no codename, and codenames are
+seed data: in Ruby a mod's data/real.yml gives its own cards theirs. A
+new deck-local mod therefore cannot aim a `type/<x>` or `self/<x>` set at
+cards the deck created through the write path; the mod-provided view
+those sections need is ANCHORLESS (`set("all/<name>")`), reachable from
+every card and selected in the nest syntax (`{{<card>|<name>}}`), which
+is the word-count example above. No deck-local mod ships with the port.
+The composed default deck loads a deck-local mod only when the deployment
+names it in `DECKO_DECK_LOCAL_MODS`
+(`src/card/mod-loader/deployment-deck-local-mods.ts`, described in
+`docs/handover/DEPLOYMENT.md`).
+
+## Checking a mod
+
+- `ModLoader.load()` returns a report of the set modules, views and settings
+  it registered; `setModules()`, `viewConfigFor(view)`, `eventRegistry()` and
+  `cardAccessorDeclarations()` show where each registration landed.
+- `tests/card/mod-loader/mod-dsl.test.ts` pins what each DSL call compiles to.
+- A mod that ports a Ruby mod is held to Ruby's bytes: its tests compare
+  against output captured from Ruby Decko, and the reference harness grades
+  the whole deck (`reference-harness/SPEC.md`). Converting a hand-written
+  manifest to `defineMod` must leave both unchanged; the four converted mods
+  were checked that way (their existing tests unchanged, synthetic-v1
+  rendering 1754/1754, measured 2026-10-14 with
+  `node reference-harness/runner/run.mjs --adapter
+  reference-harness/adapters/ts/adapter.json --fixture
+  reference-harness/fixtures/synthetic-v1 --out tmp/g` followed by
+  `node reference-harness/runner/grade.mjs --fixture
+  reference-harness/fixtures/synthetic-v1 --actual tmp/g`).

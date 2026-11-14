@@ -1,0 +1,34 @@
+import { expect, it } from "vitest";
+import { join } from "node:path";
+import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
+import { scratchDir } from "../../support/scratch-dir.mjs";
+
+it.each([false, true])("another handle can commit after an async holder finishes (rollback=%s)", async (rollback) => {
+  const path = join(scratchDir("sqlite-concurrent-transactions-"), "deck.sqlite");
+  const a = new LocalSqliteDriver({ path });
+  const b = new LocalSqliteDriver({ path });
+  const injected = new Error("injected rollback");
+  try {
+    await a.query("CREATE TABLE counter (n INTEGER)", []);
+    await a.query("INSERT INTO counter VALUES (0)", []);
+    const before = await b.query("PRAGMA busy_timeout", []);
+    const first = a.transaction(async () => {
+      await a.query("UPDATE counter SET n = n + 1", []);
+      // The holder must get the JavaScript thread back to finish. A
+      // synchronous busy wait in the second handle prevents that.
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      if (rollback) throw injected;
+    });
+    const second = b.transaction(async () => {
+      await b.query("UPDATE counter SET n = n + 10", []);
+    });
+    const results = await Promise.allSettled([first, second]);
+    expect(results[1]).toEqual({ status: "fulfilled", value: undefined });
+    expect(results[0]).toEqual(rollback ? { status: "rejected", reason: injected } : { status: "fulfilled", value: undefined });
+    expect((await b.query("SELECT n FROM counter", [])).rows).toEqual([{ n: rollback ? 10 : 11 }]);
+    expect(await b.query("PRAGMA busy_timeout", [])).toEqual(before);
+  } finally {
+    a.close();
+    b.close();
+  }
+});

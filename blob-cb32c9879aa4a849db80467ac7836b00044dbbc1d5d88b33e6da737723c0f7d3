@@ -1,0 +1,38 @@
+import {readFileSync} from "node:fs";
+import {describe, expect, it} from "vitest";
+import {classify, GATES, testInventoryProblems} from "../../tools/test-gates.mjs";
+
+describe("product test scope", () => {
+  it("refuses implicit product admission for machine hygiene checks instead of silently skipping them", () => {
+    const machine = "tests/hygiene/machine-lane-worktree-disk-hygiene.test.ts";
+    expect(classify(machine)).toBeNull();
+    expect(testInventoryProblems([machine])).toEqual([machine + ": no declared test gate"]);
+    const unknown = "tests/hygiene/new-operational-policy.test.ts";
+    expect(testInventoryProblems([unknown])).toEqual([unknown + ": no declared test gate"]);
+  });
+
+  it("keeps actual product behavior and explicitly classified tooling in their gates", () => {
+    expect(classify("tests/card/render/render-engine.test.ts")).toBe("correctness");
+    expect(classify("tests/server/freshness-stamp.test.ts")).toBe("correctness");
+    expect(classify("tests/acceptance/freshness/freshness-edit-reread.test.ts")).toBe("correctness");
+    expect(classify("tools/example.test.mjs")).toBe("harness");
+    expect(classify("tests/deploy/example.test.ts")).toBe("deploy");
+  });
+
+  it("routes benchmark files to the benchmarks gate and defines no private-corpus gate", () => {
+    expect(classify("benchmarks/cf-scale/example-probe.test.ts")).toBe("benchmarks");
+    expect(GATES.map((g) => g.id as string)).not.toContain("corpus");
+  });
+
+  it("keeps the hand-written declaration file in step with every gate the module defines", () => {
+    // tools/test-gates.d.mts types the module for the TypeScript compile that
+    // runs before the staging-server tests. A gate missing from it fails that
+    // compile for every server test, so each gate id must be declared there.
+    const declared = readFileSync(new URL("../../tools/test-gates.d.mts", import.meta.url), "utf8");
+    const gateTypeLine = /export type TestGateId = ([^;]+);/.exec(declared)?.[1] ?? "";
+    const declaredIds = [...gateTypeLine.matchAll(/"([a-z]+)"/g)].map((match) => match[1]);
+    expect(declaredIds).toContain("correctness");
+    for (const gate of GATES) expect(declaredIds, gate.id).toContain(gate.id);
+    expect(declared).toMatch(/excludedFromFull\?: boolean/);
+  });
+});

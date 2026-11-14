@@ -1,0 +1,192 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { DatabaseSync } from "node:sqlite";
+import "../../support/typescript-source-loader.mjs";
+const { FetchEngine } = await import("../../../src/card/fetch.ts");
+const { CardActionEngine } = await import("../../../src/card/actions/card-action-engine.ts");
+const { ModEventRegistry } = await import("../../../src/card/mod-loader/mod-event-registry.ts");
+const { default: cardModFormat } = await import("../../../src/card/mod-loader/mods/card-mod-format.ts");
+const { observedModEventRuntime } = await import("../../../src/server/write-routes.ts");
+
+// Real action engine and schema, isolated RAM SQLite. This adapter executes
+// every SQL statement; no engine module, permission verdict or save is mocked.
+function fixture() {
+  const db = new DatabaseSync(":memory:");
+  db.exec(readFileSync(new URL("../../../db/schema.sqlite.sql", import.meta.url), "utf8"));
+  const execute = (sql, params = []) => {
+    const statement = db.prepare(sql);
+    const args = params.map(value => value === undefined ? null : value);
+    if (statement.columns().length) return { rows: statement.all(...args), rowsAffected: 0 };
+    const result = statement.run(...args);
+    return { rows: [], rowsAffected: Number(result.changes), lastInsertRowId: Number(result.lastInsertRowid) };
+  };
+  const driver = {
+    async query(sql, params) { return execute(sql, params); },
+    async batch(statements) { return statements.map(s => execute(s.sql, s.params)); },
+    async transaction(work) {
+      db.exec("BEGIN");
+      try { const result = await work(); db.exec("COMMIT"); return result; }
+      catch (error) { db.exec("ROLLBACK"); throw error; }
+    },
+    transactionGuarantee: {
+      mechanism: "native", atomicOnFailure: true, crashRecovery: "database",
+      readersIsolated: true, serializedWriters: "database", atomicBatch: false, idsReusedAfterRollback: true,
+    },
+  };
+  const seed = (id, name, codename = null, type = 2, content = "", left = null, right = null) => {
+    const key = left === null ? name.toLowerCase().replace(/ /g, "_") : null;
+    execute("INSERT INTO cards (id,name,key,codename,type_id,db_content,left_id,right_id,trash,creator_id,updater_id,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,0,9,9,?,?)",
+      [id, left === null ? name : null, key, codename, type, content, left, right, "2026-10-28 00:00:00", "2026-10-28 00:00:00"]);
+  };
+  seed(2, "RichText", "basic", 3);
+  seed(3, "Cardtype", "cardtype", 3);
+  seed(7, "*all", "all", 300);
+  seed(8, "*default", "default", 3);
+  seed(9, "Review User", "user");
+  seed(10, "*all+*default", null, 2, "", 7, 8);
+  seed(50, "Review Note", null, 2, "not a number");
+  seed(300, "Set", "set");
+  seed(301, "*create", "create"); seed(302, "*update", "update"); seed(303, "*delete", "delete");
+  seed(304, "Anyone", "anyone");
+  for (const [id, setting] of [[305,301],[306,302],[307,303]]) {
+    seed(id, "rule", null, 300, "[[Anyone]]", 7, setting);
+    execute("INSERT INTO card_references (referer_id,referee_key,referee_id,ref_type) VALUES (?,'anyone',304,'L')", [id]);
+  }
+  seed(502, "Number", "number", 3);
+  return { db, driver, fetch: new FetchEngine(driver), seed, execute };
+}
+
+function runtime(extra = []) {
+  const registry = new ModEventRegistry();
+  const number = cardModFormat.setModules.find(file => file.setPath === "type/number");
+  const declaration = number.events.find(event => event.event === "validate_number");
+  registry.register({ ...declaration, setPath: number.setPath, modName: "format" });
+  for (const event of extra) registry.register(event);
+  return { registry };
+}
+
+function engine(f, modEvents) {
+  return new CardActionEngine(f.fetch, { actor: { id: 9, name: "Review User" }, ipAddress: "192.0.2.7", modEvents, now: () => new Date("2026-10-28T00:00:00Z") });
+}
+
+for (const serving of [false, true]) test(`full save refuses Basic-to-Number and rolls back state/history (${serving ? "serving" : "fallback"} membership)`, async () => {
+  const f = fixture();
+  try {
+    const before = JSON.stringify(f.execute("SELECT * FROM cards WHERE id=50").rows);
+    const modEvents = runtime();
+    if (serving) modEvents.setMember = (await observedModEventRuntime({ driver: f.driver })).setMember;
+    await assert.rejects(engine(f, modEvents).updateCard({ cardId: 50, typeId: 502 }), /not numeric/);
+    assert.equal(JSON.stringify(f.execute("SELECT * FROM cards WHERE id=50").rows), before);
+    for (const table of ["card_acts", "card_actions", "card_changes"]) {
+      assert.equal(f.execute(`SELECT COUNT(*) AS count FROM ${table}`).rows[0].count, 0, table);
+    }
+  } finally { f.db.close(); }
+});
+
+test("full save accepts a numeric type change and persists the new type", async () => {
+  const f = fixture();
+  try {
+    await engine(f, runtime()).updateCard({ cardId: 50, typeId: 502, content: "42" });
+    const row = f.execute("SELECT type_id,db_content FROM cards WHERE id=50").rows[0];
+    assert.equal(row.type_id, 502);
+    assert.equal(row.db_content, "42");
+    assert.equal(f.execute("SELECT COUNT(*) AS count FROM card_actions").rows[0].count, 1);
+  } finally { f.db.close(); }
+});
+
+test("type assignment retains old and attaches new changing events on the assigned body receiver", async () => {
+  const f = fixture();
+  try {
+    const seen = [];
+    const modEvents = runtime([
+      { event: "old_type_check", setPath: "type/basic", modName: "custom", at: "validate", changing: ["type"], fn: card => { seen.push(["old", card.typeId, card.name]); } },
+      { event: "new_type_check", setPath: "type/number", modName: "custom", at: "validate", changed: ["type"], fn: card => { seen.push(["new", card.typeId, card.name]); } },
+      { event: "new_type_changing_check", setPath: "type/number", modName: "custom", at: "validate", changing: ["type"], fn: card => { seen.push(["new-changing", card.typeId, card.name]); } },
+    ]);
+    await engine(f, modEvents).updateCard({ cardId: 50, typeId: 502, content: "42" });
+    assert.deepEqual(seen, [["old", 502, "Review Note"], ["new", 502, "Review Note"], ["new-changing", 502, "Review Note"]]);
+  } finally { f.db.close(); }
+});
+
+test("rename assignment retains old and attaches new changing events on the assigned body receiver", async () => {
+  const f = fixture();
+  try {
+    const seen = [];
+    f.execute("UPDATE cards SET name='*old',key='*old',db_content='42' WHERE id=50");
+    const modEvents = runtime([
+      { event: "old_name_check", setPath: "self/old", modName: "custom", at: "validate", changing: ["name"], fn: card => { seen.push(["old", card.name]); } },
+      { event: "new_name_check", setPath: "self/new", modName: "custom", at: "validate", changed: ["name"], fn: card => { seen.push(["new", card.name]); assert.equal(card.key, "*new"); } },
+      { event: "new_name_changing_check", setPath: "self/new", modName: "custom", at: "validate", changing: ["name"], fn: card => { seen.push(["new-changing", card.name]); } },
+    ]);
+    await engine(f, modEvents).updateCard({ cardId: 50, name: "*new" });
+    assert.deepEqual(seen, [["old", "*new"], ["new", "*new"], ["new-changing", "*new"]]);
+    assert.equal(f.execute("SELECT name FROM cards WHERE id=50").rows[0].name, "*new");
+  } finally { f.db.close(); }
+});
+
+test("a nested full save validates the assigned type and rolls back the enclosing act", async () => {
+  const f = fixture();
+  try {
+    f.seed(60, "Child");
+    f.seed(61, "Review Note+Child", null, 2, "not a number", 50, 60);
+    await assert.rejects(engine(f, runtime()).updateCard({ cardId: 50, subcards: { "+Child": { typeId: 502 } } }), /not numeric/);
+    assert.equal(f.execute("SELECT type_id FROM cards WHERE id=61").rows[0].type_id, 2);
+    assert.equal(f.execute("SELECT COUNT(*) AS count FROM card_acts").rows[0].count, 0);
+  } finally { f.db.close(); }
+});
+
+for (const rename of [false, true]) test(`full ${rename ? "rename" : "type change"} retains both attachment roots throughout the save lifecycle`, async () => {
+  const f = fixture();
+  try {
+    f.execute("UPDATE cards SET name='*old',key='*old',db_content='42' WHERE id=50");
+    const stages = ["initialize", "prepare_to_validate", "validate", "prepare_to_store", "store", "finalize", "integrate", "after_integrate", "integrate_with_delay"];
+    const seen = [];
+    const modEvents = runtime(stages.flatMap(stage => [
+      { event: `old_${stage}`, setPath: rename ? "self/old" : "type/basic", modName: "custom", at: stage,
+        changing: [rename ? "name" : "type"], fn: card => { seen.push([stage,"old",card.name,card.typeId]); } },
+      { event: `new_${stage}`, setPath: rename ? "self/new" : "type/number", modName: "custom", at: stage,
+        changing: [rename ? "name" : "type"], fn: card => { seen.push([stage,"new",card.name,card.typeId]); } },
+    ]));
+    await engine(f, modEvents).updateCard({ cardId: 50, ...(rename ? {name:"*new"} : {typeId:502}) });
+    assert.deepEqual(seen, stages.flatMap(stage => [
+      [stage,"old",rename ? "*new" : "*old",rename ? 2 : 502],
+      [stage,"new",rename ? "*new" : "*old",rename ? 2 : 502],
+    ]));
+  } finally { f.db.close(); }
+});
+
+test("nested early phases see both attached types and the assigned body attributes", async () => {
+  const f = fixture();
+  try {
+    f.seed(60,"Child");
+    f.seed(61,"Review Note+Child",null,2,"42",50,60);
+    const seen = [];
+    const modEvents = runtime(["initialize","prepare_to_validate"].flatMap(stage => [
+      { event:`old_${stage}`,setPath:"type/basic",modName:"custom",at:stage,changing:["type"],
+        fn:card=>{if(card.id===61)seen.push([stage,"old",card.typeId]);} },
+      { event:`new_${stage}`,setPath:"type/number",modName:"custom",at:stage,changing:["type"],
+        fn:card=>{if(card.id===61)seen.push([stage,"new",card.typeId]);} },
+    ]));
+    await engine(f,modEvents).updateCard({cardId:50,subcards:{"+Child":{typeId:502}}});
+    assert.deepEqual(seen,[["initialize","old",502],["initialize","new",502],["prepare_to_validate","old",502],["prepare_to_validate","new",502]]);
+  } finally { f.db.close(); }
+});
+
+for (const compound of [true,false]) test(`nested ${compound ? "compound" : "simple"} spelling variant uses persisted-name dirty semantics in every early phase`, async () => {
+  const f=fixture();
+  try {
+    f.seed(60,"Child");
+    if(compound)f.seed(61,"Review Note+Child",null,2,"42",50,60);
+    const id=compound?61:60;
+    const seen=[];
+    const stages=["initialize","prepare_to_validate","validate"];
+    const modEvents=runtime(stages.map(stage=>({event:`name_${stage}`,setPath:"all/name_dirty",modName:"custom",at:stage,changing:["name"],
+      fn:card=>{if(card.id===id)seen.push(stage);} })));
+    await engine(f,modEvents).updateCard({cardId:50,subcards:{[compound?"+Child":"Child"]:{name:compound?"review note+child":"child"}}});
+    assert.deepEqual(seen,compound?[]:stages);
+    const row=f.execute("SELECT name,left_id,right_id FROM cards WHERE id=?",[id]).rows[0];
+    assert.deepEqual({...row},compound?{name:null,left_id:50,right_id:60}:{name:"child",left_id:null,right_id:null});
+    assert.equal(f.execute("SELECT COUNT(*) AS count FROM card_actions WHERE card_id=?",[id]).rows[0].count,compound?0:1);
+  }finally{f.db.close();}
+});

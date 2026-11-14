@@ -1,0 +1,34 @@
+{
+  "runtime": "ruby 3.2.3 (2024-01-18 revision 52bb2ac0a6) [aarch64-linux-gnu]",
+  "sourceHashes": {
+    "tools/persistence/public-oracle-ts-trip.rb": "875b1b3a1773ba12d2574967ebbb4968fda1f26e30a205111f9cf1d862af5ace",
+    "tools/persistence/public-oracle-bootstrap.rb": "71f9c069504dfafa2f43d7951d22520ef4ee442300e440d90c304b3cc14a5235",
+    "tools/persistence/pod-eat.rb": "d48e0e850c2ea5729adda28f764283a61ca847183d000a9e214a6a87f23710c2",
+    "tools/persistence/pod-sow.rb": "0c690c1a12aa8560083e42f144cc820ef56dbf1f510c6698fb8083173c75a111",
+    "tests/fixtures/public-oracle-v1/base.sqlite3": "5455421a39d9dfa3157c4683ca153c017647a6129e3b40de7e90afebd1c75318"
+  },
+  "podSha256": "59ee998dc31e5204028dd58c2c97f4cdd4b6bfe1bf7924123fa948160e7e760d",
+  "runtimeSources": {
+    "<oracle-app>/Gemfile.lock": "86f333db488f2e53ad39be4226076a8bd9c7d5a79916cdd90b9ba777ec904cc1",
+    "<oracle-app>/config/application.rb": "a65c9f5995a78d2ead20a1b6fcb5543701a4bdda0479db4953c53d050a67c0b2",
+    "<oracle-app>/config/environment.rb": "a0a4164e5d8e37985689728f78bce72c55673f3440bbfdca9a89321d64829dea"
+  },
+  "receipts": [
+    {
+      "script": "pod-eat.rb",
+      "status": 0,
+      "stdout": "",
+      "stderr": "[pod] ate 917 items: created=6 updated=0 unchanged=910 skipped=0 errors=1\n"
+    },
+    {
+      "script": "pod-sow.rb",
+      "status": 0,
+      "stdout": "",
+      "stderr": "[pod] sowed 918 items to /tmp/decko-oracle-source-jzwtlssq/0/decko-ts-818-public-oracle-fixtures-20261102/tools/persistence/ts-trip-work/ts-to-ruby.yml\n"
+    }
+  ],
+  "files": {
+    "ts-to-ruby.eat.json": "971a3d2582e12f9a4f9ff42275976e0b75be7f19ef5d2154bdff9eabd2af0a18",
+    "ts-to-ruby.yml": "5ffabd4cb62cecdfb7d8a8db4437ed896700e0ee11b17b8ebe8b556c9c4ef36c"
+  }
+}

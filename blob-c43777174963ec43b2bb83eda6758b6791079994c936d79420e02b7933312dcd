@@ -1,0 +1,245 @@
+import assert from 'node:assert/strict';
+import { EventEmitter } from 'node:events';
+import path from 'node:path';
+import test from 'node:test';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { loadCandidate } from './test-gate-fixture.mjs';
+import { parseGateArguments, selectGateInventory, selectTestFiles } from './test-gates.mjs';
+import { assertFreshBrowserBuild, cleanupGateInputs, createGateTimingRecorder, prepareGateInputs, prepareMiniflareMetadata, writeGateResult } from './test-gate-project-preflight.mjs';
+import { oracleGemSourceDirectory } from '../tests/support/oracle-gem-source-directory.mjs';
+import { scratchDir, removeScratchDir } from '../tests/support/scratch-dir.mjs';
+import { unlinkDirectoryLink } from './platform/unlink-directory-link.mjs';
+
+function commandControl(prepare) {
+  const root = path.resolve('.'), events = [];
+  const directories = new Set([root, path.join(root, 'tests'), path.join(root, 'tests/server')]);
+  const entries = new Map([[root, ['tests']], [path.join(root, 'tests'), ['server']],
+    [path.join(root, 'tests/server'), ['owned.test.ts', 'owned.test.mjs']]]);
+  return { events, load: () => loadCandidate({
+    process: { execPath: process.execPath, pid: 818,
+      argv: ['node', 'inert-control.mjs', 'run', 'full', '--folder', 'tests/server'], env: {},
+      exit(code) { throw Error('control-exit:' + code); } },
+    readdirSync(directory) { return (entries.get(path.resolve(directory)) ?? []).map(name => ({ name,
+      isDirectory: () => directories.has(path.join(directory, name)) })); },
+    writeFileSync() {}, writeGateInventory() {},
+    prepareGateInputs: () => prepare(events),
+    spawn() {
+      events.push('vitest:start');
+      const child = new EventEmitter();
+      queueMicrotask(() => child.emit('close', 0, null));
+      return child;
+    },
+    runNodeTests() { events.push('node:start'); return Promise.resolve({ pass: true, filesExecuted: 1 }); },
+  }) };
+}
+
+test('the actual CLI waits for required project inputs before launching a framework', async () => {
+  const fixture = commandControl(async events => {
+    events.push('prepare:start'); await Promise.resolve(); events.push('prepare:done');
+  });
+  const api = await fixture.load(); await api.command();
+  assert.deepEqual(fixture.events, ['prepare:start', 'prepare:done', 'vitest:start', 'node:start']);
+});
+
+test('named folders retain gate classification and every private/full exclusion', () => {
+  const files = ['tests/card/rules/public.test.ts', 'tests/card/rules/legacy-self-rule.test.ts', 'tools/public.test.mjs'];
+  assert.deepEqual(selectGateInventory(files, 'full').selected, selectTestFiles(files, 'full'));
+  const selection = selectGateInventory(files, 'full', ['tests/card/rules']);
+  assert.deepEqual(selection.selected, [files[0]]);
+  assert.equal(selection.excluded[0].file, files[1]);
+  assert.equal(selection.excluded[0].gate, 'corpus');
+  assert.ok(selection.excluded[0].reason);
+  assert.throws(() => selectGateInventory(files, 'full', ['tests/absent']), /Unknown or empty/);
+  assert.throws(() => selectGateInventory([files[1]], 'full', ['tests/card/rules']), /selects no files/);
+  assert.deepEqual(selectGateInventory(files, 'full', ['tests/card', 'tests/card/rules']).selected, [files[0]]);
+});
+
+test('folder grammar rejects missing, duplicate and escaping selections without changing runner flags', () => {
+  for (const args of [['--folder'], ['--folder='], ['--folder', '..'], ['--folder', '/tests'], ['--folder', 'tests/../tools'], ['--folders', 'tests']]) {
+    assert.throws(() => parseGateArguments(args));
+  }
+  assert.throws(() => parseGateArguments(['--folder', 'tests/server', '--folder=tests/server']), /Repeated/);
+  assert.deepEqual(parseGateArguments(['--folder', 'tests\\server\\', '--reporter=json', '--outputFile', 'owned.json']),
+    { folders: ['tests/server'], extra: ['--reporter=json', '--outputFile', 'owned.json'] });
+});
+
+const repo = fileURLToPath(new URL('..', import.meta.url));
+async function providerFixture(body) {
+  const root = scratchDir('project-preflight-control-');
+  const output = path.join(root, 'out');
+  const gemsDir = oracleGemSourceDirectory();
+  assert.ok(gemsDir, 'existing pinned public source is required; never fabricate an asset provider');
+  mkdirSync(output);
+  mkdirSync(path.join(root, 'tools'));
+  mkdirSync(path.join(root, 'reference-harness/oracle/app'), { recursive: true });
+  mkdirSync(path.join(root, '.runtime'));
+  mkdirSync(path.join(root, 'node_modules'));
+  copyFileSync(path.join(repo, 'tools/setup-oracle-mod-public.mjs'), path.join(root, 'tools/setup-oracle-mod-public.mjs'));
+  copyFileSync(path.join(repo, 'reference-harness/oracle/app/Gemfile.lock'), path.join(root, 'reference-harness/oracle/app/Gemfile.lock'));
+  const provider = path.join(output, 'project-preflight/mod-public');
+  const prepared = { provider, gemsDir: path.resolve(gemsDir) };
+  try { return await body({ root, output, gemsDir, provider, prepared }); }
+  finally { cleanupGateInputs(prepared); removeScratchDir(root); }
+}
+
+function realSetup({ root, args, env }) {
+  const result = spawnSync(process.execPath, args, { cwd: root, env, windowsHide: true, maxBuffer: Infinity });
+  return { status: result.status, signal: result.signal, error: result.error ?? null, stdout: result.stdout, stderr: result.stderr };
+}
+
+test('a required missing source fails before setup, build or runner execution and retains its original reason', () => providerFixture(async ({ root, output }) => {
+  const calls = [];
+  await assert.rejects(prepareGateInputs({ root, directory: output, files: ['tests/server/owned.test.ts'] }, {
+    resolveGemSource: () => undefined, execute: args => { calls.push(args); throw Error('must not launch'); }, log() {},
+  }), /Required pinned oracle gem source is unavailable/);
+  assert.deepEqual(calls, []);
+  const receipt = JSON.parse(readFileSync(path.join(output, 'project-preflight/receipt.json'), 'utf8'));
+  assert.match(receipt.stages[0].failure.message, /Required pinned oracle/);
+}));
+
+// Counterfactual build receipts are deliberately rejected controls, never
+// substitutes for a real build or accepted native evidence.
+for (const failure of ['no-new-receipt', 'foreign-commit']) test('real setup cannot admit a ' + failure + ' browser build', () => providerFixture(async ({ root, output, gemsDir, provider }) => {
+  const source = { sourceCommit: 'a'.repeat(40), sourceDiffSha256: 'b'.repeat(64) };
+  const stale = { ...source, sourceCommit: 'c'.repeat(40), config: 'tsconfig.browser-hosts.json', distSha256: 'd'.repeat(64) };
+  const browserReceipt = path.join(root, '.runtime/browser-build.json');
+  writeFileSync(browserReceipt, JSON.stringify(stale));
+  const calls = [];
+  await assert.rejects(prepareGateInputs({ root, directory: output, files: ['tests/server/owned.test.ts'] }, {
+    resolveGemSource: () => gemsDir, observeSource: () => source, log() {},
+    // Synthetic HTTP bytes are only an isolated refusal control. No browser or
+    // Miniflare runs with them; actual CLI acceptance fetches the public URL.
+    fetchMetadata: async () => new Response('{"control":"fresh fixture"}', { status: 200 }),
+    execute(command) {
+      calls.push(command.args);
+      if (command.args[0].endsWith('setup-oracle-mod-public.mjs')) return realSetup(command);
+      assert.equal(existsSync(browserReceipt), false, 'a previous receipt must be retired before build');
+      if (failure === 'foreign-commit') writeFileSync(browserReceipt, JSON.stringify(stale));
+      return { status: 0, signal: null, error: null, stdout: Buffer.alloc(0), stderr: Buffer.alloc(0) };
+    },
+  }), failure === 'foreign-commit' ? /stale or foreign build/ : /ENOENT/);
+  assert.equal(calls.length, 2);
+  assert.equal(existsSync(provider), false, 'own junctions must be unlinked on preflight failure');
+  assert.equal(readFileSync(path.join(output, 'project-preflight/previous-browser-build.json'), 'utf8'), JSON.stringify(stale));
+  const manifest = JSON.parse(readFileSync(path.join(output, 'project-preflight/mod-provider-manifest.json'), 'utf8'));
+  assert.ok(manifest.complete && manifest.files.length > 0);
+}));
+
+test('fresh mod output refuses an existing provider and cleanup preserves source files and unknown data', () => providerFixture(async ({ root, output, gemsDir, provider, prepared }) => {
+  mkdirSync(path.dirname(provider));
+  const args = [path.join(root, 'tools/setup-oracle-mod-public.mjs'), '--gem-dir', gemsDir, '--public-dir', provider];
+  assert.equal(realSetup({ root, args, env: process.env }).status, 0);
+  const manifest = JSON.parse(readFileSync(path.join(provider, 'mod-provider-manifest.json'), 'utf8'));
+  const sample = manifest.files[0], source = path.join(provider, sample.file), before = readFileSync(source);
+  const again = realSetup({ root, args, env: process.env });
+  assert.notEqual(again.status, 0); assert.match(again.stderr.toString(), /fresh public directory already exists/);
+  const unknown = path.join(provider, 'unknown.txt'); writeFileSync(unknown, 'must retain');
+  try {
+    assert.throws(() => cleanupGateInputs(prepared), /Unknown public provider/);
+    assert.equal(readdirSync(path.join(provider, 'mod')).length, 4);
+  } finally { unlinkSync(unknown); }
+  cleanupGateInputs(prepared);
+  assert.equal(existsSync(provider), false);
+  const mod = manifest.mods.find(mod => sample.file.startsWith('mod/' + mod.name + '/'));
+  assert.deepEqual(readFileSync(path.join(mod.target, sample.file.slice(('mod/' + mod.name + '/').length))), before);
+}));
+
+test('source-bound build admission rejects source drift even with a plausible dist hash', () => {
+  const source = { sourceCommit: 'a'.repeat(40), sourceDiffSha256: 'b'.repeat(64) };
+  const receipt = { ...source, config: 'tsconfig.browser-hosts.json', distSha256: 'c'.repeat(64) };
+  assert.doesNotThrow(() => assertFreshBrowserBuild(receipt, source));
+  assert.throws(() => assertFreshBrowserBuild(receipt, { ...source, sourceCommit: 'd'.repeat(40) }), /stale or foreign/);
+  assert.throws(() => assertFreshBrowserBuild(receipt, { ...source, sourceDiffSha256: 'e'.repeat(64) }), /stale or foreign/);
+});
+
+test('fresh metadata is fetched once and replaces an owned stale cache with exact readback bytes', () => providerFixture(async ({ root, output }) => {
+  const cache = path.join(root, 'node_modules/.mf'); mkdirSync(cache);
+  writeFileSync(path.join(cache, 'cf.json'), '{"control":"stale"}');
+  const body = '{"control":"fresh UTF8 bytes é"}\n', phases = []; let requests = 0;
+  const receipt = await prepareMiniflareMetadata({ root, directory: output, observeTiming: phase => phases.push(phase) }, {
+    async fetchMetadata(url, options) {
+      requests++; assert.equal(url, 'https://workers.cloudflare.com/cf.json');
+      assert.equal(options.redirect, 'error'); assert.equal(options.credentials, 'omit');
+      return new Response(body, { status: 200 });
+    },
+  });
+  assert.equal(requests, 1); assert.equal(receipt.requests, 1); assert.equal(receipt.previousCacheUsed, false);
+  assert.equal(readFileSync(receipt.file, 'utf8'), body);
+  assert.equal(readFileSync(path.join(output, 'previous-cf.json'), 'utf8'), '{"control":"stale"}');
+  assert.ok(phases.some(phase => phase.name === 'miniflare-metadata-fetch' && phase.wallMs >= 0));
+}));
+
+for (const failure of ['network', 'http', 'malformed']) test('metadata ' + failure + ' refuses old cache fallback', () => providerFixture(async ({ root, output }) => {
+  const cache = path.join(root, 'node_modules/.mf'); mkdirSync(cache);
+  const file = path.join(cache, 'cf.json'); writeFileSync(file, '{"control":"stale"}');
+  let calls = 0;
+  await assert.rejects(prepareMiniflareMetadata({ root, directory: output }, { fetchMetadata: async () => {
+    calls++; if (failure === 'network') throw Error('inert fetch connection failed');
+    return new Response(failure === 'malformed' ? 'not JSON' : 'provider failure', { status: failure === 'http' ? 503 : 200 });
+  } }));
+  assert.equal(calls, 1); assert.equal(readFileSync(file, 'utf8'), '{"control":"stale"}');
+}));
+
+test('shared root junction is refused before any metadata request or cache write', async () => {
+  const root = scratchDir('shared-runtime-control-'), shared = scratchDir('shared-runtime-target-');
+  const link = path.join(root, 'node_modules');
+  try {
+    symlinkSync(shared, link, process.platform === 'win32' ? 'junction' : 'dir');
+    let calls = 0;
+    await assert.rejects(prepareMiniflareMetadata({ root, directory: root }, { fetchMetadata: async () => { calls++; throw Error('must not fetch'); } }), /ordinary owned directory/);
+    assert.equal(calls, 0); assert.equal(existsSync(path.join(shared, '.mf')), false);
+  } finally { unlinkDirectoryLink(link, shared); removeScratchDir(root); removeScratchDir(shared); }
+});
+
+for (const name of ['link', 'link with spaces']) test('directory-link cleanup accepts portable path spelling: ' + name, () => {
+  const root = scratchDir('directory-link-spelling-'), target = path.join(root, 'source'), link = path.join(root, name);
+  mkdirSync(target); writeFileSync(path.join(target, 'retained.txt'), 'shared bytes must remain');
+  symlinkSync(target, link, process.platform === 'win32' ? 'junction' : 'dir');
+  try {
+    unlinkDirectoryLink(link.replaceAll('\\', '/'), target.replaceAll('\\', '/'));
+    assert.equal(existsSync(link), false);
+    assert.equal(readFileSync(path.join(target, 'retained.txt'), 'utf8'), 'shared bytes must remain');
+  } finally {
+    if (existsSync(link)) unlinkDirectoryLink(link, target);
+    removeScratchDir(root);
+  }
+});
+
+test('timing receipts retain independent durations, overlap labels and the three slowest measured phases', () => providerFixture(({ output }) => {
+  const timing = createGateTimingRecorder();
+  timing.record({ name: 'preflight', kind: 'container', wallMs: 99 });
+  for (const [name, wallMs] of [['setup', 3], ['build', 9], ['node', 5], ['vitest', 7]]) timing.record({ name, kind: 'leaf', wallMs, overlapGroup: ['node', 'vitest'].includes(name) ? 'test-runners' : null });
+  const result = writeGateResult({ directory: output, result: { pass: true }, timing });
+  const receipt = JSON.parse(readFileSync(result.timings, 'utf8'));
+  assert.deepEqual(receipt.threeSlowestPhases.map(phase => phase.name), ['build', 'vitest', 'node']);
+  assert.ok(receipt.phases.some(phase => phase.name === 'gate-result-report-writing' && phase.wallMs >= 0));
+}));
+
+test('actual Node reports retain execution and independently measured report-writing durations without changing verdicts', async () => {
+  const root = scratchDir('node-duration-control-');
+  try {
+    writeFileSync(path.join(root, 'owned.test.mjs'), 'import test from "node:test";import assert from "node:assert/strict";test("real assertion",()=>assert.equal(2+2,4));');
+    writeFileSync(path.join(root, 'files.json'), JSON.stringify(['owned.test.mjs']));
+    const env = { ...process.env }; delete env.NODE_TEST_CONTEXT;
+    const child = spawnSync(process.execPath, [path.join(repo, 'tools/run-node-tests.mjs'), '--root', root,
+      '--files-json', path.join(root, 'files.json'), '--report', path.join(root, 'report.json')],
+      { cwd: root, env, windowsHide: true, encoding: 'utf8', maxBuffer: Infinity });
+    assert.equal(child.status, 0, child.stderr);
+    const result = JSON.parse(child.stdout);
+    assert.equal(result.pass, true); assert.equal(result.filesExecuted, 1);
+    for (const name of ['node-event-stream', 'node-event-report-writing', 'node-result-report-writing']) {
+      assert.ok(result.timings.some(phase => phase.name === name && Number.isFinite(phase.wallMs) && phase.wallMs >= 0));
+    }
+    assert.equal(JSON.parse(readFileSync(path.join(root, 'report.json'), 'utf8')).pass, true);
+  } finally { removeScratchDir(root); }
+});
+
+test('the actual CLI preserves a prerequisite failure and launches no framework', async () => {
+  const failure = Error('required original asset is absent');
+  const fixture = commandControl(async events => { events.push('prepare:start'); throw failure; });
+  const api = await fixture.load();
+  await assert.rejects(api.command(), error => error === failure);
+  assert.deepEqual(fixture.events, ['prepare:start']);
+});

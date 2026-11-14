@@ -1,0 +1,219 @@
+{
+  "row": "reg-routes-C4 + reg-routes-C5",
+  "gemset": "decko-0.20.0 + card-1.110.0 (pinned)",
+  "ladder": {
+    "reloadTrue": {
+      "slotterMode": null,
+      "successArgs": {
+        "reload": "true"
+      },
+      "rendered": {
+        "json": {
+          "reload": true
+        }
+      },
+      "redirected": null,
+      "error": null
+    },
+    "reloadTruePlusSlotter": {
+      "slotterMode": "silent-success",
+      "successArgs": {
+        "reload": "true"
+      },
+      "rendered": {
+        "json": {
+          "reload": true
+        }
+      },
+      "redirected": null,
+      "error": null
+    },
+    "slotterSilentSuccess": {
+      "slotterMode": "silent-success",
+      "successArgs": {
+        "mark": "/Elsewhere"
+      },
+      "rendered": {
+        "json": {
+          "magic": true
+        }
+      },
+      "redirected": null,
+      "error": null
+    },
+    "slotterUpdateModalOrigin": {
+      "slotterMode": "update-modal-origin",
+      "successArgs": {
+        "mark": "/Elsewhere"
+      },
+      "rendered": {
+        "json": {
+          "magic": true
+        }
+      },
+      "redirected": null,
+      "error": null
+    },
+    "slotterUpdateOrigin": {
+      "slotterMode": "update-origin",
+      "successArgs": {
+        "mark": "/Elsewhere"
+      },
+      "rendered": {
+        "json": {
+          "magic": true
+        }
+      },
+      "redirected": null,
+      "error": null
+    },
+    "slotterUnlisted": {
+      "slotterMode": "modal-replace",
+      "successArgs": {
+        "mark": "/Elsewhere"
+      },
+      "rendered": null,
+      "redirected": {
+        "url": "/Elsewhere",
+        "status": 303
+      },
+      "error": null
+    },
+    "plainRedirect": {
+      "slotterMode": null,
+      "successArgs": {
+        "mark": "/Elsewhere"
+      },
+      "rendered": null,
+      "redirected": {
+        "url": "/Elsewhere",
+        "status": 303
+      },
+      "error": null
+    }
+  },
+  "reloadChecks": {
+    "true": true,
+    "false": false,
+    "": false,
+    "absent": false,
+    "TRUE": false
+  },
+  "slotterChecks": {
+    "absent": null,
+    "": false,
+    "silent-success": true,
+    "update-modal-origin": true,
+    "update-origin": true,
+    "modal-replace": false,
+    "TRUE": false
+  },
+  "sources": {
+    "cudSuccess": [
+      {
+        "line": 79,
+        "text": "    # successful create, update, or delete act"
+      },
+      {
+        "line": 80,
+        "text": "    def cud_success"
+      },
+      {
+        "line": 81,
+        "text": "      success = Card::Env.success.in_context card.name"
+      },
+      {
+        "line": 82,
+        "text": "      if success.reload?"
+      },
+      {
+        "line": 83,
+        "text": "        reload # instruct JSON to reload"
+      },
+      {
+        "line": 84,
+        "text": "      elsif slotter_magic?"
+      },
+      {
+        "line": 85,
+        "text": "        slotter_magic_response"
+      },
+      {
+        "line": 86,
+        "text": "      else"
+      },
+      {
+        "line": 87,
+        "text": "        redirect_cud_success success"
+      },
+      {
+        "line": 88,
+        "text": "      end"
+      },
+      {
+        "line": 89,
+        "text": "    end"
+      }
+    ],
+    "arms": [
+      {
+        "line": 71,
+        "text": "    def reload"
+      },
+      {
+        "line": 72,
+        "text": "      render json: { reload: true }"
+      },
+      {
+        "line": 73,
+        "text": "    end"
+      },
+      {
+        "line": 74,
+        "text": ""
+      },
+      {
+        "line": 75,
+        "text": "    def slotter_magic_response"
+      },
+      {
+        "line": 76,
+        "text": "      render json: { magic: true }"
+      },
+      {
+        "line": 77,
+        "text": "    end"
+      },
+      {
+        "line": 78,
+        "text": ""
+      },
+      {
+        "line": 79,
+        "text": "    def slotter_magic?"
+      },
+      {
+        "line": 80,
+        "text": "      params[\"slotter_mode\"]&.in? %w[silent-success update-modal-origin update-origin]"
+      },
+      {
+        "line": 81,
+        "text": "    end"
+      }
+    ],
+    "successReload": [
+      {
+        "line": 41,
+        "text": "      def reload?"
+      },
+      {
+        "line": 42,
+        "text": "        @reload.to_s == \"true\""
+      },
+      {
+        "line": 43,
+        "text": "      end"
+      }
+    ]
+  }
+}

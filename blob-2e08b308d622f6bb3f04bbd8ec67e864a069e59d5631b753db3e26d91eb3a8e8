@@ -1,0 +1,43 @@
+import { expect, it } from "vitest";
+import { handleEngineRequest } from "../../deploy/bunny-worker-src/bunny-edge-engine-request.js";
+import { applyServedEnvironmentDeltas } from "../../deploy/bunny-worker-src/bunny-edge-page-shell.js";
+import { EMPTY_SERVED_DELTAS } from "../../deploy/bunny-worker-src/bunny-edge-served-deltas.js";
+import { createRenderTestStorage, seedCard } from "../card/render/render-test-storage.js";
+
+it("returns the Ruby title fragment without a document-only LF", async () => {
+  const storage = await createRenderTestStorage();
+  try {
+    const next = await storage.counting.query<{ max_id: number }>("SELECT max(id) AS max_id FROM cards", []);
+    await seedCard(storage, { id: next.rows[0]!.max_id + 1, name: "Home", typeId: 2 });
+    const response = await handleEngineRequest(new Request("https://deck.example/Home?view=title", {
+      headers: { Accept: "text/html", "X-Requested-With": "XMLHttpRequest" },
+    }), { fetcher: storage.fetcher, render: storage.engine });
+    expect(response.status).toBe(200);
+    // Independently captured Ruby card1.110.0/Decko0.20.0 anonymous AJAX title.
+    const expected = '<span class="card-title" title="Home">Home</span>';
+    const body = await response.text();
+    expect(body).toBe(expected);
+    expect(new TextEncoder().encode(body)).toHaveLength(49);
+  } finally {
+    storage.close();
+  }
+});
+
+it("preserves every fragment's existing terminal bytes", () => {
+  for (const fragment of ["<span>Home</span>", "<span>Home</span>\n", "authored\n\n"]) {
+    expect(applyServedEnvironmentDeltas(fragment, EMPTY_SERVED_DELTAS, { fullDocument: false })).toBe(fragment);
+  }
+});
+
+it("keeps the existing full-document newline rule", () => {
+  const document = "<!DOCTYPE html><html><body>Home</body></html>";
+  expect(applyServedEnvironmentDeltas(document)).toBe(document + "\n");
+  expect(applyServedEnvironmentDeltas(document + "\n")).toBe(document + "\n");
+});
+
+it("still applies configured asset transformations to a fragment", () => {
+  const fragment = '<img src="http://s3.amazonaws.com//files/1/image.png">';
+  expect(applyServedEnvironmentDeltas(fragment, {
+    ...EMPTY_SERVED_DELTAS, assetHost: "https://assets.example.invalid",
+  }, { fullDocument: false })).toBe('<img src="https://assets.example.invalid/files/1/image.png">');
+});
