@@ -1,0 +1,1622 @@
+// Read-permission resolution — the READ side of the decko rule algebra.
+//
+// Ruby mechanism (the trail the port follows):
+//
+// 1. Card::Rule::ReadRuleCache (card-1.110.0 lib/card/rule/read_rule_cache.rb)
+//    builds the deck-wide { party_id -> [read_rule_id, ...] } hash from
+//    STORAGE: read rule cards (right = the *read setting card, left = a set
+//    card) joined to card_references — a rule grants the parties its content
+//    REFERENCES (the [[Party]] items; the referee side of the rule card's
+//    links). This is deliberately content-independent: the cached deck is
+//    the reference graph, not the rule text.
+// 2. Card::Auth's actor resolves its parties
+//    (card-mod-account-0.20.0 set/abstract/account_holder.rb:27-29
+//    #parties = all_enabled_roles + [self]; for Anonymous all_enabled_roles
+//    is [], :40) and its readable rule ids (#fetch_read_rules :115-123 =
+//    read_rule_cache[party] for each of [AnyoneID] + parties, concatenated).
+// 3. The card check is card-mod-permissions set/all/permissions.rb:139-146
+//    #ok_to_read?: always_ok for the bot; then
+//    `Auth.as_card.read_rules_hash[read_rule_id]` where read_rule_id is the
+//    card's STORED cards.read_rule_id (`self.read_rule_id ||=
+//    permission_rule_id :read`, :142 — computed on save by the
+//    set_read_rule store event, set/all/permissions.rb:1-5, which is why the
+//    column is on every real row).
+// 4. A failed check denies the VIEW (lib/card/view/permission.rb:46-50
+//    #denial -> lib/card/format/error.rb:27-31 view_for_denial -> the
+//    quiet/loud span; see view-perms.ts for the markup contract).
+//
+// Query shape: the whole state is TWO independent statements (party
+// codenames + the ReadRuleCache join) issued as ONE driver.batch — folded
+// into the render prefetch's existing batch by the engine
+// (src/card/render.ts), so a cold render stays ONE round trip and warm
+// renders issue zero permission queries. A signed-in viewer appends ONE
+// more statement to the SAME batch (its role parties, see ReadViewer) —
+// still one round trip, never per-render.
+
+import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../server/driver.js";
+import type { FetchEngine } from "../fetch.js";
+import { DeckoName } from "../name.js";
+import { CARD_ID_BY_JUNCTION_PLUS_SQL } from "../fetch/card-read-shapes.js";
+import { ruleNamesForCard } from "../set-patterns/rule-names.js";
+import type { PatternCardInput } from "../set-patterns/types.js";
+
+/** The setting card name the read rules hang off (set/all/permissions.rb
+ *  walks permission_rule_id(:read) — the :read setting). */
+const READ_SETTING_NAME = "*read";
+
+/** Codename of the setting card the read rules hang off (*read). */
+const READ_CODENAME = "read";
+/** Codename of the set type card (the SQL's sets.type_id = SetID filter). */
+const SET_CODENAME = "set";
+/** Codename of the party every deck grants through the *all+*read rule. */
+const ANYONE_CODENAME = "anyone";
+/** Codename of the party every signed-in actor joins through (fetch_roles,
+ *  account_holder.rb:111-113 — only relevant for non-anonymous actors). */
+const ANYONE_SIGNED_IN_CODENAME = "anyone_signed_in";
+/** Codename of the signed-out actor card. */
+const ANONYMOUS_CODENAME = "anonymous";
+/** Codename of the Administrator role card — its members get Ruby's
+ *  always_ok? short-circuit (auth/permissions.rb:8-13 -> :52-60 cached
+ *  `admin?`; account_holder.rb:63-65 `admin?` = `role? AdministratorID`).
+ *  Codename registered in card-mod-account data/real.yml:30-32. */
+const ADMINISTRATOR_CODENAME = "administrator";
+/** Codename of the administrator bot (Auth always_ok? `when DeckoBotID
+ *  then true`, auth/permissions.rb:9 — "cannot disable"). Ruby derives that
+ *  constant FROM the deck's STORED codename — codename.rb:107-110
+ *  `Card.const_get_or_set("#{codename.to_s.camelize}ID")` — so the lookup
+ *  key is the stored codename string (`decko_bot` camelize→ `DeckoBot`
+ *  → `DeckoBotID`), never a guessed alternate spelling. A former
+ *  `deckobot` spelling here matched no row, so actor 1 silently lost the
+ *  always_ok short-circuit and was denied owner-only cards. */
+const DECKOBOT_CODENAME = "decko_bot";
+/** Codename of the *members setting — the joint name Ruby's rolehash hangs
+ *  off (Self::Role.generate_rolehash searches `left: {type_id: RoleID},
+ *  right_id: MembersID`, card-mod-account set/self/role.rb:33-40). */
+const MEMBERS_CODENAME = "members";
+/** Codename of the Role CARDTYPE card — Card::RoleID (the type filter of
+ *  the same search; role cards are cards whose type IS this card). */
+const ROLE_CODENAME = "role";
+
+/**
+ * The viewer whose permission verdicts an engine computes — the port of
+ * `Auth.as_card` as the read check sees it (set/all/permissions.rb:142:
+ * `Auth.as_card.read_rules_hash[read_rule_id]`).
+ *
+ * Anonymous is the default: `{ signedIn: false }` (with actorId left
+ * undefined the caller supplies it — resolveAnonymousReadPermission /
+ * anonymousIdFromResults). A signed-in viewer carries the account card id
+ * the session resolved to; its role parties are derived from storage in
+ * the SAME batch (rolePartyStatement below — the port of fetch_roles,
+ * account_holder.rb:111-113: [AnyoneSignedInID] + the member lists of the
+ * role cards the actor sits in).
+ */
+export interface ReadViewer {
+  /** True when a live session resolved to an account card (Ruby:
+   *  Auth.current_id != AnonymousID). */
+  readonly signedIn: boolean;
+  /** The account card id (Ruby: Auth.as_card.id). Undefined for the pure
+   *  signed-out viewer. */
+  readonly actorId?: number;
+  /** Visitor selection only reduces the roles granted by storage. */
+  readonly enabledRoleIds?: readonly number[];
+}
+
+/** The signed-out corpus viewer — what the engine computes when no
+ *  session actor is available, and what an unresolved/expired token
+ *  degrades to
+ *  (auth/current.rb:58-63). */
+export const ANONYMOUS_VIEWER: ReadViewer = { signedIn: false };
+
+/** The resolved permission state: the read rule ids the viewer may read
+ *  through (Ruby: Auth.as_card.read_rules_hash), whether the deck carries
+ *  the read-rule universe (gates the stored-id fallback walk), and the
+ *  parties the resolution ran for (diagnostics). */
+export interface ReadPermissionState {
+  /** read_rules_hash keys (account_holder.rb:51-53). */
+  readonly readableRuleIds: Set<number>;
+  /** Ruby's Auth.always_ok? short-circuit (auth/permissions.rb:8-13): true
+   *  for the DeckoBot actor (`when DeckoBotID then true` — "cannot
+   *  disable") or an Administrator-role member (cached `admin?`,
+   *  :52-60; account_holder.rb:63-65). Overrides every read verdict —
+   *  ok_to_read? returns before the read_rules_hash lookup
+   *  (set/all/permissions.rb:140). */
+  readonly alwaysOk: boolean;
+  /** False when the deck has NO live read rule cards. Ruby has no such
+   *  branch: on a deck with no read rule cards `read_rules_hash` is empty,
+   *  `permission_rule_id :read` resolves to nil, and
+   *  `Auth.as_card.read_rules_hash[nil]` is nil, so `ok_to_read?` denies
+   *  (permissions.rb:139-146). The flag exists only so the walk can skip
+   *  the queries it does not need: with no rule card in the deck, no
+   *  candidate can resolve, and the verdict is DENY without asking
+   *  (canReadByRuleLookupDepth). */
+  readonly hasReadRules: boolean;
+  /** True when the bootstrap *all+*read rule is among the deck's read
+   *  rules. Ruby never tests this: `permission_rule_id :read` walks the
+   *  candidate names and takes the first rule card that EXISTS, whether or
+   *  not a catch-all is present, so the walk runs on any deck carrying read
+   *  rules and the verdict is the membership check on whatever it resolves.
+   *  The flag is reported by the same gate statement and consumed only by
+   *  diagnostics and the CQL posture (RenderEngine#cqlPermissionOptions);
+   *  it does not gate the read verdict. */
+  readonly hasCatchAllReadRule: boolean;
+  /** The party ids the readable set was computed from. */
+  readonly parties: number[];
+  /** Unfiltered choices for the role editor, present only with a selection. */
+  readonly grantedRoleIds?: readonly number[];
+  /** Auth.current_id when Auth.signed_in? (auth/current.rb:43-47), else
+   *  undefined — what a set module's own-card permission override compares
+   *  against (e.g. Right::Follow's allowed_to_change_follow_status?). */
+  readonly signedInActorId?: number;
+}
+
+/** One party row of the ReadRuleCache join (read_rule_cache.rb SQL). */
+interface PartyRuleRow {
+  partyId: number;
+  readRuleId: number;
+}
+
+/** Statement 3 (the gate)'s position in readPermissionStatements' array —
+ *  every consumer that folds, splices, or replaces a single permission
+ *  statement by index reads THIS constant, so reordering the array cannot
+ *  silently desync a fold (the seat head's
+ *  gate-count column replaces this statement in the one-trip posture). */
+export const PERMISSION_GATE_COUNT_STATEMENT_INDEX = 2;
+
+/**
+ * The gate-count statement as a JSON arm for a LARGER statement's select
+ * list (the one-trip seat head — one-trip-per-page spec §a.4's zero-bind
+ * one-off arm). Derived from readPermissionStatements()[2].sql verbatim, so
+ * the two shapes cannot drift: the arm executes the exact statement text as
+ * a CTE and json-aggregates its single row into a small TEXT cell the
+ * client parses back into the same rows the batch result would have
+ * carried. Zero binds — the statement is viewer-independent (statements 1-3
+ * read the deck's anyone/anonymous/signed-in parties; only the optional
+ * statement 4 is viewer-bound).
+ */
+export function permissionGateCountJsonArm(): string {
+  const body = readPermissionStatements()[PERMISSION_GATE_COUNT_STATEMENT_INDEX].sql;
+  return (
+    `(WITH gate AS (${body}) ` +
+    `SELECT json_group_array(json_object('c', g.c, 'catchAll', g.catchAll)) FROM gate g)`
+  );
+}
+
+/**
+ * The permission statements, ready for a driver.batch fold.
+ *
+ * Statement 1 (parties): the codename cards the party math needs, ordered by
+ * id so the party map is deterministic when a deck carries more than one row
+ * for a codename (a test seed layered over a bootstrap, or a replayed shard).
+ * Ruby's `const_get_or_set` yields the first card saved under a codename,
+ * which is the lowest id.
+ * The port of the boot-time AnonymousID/AnyoneID constants
+ * (lib/card/codename.rb:108 `const_get_or_set("#{codename.camelize}ID")`),
+ * plus the two codenames the signed-in path compares against
+ * (administrator: the always_ok? role; decko_bot: the always_ok? actor —
+ * camelize-derives the DeckoBotID the `when DeckoBotID then true`
+ * short-circuit reads).
+ *
+ * Statement 2 (the cache): read_rule_cache.rb's SQL verbatim, with ReadID
+ * and SetID as scalar subqueries on the codename cards so the statement is
+ * self-contained (a batch cannot reference a sibling's results).
+ *
+ * Statement 3 (the gate): hasReadRules / hasCatchAllReadRule counters.
+ *
+ * Statement 4 (signed-in viewers only): the actor's role parties —
+ * appended LAST so the Anonymous batch stays exactly the historical three
+ * statements (zero diff for the default viewer). One batch total either
+ * way: folding in the actor's roles costs no extra round trip.
+ */
+export function readPermissionStatements(viewer?: ReadViewer): SQLStatement[] {
+  const statements: SQLStatement[] = [
+    {
+      // key and left_id ride along so the signed-out viewer's own key comes
+      // from this batch (actorKeyFromResults) instead of a point fetch.
+      sql:
+        `SELECT id, codename, key, left_id FROM cards WHERE codename IN ` +
+        `('${ANYONE_CODENAME}', '${ANYONE_SIGNED_IN_CODENAME}', '${ANONYMOUS_CODENAME}', ` +
+        `'${ADMINISTRATOR_CODENAME}', '${DECKOBOT_CODENAME}') ` +
+        `AND trash = 0 ORDER BY id`,
+      params: [],
+    },
+    {
+      sql:
+        `SELECT refs.referee_id AS partyId, read_rules.id AS readRuleId ` +
+        `FROM cards read_rules ` +
+        `JOIN card_references refs ON refs.referer_id = read_rules.id ` +
+        `JOIN cards sets ON read_rules.left_id = sets.id ` +
+        `WHERE read_rules.right_id = ` +
+        `  (SELECT id FROM cards WHERE codename = '${READ_CODENAME}' AND trash = 0 ORDER BY id LIMIT 1) ` +
+        `AND sets.type_id = ` +
+        `  (SELECT id FROM cards WHERE codename = '${SET_CODENAME}' AND trash = 0 ORDER BY id LIMIT 1) ` +
+        `AND read_rules.trash = 0 AND sets.trash = 0`,
+      params: [],
+    },
+    {
+      // The hasReadRules gate: ANY live read rule card, independent of
+      // references (a rule whose content references nothing grants nobody
+      // but still EXISTS — Ruby's permission_rule_id would resolve it for
+      // an unruled card's stored-id fallback). catchAll carries whether the
+      // BOOTSTRAP rule is among them — identified STRUCTURALLY (left =
+      // the *all codename card), since modern junction rows carry no key
+      // column — as the completeness proof for a seed's read-rule universe
+      // (see canReadByRuleLookup).
+      sql:
+        `SELECT COUNT(*) AS c, ` +
+        `COALESCE(SUM(CASE WHEN cards.left_id = ` +
+        `  (SELECT id FROM cards WHERE codename = 'all' AND trash = 0 ORDER BY id LIMIT 1) ` +
+        `THEN 1 ELSE 0 END), 0) AS catchAll ` +
+        `FROM cards WHERE cards.right_id = ` +
+        `(SELECT id FROM cards WHERE codename = '${READ_CODENAME}' AND trash = 0 ORDER BY id LIMIT 1) ` +
+        `AND cards.trash = 0`,
+      params: [],
+    },
+  ];
+  if (viewer !== undefined && viewer.signedIn && viewer.actorId !== undefined) {
+    statements.push(rolePartyStatement(viewer.actorId));
+  }
+  return statements;
+}
+
+/**
+ * The signed-in actor's role parties — the SQL form of the port's
+ * fetch_roles tail (account_holder.rb:107-113):
+ *
+ * 1. `role_ids_from_role_member_cards` -> `Self::Role.role_ids(user_id)`
+ *    (card-mod-account set/self/role.rb:8-14): every role card whose
+ *    `+*members` list includes the user.
+ * 2. The rolehash those lists feed (`generate_rolehash`, set/self/role.rb:
+ *    33-40) is built from cards with `left: {type_id: RoleID},
+ *    right_id: MembersID`; this statement reads the same rows.
+ * 3. The member ids come from card_references because that is where the
+ *    list layer itself puts them: an IdList maintains one reference row
+ *    per item (ref_type "L", referee_key NULL) at save time
+ *    (card-mod-list set/abstract/id_list.rb:33-47 create_references_out).
+ *    Stored decks show the shape: every `<Role>+*members` row's
+ *    reference set matches its content item count exactly, and a deck
+ *    whose content has been rewritten in place still carries the original
+ *    id references — references are the durable id truth.
+ *
+ * Parameterized by the actor id; rides the SAME batch as the base
+ * statements (see readPermissionStatements). ORDER BY is a port-side
+ * normalization for deterministic diagnostics — Ruby's rolehash iteration
+ * order is not contractual (the union is order-insensitive:
+ * account_holder.rb:51-53 hashes it away).
+ */
+function rolePartyStatement(actorId: number): SQLStatement {
+  return {
+    sql:
+      `SELECT lists.left_id AS roleId ` +
+      `FROM card_references refs ` +
+      `JOIN cards lists ON lists.id = refs.referer_id ` +
+      `JOIN cards roles ON roles.id = lists.left_id ` +
+      `WHERE refs.referee_id = ? AND refs.referee_id IS NOT NULL ` +
+      `AND lists.right_id = ` +
+      `  (SELECT id FROM cards WHERE codename = '${MEMBERS_CODENAME}' AND trash = 0 ORDER BY id LIMIT 1) ` +
+      `AND lists.trash = 0 AND roles.trash = 0 ` +
+      `AND roles.type_id = ` +
+      `  (SELECT id FROM cards WHERE codename = '${ROLE_CODENAME}' AND trash = 0 ORDER BY id LIMIT 1) ` +
+      `ORDER BY lists.left_id`,
+    params: [actorId],
+  };
+}
+
+/** Parse the batch results (statements in readPermissionStatements order)
+ *  for one actor's parties into the permission state. The corpus path
+ *  passes
+ *  (results, anonymousIdFromResults(results), false). */
+export function readPermissionStateFromResults(
+  results: SQLQueryResult[],
+  actorId: number | undefined,
+  signedIn: boolean,
+): ReadPermissionState {
+  return readPermissionStateFromViewerResults(results, { signedIn, actorId });
+}
+
+/**
+ * Parse the batch results for ONE viewer into the permission state — the
+ * port of account_holder.rb's read_rules_hash construction:
+ *
+ * - parties (:27-29 `all_enabled_roles << id`): for a signed-in actor
+ *   [AnyoneSignedIn, ...roleMemberRoles, selfId] (fetch_roles :111-113
+ *   puts AnyoneSignedIn first; the role ids are statement 4's rows).
+ *   Anonymous joins no roles (:39-41 all_enabled_roles is [] when id ==
+ *   AnonymousID), so its parties are [Anyone, AnonymousID].
+ * - fetch_read_rules (:115-123): the union of
+ *   `Card::Rule.read_rule_cache[party]` over `[AnyoneID] + parties`
+ *   (DeckoBot returns [] there — always_ok short-circuits first, :116).
+ * - alwaysOk: the port of ok_to_read?'s opening short-circuit
+ *   (set/all/permissions.rb:140 `return true if Auth.always_ok?`) — true
+ *   when the actor IS DeckoBot (auth/permissions.rb:9) or holds the
+ *   Administrator role (auth/permissions.rb:52-60 cached `admin?` =
+ *   account_holder.rb:63-65 `all_enabled_roles.include? AdministratorID`).
+ */
+export function readPermissionStateFromViewerResults(
+  results: SQLQueryResult[],
+  viewer: ReadViewer,
+): ReadPermissionState {
+  const codenameRows = (results[0]?.rows ?? []) as Array<{ id: number; codename: string | null }>;
+  const cacheRows = (results[1]?.rows ?? []) as Array<PartyRuleRow>;
+  const ruleCount = (results[2]?.rows ?? []) as Array<{ c: number; catchAll: number }>;
+  const actorId = viewer.actorId;
+  const signedIn = viewer.signedIn === true && actorId !== undefined;
+  // Statement 4 exists only when readPermissionStatements got a signed-in
+  // viewer (the two functions' guards are the same predicate on purpose).
+  const roleRows = signedIn
+    ? ((results[3]?.rows ?? []) as Array<{ roleId: number }>)
+    : [];
+
+  // Statement 1 arrives ORDER BY id, so the FIRST row for a codename is the
+  // lowest id — which is the card Ruby's `const_get_or_set` would have
+  // returned (lib/card/codename.rb:108). First wins, later duplicates for
+  // the same codename are ignored rather than overwriting it.
+  const byCodename = new Map<string, number>();
+  for (const row of codenameRows) {
+    if (row.codename !== null && !byCodename.has(row.codename)) byCodename.set(row.codename, row.id);
+  }
+  const anyone = byCodename.get(ANYONE_CODENAME);
+  const anyoneSignedIn = byCodename.get(ANYONE_SIGNED_IN_CODENAME);
+  const administratorId = byCodename.get(ADMINISTRATOR_CODENAME);
+  const deckobotId = byCodename.get(DECKOBOT_CODENAME);
+
+  // Role member-card roles, deduped in statement order (ORDER BY role id).
+  let roles: number[] = [];
+  for (const row of roleRows) {
+    if (!roles.includes(row.roleId)) roles.push(row.roleId);
+  }
+  const grantedRoleIds = [
+    ...(signedIn && anyoneSignedIn !== undefined ? [anyoneSignedIn] : []), ...roles,
+  ];
+  const selected = signedIn && viewer.enabledRoleIds !== undefined
+    ? new Set(viewer.enabledRoleIds) : undefined;
+  if (selected !== undefined) roles = roles.filter(id => selected.has(id));
+
+  const alwaysOk =
+    signedIn &&
+    actorId !== undefined &&
+    (actorId === deckobotId ||
+      (administratorId !== undefined && roles.includes(administratorId)));
+
+  const parties: number[] = anyone !== undefined ? [anyone] : [];
+  if (signedIn && anyoneSignedIn !== undefined && (selected === undefined || selected.has(anyoneSignedIn))) parties.push(anyoneSignedIn);
+  parties.push(...roles);
+  if (actorId !== undefined) parties.push(actorId);
+
+  // read_rule_cache.rb lookup_hash: party_id -> [read_rule_id, ...]
+  const cache = new Map<number, number[]>();
+  for (const row of cacheRows) {
+    if (row.partyId === null || row.partyId === undefined) continue;
+    const list = cache.get(row.partyId);
+    if (list === undefined) cache.set(row.partyId, [row.readRuleId]);
+    else list.push(row.readRuleId);
+  }
+
+  // account_holder.rb:115-123 fetch_read_rules: concat cache[party].
+  const readableRuleIds = new Set<number>();
+  for (const party of parties) {
+    for (const ruleId of cache.get(party) ?? []) readableRuleIds.add(ruleId);
+  }
+  return {
+    readableRuleIds,
+    alwaysOk,
+    hasReadRules: (ruleCount[0]?.c ?? 0) > 0,
+    hasCatchAllReadRule: (ruleCount[0]?.catchAll ?? 0) > 0,
+    parties,
+    signedInActorId: signedIn ? actorId : undefined,
+    ...(selected === undefined ? {} : { grantedRoleIds }),
+  };
+}
+
+/** The Anonymous card's id from the batch results (undefined when the deck
+ *  has no such codename row — the state then simply carries fewer
+ *  parties, which denies every ruled card exactly like Ruby's empty
+ *  read_rules_hash does). */
+export function anonymousIdFromResults(results: SQLQueryResult[]): number | undefined {
+  const codenameRows = (results[0]?.rows ?? []) as Array<{ id: number; codename: string | null }>;
+  return codenameRows.find((row) => row.codename === ANONYMOUS_CODENAME)?.id;
+}
+
+/**
+ * The actor card's canonical key, answered from the permission batch when
+ * that batch carries the actor's row (statement 1 projects key and left_id
+ * for the codename cards, so the signed-out viewer's card is always present).
+ *
+ * A card with no left_id keys by its stored `key` column, which is exactly
+ * what composeCardRecord (fetch/card-record.ts) yields for it; a compound
+ * card's key is composed from its sides, so it is NOT answered here. Returns
+ * undefined when the batch does not carry a simple actor row — the caller
+ * then reads the card by id, as before.
+ */
+export function actorKeyFromResults(
+  results: SQLQueryResult[],
+  actorId: number | undefined,
+): { key: string | undefined } | undefined {
+  if (actorId === undefined) return undefined;
+  const codenameRows = (results[0]?.rows ?? []) as Array<{
+    id: number;
+    key: string | null;
+    left_id: number | null;
+  }>;
+  const row = codenameRows.find((candidate) => candidate.id === actorId);
+  if (row === undefined || (row.left_id !== null && row.left_id !== undefined)) return undefined;
+  return { key: row.key ?? undefined };
+}
+
+/**
+ * The Anonymous viewer's permission state — the viewer every default
+ * computation runs as.
+ * Anonymous joins no roles (account_holder.rb:40 all_enabled_roles is []
+ * when id == AnonymousID), so its parties are [AnyoneID, AnonymousID].
+ */
+export async function resolveAnonymousReadPermission(
+  driver: SQLDatabaseDriver,
+): Promise<ReadPermissionState> {
+  const results = await driver.batch(readPermissionStatements());
+  return readPermissionStateFromViewerResults(results, {
+    signedIn: false,
+    actorId: anonymousIdFromResults(results),
+  });
+}
+
+/** Verdict for a card whose readRuleId is known — the pure half of
+ *  permissions.rb:139-146 ok_to_read? (set membership, no queries), with
+ *  Ruby's always_ok? short-circuit in front of it (:140). */
+export function canReadByStoredRule(
+  readRuleId: number,
+  state: ReadPermissionState,
+): boolean {
+  if (state.alwaysOk) return true;
+  return state.readableRuleIds.has(readRuleId);
+}
+
+/** The winning read rule's content shape that DELEGATES the verdict to the
+ *  card's LEFT: permissions.rb:54
+ *  `rule(action).match?(/^\[?\[?_left\]?\]?$/)` — the bare reference and its
+ *  single/double-bracket forms, Ruby line anchors (^/$ match at \n). The
+ *  corpus rule `*all plus+*read` carries exactly "_left\n". */
+const LEFT_DELEGATION_CONTENT = /^\[?\[?_left\]?\]?$/m;
+
+/** Recursion cap for the delegation walk: each hop consumes one name part
+ *  (the left chain strictly shrinks), so this is paranoia, not the
+ *  termination argument. */
+const LEFT_DELEGATION_MAX_DEPTH = 16;
+
+/**
+ * The live-computation fallback for a card row without a stored
+ * read_rule_id — permission_rule_id(:read) (set/all/permissions.rb:55-61)
+ * as the LIVE-WALK half of the delegation mechanism (this file): walk the
+ * card's candidate rule names in pattern precedence (ruleNamesForCard),
+ * take the first that exists (resolveRuleRowsByKeys with content), then
+ * apply the `_left` rule-content delegation (a compound card whose winning
+ * read rule says "_left" reads through its left card's permission rule,
+ * recursively — permissions.rb:56-71, re-checked at every hop of the left
+ * chain via readThroughLeftCard, depth-capped). The delegation is
+ * load-bearing on this corpus: `*all plus+*read` = "_left", so EVERY
+ * compound card's first-precedence candidate delegates (virtual rule cards
+ * under a set included — the setting list the set card's :content view
+ * renders); skipping it resolved the walk at "*all plus+*read" and keyed
+ * the verdict off that rule's own referenced party ("_left" names the left
+ * card), which denies exactly the cards Ruby allows.
+ *
+ * The mechanism's other half is the LOOKUP-TIME delegation in
+ * set-read-rule.ts: effectiveReadRuleId / permissionRuleId /
+ * leftPermissionRuleId apply the same permissions.rb:52-72 semantics when
+ * the stored read_rule_id is DERIVED (deriveReadRuleRecord — the
+ * set_read_rule write path) so a stored id already bakes the left chain
+ * in. The read verdict for stored ids needs no walk (canReadByStoredRule);
+ * this live walk covers exactly the cards without one (new cards, fetch
+ * placeholders, rows predating the column).
+ *
+ * The final verdict runs the same readable-set check the stored path does
+ * (readableRuleIds.has(rule.id) — read_rules_hash[read_rule_id],
+ * permissions.rb:143).
+ *
+ * The rule-less deck DENIES, exactly as Ruby does. `ok_to_read?`
+ * (permissions.rb:139-146) has no allowance for a deck that carries no
+ * read rule card: `permission_rule_id :read` composes the candidate names
+ * and returns nil when none of them names a rule card in the deck, then
+ * `Auth.as_card.read_rules_hash[nil]` is nil and the check falls through
+ * to `deny_because you_cant "read this"`. The port answers the same way:
+ * no rule card in the deck means no candidate resolves, and an unresolved
+ * walk is a DENY (see the tail). The `hasReadRules` gate exists so the
+ * walk can skip queries it does not need — with no rule card in the deck
+ * no candidate can resolve, so the denial is reached without the walk.
+ */
+export async function canReadByRuleLookup(
+  fetcher: FetchEngine,
+  card: PatternCardInput,
+  state: ReadPermissionState,
+): Promise<boolean | undefined> {
+  return canReadByRuleLookupDepth(fetcher, card, state, 0);
+}
+
+async function canReadByRuleLookupDepth(
+  fetcher: FetchEngine,
+  card: PatternCardInput,
+  state: ReadPermissionState,
+  depth: number,
+): Promise<boolean | undefined> {
+  if (state.alwaysOk) return true; // permissions.rb:140, before any rule walk
+  // No read rule card in the deck: `permission_rule_id :read` resolves to
+  // nil and `read_rules_hash[nil]` denies (permissions.rb:139-146), so the
+  // walk below could only re-derive that answer at the cost of its queries.
+  // DENY, not "no opinion".
+  if (!state.hasReadRules) return false;
+  // pattern/all.rb#patterns: a NEW card's pattern list drops the first
+  // concrete pattern (SELF) — and rule_lookup_keys then nils every anchored
+  // candidate whose anchor card has no id. The virtual cards (id ===
+  // undefined) are new cards by definition, so their SELF candidate —
+  // anchored on themselves — never reaches the lookup:
+  // `Card.fetch("<virtual junction>").permission_rule_id(:read)` answers the
+  // `*all plus+*read` rule, skipping an existing `<name>+*self+*read` rule.
+  const candidates = ruleNamesForCard(
+    card.id === undefined ? { ...card, isNew: true } : card,
+    READ_SETTING_NAME,
+  );
+  // WITH content: the delegation check reads the winning rule's text
+  // (permissions.rb:54 `rule(action)`); the extra join rides the same
+  // statement, no second round trip.
+  // RENDER path, so the rule-closure walk: every candidate here is a
+  // pattern name joined to *read, which the scoped walk resolves exactly
+  // (resolveRuleRowsByRuleKeys carries the equivalence measurement).
+  const cardName = card.name === undefined ? undefined : DeckoName.parse(card.name);
+  // The winning rule's content is read only by the _left delegation below,
+  // which applies to COMPOUND card names alone (the `cardName.isCompound`
+  // test in the loop). A simple or blank-key card therefore never needs the
+  // content, so it is not fetched: the blank-key verdict (seated on every
+  // cold render, render.ts seatBlankKeyReadVerdict) pays no content round
+  // trip. A compound card asks for it as before.
+  const resolved = await resolveRuleRowsByRuleKeys(
+    fetcher.driver,
+    candidates.map((name) => DeckoName.parse(name).key),
+    cardName?.isCompound === true,
+  );
+  for (const name of candidates) {
+    const key = DeckoName.parse(name).key;
+    const rule = resolved.get(key);
+    if (rule === undefined) continue;
+    // permissions.rb:52-58 permission_rule_id: a COMPOUND card whose winning
+    // rule's content is the _left reference resolves through the LEFT card's
+    // own permission walk (left_permission_rule_id :66-72). Without this the
+    // walk evaluates viewer membership in the DELEGATING rule's grants — a
+    // _left rule names no party, so every id-less compound child under it
+    // (the structured/missing children) denied where
+    // Ruby's delegation reaches the left card's own rule (the
+    // `*all plus+*read -> _left` chain ends at *all+*read = Anyone).
+    if (
+      depth < LEFT_DELEGATION_MAX_DEPTH &&
+      cardName !== undefined &&
+      cardName.isCompound &&
+      LEFT_DELEGATION_CONTENT.test(rule.content ?? "")
+    ) {
+      return readThroughLeftCard(fetcher, cardName, state, depth);
+    }
+    return state.readableRuleIds.has(rule.id);
+  }
+  // No candidate resolved. Ruby cannot resolve here either:
+  // `permission_rule_id :read` composes the candidate names and returns nil
+  // when none of them names a live rule card, then
+  // `Auth.as_card.read_rules_hash[nil]` is nil and ok_to_read? falls through
+  // to `deny_because you_cant "read this"`
+  // (set/all/permissions.rb:139-146). So the port FAILS CLOSED (deny) on
+  // every deck. Ruby draws no distinction between a deck whose rule graph
+  // could not be evaluated and one that simply carries no matching rule —
+  // both are a nil read_rule_id — and neither is an occasion to allow. The
+  // fail-open this replaced leaked card bodies through the catch-all
+  // whenever a more specific rule candidate could not be evaluated: a
+  // *type plus right read rule granting "Anyone Signed In" never reached
+  // the verdict, the walk fell through to *all+*read, and anonymous was
+  // granted. Partial decks (per-shard replay seeds) answer the same way
+  // here, because a rule card the shard does not carry is exactly the
+  // `permission_rule_id -> nil` case Ruby denies.
+  return false;
+}
+
+/** permissions.rb:66-72 left_permission_rule_id:
+ *  `lcard = left_or_new(skip_virtual: true, skip_modules: true);
+ *  lcard.permission_rule_id action`. The skip_virtual fetch is what keeps
+ *  the delegation off the virtual-card hook (a missing left is a NEW left,
+ *  not a virtual one). The new-left branch carries name only — Ruby's new
+ *  card has no type yet, so its walk runs type-less (the *type candidates
+ *  are correctly absent from a type-less walk). */
+async function readThroughLeftCard(
+  fetcher: FetchEngine,
+  name: DeckoName,
+  state: ReadPermissionState,
+  depth: number,
+): Promise<boolean | undefined> {
+  const leftName = name.leftName;
+  const leftKey = leftName?.key;
+  if (leftName === undefined || leftKey === undefined || leftKey === "") {
+    return canReadByRuleLookupDepth(fetcher, { name, id: undefined }, state, depth + 1);
+  }
+  const left = await fetcher.fetchByKey(leftKey, { skipVirtual: true });
+  if (left === undefined) {
+    return canReadByRuleLookupDepth(fetcher, { name: leftName, id: undefined }, state, depth + 1);
+  }
+  const input: PatternCardInput = {
+    name: left.name ?? leftName,
+    id: left.id,
+    ...(left.typeId !== undefined ? { typeId: left.typeId } : {}),
+  };
+  // The left's *type candidates anchor on the type card's NAME
+  // (type.rb:34-36 type_name). One cache-first fetch.
+  if (left.typeId !== undefined) {
+    const typeCard = await fetcher.fetchById(left.typeId);
+    if (typeCard?.name !== undefined && typeCard.name !== null) input.typeName = typeCard.name;
+  }
+  // The left's *type plus right candidates anchor on ITS left's type
+  // (pattern 08_type_plus_right.rb left_type: superleft&.type_name) — the
+  // same one-level resolution verdictPatternInput does for nest children.
+  const leftInputName = DeckoName.parse(input.name);
+  if (leftInputName.isCompound) {
+    const leftLeftKey = leftInputName.leftName?.key;
+    if (leftLeftKey !== undefined && leftLeftKey !== "") {
+      const leftLeft = await fetcher.fetchByKey(leftLeftKey, { skipVirtual: true });
+      if (leftLeft !== undefined && leftLeft.typeId !== undefined) {
+        const leftLeftType = await fetcher.fetchById(leftLeft.typeId);
+        if (leftLeftType?.name !== undefined && leftLeftType.name !== null) {
+          input.leftTypeName = leftLeftType.name;
+        }
+      }
+    }
+  }
+  return canReadByRuleLookupDepth(fetcher, input, state, depth + 1);
+}
+
+/**
+ * Composed-key -> rule card id for the given rule-name keys — the id-only
+ * projection of resolveRuleRowsByKeys (the WHOLE-DECK walk); that function's
+ * doc carries the resolution statement, the per-driver cache, and the design
+ * history.
+ *
+ * IT HAS NO PRODUCTION CALLER LEFT. Both write-path consumers moved to the
+ * per-key walk (resolveRuleIdsByComposedKeys / resolveComposedNameIdsByKeys),
+ * which measured equivalent to this walk on every composed name of the
+ * serving deck at 0.095 ms/key against 203 ms. It stays exported, and stays
+ * the resolver behind the per-key walk's AMBIGUOUS-key fallback and behind the
+ * equivalence proofs, which need the walk it is compared against.
+ *
+ * Both narrower walks were measured against the serving deck before either
+ * was chosen. resolveRuleIdsByRuleKeys (the rule-closure walk) is a CORRECT
+ * swap and a SLOW one: 13x fewer rows at 3x the time (322 ms
+ * vs 109 ms warm), because its five MATERIALIZED edge CTEs cost more to build
+ * than the deck they prune. The per-key walk is the one that won. Numbers and
+ * reproduction are recorded at the call site in set-read-rule.ts.
+ */
+export async function resolveRuleIdsByKeys(
+  driver: SQLDatabaseDriver,
+  keys: string[],
+): Promise<Map<string, number>> {
+  const rows = await resolveRuleRowsByKeys(driver, keys, false);
+  const out = new Map<string, number>();
+  for (const [key, row] of rows) out.set(key, row.id);
+  return out;
+}
+
+/**
+ * The id-only projection of resolveRuleRowsByRuleKeys — the RULE-CLOSURE walk,
+ * the same composed-key resolution as the whole-deck walk with the deck
+ * replaced by the rule cards' side spines.
+ *
+ * Every render-path caller asks for rule candidate names, which the scoped walk
+ * answers exactly. NEITHER WRITE PATH USES IT, for two measured reasons:
+ * firstApplicableReadRule asks for the same shape of keys and could, but on the
+ * serving deck the scoped walk is 3x SLOWER than the whole-deck walk it would
+ * replace (322 ms vs 109 ms warm, for a thirteenth of the rows) — its five
+ * MATERIALIZED edge CTEs cost more to build than the deck they prune. The
+ * `self` set-pattern member lookup asks for a card's OWN composed name, which
+ * is not rule-shaped at all. Both moved to the per-key walk
+ * (resolveRuleIdsByComposedKeys), which beat the whole-deck walk by 2000x per
+ * key. The walk's doc calls it "~10x cheaper"; that was measured for the cold
+ * render path and does not reproduce on this deck. Numbers and reproduction at
+ * the call site in set-read-rule.ts.
+ */
+export async function resolveRuleIdsByRuleKeys(
+  driver: SQLDatabaseDriver,
+  keys: string[],
+): Promise<Map<string, number>> {
+  const rows = await resolveRuleRowsByRuleKeys(driver, keys, false);
+  const out = new Map<string, number>();
+  for (const [key, row] of rows) out.set(key, row.id);
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// the PER-KEY composed-name walk (the `self` lookup's resolver)
+// ---------------------------------------------------------------------------
+
+/** Every contiguous '+'-segment run of key, shortest first. A composition path
+ *  that reaches key uses only such runs as intermediates — each recursive step
+ *  of RULE_KEY_UNIVERSE_STATEMENT prepends or appends one STORED key to an
+ *  already-resolved ckey, so both operands of a step producing key are runs of
+ *  key — which is why this is the whole set a per-key walk must consider. */
+function segmentRuns(key: string): string[] {
+  const parts = key.split("+");
+  const out: string[] = [];
+  for (let i = 0; i < parts.length; i += 1) {
+    for (let j = i + 1; j <= parts.length; j += 1) out.push(parts.slice(i, j).join("+"));
+  }
+  return out.sort((a, b) => a.split("+").length - b.split("+").length || a.length - b.length);
+}
+
+/** D1 refuses a statement with more than 100 bound parameters; the adapter
+ *  inlines the overflow as literals (drivers/d1.ts). Chunking here keeps the
+ *  bound form on every adapter rather than leaning on that inlining. */
+const MAX_BOUND_PARAMETERS = 100;
+
+/**
+ * ckey -> the card ids that compose to it, for the WRITE PATH's composed-name
+ * lookups. The whole-deck universe answers the same question by composing every
+ * card in the deck (one row per card, ~200 ms warm on the serving deck, five times per
+ * save); this walks only the requested keys' own segment runs — measured on that
+ * deck over every one of its composed names, 0.095 ms per key against the
+ * universe's 203 ms, agreeing on all of them.
+ *
+ * TWO CALLERS. set-read-rule.ts's `self` set-pattern member lookup asks for ONE
+ * key (the anchor card's own composed name) and takes this directly.
+ * firstApplicableReadRule asks for the five rule-shaped candidates
+ * ruleNamesForCard produces and takes resolveRuleIdsByComposedKeys, the id-only
+ * projection below — same walk, one id per key instead of a list. Together they
+ * are the ONLY write-path consumers of composed-name resolution, and neither
+ * opens the whole-deck universe on a well-formed deck.
+ *
+ * WHY IT IS EQUIVALENT TO THE UNIVERSE — the proof this rests on:
+ *
+ *   - SOUNDNESS (no id the universe would not have produced). The universe's
+ *     seed is a card whose stored key IS a run of the requested key, and each
+ *     arm's result is a run of the requested key only when BOTH operands are
+ *     (an arm concatenates them). So no row outside the requested key's runs
+ *     can contribute to it. This is the same argument RuleResolutionDriverCache's
+ *     doc makes for the universe memo.
+ *   - COMPLETENESS (no id the universe would have produced is lost). Induct on
+ *     segment count: a 1-segment run is a stored-key read, which is the
+ *     universe's own seed term; a run of n segments is produced by exactly the
+ *     two arm shapes, each concatenating a resolved ckey with a STORED key, so
+ *     its operands are runs of strictly fewer than n segments and are already
+ *     settled when this walk reaches level n. Both shapes are evaluated, at
+ *     every split — the universe may compose at any of them.
+ *   - The arms' trash semantics are reproduced term for term, including the
+ *     part that is easy to get wrong: the universe tests `j.trash` but NOT the
+ *     composed SIDE's (`r.key IS NOT NULL`, no trash clause), so a live
+ *     junction composes through a trashed side. Pinned by
+ *     tests/card/permissions/composed-name-self-pattern-resolution-equivalence.test.ts,
+ *     which also records that Ruby (Lexicon#lex_to_id) filters trash: false at
+ *     every id() and so does NOT resolve those names — a divergence the port
+ *     already carries, kept here because changing it changes permission
+ *     decisions.
+ *
+ * WHAT IT REFUSES TO ANSWER. A key two cards both compose (a stored compound
+ * key and a junction over the same sides — cards.key is UNIQUE, so the two
+ * meet only this way) is handed to the whole-deck walk, whose Map collapses it
+ * by output order. No cheaper walk can reproduce that choice, so this one does
+ * not guess: it runs the walk that decides.
+ *
+ * LIFETIME. Memoized per driver generation in composedNames and dropped with
+ * the rest of the entry by expireRuleResolutionCache — the same seam the
+ * universe and content memos use, so there is one invalidation path, not two.
+ *
+ * RESULT ORDER is sorted key order, matching resolveRowsAgainst: the
+ * resolution is order-insensitive, so a reordered call must produce an
+ * identical map, entry order included.
+ */
+export async function resolveComposedNameIdsByKeys(
+  driver: SQLDatabaseDriver,
+  keys: string[],
+): Promise<Map<string, number[]>> {
+  const out = new Map<string, number[]>();
+  if (keys.length === 0) return out;
+  const ordered = [...new Set(keys)].sort();
+  let cache = ruleResolutionCaches.get(driver);
+  if (cache === undefined) {
+    cache = { contentById: new Map() };
+    ruleResolutionCaches.set(driver, cache);
+  }
+  cache.composedNames ??= new Map();
+  const memo = cache.composedNames;
+
+  const unresolved = ordered.filter((key) => !memo.has(key));
+  if (unresolved.length > 0) {
+    const walked = await walkComposedNames(driver, unresolved);
+    // Every await above is an expire window: a committed save may have dropped
+    // this entry mid-walk. Re-read it so the answers land in the LIVE map —
+    // writing into a detached one would rebuild on every later call.
+    const live = ruleResolutionCaches.get(driver);
+    if (live !== undefined) cache = live;
+    else ruleResolutionCaches.set(driver, cache);
+    const target = cache.composedNames ?? memo;
+    for (const key of unresolved) {
+      const ids = walked.get(key);
+      if (ids === undefined || ids.length === 0) target.set(key, null);
+      else if (ids.length === 1) target.set(key, ids[0] as number);
+    }
+  }
+  for (const key of ordered) {
+    const id = memo.get(key);
+    if (id !== undefined && id !== null) out.set(key, [id]);
+  }
+  return out;
+}
+
+/**
+ * Composed-key -> rule card id, resolved by the PER-KEY walk instead of the
+ * whole-deck universe. The id-only projection of resolveComposedNameIdsByKeys,
+ * and the write path's answer to "which rule card does this candidate name
+ * name" — the question firstApplicableReadRule asks, for the handful of keys
+ * ruleNamesForCard produces (five on the serving deck's graded save).
+ *
+ * WHY THE PER-KEY WALK AND NOT THE UNIVERSE. The universe walk composes every
+ * card in the deck to answer five keys: one row per card, five
+ * times per save (measured at 460 ms of the save's 549 ms statement-exec,
+ * tools/diagnose-owner-save-statement-ladder.mjs), because
+ * expireAfterWrite drops the memo at every write and the save interleaves
+ * reads with them. The per-key walk settles only the requested keys' own
+ * '+'-segment runs: 0.095 ms/key against the universe's 203 ms.
+ *
+ * EQUIVALENCE is resolveComposedNameIdsByKeys's proof, applied unchanged to
+ * rule-shaped keys — a rule candidate's key is an ordinary composed name, and
+ * the proof is over composed names, not over any one caller's shape. Measured
+ * against the whole-deck walk on the serving deck over EVERY one of its
+ * composed names: every one checked and agreeing, 0 wrong, 0 empty. The
+ * rule-shaped subset is pinned per-fixture by
+ * tests/card/permissions/rule-candidate-per-key-resolution-equivalence.test.ts
+ * and re-measured on the serving deck by
+ * tools/measure-rule-candidate-walk-cost-and-equivalence.mjs.
+ *
+ * THE SHAPE MATCHES resolveRuleIdsByKeys EXACTLY, which is what makes the
+ * call-site swap a substitution rather than a rewrite: sorted key order, one
+ * entry per requested key that resolves, absent for a key that does not, and
+ * — for a key two cards both compose — the whole-deck walk's own collapse,
+ * because resolveComposedNameIdsByKeys refuses to guess that one and runs the
+ * walk that decides.
+ */
+export async function resolveRuleIdsByComposedKeys(
+  driver: SQLDatabaseDriver,
+  keys: string[],
+): Promise<Map<string, number>> {
+  const resolved = await resolveComposedNameIdsByKeys(driver, keys);
+  const out = new Map<string, number>();
+  for (const key of resolved.keys()) {
+    const id = resolved.get(key)?.[0];
+    if (id !== undefined) out.set(key, id);
+  }
+  return out;
+}
+
+/** The walk body: every requested key's segment runs, level by level. Returns
+ *  ckey -> ids for the keys resolved UNAMBIGUOUSLY; an ambiguous key is
+ *  absent from this map and the caller falls back to the whole-deck walk. */
+async function walkComposedNames(
+  driver: SQLDatabaseDriver,
+  keys: string[],
+): Promise<Map<string, number[]>> {
+  // Runs grouped by segment count: a run of n segments is settled only after
+  // every run of fewer than n segments is.
+  const levels = new Map<number, string[]>();
+  for (const key of keys) {
+    for (const run of segmentRuns(key)) {
+      const n = run.split("+").length;
+      const level = levels.get(n);
+      if (level === undefined) levels.set(n, [run]);
+      else if (!level.includes(run)) level.push(run);
+    }
+  }
+  /** ids the walk reaches for a run: the seed, then both arms. */
+  const resolved = new Map<string, number[]>();
+  /** ids of EVERY card whose stored key IS the run, trashed or not — the arms
+   *  reach a side by its key WITHOUT testing its trash, so this set is wider
+   *  than the seed set on purpose. */
+  const storedAny = new Map<string, number[]>();
+
+  // THE SEED READS, IN ONE ORDERED BATCH. Every level's seed read is a pure
+  // `WHERE "key" IN (...)` over its OWN level's run list, and the run lists
+  // are all known before the walk starts. The levels are disjoint in their
+  // runs (a run's segment count IS its level, so no run string appears at two
+  // levels), and the walk issues no writes, so the seed reads are mutually
+  // independent: they can share one ordered batch, and an ordered pipeline
+  // answers each statement exactly as its individual round trip did, at the
+  // same sequence point. That is the save path's block-batching rule, applied
+  // to the one stretch of this walk that could take it (the arm reads cannot:
+  // level n+1's pairs are computed from level n's answers).
+  //
+  // WHY THE ANSWERS ARE THE SAME, not merely the same rows. Hoisting moves
+  // each seed read EARLIER, so three orderings have to agree:
+  //   - the ROWS a seed read returns: no write runs between the old and the
+  //     new position of any seed read (the walk issues none, and the caller
+  //     awaits the walk), so the rows are the same rows.
+  //   - the ORDER the rows are folded in: the slices are built in level order
+  //     and consumed in level order, so each run's id list is built in the
+  //     same order as before.
+  //   - the ORDER the maps are written: the level's `resolved.set(run, [])`
+  //     now runs after its own seed read instead of before. A run with a seed
+  //     row ends up with the same list either way (the seed read creates
+  //     `[id]` where the old path pushed `id` into an empty `[]`), and a run
+  //     with no seed row still ends up with `[]`. No lower level's arm fold
+  //     writes a higher level's run (an arm fold writes the ckey it settles,
+  //     which is the current level's run), so the only writer of a level's
+  //     entries is that level's own seed read.
+  const levelOrder = [...levels.keys()].sort((a, b) => a - b);
+  const seedSlices: string[][] = [];
+  for (const n of levelOrder) {
+    const runs = levels.get(n) as string[];
+    for (let i = 0; i < runs.length; i += MAX_BOUND_PARAMETERS) {
+      seedSlices.push(runs.slice(i, i + MAX_BOUND_PARAMETERS));
+    }
+  }
+  const seedResults = await driver.batch(
+    seedSlices.map((slice) => ({
+      sql: `SELECT id, "key", trash FROM cards WHERE "key" IN (${slice.map(() => "?").join(", ")})`,
+      params: slice,
+    })),
+  );
+  let seedCursor = 0;
+
+  for (const n of levelOrder) {
+    const runs = levels.get(n) as string[];
+    // Every run at this level gets an entry BEFORE any arm folds into it: a
+    // run with no stored key of its own (the ordinary case — a composed name
+    // that only exists as a junction) has no seed row, and an absent entry
+    // would silently drop every arm result for it.
+    for (const run of runs) if (!resolved.has(run)) resolved.set(run, []);
+    // ONE statement per chunk for this level's runs. `trash` rides along, so the
+    // seed set (trash = 0) and the arms' side set (any trash) are one read.
+    // The statements themselves were already read, together, above; this loop
+    // consumes their answers, in the order the levels were read.
+    for (let i = 0; i < runs.length; i += MAX_BOUND_PARAMETERS) {
+      const result = seedResults[seedCursor];
+      seedCursor += 1;
+      if (result === undefined) continue;
+      for (const row of result.rows as { id: number; key: string; trash: number | null }[]) {
+        const any = storedAny.get(row.key);
+        if (any === undefined) storedAny.set(row.key, [row.id]);
+        else any.push(row.id);
+        if (row.trash === 0) {
+          const seed = resolved.get(row.key);
+          if (seed === undefined) resolved.set(row.key, [row.id]);
+          else seed.push(row.id);
+        }
+      }
+    }
+    if (n === 1) continue;
+
+    // Both arms concatenate a RESOLVED ckey with a STORED key, so every pair
+    // asked about at this level is (resolved run, stored run) in either order,
+    // at every split of the run being settled. The two arms coincide whenever
+    // both sides are both stored and resolved, which is the ordinary depth-2
+    // case, so pairs are deduped per run rather than asked twice.
+    const pairs: Array<{ ckey: string; left: number; right: number }> = [];
+    const seen = new Map<string, Set<string>>();
+    const add = (ckey: string, left: number, right: number): void => {
+      let asked = seen.get(ckey);
+      if (asked === undefined) seen.set(ckey, (asked = new Set()));
+      const pairKey = `${left}:${right}`;
+      if (asked.has(pairKey)) return;
+      asked.add(pairKey);
+      pairs.push({ ckey, left, right });
+    };
+    for (const run of runs) {
+      const parts = run.split("+");
+      for (let cut = 1; cut < parts.length; cut += 1) {
+        const leftKey = parts.slice(0, cut).join("+");
+        const rightKey = parts.slice(cut).join("+");
+        // arm1: l resolved, r stored — l.ckey || '+' || r.key
+        for (const left of resolved.get(leftKey) ?? []) {
+          for (const right of storedAny.get(rightKey) ?? []) add(run, left, right);
+        }
+        // arm2: r resolved, l stored — l.key || '+' || r.ckey
+        for (const left of storedAny.get(leftKey) ?? []) {
+          for (const right of resolved.get(rightKey) ?? []) add(run, left, right);
+        }
+      }
+    }
+    if (pairs.length === 0) continue;
+    const statements: SQLStatement[] = pairs.map((pair) => ({
+      // THE SHAPE IS THE REGISTRY'S (src/card/fetch/card-read-shapes.ts), so a
+      // declaration that knows the arguments can answer this read: a prefetch
+      // only answers a reader whose statement is IDENTICAL to the one it
+      // prefetched.
+      sql: CARD_ID_BY_JUNCTION_PLUS_SQL,
+      params: [pair.left, pair.right],
+    }));
+    // One batch = ONE round trip (the libsql/hrana driver's contract), so a
+    // key's whole level costs one POST rather than one per pair.
+    const results =
+      statements.length === 1
+        ? [await driver.query(statements[0]?.sql as string, statements[0]?.params ?? [])]
+        : await driver.batch(statements);
+    for (let i = 0; i < pairs.length; i += 1) {
+      const pair = pairs[i] as { ckey: string; left: number; right: number };
+      const ids = resolved.get(pair.ckey);
+      if (ids === undefined) continue;
+      for (const row of results[i]?.rows ?? []) {
+        const id = (row as { id: number }).id;
+        if (!ids.includes(id)) ids.push(id);
+      }
+    }
+  }
+
+  // An ambiguous key goes to the whole-deck walk: which of two composing cards
+  // it means is that walk's Map to decide, by output order.
+  const ambiguous = keys.filter((key) => (resolved.get(key)?.length ?? 0) > 1);
+  const out = new Map<string, number[]>();
+  for (const key of keys) {
+    const ids = resolved.get(key);
+    if (ids !== undefined && ids.length === 1) out.set(key, ids);
+  }
+  if (ambiguous.length > 0) {
+    const decided = await resolveRowsAgainst(driver, ambiguous, false, "wholeDeck");
+    for (const [key, row] of decided) out.set(key, [row.id]);
+  }
+  return out;
+}
+
+/** One resolved rule candidate: the rule card's id and (when requested) its
+ *  db content — the content is what the _left delegation inspects. */
+export interface ResolvedRuleRow {
+  id: number;
+  /** cards.content of the rule card (null = NULL column). */
+  content: string | null;
+}
+
+/**
+ * Per-driver resolution cache for resolveRuleRowsByKeys.
+ *
+ * What it holds: the deck's WHOLE composed-key rule universe (ckey ->
+ * rule card id), built ONCE per driver generation by ONE unfiltered
+ * recursive CTE, plus a lazily filled content map (rule-card id ->
+ * db_content) for withContent callers. After the first build, every call
+ * is a Map lookup with zero SQL, plus at most one small content IN-query
+ * for rule-card ids not yet content-memoized.
+ *
+ * Why the memo unit is the whole universe: every read-verdict walk
+ * resolves a DISTINCT key set (one per canReadByRuleLookupDepth ->
+ * ensureVerdicts), so a per-key-set memo cannot share work across walks.
+ * Equivalence with the per-key-set statement: any composition path that
+ * resolves a requested key k uses only contiguous '+'-segment runs of k
+ * as intermediates (each recursive step prepends/appends a stored key to
+ * a resolved ckey, and the result must equal k), so the unfiltered
+ * closure contains every row the fragment-filtered closure could produce
+ * for k — and no EXTRA row for k (a path to k cannot pass through a key
+ * that is not a segment run of k). Per ckey the closure yields exactly
+ * one (id, ckey) row: a junction card's composed key is unique (its
+ * sides are strictly simpler cards — decko's name algebra is
+ * well-founded), UNION dedups, and termination is the recursion's own
+ * strictly-simpler bound. Lookup is exact-match on canonical keys
+ * (ruleNamesForCard -> DeckoName.parse().key); keys are lowercase ASCII.
+ *
+ * Actor purity: the signature takes (driver, keys, withContent) — NO
+ * actor input. Actors apply verdicts in the callers
+ * (`state.readableRuleIds.has(rule.id)` here, `amongParties(state, ...)`
+ * in view-task-rules.ts), so two actors sharing a driver share only the
+ * rule-card lookup, never its application.
+ *
+ * withContent does NOT partition the universe: the universe is the
+ * id-only closure; content is read lazily per rule-card id into
+ * contentById (one small PK-seek IN query for the ids a call actually
+ * resolved, then memoized).
+ *
+ * Lifetime: the WeakMap key is the driver — one shared driver per server
+ * process, one fresh driver per test suite. Nothing outlives its driver.
+ *
+ * Invalidation: expireRuleResolutionCache, wired into the write path's
+ * post-save seam (CardActionEngine.expireAfterWrite) — every committed
+ * mutation routes through that method, so a save drops the universe AND
+ * the content memo and the next resolution rebuilds post-save state. No
+ * second invalidation path.
+ */
+interface RuleResolutionDriverCache {
+  /** ckey -> rule card id: the full composed-key universe, built once per
+   *  driver generation. Undefined until the first resolution. The WRITE
+   *  path's walk — it answers any composed key, which the rule-closure walk
+   *  deliberately does not. */
+  universe?: Map<string, number>;
+  /** ckey -> rule card id: the RULE-CLOSURE universe (the rule cards' side
+   *  spines only), built once per driver generation by the RENDER path's
+   *  walk. A separate entry, not a subset view of `universe`: the two walks
+   *  are different statements and either can be the first one a driver
+   *  generation sees, so each memoizes independently and both are dropped
+   *  together by expireRuleResolutionCache. */
+  ruleUniverse?: Map<string, number>;
+  /** Rule-card db_content per id, lazily filled by withContent calls
+ *  (null = NULL column, exactly what the old content join projected). */
+contentById: Map<number, string | null>;
+  /** ckey -> the ONE card id the per-key walk resolved it to, for the keys it
+   *  resolved UNAMBIGUOUSLY. Unambiguous-only by construction: a key two cards
+   *  both compose is answered by the whole-deck universe's Map instead (see
+   *  resolveComposedNameIdsByKeys), because which of the two the Map keeps
+   *  depends on that walk's output order and no cheaper walk can reproduce it.
+   *  Dropped with the rest of the entry by expireRuleResolutionCache. */
+  composedNames?: Map<string, number | null>;
+}
+
+/** The memo entry a scope reads. Undefined until that scope's first walk. */
+function universeFor(
+  cache: RuleResolutionDriverCache,
+  scope: RuleResolutionScope,
+): Map<string, number> | undefined {
+  return scope === "ruleClosure" ? cache.ruleUniverse : cache.universe;
+}
+
+function setUniverseFor(
+  cache: RuleResolutionDriverCache,
+  scope: RuleResolutionScope,
+  universe: Map<string, number>,
+): void {
+  if (scope === "ruleClosure") cache.ruleUniverse = universe;
+  else cache.universe = universe;
+}
+
+const ruleResolutionCaches = new WeakMap<SQLDatabaseDriver, RuleResolutionDriverCache>();
+
+/** Drop every memoized resolution for this driver — the write path's
+ *  post-save invalidation (expireAfterWrite). O(1): the whole per-driver
+ *  cache (universe + content) is dropped; the next render rebuilds the
+ *  universe once. Cheap on purpose: writes are rare, per-key dependency
+ *  tracking (which saved card touches which candidate closure) is where
+ *  bugs live. */
+export function expireRuleResolutionCache(driver: SQLDatabaseDriver): void {
+  let current: SQLDatabaseDriver | undefined = driver;
+  while (current !== undefined && current !== null && typeof current === "object") {
+    ruleResolutionCaches.delete(current);
+    current = "base" in current ? (current as { base?: SQLDatabaseDriver }).base : undefined;
+  }
+}
+
+/**
+ * The composed-key universe statement — the resolver's ONE statement per
+ * driver generation. The same closure the per-call fragment-filtered
+ * statement computes, minus the fragment filter: seed every keyed live
+ * card, compose both junction arms with no restriction, return every
+ * (id, ckey). The unary + on trash (the established planner guard) keeps
+ * the planner OFF cards_trash_index in the seed and the recursive arms;
+ * + is a value no-op.
+ */
+export const RULE_KEY_UNIVERSE_STATEMENT =
+  `WITH RECURSIVE resolved(id, ckey) AS (\n` +
+  `  SELECT id, "key" FROM cards WHERE "key" IS NOT NULL AND +trash = 0\n` +
+  `  UNION\n` +
+  `  SELECT j.id, l.ckey || '+' || r."key" FROM resolved l\n` +
+  `    JOIN cards j ON j.left_id = l.id AND +j.trash = 0\n` +
+  `    JOIN cards r ON r.id = j.right_id AND r."key" IS NOT NULL\n` +
+  `  UNION\n` +
+  `  SELECT j.id, l."key" || '+' || r.ckey FROM resolved r\n` +
+  `    JOIN cards j ON j.right_id = r.id AND +j.trash = 0\n` +
+  `    JOIN cards l ON l.id = j.left_id AND l."key" IS NOT NULL\n` +
+  `)\n` +
+  `SELECT rs.ckey, rs.id FROM resolved rs`;
+
+/** The setting names a rule candidate's name can end in — the four task
+ *  settings the resolver's render-path callers join a pattern name to
+ *  (READ_SETTING_NAME above; view-task-rules.ts's TASK_SETTING_NAME for the
+ *  other three). They are the walk's boundary: a composed key is only ever
+ *  needed when it can be one of these, and the boundary is on the NAME, not
+ *  on any particular page's card — so one statement per driver generation
+ *  still serves every card the render asks about. */
+const TASK_RULE_SETTING_NAMES: readonly string[] = [
+  READ_SETTING_NAME,
+  "*create",
+  "*update",
+  "*delete",
+];
+
+/**
+ * The RULE-CLOSURE walk — resolveRuleRowsByRuleKeys's ONE statement, the
+ * same composed-key resolution as RULE_KEY_UNIVERSE_STATEMENT with the
+ * deck replaced by the rule cards' side spines.
+ *
+ * `anc` is the left-ancestor chain of every rule card (a card whose right
+ * side is a task setting card): the composition of a rule card's name reads
+ * its left subtree, so the simple card at the bottom of every spine is a
+ * seed the walk needs. The second seed term covers the rule cards whose
+ * composed key is STORED rather than composable — a rule row with a virtual
+ * left carries its full name in the `key` column and no `left_id` to walk
+ * from, which is not hypothetical: a delegating rule
+ * `*all plus+*read` is exactly that row, and a seed of `anc` alone loses it
+ * (which the delegation then resolves to the catch-all `*all+*read` and
+ * allows — a fail-OPEN, caught by
+ * tests/card/permissions/rule-closure-scoped-resolution.test.ts). Every
+ * spine bottoms out in one of the two cases: a card with no `left_id` is
+ * either a simple card on a spine or a stored rule-shaped key.
+ *
+ * The `resolved` arms are the shipped arms verbatim — same trash handling,
+ * same bidirectional composition — with the seed narrowed. The projection
+ * keeps only the rule-shaped composed keys, which is the entire set of keys
+ * the render path can ask for.
+ *
+ * Against a large deck, the whole-deck walk returns about one row per card
+ * and takes about ten times as long as the rule-closure walk, which returns
+ * roughly a tenth of the rows; the two agree
+ * on every rule-shaped key (0 missing, 0 disagreeing, 0 invented). The
+ * benchmark scripts under benchmarks/cold-render/ probe both shapes.
+ *
+ * The arms stay UNBOUNDED on purpose: adding `j.id IN (SELECT id FROM anc)`
+ * to them is the obvious tightening and it is a trap — against that deck it
+ * runs an order of magnitude slower than the whole-deck walk it replaces,
+ * because the bound re-evaluates a large closure per recursion step.
+ * The seed narrowing plus the projection is what actually removes the deck.
+ *
+ * NOT equivalent to the whole-deck walk for arbitrary keys, and must not be
+ * used where a non-rule key is asked for — set-read-rule.ts's `self`
+ * set-pattern member lookup is the one such consumer and stays on
+ * RULE_KEY_UNIVERSE_STATEMENT.
+ *
+ * This is the reference text. The render path runs
+ * RULE_KEY_RULE_CLOSURE_STATEMENT below, which returns the same row set;
+ * DECKO_LEGACY_RULE_CLOSURE=1 selects this one instead.
+ */
+export const LEGACY_RULE_KEY_RULE_CLOSURE_STATEMENT =
+  `WITH RECURSIVE\n` +
+  `anc(id) AS (\n` +
+  `  SELECT r.left_id FROM cards r\n` +
+  `    JOIN cards st ON st.id = r.right_id\n` +
+  `    WHERE +r.trash = 0 AND st."key" IN (${TASK_RULE_SETTING_NAMES.map(() => "?").join(", ")})\n` +
+  `      AND r.left_id IS NOT NULL\n` +
+  `  UNION\n` +
+  `  SELECT j.left_id FROM anc a\n` +
+  `    JOIN cards j ON j.id = a.id\n` +
+  `    WHERE j.left_id IS NOT NULL\n` +
+  `),\n` +
+  `resolved(id, ckey) AS (\n` +
+  `  SELECT c.id, c."key" FROM cards c\n` +
+  `    WHERE c."key" IS NOT NULL AND +c.trash = 0\n` +
+  `      AND (c.id IN (SELECT id FROM anc)\n` +
+  `        OR ${TASK_RULE_SETTING_NAMES.map((n) => `c."key" LIKE '%+${n}'`).join("\n        OR ")})\n` +
+  `  UNION\n` +
+  `  SELECT j.id, l.ckey || '+' || r."key" FROM resolved l\n` +
+  `    JOIN cards j ON j.left_id = l.id AND +j.trash = 0\n` +
+  `    JOIN cards r ON r.id = j.right_id AND r."key" IS NOT NULL\n` +
+  `  UNION\n` +
+  `  SELECT j.id, l."key" || '+' || r.ckey FROM resolved r\n` +
+  `    JOIN cards j ON j.right_id = r.id AND +j.trash = 0\n` +
+  `    JOIN cards l ON l.id = j.left_id AND l."key" IS NOT NULL\n` +
+  `)\n` +
+  `SELECT rs.ckey, rs.id FROM resolved rs\n` +
+  `WHERE ${TASK_RULE_SETTING_NAMES.map((n) => `rs.ckey LIKE '%+${n}'`).join(" OR ")}`;
+
+// The pruned walk below relies on three facts about the setting names; check
+// them where the names are defined so a new name cannot silently break it.
+for (const n of TASK_RULE_SETTING_NAMES) {
+  if (n.length === 0 || /[+%_]/.test(n) || !/^[\x21-\x7e]+$/.test(n)) {
+    throw new Error(`rule-closure walk: setting name ${JSON.stringify(n)} must be printable ASCII without '+', '%' or '_'`);
+  }
+}
+
+/** `col` ends in "+<setting>" for some task setting — the projection's test. */
+function endsInRuleSuffix(col: string): string {
+  return TASK_RULE_SETTING_NAMES.map((n) => `${col} LIKE '%+${n}'`).join(" OR ");
+}
+
+/** The last characters of the setting names in both ASCII cases: a key that
+ *  matches `LIKE '%+<setting>'` or `LIKE '<setting>'` must end in one of
+ *  them, under case-insensitive and case-sensitive LIKE alike. */
+const RULE_SUFFIX_LAST_CHARS = [
+  ...new Set(TASK_RULE_SETTING_NAMES.flatMap((n) => {
+    const c = n.slice(-1);
+    return [c.toLowerCase(), c.toUpperCase()];
+  })),
+];
+
+/**
+ * The RULE-CLOSURE walk the render path runs: the same rows as
+ * LEGACY_RULE_KEY_RULE_CLOSURE_STATEMENT, for any deck, with the arms
+ * pruned to the derivations that can reach a projected row. On a local
+ * mirror of a large deck the legacy walk builds several times more `resolved`
+ * rows (from still more join candidates) than it keeps; this one builds
+ * a third as many rows from fewer candidates, and takes about half the time.
+ * a check script that is not in this tree asserts the two
+ * return the same row set on a deck and on randomly perturbed copies of it.
+ *
+ * WHY THE PRUNING IS EXACT. Call a string rule-shaped (T) when it is
+ * `LIKE '%+<setting>'` or `LIKE '<setting>'` for a task setting. Setting
+ * names hold no '+' (checked above), so:
+ *   - a left-arm row `l.ckey || '+' || r.key` is projected iff r.key is T;
+ *   - a right-arm row `l.key || '+' || r.ckey` is projected iff r.ckey is T,
+ *     and the row is then T itself.
+ * A projected row is therefore derived either from a seed, or by the left arm
+ * from ANY row of a card that is the left of a junction with a T right key,
+ * or by the right arm from a T row. Let D be the downward closure, through
+ * both left_id and right_id, of the lefts of every junction whose right key
+ * is T. Every derivation of a row for a card in D runs through cards in D
+ * only (both arms derive a card's rows from its own left or right child).
+ * So the walk keeps exactly the rows the projection can depend on if each
+ * arm only produces a row whose card is in D or whose composed key is T:
+ *   - left arm into D (`dl`), left arm into a T-right junction (`tl`);
+ *   - right arm into D (`dr`), right arm from a T row (the WHERE on r.ckey).
+ * The seed is the legacy seed's row set, read from the two small sets that
+ * define it (anc, and the T-keyed cards) instead of by testing every card.
+ * D only needs to CONTAIN those lefts, so `tc` and `tl` ignore trash and the
+ * NOT NULL key tests; the arms keep the legacy arms' conditions verbatim.
+ *
+ * WHY THE CTEs ARE MATERIALIZED. A recursive step that joins an unindexed
+ * CTE re-reads it once per queue row — the trap the legacy comment records
+ * (the `j.id IN (SELECT id FROM anc)` bound). Here the edge sets are
+ * MATERIALIZED, so SQLite builds them once and probes them through an
+ * automatic index; without the hint the same statement is an order of
+ * magnitude slower. Requires SQLite 3.35 or later (the MATERIALIZED keyword).
+ *
+ * Row ORDER is not part of the contract (the legacy statement has no
+ * ORDER BY either); the check script reports whether it matched.
+ *
+ * The projection carries each card's db_content alongside its composed key,
+ * so the rule card whose content the _left delegation inspects needs no
+ * second read (resolveRowsAgainst would otherwise ask for it in a query of
+ * its own). The legacy walk above omits the column; the row SETS (key, id)
+ * are what the two walks must agree on, and consumers read those.
+ *
+ * AT MOST FIVE TERMS PER COMPOUND SELECT. Cloudflare D1 runs SQLite with
+ * the compound-SELECT limit at 5 (measured in workerd's local D1: 5 terms
+ * run, 6 answer "too many terms in compound SELECT"). The two left-arm edge
+ * sets, `dl` and `tl`, are therefore joined through one materialized union,
+ * `dtl`: one left-arm term over dl UNION tl derives exactly the rows the two
+ * separate left-arm terms did, so `resolved` keeps its row set with five
+ * terms. Pinned by tests/card/permissions/rule-closure-d1-compound-limit.test.ts.
+ */
+export const RULE_KEY_RULE_CLOSURE_STATEMENT =
+  `WITH RECURSIVE\n` +
+  `anc(id) AS (\n` +
+  `  SELECT r.left_id FROM cards r\n` +
+  `    JOIN cards st ON st.id = r.right_id\n` +
+  `    WHERE +r.trash = 0 AND st."key" IN (${TASK_RULE_SETTING_NAMES.map(() => "?").join(", ")})\n` +
+  `      AND r.left_id IS NOT NULL\n` +
+  `  UNION\n` +
+  `  SELECT j.left_id FROM anc a\n` +
+  `    JOIN cards j ON j.id = a.id\n` +
+  `    WHERE j.left_id IS NOT NULL\n` +
+  `),\n` +
+  `tc(id) AS MATERIALIZED (\n` +
+  `  SELECT c.id FROM cards c\n` +
+  `    WHERE substr(c."key", -1) IN (${RULE_SUFFIX_LAST_CHARS.map((c) => `'${c}'`).join(", ")})\n` +
+  `      AND (${TASK_RULE_SETTING_NAMES.map((n) => `c."key" LIKE '%+${n}' OR c."key" LIKE '${n}'`).join("\n        OR ")})\n` +
+  `),\n` +
+  `tl(parent, child) AS MATERIALIZED (\n` +
+  `  SELECT j.id, j.left_id FROM tc CROSS JOIN cards j ON j.right_id = tc.id\n` +
+  `    WHERE j.left_id IS NOT NULL\n` +
+  `),\n` +
+  `d(id) AS (\n` +
+  `  SELECT child FROM tl\n` +
+  `  UNION\n` +
+  `  SELECT c.left_id FROM d CROSS JOIN cards c ON c.id = d.id WHERE c.left_id IS NOT NULL\n` +
+  `  UNION\n` +
+  `  SELECT c.right_id FROM d CROSS JOIN cards c ON c.id = d.id WHERE c.right_id IS NOT NULL\n` +
+  `),\n` +
+  `dl(parent, child) AS MATERIALIZED (\n` +
+  `  SELECT c.id, c.left_id FROM d CROSS JOIN cards c ON c.id = d.id WHERE c.left_id IS NOT NULL\n` +
+  `),\n` +
+  `dr(parent, child) AS MATERIALIZED (\n` +
+  `  SELECT c.id, c.right_id FROM d CROSS JOIN cards c ON c.id = d.id WHERE c.right_id IS NOT NULL\n` +
+  `),\n` +
+  `dtl(parent, child) AS MATERIALIZED (\n` +
+  `  SELECT parent, child FROM dl\n` +
+  `  UNION\n` +
+  `  SELECT parent, child FROM tl\n` +
+  `),\n` +
+  `resolved(id, ckey, content) AS (\n` +
+  `  SELECT c.id, c."key", c.db_content FROM anc CROSS JOIN cards c ON c.id = anc.id\n` +
+  `    WHERE c."key" IS NOT NULL AND +c.trash = 0\n` +
+  `  UNION\n` +
+  `  SELECT c.id, c."key", c.db_content FROM tc CROSS JOIN cards c ON c.id = tc.id\n` +
+  `    WHERE c."key" IS NOT NULL AND +c.trash = 0\n` +
+  `      AND (${endsInRuleSuffix(`c."key"`)})\n` +
+  `  UNION\n` +
+  `  SELECT j.id, l.ckey || '+' || r."key", j.db_content FROM resolved l\n` +
+  `    JOIN dtl ON dtl.child = l.id\n` +
+  `    JOIN cards j ON j.id = dtl.parent AND +j.trash = 0\n` +
+  `    JOIN cards r ON r.id = j.right_id AND r."key" IS NOT NULL\n` +
+  `  UNION\n` +
+  `  SELECT j.id, l."key" || '+' || r.ckey, j.db_content FROM resolved r\n` +
+  `    JOIN dr ON dr.child = r.id\n` +
+  `    JOIN cards j ON j.id = dr.parent AND +j.trash = 0\n` +
+  `    JOIN cards l ON l.id = j.left_id AND l."key" IS NOT NULL\n` +
+  `  UNION\n` +
+  `  SELECT j.id, l."key" || '+' || r.ckey, j.db_content FROM resolved r\n` +
+  `    JOIN cards j ON j.right_id = r.id AND +j.trash = 0\n` +
+  `    JOIN cards l ON l.id = j.left_id AND l."key" IS NOT NULL\n` +
+  `    WHERE ${endsInRuleSuffix(`('+' || r.ckey)`)}\n` +
+  `)\n` +
+  `SELECT rs.ckey, rs.id, rs.content FROM resolved rs\n` +
+  `WHERE ${endsInRuleSuffix("rs.ckey")}`;
+
+/** The statement the render path's rule-closure walk runs. */
+function ruleClosureStatement(): string {
+  if (typeof process !== "undefined" && process.env?.DECKO_LEGACY_RULE_CLOSURE === "1") {
+    return LEGACY_RULE_KEY_RULE_CLOSURE_STATEMENT;
+  }
+  return RULE_KEY_RULE_CLOSURE_STATEMENT;
+}
+
+/** The setting-name parameters both rule-closure statements bind. */
+export const RULE_CLOSURE_PARAMS: readonly string[] = TASK_RULE_SETTING_NAMES;
+
+/**
+ * The same composed-key resolution as resolveRuleIdsByKeys, with the rule
+ * card's CONTENT carried when `withContent` is set (the content is what the
+ * _left delegation inspects; the id-only projection keeps hot callers on
+ * the shared universe with zero extra reads).
+ *
+ * Per driver, the first call builds the universe ONCE (see
+ * RuleResolutionDriverCache); every call — repeat, reordered, or a wholly
+ * different key set — is then Map lookups, plus at most one small content
+ * IN-query for rule-card ids not yet content-memoized. Every caller treats
+ * the result as read-only (`.get(key)` walks only; verified at all five
+ * call sites).
+ */
+export async function resolveRuleRowsByKeys(
+  driver: SQLDatabaseDriver,
+  keys: string[],
+  withContent: boolean,
+): Promise<Map<string, ResolvedRuleRow>> {
+  return resolveRowsAgainst(driver, keys, withContent, "wholeDeck");
+}
+
+/**
+ * The RENDER path's resolution: the same answers as resolveRuleRowsByKeys,
+ * from the RULE-CLOSURE walk — one statement, scoped to the composed keys
+ * that can be a rule candidate's name, instead of the whole deck's composed
+ * key universe.
+ *
+ * WHY the scope is the requested closure and not the whole deck: every key
+ * a render asks this resolver for ends in a task setting name, because
+ * every rule candidate is a pattern name joined to a setting
+ * (`ruleNamesForCard(card, "*read" | "*create" | "*update" | "*delete")`
+ * — canReadByRuleLookupDepth below and allTaskVerdictsForCard /
+ * permitVerdict in view-task-rules.ts are the only render-path callers, and
+ * their keys are pattern names by construction). Every one of those keys on
+ * a cold render ends in a task setting name. A card's composed key is
+ * therefore needed
+ * only when the card sits on a rule card's spine, and the walk only has to
+ * start from the simple cards on those spines — which is the boundary the
+ * whole-deck statement lacks.
+ *
+ * WHAT IT COSTS AND BUYS: against a large deck the whole-deck
+ * walk returns an order of magnitude more rows and takes about ten times as
+ * long, for the same statement count (one per driver generation) and the
+ * same answers on every rule-shaped key (0 missing, 0 disagreeing,
+ * 0 invented). The benchmark script under benchmarks/cold-render/ measures
+ * both shapes.
+ *
+ * The whole-deck walk stays for the write path's AMBIGUOUS-key fallback and for
+ * the equivalence proofs. set-read-rule.ts's `self` set-pattern member lookup
+ * resolves the anchor card's own composed name, which is not a rule key, so the
+ * scoped walk would answer nothing for it; firstApplicableReadRule asks for rule
+ * keys, and both now take the per-key walk instead of either universe.
+ */
+export async function resolveRuleRowsByRuleKeys(
+  driver: SQLDatabaseDriver,
+  keys: string[],
+  withContent: boolean,
+): Promise<Map<string, ResolvedRuleRow>> {
+  return resolveRowsAgainst(driver, keys, withContent, "ruleClosure");
+}
+
+/**
+ * The rule-closure walk as a batch member, for a caller that already has a
+ * batch in hand (the render's cold prepare batch). The walk depends only on
+ * the deck and the four setting names, never on another statement's result,
+ * so it rides that batch at no extra round trip; primeRuleClosureUniverse
+ * then seats its rows as the memo resolveRowsAgainst would have built.
+ *
+ * Returns undefined when this driver generation already holds the closure
+ * (nothing to fold). The walk statement is the same one resolveRowsAgainst
+ * issues on its own, so the memo built either way is identical.
+ */
+export function ruleClosureWalkStatement(driver: SQLDatabaseDriver): SQLStatement | undefined {
+  const cache = ruleResolutionCaches.get(driver);
+  if (cache !== undefined && universeFor(cache, "ruleClosure") !== undefined) return undefined;
+  return { sql: ruleClosureStatement(), params: [...TASK_RULE_SETTING_NAMES] };
+}
+
+/**
+ * Seat the rule-closure memo from the rows of a ruleClosureWalkStatement
+ * result that an earlier batch carried. A memo already present is kept (the
+ * first build wins, as in resolveRowsAgainst).
+ */
+export function shareRuleResolutionCache(
+  source: SQLDatabaseDriver,
+  target: SQLDatabaseDriver,
+): void {
+  const existing = ruleResolutionCaches.get(source);
+  if (existing !== undefined) {
+    ruleResolutionCaches.set(target, existing);
+  }
+}
+
+export function primeRuleClosureUniverse(driver: SQLDatabaseDriver, result: SQLQueryResult): void {
+  let cache = ruleResolutionCaches.get(driver);
+  if (cache === undefined) {
+    cache = { contentById: new Map() };
+    ruleResolutionCaches.set(driver, cache);
+  }
+  if (universeFor(cache, "ruleClosure") !== undefined) return;
+  const universe = new Map<string, number>();
+  for (const row of (result.rows ?? []) as Array<{
+    ckey: string;
+    id: number;
+    content?: string | null;
+  }>) {
+    universe.set(row.ckey, row.id);
+    if (row.content !== undefined) cache.contentById.set(row.id, row.content);
+  }
+  setUniverseFor(cache, "ruleClosure", universe);
+}
+
+/** Which walk backs a resolution: the whole deck's composed-key universe, or
+ *  the rule cards' side-spine closure. Both are one statement per driver
+ *  generation; they differ in what the walk is allowed to compose. */
+type RuleResolutionScope = "wholeDeck" | "ruleClosure";
+
+async function resolveRowsAgainst(
+  driver: SQLDatabaseDriver,
+  keys: string[],
+  withContent: boolean,
+  scope: RuleResolutionScope,
+): Promise<Map<string, ResolvedRuleRow>> {
+  if (keys.length === 0) return new Map();
+  let cache = ruleResolutionCaches.get(driver);
+  if (cache === undefined) {
+    cache = { contentById: new Map() };
+    ruleResolutionCaches.set(driver, cache);
+  }
+  if (universeFor(cache, scope) === undefined) {
+    const result = await driver.query<{ ckey: string; id: number }>(
+      scope === "ruleClosure" ? ruleClosureStatement() : RULE_KEY_UNIVERSE_STATEMENT,
+      scope === "ruleClosure" ? [...TASK_RULE_SETTING_NAMES] : [],
+    );
+    // The statement's await is an expire window: a fixture seed or committed
+    // save may have dropped this entry after this call created it. Re-read
+    // the entry so the built universe lands in the LIVE cache — writing into
+    // a detached object would make every later call rebuild.
+    cache = ruleResolutionCaches.get(driver) ?? { contentById: new Map() };
+    ruleResolutionCaches.set(driver, cache);
+    if (universeFor(cache, scope) === undefined) {
+      const universe = new Map<string, number>();
+      for (const row of result.rows) universe.set(row.ckey, row.id);
+      setUniverseFor(cache, scope, universe);
+    }
+  }
+  const universe = universeFor(cache, scope);
+  if (universe === undefined) throw new Error("rule resolution universe missing after build");
+  // The result map is built in SORTED key order: the resolution is
+  // order-insensitive (the old CTE's fragment Set + IN clause + ckey-keyed
+  // result were too), so reordered calls must produce identical maps —
+  // entry order included (pinned by
+  // tests/card/permissions/rule-resolution-memo.test.ts).
+  const ordered = [...keys].sort();
+  const out = new Map<string, ResolvedRuleRow>();
+  if (!withContent) {
+    for (const key of ordered) {
+      const id = universe.get(key);
+      if (id !== undefined) out.set(key, { id, content: null });
+    }
+    return out;
+  }
+  const missing = new Set<number>();
+  for (const key of ordered) {
+    const id = universe.get(key);
+    if (id === undefined) continue;
+    out.set(key, { id, content: null });
+    if (!cache.contentById.has(id)) missing.add(id);
+  }
+  if (missing.size > 0) {
+    const ids = [...missing];
+    const result = await driver.query<{ id: number; db_content: string | null }>(
+      `SELECT id, db_content FROM cards WHERE id IN (${ids.map(() => "?").join(", ")})`,
+      ids,
+    );
+    const fetched = new Map<number, string | null>();
+    for (const row of result.rows) fetched.set(row.id, row.db_content);
+    // Same expire window as the universe build: re-read the entry so the
+    // content memo lands in the LIVE cache.
+    cache = ruleResolutionCaches.get(driver) ?? cache;
+    for (const [id, content] of fetched) cache.contentById.set(id, content);
+    // Serve this call's rows from the FETCHED data — an entry dropped
+    // mid-flight must not surface null content for one call (the _left
+    // delegation reads it); the cache write is best-effort and self-heals.
+    for (const row of out.values()) {
+      const fresh = fetched.get(row.id);
+      row.content = fresh !== undefined ? fresh : (cache.contentById.get(row.id) ?? null);
+    }
+    return out;
+  }
+  for (const row of out.values()) row.content = cache.contentById.get(row.id) ?? null;
+  return out;
+}

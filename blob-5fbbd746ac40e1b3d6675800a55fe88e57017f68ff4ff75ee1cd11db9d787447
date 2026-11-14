@@ -1,0 +1,279 @@
+// The wave's read shapes: the statements the wave's batch issues, and the
+// per-pair selection that decides which of a pair's rows the wave seats.
+//
+// WHY THESE LIVE HERE AND NOT INLINE. The wave's statements decide WHICH
+// CARD a name resolves to, so they are the name-resolution seam: the port's
+// own readers must issue the SAME text, and a test must be able to pin that
+// text instead of copying it. The chain's statement (src/card/render/
+// junction-chain-query.ts) is already a builder for the same reason.
+//
+// THE KEY COMPARISON IS THE FOLDED KEY, COMPARED BY THE COLUMN'S OWN
+// COLLATION. Native looks a simple name up by its key form
+// (card-1.110.0 lib/card/lexicon.rb:57-63, `{ key: lex.to_name.key }`), and
+// that form is FOLDED (cardname-1.110.0 lib/cardname.rb:101-116,
+// `decoded.underscore...`). Native's statement carries NO explicit COLLATE:
+// `Card.where(key: ...)` compares with the column's collation, which is the
+// collation the deck's UNIQUE key index is built on (card-1.110.0
+// db/schema.rb:81) - MySQL's `utf8mb3_unicode_ci` on the production
+// reference, BINARY on the SQLite deck the port serves beside. Either way the
+// comparison is the one the unique index serves, so AT MOST ONE ROW can
+// match and the answer cannot depend on the plan.
+//
+// The explicit `COLLATE NOCASE` these statements used to carry OVERRODE the
+// column's collation. On the served deck (BINARY unique key index) that made
+// the comparison WIDER than the index: a deck that holds both "root" and
+// "ROOT" matched both rows, and the winner was the query plan's, not the
+// deck's - which is how adding an index (the serving path's
+// `cards_key_nocase_trash_index`) changed which card a name was. Measured on
+// the original schema's indexes: the folded comparison answers the row whose
+// key IS the folded key under every index configuration
+// (tests/card/fetch/index-order-identity.test.ts).
+//
+// THE PAIR SELECTION IS THE POINT LOOKUP'S ANSWER. The original schema has NO
+// unique pair index (card-1.110.0 db/schema.rb:82,85 - separate left_id and
+// right_id indexes only), so a pair CAN carry several live rows, and native's
+// compound lookup takes the first of them
+// (card-1.110.0 lib/card/lexicon.rb:125-133, `pluck(:id).first`). Retained
+// SQLite probes selected the lowest live id under the tested index
+// configurations, so that is what the port's point lookup asks for explicitly
+// (`ORDER BY id LIMIT 1`, src/card/fetch/card-read-shapes.ts). MySQL's and
+// PostgreSQL's orderings are NOT measured here and are NOT claimed.
+//
+// A wave or preamble can return every row or only a subset. Name-cache
+// admission therefore checks the point answer carried by the row read, or
+// asks the independent point reader when that evidence is insufficient;
+// it never chooses among only the rows in hand. This is a port SQLite identity correction; it does
+// not establish native MySQL or PostgreSQL duplicate-pair behavior.
+
+import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../server/driver.js";
+import type { CardsRow } from "../../server/schema.js";
+import { DbLexicon } from "../fetch/lexicon.js";
+import { CardCache } from "../fetch/cache.js";
+import { DeckoName } from "../name.js";
+
+type IdentityNode = Pick<CardsRow, "id" | "name" | "key" | "left_id" | "right_id" | "trash"> & {
+  point_pair_id: number | null;
+};
+const EVIDENCE_SYMBOL = Symbol.for("decko.rowIdentityEvidence");
+const rowIdentityEvidence = new WeakMap<CardsRow, Map<number, IdentityNode>>();
+
+/** Carry the side closure and each pair's point answer in the statement
+ * already reading the row. No identity cache or extra statement is involved.
+ * UNION terminates cycles; the verifier below refuses them. Side rows are
+ * evidence only, never additional render seats. */
+function getRowEvidence(row: CardsRow): Map<number, IdentityNode> | undefined {
+  return (
+    rowIdentityEvidence.get(row) ??
+    ((row as unknown as Record<symbol, Map<number, IdentityNode> | undefined>)[EVIDENCE_SYMBOL])
+  );
+}
+
+export async function readCompositionBatch(
+  driver: SQLDatabaseDriver,
+  statements: SQLStatement[],
+): Promise<SQLQueryResult[]> {
+  const results = await driver.batch(statements.map(statement => ({
+    params: statement.params,
+    sql: `WITH RECURSIVE composition_rows AS (${statement.sql}),
+      identity_reach(root_id, id) AS (
+        SELECT id, id FROM composition_rows
+        UNION
+        SELECT reach.root_id, CASE WHEN side.n = 0 THEN parent.left_id ELSE parent.right_id END
+          FROM identity_reach reach
+          JOIN cards parent ON parent.id = reach.id AND parent.trash = 0
+          CROSS JOIN (SELECT 0 AS n UNION ALL SELECT 1 AS n) side
+         WHERE (side.n = 0 AND parent.left_id IS NOT NULL)
+            OR (side.n = 1 AND parent.right_id IS NOT NULL)
+      )
+      SELECT source.*, evidence.id AS identity_node_id,
+        evidence.name AS identity_node_name, evidence."key" AS identity_node_key,
+        evidence.left_id AS identity_node_left, evidence.right_id AS identity_node_right,
+        evidence.trash AS identity_node_trash,
+        CASE
+          WHEN evidence.left_id IS NOT NULL AND evidence.right_id IS NOT NULL THEN
+            (SELECT id FROM cards WHERE left_id = evidence.left_id
+              AND right_id = evidence.right_id AND trash = 0 ORDER BY id LIMIT 1)
+          ELSE NULL
+        END AS identity_pair_id
+      FROM composition_rows source
+      JOIN identity_reach reach ON reach.root_id = source.id
+      JOIN cards evidence ON evidence.id = reach.id`,
+  })));
+  if (results.length !== statements.length) throw new Error("composition identity batch returned incomplete results");
+  return results.map(result => {
+    const rows = new Map<number, CardsRow>();
+    for (const raw of result.rows as Array<CardsRow & Record<string, unknown>>) {
+      const {identity_node_id, identity_node_name, identity_node_key,
+        identity_node_left, identity_node_right, identity_node_trash, identity_pair_id, ...source} = raw;
+      let row = rows.get(raw.id);
+      if (row === undefined) {
+        row = source as unknown as CardsRow;
+        rows.set(row.id, row);
+        const ev = new Map<number, IdentityNode>();
+        rowIdentityEvidence.set(row, ev);
+        Object.defineProperty(row, EVIDENCE_SYMBOL, {
+          value: ev,
+          enumerable: false,
+          configurable: true,
+        });
+      }
+      getRowEvidence(row)!.set(identity_node_id as number, {
+        id: identity_node_id as number, name: identity_node_name as string | null,
+        key: identity_node_key as string | null, left_id: identity_node_left as number | null,
+        right_id: identity_node_right as number | null, trash: identity_node_trash as CardsRow["trash"],
+        point_pair_id: identity_pair_id as number | null,
+      });
+    }
+    return {...result, rows: [...rows.values()]};
+  });
+}
+
+function canonicalSimpleName(row: Pick<CardsRow, "trash" | "left_id" | "right_id" | "name" | "key">): DeckoName | undefined {
+  if (row.trash !== 0 || row.left_id !== null || row.right_id !== null || row.name === null) return undefined;
+  const name = DeckoName.parse(row.name);
+  return name.isSimple && name.s !== "" && !name.isRelativeFragment && row.key === name.key ? name : undefined;
+}
+
+// null is a proved rejection; undefined requires the independent reader.
+function provedCompositionName(row: CardsRow): DeckoName | null | undefined {
+  const evidence = getRowEvidence(row);
+  if (evidence === undefined) return undefined;
+  const visiting = new Set<number>();
+  const names = new Map<number, DeckoName | null | undefined>();
+  const visit = (id: number): DeckoName | null | undefined => {
+    if (names.has(id)) return names.get(id);
+    if (visiting.has(id)) return null;
+    const node = evidence.get(id);
+    if (node === undefined || node.trash !== 0) return null;
+    const simple = canonicalSimpleName(node);
+    if (simple !== undefined) { names.set(id, simple); return simple; }
+    if (node.left_id === null || node.right_id === null) return undefined;
+    if (node.point_pair_id !== id) return null;
+    visiting.add(id);
+    const left = visit(node.left_id);
+    const right = visit(node.right_id);
+    visiting.delete(id);
+    if (left === null || right === null) { names.set(id, null); return null; }
+    let name: DeckoName | undefined;
+    if (left !== undefined && right !== undefined) {
+      const composed = DeckoName.parse(`${left.s}+${right.s}`);
+      // Re-parsing must select these exact sides (empty/compound right
+      // fragments can fold differently and remain on the point reader).
+      if (!composed.isRelativeFragment && composed.leftName?.key === left.key && composed.rightName?.key === right.key) name = composed;
+    }
+    names.set(id, name);
+    return name;
+  };
+  return visit(row.id);
+}
+
+/** Check the complete composed name against point-lookup identity.
+ * A direct pair match alone does not prove that either side is the card its
+ * name selects. The fallback composer and reader use separate private caches: reading
+ * an id writes reverse aliases, which must not supply the identity answer. */
+export function primeLexiconFromCompositionEvidence(
+  rows: readonly CardsRow[],
+  lexicon: DbLexicon,
+): void {
+  const seen = new Set<number>();
+  for (const row of rows) {
+    const evidence = getRowEvidence(row);
+    if (evidence === undefined) continue;
+    for (const [nodeId, node] of evidence) {
+      if (seen.has(nodeId)) continue;
+      seen.add(nodeId);
+      if (node.trash !== 0) continue;
+      const isCanonicalPair =
+        node.left_id !== null &&
+        node.right_id !== null &&
+        node.point_pair_id === node.id;
+      const isCanonicalSimple = canonicalSimpleName(node) !== undefined;
+      lexicon.noteIdToLexRow(node, {
+        primeReverse: isCanonicalPair || isCanonicalSimple,
+      });
+    }
+  }
+}
+
+export async function rowsMatchingPointIdentity(
+  driver: SQLDatabaseDriver,
+  rows: readonly CardsRow[],
+  options: { storedKeyFallback?: boolean; lexicon?: DbLexicon } = {},
+): Promise<CardsRow[]> {
+  if (rows.length === 0) return [];
+  // A live simple row whose stored key is its name's canonical key already
+  // proves the point answer: the schema's unique key constraint uses the
+  // same column collation as that lookup. Junctions need the complete side
+  // evidence from their read; drifted names retain the independent reader.
+  if (options.lexicon !== undefined) {
+    primeLexiconFromCompositionEvidence(rows, options.lexicon);
+  }
+  const simple = rows.filter(row => canonicalSimpleName(row) !== undefined);
+  const admittedIds = new Set(simple.map(row => row.id));
+  const pending: CardsRow[] = [];
+  for (const row of rows) {
+    if (admittedIds.has(row.id)) continue;
+    const proof = provedCompositionName(row);
+    if (proof === undefined) pending.push(row);
+    else if (proof !== null) admittedIds.add(row.id);
+  }
+  if (pending.length === 0) return rows.filter(row => admittedIds.has(row.id));
+  const composer = options.lexicon ?? new DbLexicon(driver, new CardCache());
+  for (const row of rows) composer.noteIdToLexRow(row);
+  const names = await composer.names(pending.map(row => row.id));
+  const reader = options.lexicon ?? new DbLexicon(driver, new CardCache());
+  const previousStoredKeyFallback = reader.storedKeyFallback;
+  reader.storedKeyFallback = options.storedKeyFallback ?? false;
+  try {
+    reader.primeIdsByKey(simple.map(row => ({key: row.key!, id: row.id})));
+    const requested = [...names.values()].filter(name => name !== undefined);
+    await reader.prefetchIds(requested);
+    for (const row of pending) {
+      const name = names.get(row.id);
+      if (name !== undefined && await reader.id(name) === row.id) admittedIds.add(row.id);
+    }
+    return rows.filter(row => admittedIds.has(row.id));
+  } finally {
+    reader.storedKeyFallback = previousStoredKeyFallback;
+  }
+}
+
+/** The wave's simple-name read: the live rows whose key IS one of these
+ *  keys. The keys are folded, and the comparison is the column's own
+ *  collation (see the file's head). */
+export function waveKeysStatement(keys: readonly string[]): SQLStatement {
+  const placeholders = keys.map(() => "?").join(", ");
+  return {
+    sql: `SELECT * FROM cards WHERE "key" IN (${placeholders}) AND trash = 0`,
+    params: [...keys],
+  };
+}
+
+/** The wave's pair read: the live rows whose left side is one of these keys
+ *  and whose right side is one of these keys. The sides are matched by the
+ *  folded key, exactly as the point reads match them (see the file's head). */
+export function waveJunctionStatement(
+  leftKeys: readonly string[],
+  rightKeys: readonly string[],
+): SQLStatement {
+  const placeholdersL = leftKeys.map(() => "?").join(", ");
+  const placeholdersR = rightKeys.map(() => "?").join(", ");
+  return {
+    sql:
+      `SELECT DISTINCT j.* FROM cards j\n` +
+      `  JOIN cards l ON l.id = j.left_id AND l."key" IN (${placeholdersL}) AND l.trash = 0\n` +
+      `  JOIN cards r ON r.id = j.right_id AND r."key" IN (${placeholdersR}) AND r.trash = 0\n` +
+      ` WHERE j.trash = 0`,
+    params: [...leftKeys, ...rightKeys],
+  };
+}
+
+/** Whether a row is a compound card's row: it has both sides. */
+export function isCompoundRow(row: CardsRow): boolean {
+  return (
+    row.left_id !== null &&
+    row.left_id !== undefined &&
+    row.right_id !== null &&
+    row.right_id !== undefined
+  );
+}
